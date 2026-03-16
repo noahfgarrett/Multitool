@@ -128,5 +128,320 @@ function createIENDChunk(): Buffer {
   return createChunk('IEND', Buffer.alloc(0))
 }
 
+// ── Text Extract test fixtures ──────────────────────────
+
+async function generateTextExtractFixtures() {
+  const boldFont = StandardFonts.HelveticaBold
+  const regularFont = StandardFonts.Helvetica
+
+  // ── 1. Simple table PDF (5 rows, 4 columns, with drawn grid lines) ──
+  {
+    const doc = await PDFDocument.create()
+    const font = await doc.embedFont(regularFont)
+    const bFont = await doc.embedFont(boldFont)
+    const page = doc.addPage([612, 792])
+
+    page.drawText('Employee Directory', { x: 50, y: 740, size: 20, font: bFont })
+
+    const tableX = 50, tableY = 700, colW = 130, rowH = 24
+    const headers = ['Name', 'Department', 'Title', 'Salary']
+    const rows = [
+      ['Alice Johnson', 'Engineering', 'Senior Dev', '$125,000'],
+      ['Bob Martinez', 'Marketing', 'Director', '$98,500'],
+      ['Carol Chen', 'Finance', 'Analyst', '$87,200'],
+      ['David Kim', 'Engineering', 'Staff Dev', '$142,000'],
+      ['Eve Wilson', 'Sales', 'Manager', '$105,750'],
+    ]
+
+    // Draw grid lines
+    const totalW = colW * headers.length
+    const totalH = rowH * (rows.length + 1)
+    for (let r = 0; r <= rows.length + 1; r++) {
+      const y = tableY - r * rowH
+      page.drawLine({ start: { x: tableX, y }, end: { x: tableX + totalW, y }, thickness: 1, color: rgb(0, 0, 0) })
+    }
+    for (let c = 0; c <= headers.length; c++) {
+      const x = tableX + c * colW
+      page.drawLine({ start: { x, y: tableY }, end: { x, y: tableY - totalH }, thickness: 1, color: rgb(0, 0, 0) })
+    }
+
+    // Draw headers
+    for (let c = 0; c < headers.length; c++) {
+      page.drawText(headers[c], { x: tableX + c * colW + 5, y: tableY - 16, size: 10, font: bFont })
+    }
+    // Draw data rows
+    for (let r = 0; r < rows.length; r++) {
+      for (let c = 0; c < rows[r].length; c++) {
+        page.drawText(rows[r][c], { x: tableX + c * colW + 5, y: tableY - (r + 1) * rowH - 16, size: 9, font })
+      }
+    }
+
+    writeFileSync(join(FIXTURES_DIR, 'table-simple.pdf'), Buffer.from(await doc.save()))
+  }
+
+  // ── 2. Multi-column table (6 columns, numeric data) ──
+  {
+    const doc = await PDFDocument.create()
+    const font = await doc.embedFont(regularFont)
+    const bFont = await doc.embedFont(boldFont)
+    const page = doc.addPage([792, 612]) // Landscape
+
+    page.drawText('Quarterly Sales Report', { x: 50, y: 570, size: 18, font: bFont })
+
+    const tableX = 50, tableY = 540, rowH = 22
+    const colWidths = [100, 80, 80, 80, 80, 100]
+    const headers = ['Region', 'Q1', 'Q2', 'Q3', 'Q4', 'Total']
+    const rows = [
+      ['Northeast', '45,200', '52,100', '48,900', '61,300', '207,500'],
+      ['Southeast', '38,700', '41,200', '39,800', '44,100', '163,800'],
+      ['Midwest', '29,100', '33,500', '31,200', '37,800', '131,600'],
+      ['Southwest', '22,400', '25,100', '24,800', '28,900', '101,200'],
+      ['West Coast', '56,800', '62,400', '59,100', '71,200', '249,500'],
+      ['Northwest', '18,300', '21,700', '19,900', '24,100', '84,000'],
+    ]
+
+    // Draw grid
+    const totalW = colWidths.reduce((a, b) => a + b, 0)
+    const totalH = rowH * (rows.length + 1)
+    for (let r = 0; r <= rows.length + 1; r++) {
+      page.drawLine({ start: { x: tableX, y: tableY - r * rowH }, end: { x: tableX + totalW, y: tableY - r * rowH }, thickness: 1, color: rgb(0, 0, 0) })
+    }
+    let cx = tableX
+    for (let c = 0; c <= headers.length; c++) {
+      page.drawLine({ start: { x: cx, y: tableY }, end: { x: cx, y: tableY - totalH }, thickness: 1, color: rgb(0, 0, 0) })
+      if (c < headers.length) cx += colWidths[c]
+    }
+
+    // Headers
+    cx = tableX
+    for (let c = 0; c < headers.length; c++) {
+      page.drawText(headers[c], { x: cx + 5, y: tableY - 15, size: 9, font: bFont })
+      cx += colWidths[c]
+    }
+    // Rows
+    for (let r = 0; r < rows.length; r++) {
+      cx = tableX
+      for (let c = 0; c < rows[r].length; c++) {
+        page.drawText(rows[r][c], { x: cx + 5, y: tableY - (r + 1) * rowH - 15, size: 9, font })
+        cx += colWidths[c]
+      }
+    }
+
+    writeFileSync(join(FIXTURES_DIR, 'table-multicolumn.pdf'), Buffer.from(await doc.save()))
+  }
+
+  // ── 3. Large table PDF (50+ rows, 3 pages) ──
+  {
+    const doc = await PDFDocument.create()
+    const font = await doc.embedFont(regularFont)
+    const bFont = await doc.embedFont(boldFont)
+
+    const headers = ['ID', 'Product', 'Category', 'Price']
+    const colWidths = [50, 200, 120, 80]
+    const allRows: string[][] = []
+    const categories = ['Electronics', 'Clothing', 'Food', 'Books', 'Sports']
+    for (let i = 1; i <= 60; i++) {
+      allRows.push([
+        String(i),
+        `Product Item ${i}`,
+        categories[(i - 1) % categories.length],
+        `$${(Math.floor(Math.random() * 9000) + 1000) / 100}`,
+      ])
+    }
+
+    const rowsPerPage = 25
+    for (let p = 0; p < Math.ceil(allRows.length / rowsPerPage); p++) {
+      const page = doc.addPage([612, 792])
+      const pageRows = allRows.slice(p * rowsPerPage, (p + 1) * rowsPerPage)
+      const tableX = 50, tableY = 720, rowH = 22
+      const totalW = colWidths.reduce((a, b) => a + b, 0)
+
+      page.drawText(`Product Inventory — Page ${p + 1}`, { x: 50, y: 750, size: 16, font: bFont })
+
+      // Grid
+      for (let r = 0; r <= pageRows.length + 1; r++) {
+        page.drawLine({ start: { x: tableX, y: tableY - r * rowH }, end: { x: tableX + totalW, y: tableY - r * rowH }, thickness: 0.5, color: rgb(0.3, 0.3, 0.3) })
+      }
+      let cx = tableX
+      for (let c = 0; c <= headers.length; c++) {
+        page.drawLine({ start: { x: cx, y: tableY }, end: { x: cx, y: tableY - (pageRows.length + 1) * rowH }, thickness: 0.5, color: rgb(0.3, 0.3, 0.3) })
+        if (c < headers.length) cx += colWidths[c]
+      }
+
+      // Headers
+      cx = tableX
+      for (let c = 0; c < headers.length; c++) {
+        page.drawText(headers[c], { x: cx + 4, y: tableY - 15, size: 9, font: bFont })
+        cx += colWidths[c]
+      }
+      // Rows
+      for (let r = 0; r < pageRows.length; r++) {
+        cx = tableX
+        for (let c = 0; c < pageRows[r].length; c++) {
+          page.drawText(pageRows[r][c], { x: cx + 4, y: tableY - (r + 1) * rowH - 15, size: 8, font })
+          cx += colWidths[c]
+        }
+      }
+    }
+
+    writeFileSync(join(FIXTURES_DIR, 'table-large.pdf'), Buffer.from(await doc.save()))
+  }
+
+  // ── 4. Mixed content PDF (paragraphs + table on same page) ──
+  {
+    const doc = await PDFDocument.create()
+    const font = await doc.embedFont(regularFont)
+    const bFont = await doc.embedFont(boldFont)
+    const page = doc.addPage([612, 792])
+
+    page.drawText('Project Status Report', { x: 50, y: 740, size: 22, font: bFont })
+    page.drawText('Prepared by: Engineering Team', { x: 50, y: 715, size: 11, font })
+    page.drawText('Date: March 2026', { x: 50, y: 700, size: 11, font })
+
+    const paraY = 670
+    const lines = [
+      'This report summarizes the current status of all active projects.',
+      'Each project is tracked by milestone completion percentage and',
+      'estimated delivery date. Projects marked as "At Risk" require',
+      'immediate attention from the leadership team.',
+    ]
+    for (let i = 0; i < lines.length; i++) {
+      page.drawText(lines[i], { x: 50, y: paraY - i * 16, size: 11, font })
+    }
+
+    // Table below paragraphs
+    const tableX = 50, tableY = 580, colW = 130, rowH = 22
+    const headers = ['Project', 'Lead', 'Progress', 'Status']
+    const rows = [
+      ['Alpha Release', 'J. Smith', '85%', 'On Track'],
+      ['Beta Platform', 'M. Jones', '42%', 'At Risk'],
+      ['Cloud Migration', 'K. Lee', '91%', 'On Track'],
+      ['Data Pipeline', 'R. Patel', '67%', 'Delayed'],
+    ]
+
+    const totalW = colW * headers.length
+    const totalH = rowH * (rows.length + 1)
+    for (let r = 0; r <= rows.length + 1; r++) {
+      page.drawLine({ start: { x: tableX, y: tableY - r * rowH }, end: { x: tableX + totalW, y: tableY - r * rowH }, thickness: 1, color: rgb(0, 0, 0) })
+    }
+    for (let c = 0; c <= headers.length; c++) {
+      page.drawLine({ start: { x: tableX + c * colW, y: tableY }, end: { x: tableX + c * colW, y: tableY - totalH }, thickness: 1, color: rgb(0, 0, 0) })
+    }
+    for (let c = 0; c < headers.length; c++) {
+      page.drawText(headers[c], { x: tableX + c * colW + 5, y: tableY - 15, size: 10, font: bFont })
+    }
+    for (let r = 0; r < rows.length; r++) {
+      for (let c = 0; c < rows[r].length; c++) {
+        page.drawText(rows[r][c], { x: tableX + c * colW + 5, y: tableY - (r + 1) * rowH - 15, size: 9, font })
+      }
+    }
+
+    // More text after table
+    page.drawText('Next Steps:', { x: 50, y: 440, size: 14, font: bFont })
+    page.drawText('1. Review at-risk projects in weekly standup', { x: 50, y: 420, size: 11, font })
+    page.drawText('2. Reallocate resources to delayed projects', { x: 50, y: 404, size: 11, font })
+    page.drawText('3. Update stakeholders on revised timelines', { x: 50, y: 388, size: 11, font })
+
+    writeFileSync(join(FIXTURES_DIR, 'mixed-content.pdf'), Buffer.from(await doc.save()))
+  }
+
+  // ── 5. Complex table (varied column widths, many columns) ──
+  {
+    const doc = await PDFDocument.create()
+    const font = await doc.embedFont(regularFont)
+    const bFont = await doc.embedFont(boldFont)
+    const page = doc.addPage([792, 612]) // Landscape
+
+    page.drawText('Budget Allocation Summary', { x: 50, y: 570, size: 18, font: bFont })
+
+    const tableX = 40, tableY = 540, rowH = 20
+    const colWidths = [120, 70, 70, 70, 70, 70, 70, 90]
+    const headers = ['Department', 'Staff', 'Travel', 'Equipment', 'Software', 'Training', 'Other', 'Total Budget']
+    const rows = [
+      ['Engineering', '450K', '25K', '80K', '120K', '35K', '15K', '$725,000'],
+      ['Marketing', '280K', '45K', '20K', '60K', '25K', '30K', '$460,000'],
+      ['Sales', '380K', '75K', '15K', '40K', '30K', '20K', '$560,000'],
+      ['Finance', '220K', '10K', '25K', '45K', '20K', '10K', '$330,000'],
+      ['HR', '180K', '15K', '10K', '30K', '40K', '25K', '$300,000'],
+    ]
+
+    const totalW = colWidths.reduce((a, b) => a + b, 0)
+    const totalH = rowH * (rows.length + 1)
+    for (let r = 0; r <= rows.length + 1; r++) {
+      page.drawLine({ start: { x: tableX, y: tableY - r * rowH }, end: { x: tableX + totalW, y: tableY - r * rowH }, thickness: 0.5, color: rgb(0, 0, 0) })
+    }
+    let cx = tableX
+    for (let c = 0; c <= headers.length; c++) {
+      page.drawLine({ start: { x: cx, y: tableY }, end: { x: cx, y: tableY - totalH }, thickness: 0.5, color: rgb(0, 0, 0) })
+      if (c < headers.length) cx += colWidths[c]
+    }
+    cx = tableX
+    for (let c = 0; c < headers.length; c++) {
+      page.drawText(headers[c], { x: cx + 3, y: tableY - 14, size: 8, font: bFont })
+      cx += colWidths[c]
+    }
+    for (let r = 0; r < rows.length; r++) {
+      cx = tableX
+      for (let c = 0; c < rows[r].length; c++) {
+        page.drawText(rows[r][c], { x: cx + 3, y: tableY - (r + 1) * rowH - 14, size: 8, font })
+        cx += colWidths[c]
+      }
+    }
+
+    writeFileSync(join(FIXTURES_DIR, 'table-complex.pdf'), Buffer.from(await doc.save()))
+  }
+
+  // ── 6. Multi-page document (text-heavy, for document mode testing) ──
+  {
+    const doc = await PDFDocument.create()
+    const font = await doc.embedFont(regularFont)
+    const bFont = await doc.embedFont(boldFont)
+
+    const paragraphs = [
+      { title: 'Introduction', text: 'This document contains multiple sections of text designed to test the document extraction mode. Each section has a heading followed by body text that should be properly extracted and formatted.' },
+      { title: 'Technical Overview', text: 'The system architecture consists of three main components: the frontend user interface built with React, the data processing layer using WebAssembly, and the local storage system using IndexedDB. All processing occurs client-side with zero server communication.' },
+      { title: 'Implementation Details', text: 'The text extraction pipeline first attempts to read embedded text from the PDF using pdf.js. If the document contains fewer than 50 characters of embedded text, the system falls back to OCR using Tesseract.js with a rendering scale of 2.0x for optimal accuracy.' },
+      { title: 'Performance Metrics', text: 'Average extraction time for a single page is 1.2 seconds for embedded text and 8.5 seconds for OCR. Table detection adds approximately 200ms per page. Export to PDF takes 500ms for documents under 10 pages.' },
+      { title: 'Conclusion', text: 'The text extraction tool provides reliable, offline document processing suitable for sensitive environments. Future improvements will include multi-language OCR support and advanced table structure recognition.' },
+    ]
+
+    for (let p = 0; p < 3; p++) {
+      const page = doc.addPage([612, 792])
+      let y = 730
+      page.drawText(`Document — Page ${p + 1}`, { x: 50, y: 750, size: 10, font, color: rgb(0.5, 0.5, 0.5) })
+
+      const startIdx = p === 0 ? 0 : p === 1 ? 2 : 4
+      const endIdx = p === 0 ? 2 : p === 1 ? 4 : 5
+      for (let i = startIdx; i < endIdx && i < paragraphs.length; i++) {
+        page.drawText(paragraphs[i].title, { x: 50, y, size: 16, font: bFont })
+        y -= 24
+        // Word-wrap the paragraph text
+        const words = paragraphs[i].text.split(' ')
+        let line = ''
+        for (const word of words) {
+          const testLine = line ? `${line} ${word}` : word
+          if (font.widthOfTextAtSize(testLine, 11) > 500) {
+            page.drawText(line, { x: 50, y, size: 11, font })
+            y -= 16
+            line = word
+          } else {
+            line = testLine
+          }
+        }
+        if (line) {
+          page.drawText(line, { x: 50, y, size: 11, font })
+          y -= 30
+        }
+      }
+    }
+
+    writeFileSync(join(FIXTURES_DIR, 'document-multipage.pdf'), Buffer.from(await doc.save()))
+  }
+
+  console.log('Text extract fixtures generated: table-simple.pdf, table-multicolumn.pdf, table-large.pdf, mixed-content.pdf, table-complex.pdf, document-multipage.pdf')
+}
+
 // Allow running directly
-globalSetup().then(() => console.log('Fixtures generated'))
+globalSetup()
+  .then(() => generateTextExtractFixtures())
+  .then(() => console.log('All fixtures generated'))

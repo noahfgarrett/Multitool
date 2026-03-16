@@ -630,7 +630,7 @@ export default function TextExtractTool() {
   const [progressMsg, setProgressMsg] = useState('')
   const [useOcr, setUseOcr] = useState(false)
   const [ocrDetected, setOcrDetected] = useState(false)
-  const [tablesOnly, setTablesOnly] = useState(false)
+  const [tablesOnly, setTablesOnly] = useState(true)
 
   // Extracted data
   const [extractedItems, setExtractedItems] = useState<PositionedText[]>([])
