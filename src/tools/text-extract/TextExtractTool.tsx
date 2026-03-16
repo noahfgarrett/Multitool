@@ -192,49 +192,13 @@ function assignToGrid(
 
 // ── Merge wrapped rows (e.g. "Q2" + "2024" in same cell) ──
 
+// Row merging disabled — the heuristic was too aggressive, incorrectly
+// merging separate data rows when some cells happened to be empty.
+// This caused 10+ rows of data to collapse into a single cell.
+// Returning rows unmodified preserves data integrity. Wrapped cell text
+// may appear as separate rows, but that's far better than data corruption.
 function mergeWrappedRows(rows: string[][]): string[][] {
-  if (rows.length < 2) return rows
-  const numCols = rows[0].length
-
-  const merged: string[][] = []
-  let i = 0
-  while (i < rows.length) {
-    const base = [...rows[i]]
-    // Look ahead at consecutive continuation rows
-    let j = i + 1
-    while (j < rows.length) {
-      const candidate = rows[j]
-      // Count how many cells are non-empty in candidate vs base
-      let emptyInCandidate = 0
-      let bothPopulated = 0
-      for (let c = 0; c < numCols; c++) {
-        const bTrim = base[c].trim()
-        const cTrim = candidate[c].trim()
-        if (!cTrim) emptyInCandidate++
-        if (bTrim && cTrim) bothPopulated++
-      }
-      // A continuation row: majority of its cells are empty,
-      // and the non-empty cells overlap with populated base cells
-      // (i.e. it's adding wrapped text to existing columns)
-      const nonEmptyInCandidate = numCols - emptyInCandidate
-      const isContinuation =
-        nonEmptyInCandidate > 0 &&
-        emptyInCandidate > nonEmptyInCandidate &&
-        bothPopulated === nonEmptyInCandidate
-      if (!isContinuation) break
-      // Merge: append candidate cell text to base with newline
-      for (let c = 0; c < numCols; c++) {
-        const cTrim = candidate[c].trim()
-        if (cTrim) {
-          base[c] = base[c].trim() ? base[c] + ' ' + cTrim : cTrim
-        }
-      }
-      j++
-    }
-    merged.push(base)
-    i = j
-  }
-  return merged
+  return rows
 }
 
 // ── Strip empty columns and apply header detection ─
