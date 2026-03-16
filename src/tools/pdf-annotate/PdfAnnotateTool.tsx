@@ -20,11 +20,11 @@ import {
   Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Superscript, Subscript, List, ListOrdered,
   Search, Crop, Tag, Printer, FileSpreadsheet, StickyNote as StickyNoteIcon,
-  MessageCircle, Mail, FileText, ScanText,
+  MessageCircle, Mail, FileText, ScanText, Layers, ImagePlus, Eye, EyeOff, Plus, Trash2,
 } from 'lucide-react'
 
 // ── Extracted modules ─────────────────────────────────
-import type { ToolType, Point, Annotation, PageAnnotations, Measurement, CalibrationState, HandleId, PageRefs, MeasureMode, PolyMeasurement, CountGroup, CommentThread, CommentStatus, StickyNote, ExportMode, Comment as CommentType } from './types.ts'
+import type { ToolType, Point, Annotation, AnnotationLayer, PageAnnotations, Measurement, CalibrationState, HandleId, PageRefs, MeasureMode, PolyMeasurement, CountGroup, CommentThread, CommentStatus, StickyNote, ExportMode, Comment as CommentType } from './types.ts'
 import {
   RENDER_SCALE, MAX_HISTORY, HANDLE_SIZE, DEFAULT_TEXTBOX_W, DEFAULT_TEXTBOX_H,
   ANN_COLORS, HIGHLIGHT_COLORS, ZOOM_PRESETS, STAMP_PRESETS,
@@ -137,6 +137,11 @@ export default function PdfAnnotateTool() {
   const [fontSize, setFontSize] = useState(16)
   const [zoom, setZoom] = useState(1.0)
   const [annotations, setAnnotations] = useState<PageAnnotations>({})
+  const [layers, setLayers] = useState<AnnotationLayer[]>([
+    { id: 'default', name: 'Default', visible: true, color: '#6B7280' },
+  ])
+  const [activeLayerId, setActiveLayerId] = useState('default')
+  const [layersPanelOpen, setLayersPanelOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -326,6 +331,9 @@ export default function PdfAnnotateTool() {
   const findInputRef = useRef<HTMLInputElement>(null)
   const isDrawingRef = useRef(false)
   const currentPtsRef = useRef<Point[]>([])
+  const currentPressureRef = useRef<number[]>([])  // parallel array for pen pressure
+  const pendingImageRef = useRef<string | null>(null)  // data URL for image stamp placement
+  const imageStampCacheRef = useRef<Map<string, HTMLImageElement>>(new Map())  // cache loaded images
   const pdfFileRef = useRef(pdfFile)
   pdfFileRef.current = pdfFile
   const fileHashRef = useRef<string | null>(null)
@@ -442,12 +450,36 @@ export default function PdfAnnotateTool() {
 
     const isActive = pageNum === activePageRef.current
     const mods = eraserModsRef.current
+    const hiddenLayerIds = new Set(layers.filter(l => !l.visible).map(l => l.id))
     const pageAnns = (annotations[pageNum] || [])
       .filter(a => !isActive || !mods.removed.has(a.id))
+      .filter(a => !a.layerId || !hiddenLayerIds.has(a.layerId))
     for (const ann of pageAnns) {
       // Hide canvas-drawn text/callout while textarea overlay is active (Konva.js pattern)
       const isBeingEdited = ann.id === editingTextIdRef.current && (ann.type === 'text' || ann.type === 'callout')
-      if (!isBeingEdited) drawAnnotation(ctx, ann, rs)
+      if (!isBeingEdited) {
+        drawAnnotation(ctx, ann, rs)
+        // Render image stamp content (drawAnnotation only draws placeholder border)
+        if (ann.type === 'imageStamp' && ann.imageDataUrl && ann.points.length >= 2) {
+          let img = imageStampCacheRef.current.get(ann.id)
+          if (!img) {
+            img = new Image()
+            img.src = ann.imageDataUrl
+            imageStampCacheRef.current.set(ann.id, img)
+            img.onload = () => redrawPage(pageNum)
+          }
+          if (img.complete && img.naturalWidth > 0) {
+            const ix = Math.min(ann.points[0].x, ann.points[1].x) * rs
+            const iy = Math.min(ann.points[0].y, ann.points[1].y) * rs
+            const iw = Math.abs(ann.points[1].x - ann.points[0].x) * rs
+            const ih = Math.abs(ann.points[1].y - ann.points[0].y) * rs
+            ctx.save()
+            ctx.globalAlpha = ann.opacity
+            ctx.drawImage(img, ix, iy, iw, ih)
+            ctx.restore()
+          }
+        }
+      }
       if (ann.id === selectedAnnId && !isBeingEdited) {
         drawSelectionUI(ctx, ann, rs)
         if (ann.type === 'callout' && selectedArrowIdx !== null && ann.arrows && selectedArrowIdx < ann.arrows.length) {
@@ -808,7 +840,7 @@ export default function PdfAnnotateTool() {
         drawStickyNotePin(ctx, note, rs, chatBubbleTarget?.annotationId === note.id, thread)
       }
     }
-  }, [annotations, activeTool, selectedAnnId, color, strokeWidth, opacity, fontSize, measurements, calibration, selectedMeasureId, selectedArrowIdx, selectTextToolbar, hoveredAnnId, getAnnotation, findMatches, findIdx, cropRegions, measureMode, polyMeasurements, countGroups, stickyNotes, commentThreads, chatBubbleTarget])
+  }, [annotations, activeTool, selectedAnnId, color, strokeWidth, opacity, fontSize, measurements, calibration, selectedMeasureId, selectedArrowIdx, selectTextToolbar, hoveredAnnId, getAnnotation, findMatches, findIdx, cropRegions, measureMode, polyMeasurements, countGroups, stickyNotes, commentThreads, chatBubbleTarget, layers])
 
   const redrawAll = useCallback(() => {
     for (const pageNum of renderedPagesRef.current) {
@@ -2624,6 +2656,41 @@ export default function PdfAnnotateTool() {
       return
     }
 
+    // ── Image Stamp tool: click to place image ──
+    if (activeTool === 'imageStamp' && pendingImageRef.current) {
+      const dataUrl = pendingImageRef.current
+      const img = new Image()
+      img.src = dataUrl
+      const placeImage = () => {
+        const natW = img.naturalWidth || 200
+        const natH = img.naturalHeight || 200
+        const maxDocW = 200
+        const s = Math.min(1, maxDocW / natW)
+        const docW = natW * s
+        const docH = natH * s
+        const ann: Annotation = {
+          id: genId(),
+          type: 'imageStamp',
+          points: [{ x: pt.x - docW / 2, y: pt.y - docH / 2 }, { x: pt.x + docW / 2, y: pt.y + docH / 2 }],
+          color: '#000000',
+          strokeWidth: 0,
+          opacity: opacity / 100,
+          fontSize: 16,
+          width: docW,
+          height: docH,
+          imageDataUrl: dataUrl,
+          ...(activeLayerId !== 'default' ? { layerId: activeLayerId } : {}),
+        }
+        imageStampCacheRef.current.set(ann.id, img)
+        commitAnnotation(ann)
+        setSelectedAnnId(ann.id)
+        pendingImageRef.current = null
+      }
+      if (img.complete) placeImage()
+      else img.onload = placeImage
+      return
+    }
+
     // ── Note (sticky note) tool: click to place ──
     if (activeTool === 'note') {
       const noteRefs = pageRefsMap.current.get(pageNum)
@@ -2741,6 +2808,7 @@ export default function PdfAnnotateTool() {
 
     // Snapshot canvas for incremental freehand rendering
     if (activeTool === 'pencil' || activeTool === 'highlighter') {
+      currentPressureRef.current = [e.pressure]  // capture initial pressure
       const annCanvas = pageRefsMap.current.get(pageNum)?.annCanvas
       if (annCanvas) {
         const ctx = annCanvas.getContext('2d')
@@ -3177,8 +3245,10 @@ export default function PdfAnnotateTool() {
     if (activeTool === 'pencil' || activeTool === 'highlighter') {
       if (straightLineMode) {
         currentPtsRef.current = [currentPtsRef.current[0], pt]
+        currentPressureRef.current = [currentPressureRef.current[0], e.pressure]
       } else {
         currentPtsRef.current.push(pt)
+        currentPressureRef.current.push(e.pressure)
         // Incremental rendering: restore snapshot + draw only current stroke
         if (!straightLineMode && canvasSnapshotRef.current) {
           const annCanvas = pageRefsMap.current.get(ap)?.annCanvas
@@ -3563,8 +3633,11 @@ export default function PdfAnnotateTool() {
       ...(cornerRadius > 0 && activeTool === 'rectangle' ? { cornerRadius } : {}),
       ...(dashPattern !== 'solid' ? { dashPattern } : {}),
       ...(arrowStart && activeTool === 'arrow' ? { arrowStart: true } : {}),
+      ...(isPencilOrHL && currentPressureRef.current.length > 0 ? { pressure: [...currentPressureRef.current] } : {}),
+      ...(activeLayerId !== 'default' ? { layerId: activeLayerId } : {}),
     }
     currentPtsRef.current = []
+    currentPressureRef.current = []
     commitAnnotation(ann)
     // Auto-select shapes/arrows/lines after drawing; skip pencil & highlighter
     if (activeTool !== 'pencil' && activeTool !== 'highlighter') {
@@ -5203,6 +5276,31 @@ export default function PdfAnnotateTool() {
             }`}>
             <Crop size={16} />
           </button>
+          {/* Image Stamp */}
+          <button onClick={() => {
+            setActiveTool('imageStamp')
+            // Open file picker immediately
+            const input = document.createElement('input')
+            input.type = 'file'
+            input.accept = 'image/png,image/jpeg,image/svg+xml,image/webp'
+            input.onchange = async () => {
+              const file = input.files?.[0]
+              if (!file) return
+              const reader = new FileReader()
+              reader.onload = () => {
+                const dataUrl = reader.result as string
+                // Store pending image for next canvas click
+                pendingImageRef.current = dataUrl
+              }
+              reader.readAsDataURL(file)
+            }
+            input.click()
+          }} title="Image Stamp (I)"
+            className={`p-1.5 rounded-lg transition-colors ${
+              activeTool === 'imageStamp' ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+            }`}>
+            <ImagePlus size={16} />
+          </button>
           {/* OCR Region Scan */}
           <button onClick={() => { setActiveTool('ocrRegion'); setOcrRegionResult(null) }} title="OCR Region Scan"
             className={`p-1.5 rounded-lg transition-colors ${
@@ -5218,6 +5316,14 @@ export default function PdfAnnotateTool() {
             <StickyNoteIcon size={16} />
           </button>
           {/* Comments Panel */}
+          {/* Layers panel */}
+          <button onClick={() => setLayersPanelOpen(prev => !prev)} title="Layers"
+            className={`p-1.5 rounded-lg transition-colors ${
+              layersPanelOpen ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+            }`}>
+            <Layers size={16} />
+          </button>
+          {/* Comments panel */}
           <button onClick={() => setCommentsPanelOpen(prev => !prev)} title="Comments panel"
             className={`relative p-1.5 rounded-lg transition-colors ${
               commentsPanelOpen ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
@@ -5584,6 +5690,7 @@ export default function PdfAnnotateTool() {
             activeTool === 'textHighlight' ? 'Drag to highlight' :
             activeTool === 'stamp' ? `${activeStampPreset.label} · click to place` :
             activeTool === 'crop' ? 'Drag to set crop region' :
+            activeTool === 'imageStamp' ? (pendingImageRef.current ? 'Click to place image' : 'Select an image file') :
             activeTool === 'ocrRegion' ? 'Drag to scan text in region' :
             activeTool === 'note' ? 'Click to place a sticky note' :
             (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'line' || activeTool === 'arrow')
@@ -5911,6 +6018,54 @@ export default function PdfAnnotateTool() {
       )}
 
       {/* ── Comments Panel ── */}
+      {/* ── Layers Panel ── */}
+      {layersPanelOpen && (
+        <div className="fixed top-20 right-14 w-56 bg-[#001a24] border border-white/[0.1] rounded-lg shadow-2xl z-50 overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
+            <span className="text-xs font-semibold text-white/70">Layers</span>
+            <button onClick={() => {
+              const id = crypto.randomUUID()
+              const name = `Layer ${layers.length}`
+              setLayers(prev => [...prev, { id, name, visible: true, color: '#3B82F6' }])
+            }} className="p-0.5 text-white/40 hover:text-white rounded" title="Add layer">
+              <Plus size={12} />
+            </button>
+          </div>
+          <div className="max-h-[240px] overflow-y-auto">
+            {layers.map(layer => (
+              <div key={layer.id}
+                className={`flex items-center gap-2 px-3 py-1.5 text-xs cursor-pointer transition-colors ${
+                  activeLayerId === layer.id ? 'bg-[#F47B20]/10 text-[#F47B20]' : 'text-white/60 hover:bg-white/[0.04]'
+                }`}
+                onClick={() => setActiveLayerId(layer.id)}
+              >
+                <button
+                  onClick={(e) => { e.stopPropagation(); setLayers(prev => prev.map(l => l.id === layer.id ? { ...l, visible: !l.visible } : l)) }}
+                  className="p-0.5 text-white/40 hover:text-white"
+                  title={layer.visible ? 'Hide layer' : 'Show layer'}
+                >
+                  {layer.visible ? <Eye size={12} /> : <EyeOff size={12} />}
+                </button>
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: layer.color }} />
+                <span className="flex-1 truncate">{layer.name}</span>
+                {layer.id !== 'default' && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setLayers(prev => prev.filter(l => l.id !== layer.id)) }}
+                    className="p-0.5 text-white/20 hover:text-red-400 opacity-0 group-hover:opacity-100"
+                    title="Delete layer"
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                )}
+                {activeLayerId === layer.id && (
+                  <span className="text-[8px] text-[#F47B20]/50 font-bold">ACTIVE</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <CommentsPanel
         isOpen={commentsPanelOpen}
         onClose={() => setCommentsPanelOpen(false)}

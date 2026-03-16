@@ -1,6 +1,7 @@
 import type { Point, Annotation, CalibrationState, Measurement } from './types.ts'
 import { HANDLE_SIZE } from './types.ts'
 import { wrapText, nearestPointOnRect, getHandles, getAnnotationBounds } from './geometry.ts'
+import { getStroke } from 'perfect-freehand'
 
 // ── Cloud drawing helper ─────────────────────────────
 
@@ -160,6 +161,27 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, ann: Annotation, s
         ctx.moveTo(pts[0].x * scale, pts[0].y * scale)
         for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x * scale, pts[i].y * scale)
         ctx.stroke()
+      } else if (ann.pressure && ann.pressure.length === pts.length) {
+        // Pressure-sensitive rendering via perfect-freehand
+        const inputPts = pts.map((p, i) => [p.x * scale, p.y * scale, ann.pressure![i]] as [number, number, number])
+        const hasTruePressure = ann.pressure.some(p => p !== 0.5 && p !== 0)
+        const strokeOutline = getStroke(inputPts, {
+          size: ann.strokeWidth * scale * 2,
+          thinning: hasTruePressure ? 0.5 : 0,
+          smoothing: 0.5,
+          streamline: 0.5,
+          simulatePressure: !hasTruePressure,
+        })
+        if (strokeOutline.length > 0) {
+          ctx.beginPath()
+          ctx.moveTo(strokeOutline[0][0], strokeOutline[0][1])
+          for (let i = 1; i < strokeOutline.length; i++) {
+            const [x, y] = strokeOutline[i]
+            ctx.lineTo(x, y)
+          }
+          ctx.closePath()
+          ctx.fill()
+        }
       } else {
         drawSmoothPath(ctx, pts, scale)
       }
