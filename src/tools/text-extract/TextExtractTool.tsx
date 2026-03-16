@@ -875,16 +875,36 @@ export default function TextExtractTool() {
     // Extract drawn lines/rules for table grid detection
     if (!useOcr) {
       const pageLines = await extractPageLines(pdf, pageNum)
-      const pageRegions = regions.filter(r => r.page === pageNum)
-      if (pageRegions.length > 0) {
-        const inRegion = (l: PageLine) => pageRegions.some(r =>
-          Math.min(l.x1, l.x2) < r.x + r.width + 5 &&
-          Math.max(l.x1, l.x2) > r.x - 5 &&
-          Math.min(l.y1, l.y2) < r.y + r.height + 5 &&
-          Math.max(l.y1, l.y2) > r.y - 5
-        )
-        lines.horizontal.push(...pageLines.horizontal.filter(inRegion))
-        lines.vertical.push(...pageLines.vertical.filter(inRegion))
+      const lineRegions = regions.filter(r => r.page === pageNum)
+      if (lineRegions.length > 0) {
+        // Clip lines to region bounds — only keep the portions inside the region.
+        // A full-width horizontal line should be clipped to the region's x-extent,
+        // not passed through entirely (which would create column boundaries outside the region).
+        for (const r of lineRegions) {
+          const pad = 5
+          const rLeft = r.x - pad, rRight = r.x + r.width + pad
+          const rTop = r.y - pad, rBottom = r.y + r.height + pad
+          for (const l of pageLines.horizontal) {
+            const ly = l.y1
+            if (ly >= rTop && ly <= rBottom) {
+              const clippedX1 = Math.max(Math.min(l.x1, l.x2), rLeft)
+              const clippedX2 = Math.min(Math.max(l.x1, l.x2), rRight)
+              if (clippedX2 - clippedX1 > 5) {
+                lines.horizontal.push({ ...l, x1: clippedX1, x2: clippedX2 })
+              }
+            }
+          }
+          for (const l of pageLines.vertical) {
+            const lx = l.x1
+            if (lx >= rLeft && lx <= rRight) {
+              const clippedY1 = Math.max(Math.min(l.y1, l.y2), rTop)
+              const clippedY2 = Math.min(Math.max(l.y1, l.y2), rBottom)
+              if (clippedY2 - clippedY1 > 5) {
+                lines.vertical.push({ ...l, y1: clippedY1, y2: clippedY2 })
+              }
+            }
+          }
+        }
       } else {
         lines.horizontal.push(...pageLines.horizontal)
         lines.vertical.push(...pageLines.vertical)
