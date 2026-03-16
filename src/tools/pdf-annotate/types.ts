@@ -1,12 +1,12 @@
 import { StandardFonts } from 'pdf-lib'
 import {
   Pencil, Highlighter, Square, Circle, ArrowUpRight, Minus, Type,
-  Cloud, MessageSquare,
+  Cloud, Pentagon, MessageSquare, ImagePlus,
 } from 'lucide-react'
 
 // ── Core Types ──────────────────────────────────────────
 
-export type ToolType = 'select' | 'pencil' | 'highlighter' | 'rectangle' | 'circle' | 'arrow' | 'line' | 'text' | 'eraser' | 'cloud' | 'callout' | 'measure' | 'textHighlight' | 'textStrikethrough' | 'stamp' | 'crop' | 'note' | 'ocrRegion'
+export type ToolType = 'select' | 'pencil' | 'highlighter' | 'rectangle' | 'circle' | 'arrow' | 'line' | 'text' | 'eraser' | 'cloud' | 'polygon' | 'callout' | 'measure' | 'textHighlight' | 'textStrikethrough' | 'stamp' | 'imageStamp' | 'crop' | 'note' | 'ocrRegion'
 
 export interface Point { x: number; y: number }
 
@@ -40,9 +40,20 @@ export interface Annotation {
   subscript?: boolean
   listType?: 'none' | 'bullet' | 'numbered'
   stampType?: string
+  imageDataUrl?: string  // imageStamp: embedded image as data URL
+  layerId?: string       // annotation layer assignment
+  pressure?: number[]    // per-point pressure data for freehand (0-1)
 }
 
 export type PageAnnotations = Record<number, Annotation[]>
+
+/** Annotation layer for organizing and toggling visibility */
+export interface AnnotationLayer {
+  id: string
+  name: string
+  visible: boolean
+  color: string
+}
 
 /** @legacy Used by existing 2-point distance measurement code. See PolyMeasurement for expanded modes. */
 export interface Measurement {
@@ -65,6 +76,7 @@ export interface PolyMeasurement {
   page: number
   label?: string   // User-defined label (especially for count groups)
   closed?: boolean // For area: whether the polygon is closed
+  depth?: number   // For volume: depth multiplier (area × depth = volume)
 }
 
 /** Count group for the count tool */
@@ -199,6 +211,7 @@ export const DRAW_TOOLS: ToolDef[] = [
   { type: 'rectangle', icon: Square, label: 'Rectangle (R)' },
   { type: 'circle', icon: Circle, label: 'Circle (C)' },
   { type: 'cloud', icon: Cloud, label: 'Cloud (K)' },
+  { type: 'polygon', icon: Pentagon, label: 'Polygon (Shift+K)' },
 ]
 
 export const TEXT_TOOLS: ToolDef[] = [
@@ -258,7 +271,7 @@ export const CURSOR_MAP: Record<ToolType, string> = {
   arrow: 'crosshair', rectangle: 'crosshair', circle: 'crosshair',
   cloud: 'crosshair', text: 'text', eraser: 'none',
   callout: 'crosshair', measure: 'crosshair', textHighlight: 'text', textStrikethrough: 'text',
-  stamp: 'crosshair', crop: 'crosshair', note: 'crosshair', ocrRegion: 'crosshair',
+  polygon: 'crosshair', stamp: 'crosshair', imageStamp: 'crosshair', crop: 'crosshair', note: 'crosshair', ocrRegion: 'crosshair',
 }
 
 export const HANDLE_CURSOR_MAP: Record<string, string> = {

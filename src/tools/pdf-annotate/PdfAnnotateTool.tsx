@@ -566,7 +566,7 @@ export default function PdfAnnotateTool() {
     // ── In-progress elements (only on the active page) ──
     if (isActive) {
       // In-progress stroke
-      if (isDrawingRef.current && activeTool !== 'select' && activeTool !== 'eraser' && activeTool !== 'text' && activeTool !== 'callout' && activeTool !== 'cloud' && activeTool !== 'measure' && activeTool !== 'textHighlight' && activeTool !== 'textStrikethrough' && activeTool !== 'ocrRegion') {
+      if (isDrawingRef.current && activeTool !== 'select' && activeTool !== 'eraser' && activeTool !== 'text' && activeTool !== 'callout' && activeTool !== 'cloud' && activeTool !== 'polygon' && activeTool !== 'measure' && activeTool !== 'textHighlight' && activeTool !== 'textStrikethrough' && activeTool !== 'ocrRegion') {
         const pts = currentPtsRef.current
         if (pts.length > 0) {
           const inProgress: Annotation = {
@@ -628,7 +628,7 @@ export default function PdfAnnotateTool() {
       }
 
       // Cloud polygon vertex placement preview
-      if (activeTool === 'cloud' && currentPtsRef.current.length > 0) {
+      if ((activeTool === 'cloud' || activeTool === 'polygon') && currentPtsRef.current.length > 0) {
         const cpts = currentPtsRef.current
         const preview = cloudPreviewRef.current
         const scale = rs
@@ -781,7 +781,7 @@ export default function PdfAnnotateTool() {
       if (pm.mode === 'polylength') {
         drawPolylength(ctx, pm.points, rs, calibration, isActive)
       } else if (pm.mode === 'area') {
-        drawAreaPolygon(ctx, pm.points, rs, calibration, pm.closed ?? true, isActive)
+        drawAreaPolygon(ctx, pm.points, rs, calibration, pm.closed ?? true, isActive, pm.depth)
       }
     }
 
@@ -1568,7 +1568,7 @@ export default function PdfAnnotateTool() {
           }
         }
         // Cancel in-progress cloud polygon
-        if (activeTool === 'cloud' && currentPtsRef.current.length > 0) {
+        if ((activeTool === 'cloud' || activeTool === 'polygon') && currentPtsRef.current.length > 0) {
           currentPtsRef.current = []; cloudPreviewRef.current = null; redrawAll(); return
         }
         // Two-step: if selected, deselect
@@ -1588,7 +1588,7 @@ export default function PdfAnnotateTool() {
       // ── Delete ──
       if (e.key === 'Delete' || e.key === 'Backspace') {
         // Cloud tool: Backspace to undo last vertex
-        if (e.key === 'Backspace' && activeTool === 'cloud' && currentPtsRef.current.length > 0) {
+        if (e.key === 'Backspace' && (activeTool === 'cloud' || activeTool === 'polygon') && currentPtsRef.current.length > 0) {
           e.preventDefault()
           currentPtsRef.current.pop()
           redrawPage(activePageRef.current)
@@ -1837,6 +1837,13 @@ export default function PdfAnnotateTool() {
           if (mapped === 'highlighter') setActiveHighlight('highlighter')
           return
         }
+      }
+      // Shift+K → Polygon tool
+      if (!mod && e.shiftKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setActiveTool('polygon')
+        setActiveDraw('polygon')
+        return
       }
     }
     const keyUpHandler = (e: KeyboardEvent) => {
@@ -2386,8 +2393,8 @@ export default function PdfAnnotateTool() {
       return
     }
 
-    // ── Cloud tool: click-to-place vertices ──
-    if (activeTool === 'cloud') {
+    // ── Cloud/Polygon tool: click-to-place vertices ──
+    if (activeTool === 'cloud' || activeTool === 'polygon') {
       const now = Date.now()
       const last = cloudLastClickRef.current
       const isDbl = (now - last.time) < 400 && Math.hypot(pt.x - last.pt.x, pt.y - last.pt.y) < 20
@@ -2831,7 +2838,7 @@ export default function PdfAnnotateTool() {
     }
 
     // Cloud polygon: track cursor for preview
-    if (activeTool === 'cloud' && currentPtsRef.current.length > 0) {
+    if ((activeTool === 'cloud' || activeTool === 'polygon') && currentPtsRef.current.length > 0) {
       cloudPreviewRef.current = getPointForPage(ap, e)
       redrawPage(ap)
       return
@@ -3552,7 +3559,7 @@ export default function PdfAnnotateTool() {
       strokeWidth: strokeWidth,
       opacity: isHL ? 0.4 : opacity / 100,
       fontSize,
-      ...(fillColor && (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'cloud') ? { fillColor } : {}),
+      ...(fillColor && (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'cloud' || activeTool === 'polygon') ? { fillColor } : {}),
       ...(cornerRadius > 0 && activeTool === 'rectangle' ? { cornerRadius } : {}),
       ...(dashPattern !== 'solid' ? { dashPattern } : {}),
       ...(arrowStart && activeTool === 'arrow' ? { arrowStart: true } : {}),
@@ -4312,7 +4319,7 @@ export default function PdfAnnotateTool() {
   const isShapeAnnSelected = selectedAnn && !isTextAnnSelected
 
   // Properties bar context
-  const showPropsForTool = activeTool !== 'select' && activeTool !== 'eraser' && activeTool !== 'measure' && activeTool !== 'stamp' && activeTool !== 'crop' && activeTool !== 'note' && activeTool !== 'ocrRegion'
+  const showPropsForTool = activeTool !== 'select' && activeTool !== 'eraser' && activeTool !== 'measure' && activeTool !== 'stamp' && activeTool !== 'imageStamp' && activeTool !== 'crop' && activeTool !== 'note' && activeTool !== 'ocrRegion'
   const showPropsForSelection = activeTool === 'select' && selectedAnn
   const showTextProps = (isTextAnnSelected && activeTool === 'select') || activeTool === 'text' || activeTool === 'callout'
   const showStrokeWidth = (isShapeAnnSelected && activeTool === 'select') ||
@@ -4571,8 +4578,8 @@ export default function PdfAnnotateTool() {
         )}
 
         {/* Fill color — shapes only */}
-        {(activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'cloud' ||
-          (activeTool === 'select' && selectedAnn && (selectedAnn.type === 'rectangle' || selectedAnn.type === 'circle' || selectedAnn.type === 'cloud'))) && (
+        {(activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'cloud' || activeTool === 'polygon' ||
+          (activeTool === 'select' && selectedAnn && (selectedAnn.type === 'rectangle' || selectedAnn.type === 'circle' || selectedAnn.type === 'cloud' || selectedAnn.type === 'polygon'))) && (
           <div className="flex items-center gap-1">
             <span className="text-[10px] text-white/40">Fill</span>
             <input type="color" value={fillColor || '#ffffff'}
@@ -4613,8 +4620,8 @@ export default function PdfAnnotateTool() {
         )}
 
         {/* Dash pattern — shapes/lines */}
-        {(activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'line' || activeTool === 'arrow' || activeTool === 'cloud' ||
-          (activeTool === 'select' && selectedAnn && ['rectangle', 'circle', 'line', 'arrow', 'cloud'].includes(selectedAnn.type))) && (
+        {(activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'line' || activeTool === 'arrow' || activeTool === 'cloud' || activeTool === 'polygon' ||
+          (activeTool === 'select' && selectedAnn && ['rectangle', 'circle', 'line', 'arrow', 'cloud', 'polygon'].includes(selectedAnn.type))) && (
           <div className="flex items-center gap-0.5">
             {(['solid', 'dashed', 'dotted'] as const).map(dp => (
               <button key={dp} onClick={() => {
@@ -5566,7 +5573,7 @@ export default function PdfAnnotateTool() {
             activeTool === 'select' ? 'Click to select · Ctrl+A all' :
             activeTool === 'text' ? 'Drag to create text' :
             activeTool === 'callout' ? 'Drag to create callout' :
-            activeTool === 'cloud' ? `${currentPtsRef.current.length} pts · Dbl-click close` :
+            activeTool === 'cloud' || activeTool === 'polygon' ? `${currentPtsRef.current.length} pts · Dbl-click close` :
             activeTool === 'measure' ? (
               measureMode === 'distance' ? 'Click two points' :
               measureMode === 'polylength' ? 'Click to add points · Double-click to finish' :

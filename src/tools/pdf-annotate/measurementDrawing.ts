@@ -50,6 +50,24 @@ export function formatMeasurement(
   return `${value.toFixed(1)} ${suffix}`
 }
 
+/**
+ * Format a volume value (area × depth) with calibration units.
+ */
+export function formatVolume(
+  area: number,
+  depth: number,
+  calibration: CalibrationState,
+): string {
+  if (calibration.pixelsPerUnit !== null) {
+    const ppu = calibration.pixelsPerUnit
+    const calibratedArea = area / (ppu * ppu)
+    const calibratedDepth = depth // depth is entered in calibrated units already
+    const volume = calibratedArea * calibratedDepth
+    return `${volume.toFixed(2)} ${calibration.unit}³`
+  }
+  return `${(area * depth).toFixed(1)} px³`
+}
+
 // ── Label drawing helper ────────────────────────────────
 
 function drawLabel(
@@ -153,6 +171,7 @@ export function drawAreaPolygon(
   calibration: CalibrationState,
   closed: boolean,
   isActive: boolean,
+  depth?: number,
 ): void {
   if (points.length < 2) return
 
@@ -227,6 +246,12 @@ export function drawAreaPolygon(
     perimeter += computeSegmentLength(points[points.length - 1], points[0])
     const perimLabel = `P: ${formatMeasurement(perimeter, calibration, false)}`
     drawLabel(ctx, perimLabel, cx, cy + 14, isActive)
+
+    // Volume label (if depth is set)
+    if (depth && depth > 0) {
+      const volLabel = `V: ${formatVolume(area, depth, calibration)}`
+      drawLabel(ctx, volLabel, cx, cy + 38, isActive)
+    }
   }
 
   ctx.restore()

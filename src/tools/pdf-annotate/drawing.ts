@@ -234,6 +234,35 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, ann: Annotation, s
       ctx.stroke()
       break
     }
+    case 'polygon': {
+      if (pts.length < 3) break
+      ctx.beginPath()
+      ctx.moveTo(pts[0].x * scale, pts[0].y * scale)
+      for (let i = 1; i < pts.length; i++) {
+        ctx.lineTo(pts[i].x * scale, pts[i].y * scale)
+      }
+      ctx.closePath()
+      if (ann.fillColor) { ctx.fillStyle = ann.fillColor; ctx.fill() }
+      ctx.stroke()
+      break
+    }
+    case 'imageStamp': {
+      // Image stamps are rendered via cached HTMLImageElement in the main component
+      // The drawAnnotation function draws a placeholder border if the image isn't loaded yet
+      if (pts.length < 2) break
+      const isx = Math.min(pts[0].x, pts[1].x) * scale
+      const isy = Math.min(pts[0].y, pts[1].y) * scale
+      const isw = Math.abs(pts[1].x - pts[0].x) * scale
+      const ish = Math.abs(pts[1].y - pts[0].y) * scale
+      if (isw > 0 && ish > 0) {
+        ctx.strokeStyle = ann.color
+        ctx.lineWidth = 1 * scale
+        ctx.setLineDash([4 * scale, 4 * scale])
+        ctx.strokeRect(isx, isy, isw, ish)
+        ctx.setLineDash([])
+      }
+      break
+    }
     case 'circle': {
       if (pts.length < 2) break
       const ecx = ((pts[0].x + pts[1].x) / 2) * scale
