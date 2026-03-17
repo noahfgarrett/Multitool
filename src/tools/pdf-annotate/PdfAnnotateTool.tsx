@@ -58,6 +58,10 @@ import { EmailModal } from './EmailModal.tsx'
 import { embedAnnotationData, extractAnnotationData } from './metadataEmbed.ts'
 import { sendAnnotatedPDF } from './emailUtil.ts'
 import { generateMarkupReport, generateMarkupCSV } from './markupReport.ts'
+import MarkupsList from './MarkupsList.tsx'
+import { CompareMode } from './CompareMode.tsx'
+import { StampLibrary } from './StampLibrary.tsx'
+import { recognizeShape } from './shapeRecognizer.ts'
 import { getUserProfile } from '@/utils/userProfile.ts'
 import type { UserProfile } from '@/utils/userProfile.ts'
 import FloatingToolbar from './FloatingToolbar.tsx'
@@ -3737,12 +3741,42 @@ export default function PdfAnnotateTool() {
     currentPtsRef.current = []
     currentPressureRef.current = []
     commitAnnotation(ann)
+
+    // Ink-to-shape recognition for pencil strokes
+    if (activeTool === 'pencil' && finalPts.length >= 10 && finalPts.length <= 80) {
+      const recognized = recognizeShape(finalPts)
+      if (recognized && recognized.score >= 0.75) {
+        const { name, bounds } = recognized
+        // Replace the freehand annotation with a clean shape
+        const shapeAnn: Annotation = {
+          ...ann,
+          id: genId(),
+          type: name === 'circle' ? 'circle' : name === 'line' ? 'line' : name === 'arrow' ? 'arrow' : 'rectangle',
+          points: name === 'circle'
+            ? [{ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }, { x: bounds.x + bounds.width, y: bounds.y + bounds.height }]
+            : [{ x: bounds.x, y: bounds.y }, { x: bounds.x + bounds.width, y: bounds.y + bounds.height }],
+          smooth: undefined,
+          pressure: undefined,
+        }
+        // Remove the freehand and add the clean shape
+        const pageAnns = annotations[ap] || []
+        const withoutFreehand = pageAnns.filter(a => a.id !== ann.id)
+        const next = { ...annotations, [ap]: [...withoutFreehand, shapeAnn] }
+        setAnnotations(next)
+        pushHistory(next)
+        setSelectedAnnId(shapeAnn.id)
+        addToast({ type: 'info', message: `Converted to ${name}` })
+        redrawPage(ap)
+        return
+      }
+    }
+
     // Auto-select shapes/arrows/lines after drawing; skip pencil & highlighter
     if (activeTool !== 'pencil' && activeTool !== 'highlighter') {
       setSelectedAnnId(ann.id)
     }
   }, [activeTool, color, strokeWidth, opacity, fontSize, fillColor, cornerRadius, dashPattern, arrowStart, commitAnnotation,
-      pushHistory, redrawPage, annotations, getAnnotation, updateAnnotation, selectedAnnId])
+      pushHistory, redrawPage, annotations, getAnnotation, updateAnnotation, selectedAnnId, addToast])
 
   // ── Comment & Sticky Note Management ─────────────────
 
@@ -4594,6 +4628,38 @@ export default function PdfAnnotateTool() {
               {totalAnnotationCount > 99 ? '99+' : totalAnnotationCount}
             </span>
           )}
+        </button>
+
+        {/* Markups List */}
+        <button onClick={() => setMarkupsListOpen(o => !o)} title="Markups list"
+          className={`p-1 rounded-lg transition-colors ${markupsListOpen ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'}`}>
+          <FileSpreadsheet size={14} />
+        </button>
+
+        {/* Bookmarks */}
+        {bookmarks.length > 0 && (
+          <button onClick={() => setBookmarksOpen(o => !o)} title="Bookmarks"
+            className={`p-1 rounded-lg transition-colors ${bookmarksOpen ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'}`}>
+            <BookOpen size={14} />
+          </button>
+        )}
+
+        {/* Tool Presets */}
+        <button onClick={() => setPresetsOpen(o => !o)} title="Tool presets"
+          className={`p-1 rounded-lg transition-colors ${presetsOpen ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'}`}>
+          <Star size={14} />
+        </button>
+
+        {/* Compare PDFs */}
+        <button onClick={() => setCompareOpen(true)} title="Compare PDFs"
+          className="p-1 rounded-lg transition-colors text-white/50 hover:text-white hover:bg-white/[0.06]">
+          <Blend size={14} />
+        </button>
+
+        {/* Custom Stamps */}
+        <button onClick={() => setStampLibraryOpen(true)} title="Custom stamp library"
+          className="p-1 rounded-lg transition-colors text-white/50 hover:text-white hover:bg-white/[0.06]">
+          <ImagePlus size={14} />
         </button>
 
         {/* Export, Email, Print, Report, Reset */}
@@ -6256,6 +6322,120 @@ export default function PdfAnnotateTool() {
         }}
         fileName={pdfFile.name}
       />
+
+      {/* ── Markups List Panel (bottom) ── */}
+      {markupsListOpen && pdfFile && (
+        <MarkupsList
+          annotations={annotations}
+          commentThreads={commentThreads}
+          selectedId={selectedAnnId}
+          onSelectAnnotation={(id: string, page: number) => {
+            navigateToPage(page)
+            setSelectedAnnId(id)
+          }}
+          onExportCSV={() => {
+            // Build CSV from all annotations
+            const rows: string[] = ['#,Type,Page,Label,Color,Status']
+            let idx = 0
+            for (const [pageStr, anns] of Object.entries(annotations)) {
+              for (const ann of anns) {
+                idx++
+                const thread = commentThreads.find(t => t.annotationId === ann.id)
+                rows.push(`${idx},${ann.type},${pageStr},"${(ann.text || ann.type).replace(/"/g, '""')}",${ann.color},${thread?.status || 'none'}`)
+              }
+            }
+            const csv = rows.join('\n')
+            downloadBlob(new Blob([csv], { type: 'text/csv' }), `markups-${pdfFile.name.replace('.pdf', '')}.csv`)
+            addToast({ type: 'success', message: 'Markups exported as CSV' })
+          }}
+        />
+      )}
+
+      {/* ── Bookmarks Panel ── */}
+      {bookmarksOpen && bookmarks.length > 0 && (
+        <div className="fixed left-12 top-[80px] z-40 w-56 max-h-[60vh] bg-[#001a24] border border-white/10 rounded-lg shadow-xl flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
+            <span className="text-xs font-medium text-white/70">Bookmarks</span>
+            <button onClick={() => setBookmarksOpen(false)} className="text-white/40 hover:text-white"><X size={12} /></button>
+          </div>
+          <div className="overflow-y-auto flex-1 py-1">
+            {bookmarks.map((bm, i) => (
+              <div key={i}>
+                <button
+                  onClick={() => { navigateToPage(bm.pageNum); setBookmarksOpen(false) }}
+                  className="w-full text-left px-3 py-1.5 text-xs text-white/60 hover:text-white hover:bg-white/[0.06] truncate"
+                  title={`Page ${bm.pageNum}`}
+                >
+                  {bm.title}
+                </button>
+                {bm.children.map((child, j) => (
+                  <button
+                    key={j}
+                    onClick={() => { navigateToPage(child.pageNum); setBookmarksOpen(false) }}
+                    className="w-full text-left pl-6 pr-3 py-1 text-[11px] text-white/40 hover:text-white/70 hover:bg-white/[0.04] truncate"
+                    title={`Page ${child.pageNum}`}
+                  >
+                    {child.title}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Tool Presets Panel ── */}
+      {presetsOpen && (
+        <div className="fixed right-12 top-[80px] z-40 w-56 bg-[#001a24] border border-white/10 rounded-lg shadow-xl flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
+            <span className="text-xs font-medium text-white/70">Tool Presets</span>
+            <button onClick={() => setPresetsOpen(false)} className="text-white/40 hover:text-white"><X size={12} /></button>
+          </div>
+          <div className="overflow-y-auto max-h-[300px] py-1">
+            {toolPresets.length === 0 && (
+              <p className="text-[10px] text-white/25 text-center py-4">No presets saved yet</p>
+            )}
+            {toolPresets.map(preset => (
+              <div key={preset.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/[0.04] group">
+                <button onClick={() => { applyToolPreset(preset); setPresetsOpen(false) }} className="flex-1 flex items-center gap-2 min-w-0 text-left">
+                  <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: preset.color }} />
+                  <span className="text-xs text-white/60 truncate">{preset.name}</span>
+                  <span className="text-[9px] text-white/25">{preset.toolType}</span>
+                </button>
+                <button onClick={() => deleteToolPreset(preset.id)} className="opacity-0 group-hover:opacity-100 text-white/20 hover:text-red-400 transition-opacity"><Trash2 size={10} /></button>
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-white/[0.06] px-3 py-2">
+            <button
+              onClick={() => {
+                const name = prompt('Preset name:')
+                if (name?.trim()) saveToolPreset(name.trim())
+              }}
+              className="w-full text-center text-[10px] text-[#F47B20]/60 hover:text-[#F47B20] py-1"
+            >
+              + Save Current as Preset
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Compare Mode Overlay ── */}
+      {compareOpen && <CompareMode onClose={() => setCompareOpen(false)} />}
+
+      {/* ── Custom Stamp Library ── */}
+      {stampLibraryOpen && (
+        <StampLibrary
+          onSelectStamp={(imageDataUrl, _name) => {
+            setStampLibraryOpen(false)
+            // Set up the image stamp tool with the selected stamp
+            pendingImageRef.current = imageDataUrl
+            setActiveTool('imageStamp')
+            addToast({ type: 'success', message: 'Click on the PDF to place the stamp' })
+          }}
+          onClose={() => setStampLibraryOpen(false)}
+        />
+      )}
     </div>
   )
 }
