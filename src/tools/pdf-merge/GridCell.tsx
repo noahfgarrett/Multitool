@@ -14,6 +14,8 @@ export interface GridCellData {
   offsetX: number
   offsetY: number
   scale: number // 1.0 = contain-fit, >1 zooms in
+  pageNumber?: number   // for multi-page PDFs — which page to use (1-based)
+  totalPages?: number   // total pages in the source PDF
 }
 
 interface GridCellProps {
@@ -33,6 +35,7 @@ interface GridCellProps {
   onAddFile: () => void
   onDropFile: (file: File) => void
   onCtrlClick?: () => void
+  onPageChange?: (pageNumber: number) => void
 }
 
 /* ── Constants ── */
@@ -61,6 +64,7 @@ export const GridCell = memo(function GridCell({
   onAddFile,
   onDropFile,
   onCtrlClick,
+  onPageChange,
 }: GridCellProps) {
   const dragRef = useRef<{
     startX: number
@@ -424,6 +428,29 @@ export const GridCell = memo(function GridCell({
           {isZoomed && <span>{Math.round(cell.scale * 100)}%</span>}
           {isZoomed && hasOffset && <span> · </span>}
           {hasOffset && <span>x: {cell.offsetX > 0 ? '+' : ''}{Math.round(cell.offsetX)}, y: {cell.offsetY > 0 ? '+' : ''}{Math.round(cell.offsetY)}</span>}
+        </div>
+      )}
+
+      {/* Multi-page PDF page selector (bottom-left, next to label) */}
+      {isSelected && hasContent && cell.type === 'pdf' && cell.totalPages && cell.totalPages > 1 && onPageChange && (
+        <div className="absolute bottom-1.5 left-1.5 flex items-center gap-0.5 z-20">
+          <button
+            onClick={(e) => { e.stopPropagation(); onPageChange(Math.max(1, (cell.pageNumber ?? 1) - 1)) }}
+            disabled={(cell.pageNumber ?? 1) <= 1}
+            className="w-5 h-5 rounded bg-black/60 text-white/70 hover:text-white disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-[10px] font-bold"
+          >
+            ‹
+          </button>
+          <span className="text-[9px] text-white/60 bg-black/60 px-1 py-0.5 rounded min-w-[32px] text-center">
+            {cell.pageNumber ?? 1}/{cell.totalPages}
+          </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); onPageChange(Math.min(cell.totalPages!, (cell.pageNumber ?? 1) + 1)) }}
+            disabled={(cell.pageNumber ?? 1) >= cell.totalPages}
+            className="w-5 h-5 rounded bg-black/60 text-white/70 hover:text-white disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center text-[10px] font-bold"
+          >
+            ›
+          </button>
         </div>
       )}
     </div>

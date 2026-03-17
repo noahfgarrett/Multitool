@@ -13,6 +13,7 @@ import { alignGrid, alignPair, type AlignResult } from './autoAlign.ts'
 import {
   Download, Trash2, Plus, Grid3X3, ZoomIn, ZoomOut, X, Check, Eye, EyeOff, Tag,
   Undo2, Redo2, LayoutGrid, Columns, Rows, Copy, ArrowLeft, Scan, Magnet,
+  Save, FolderOpen, Blend,
 } from 'lucide-react'
 
 import '@/utils/pdfWorkerSetup.ts'
@@ -261,6 +262,7 @@ export default function GridStitchMode() {
   const [fillOrder, setFillOrder] = useState<FillOrder>('row')
   const [exportPageSize, setExportPageSize] = useState(0) // index into EXPORT_PAGE_SIZES
   const [labelMode, setLabelMode] = useState<LabelMode>('default')
+  const [overlapBlending, setOverlapBlending] = useState(false)
 
   // Undo/redo history
   interface GridSnapshot { rows: number; cols: number; cells: GridCellData[] }
@@ -374,12 +376,14 @@ export default function GridStitchMode() {
 
   /* ── File upload & processing ── */
 
-  const processFile = useCallback(async (file: File): Promise<Omit<GridCellData, 'id' | 'label' | 'offsetX' | 'offsetY'> | null> => {
+  const processFile = useCallback(async (file: File, pageNum: number = 1): Promise<Omit<GridCellData, 'id' | 'label' | 'offsetX' | 'offsetY'> | null> => {
     try {
       if (isPDF(file)) {
         const buffer = await file.arrayBuffer()
         const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise
-        const page = await doc.getPage(1)
+        const totalPages = doc.numPages
+        const targetPage = Math.min(pageNum, totalPages)
+        const page = await doc.getPage(targetPage)
         const viewport = page.getViewport({ scale: 1 })
         const nativeWidth = viewport.width
         const nativeHeight = viewport.height
@@ -404,7 +408,7 @@ export default function GridStitchMode() {
         canvas.height = 0
         doc.destroy()
 
-        return { file, type: 'pdf', thumbnail, nativeWidth, nativeHeight, scale: 1 }
+        return { file, type: 'pdf', thumbnail, nativeWidth, nativeHeight, scale: 1, pageNumber: targetPage, totalPages }
       } else {
         // Image
         const dataUrl = await readFileAsDataURL(file)
@@ -573,6 +577,126 @@ export default function GridStitchMode() {
     setCells(buildEmptyGrid(rows, cols, labelMode))
     setSelectedCellId(null)
   }, [cells, rows, cols, labelMode, pushUndo])
+
+  /* ── Page change for multi-page PDFs ── */
+
+  const handlePageChange = useCallback(async (cellId: string, pageNumber: number) => {
+    const cell = cells.find(c => c.id === cellId)
+    if (!cell?.file || cell.type !== 'pdf') return
+    pushUndo()
+    const result = await processFile(cell.file, pageNumber)
+    if (!result) return
+    setCells(prev => prev.map(c =>
+      c.id === cellId ? { ...c, ...result, offsetX: c.offsetX, offsetY: c.offsetY } : c,
+    ))
+  }, [cells, processFile, pushUndo])
+
+  /* ── Save/Load grid configuration ── */
+
+  const saveConfig = useCallback(() => {
+    const config = {
+      version: 1,
+      rows,
+      cols,
+      labelMode,
+      cells: cells.map(c => ({
+        label: c.label,
+        fileName: c.file?.name ?? null,
+        type: c.type,
+        nativeWidth: c.nativeWidth,
+        nativeHeight: c.nativeHeight,
+        offsetX: c.offsetX,
+        offsetY: c.offsetY,
+        scale: c.scale,
+        pageNumber: c.pageNumber ?? 1,
+      })),
+    }
+    const json = JSON.stringify(config, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const name = `grid-config-${rows}x${cols}.json`
+
+    if ('showSaveFilePicker' in window) {
+      type PickerFn = (opts: unknown) => Promise<{ createWritable: () => Promise<{ write: (b: Blob) => Promise<void>; close: () => Promise<void> }> }>
+      ;(window as unknown as { showSaveFilePicker: PickerFn }).showSaveFilePicker({
+        suggestedName: name,
+        types: [{ description: 'JSON Config', accept: { 'application/json': ['.json'] } }],
+      }).then(async (handle) => {
+        const writable = await handle.createWritable()
+        await writable.write(blob)
+        await writable.close()
+        useAppStore.getState().addToast({ type: 'success', message: 'Grid config saved' })
+      }).catch((e: unknown) => {
+        if (e instanceof Error && e.name === 'AbortError') return
+        // Fallback
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = name
+        a.click()
+        URL.revokeObjectURL(url)
+      })
+    } else {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = name
+      a.click()
+      URL.revokeObjectURL(url)
+    }
+  }, [rows, cols, cells, labelMode])
+
+  const loadConfig = useCallback(() => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.json'
+    input.onchange = async (e) => {
+      const target = e.target as HTMLInputElement
+      const file = target.files?.[0]
+      if (!file) return
+      try {
+        const text = await file.text()
+        const config = JSON.parse(text) as {
+          version: number
+          rows: number
+          cols: number
+          labelMode?: LabelMode
+          cells: { label: string; fileName: string | null; offsetX: number; offsetY: number; scale: number; pageNumber?: number }[]
+        }
+        if (!config.rows || !config.cols || !config.cells) {
+          useAppStore.getState().addToast({ type: 'error', message: 'Invalid grid config file' })
+          return
+        }
+        pushUndo()
+        setRows(config.rows)
+        setCols(config.cols)
+        if (config.labelMode) setLabelMode(config.labelMode)
+        // Restore cell layout — files need to be re-uploaded
+        const newCells: GridCellData[] = config.cells.map((c, idx) => ({
+          id: crypto.randomUUID(),
+          label: c.label || computeLabel(Math.floor(idx / config.cols), idx % config.cols, config.labelMode ?? 'default', config.rows),
+          file: null,
+          type: null,
+          thumbnail: null,
+          nativeWidth: 0,
+          nativeHeight: 0,
+          offsetX: c.offsetX ?? 0,
+          offsetY: c.offsetY ?? 0,
+          scale: c.scale ?? 1,
+          pageNumber: c.pageNumber,
+        }))
+        setCells(newCells)
+        const fileNames = config.cells.filter(c => c.fileName).map(c => c.fileName!)
+        const uniqueNames = [...new Set(fileNames)]
+        useAppStore.getState().addToast({
+          type: 'success',
+          message: `Grid layout restored (${config.rows}×${config.cols}). Re-upload ${uniqueNames.length} file${uniqueNames.length !== 1 ? 's' : ''} to fill cells.`,
+        })
+      } catch {
+        useAppStore.getState().addToast({ type: 'error', message: 'Failed to parse grid config file' })
+      }
+    }
+    input.click()
+  }, [pushUndo])
 
   /* ── Label mode toggle ── */
 
@@ -959,7 +1083,8 @@ export default function GridStitchMode() {
           if (cell.type === 'pdf') {
             const pdfBytes = await cell.file.arrayBuffer()
             const srcDoc = await PDFDocument.load(new Uint8Array(pdfBytes))
-            const [embeddedPage] = await pdfDoc.embedPdf(srcDoc, [0])
+            const pageIdx = (cell.pageNumber ?? 1) - 1
+            const [embeddedPage] = await pdfDoc.embedPdf(srcDoc, [pageIdx])
             page.drawPage(embeddedPage, {
               x: contentX,
               y: contentY,
@@ -1101,7 +1226,7 @@ export default function GridStitchMode() {
       setIsExporting(false)
       setExportProgress(0)
     }
-  }, [canExport, cells, rows, cols, compression, exportGridlines, exportLabels, showGridlines, containerSize, occupiedCells.length, exportPageSize])
+  }, [canExport, cells, rows, cols, compression, exportGridlines, exportLabels, showGridlines, containerSize, occupiedCells.length, exportPageSize, overlapBlending])
 
   const hasAnyContent = cells.some(c => c.file !== null)
 
@@ -1230,6 +1355,25 @@ export default function GridStitchMode() {
 
         <div className="flex-1" />
 
+        {/* Save/Load config */}
+        <button
+          onClick={saveConfig}
+          disabled={!hasAnyContent}
+          className="flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-white/[0.04] text-white/40 hover:text-white/60 disabled:opacity-25 disabled:pointer-events-none transition-colors"
+          title="Save grid configuration to file"
+        >
+          <Save size={12} />
+          Save
+        </button>
+        <button
+          onClick={loadConfig}
+          className="flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-white/[0.04] text-white/40 hover:text-white/60 transition-colors"
+          title="Load grid configuration from file"
+        >
+          <FolderOpen size={12} />
+          Load
+        </button>
+
         <Button
           variant="secondary"
           size="sm"
@@ -1316,6 +1460,16 @@ export default function GridStitchMode() {
           title={compression ? 'Compression on — images re-encoded as JPEG' : 'Compression off — full quality'}
         >
           Compress
+        </button>
+        <button
+          onClick={() => setOverlapBlending(prev => !prev)}
+          className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
+            overlapBlending ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'bg-white/[0.04] text-white/30 hover:text-white/50'
+          }`}
+          title={overlapBlending ? 'Overlap blending on — seams blend with gradient' : 'Overlap blending off — hard clip at cell edges'}
+        >
+          <Blend size={12} />
+          Blend
         </button>
 
         <div className="w-px h-4 bg-white/[0.08]" />
@@ -1405,6 +1559,7 @@ export default function GridStitchMode() {
                 onAddFile={() => replaceCell(cell.id)}
                 onDropFile={(file) => dropFileIntoCell(cell.id, file)}
                 onCtrlClick={() => toggleMultiSelect(cell.id)}
+                onPageChange={(pn) => handlePageChange(cell.id, pn)}
               />
             ))}
             </div>

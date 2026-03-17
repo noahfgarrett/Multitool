@@ -11,11 +11,12 @@ import {
   DndContext, closestCenter, DragOverlay, PointerSensor, useSensor, useSensors,
 } from '@dnd-kit/core'
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
-import { SortableContext, useSortable, rectSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import { SortableContext, useSortable, rectSortingStrategy, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  Download, Trash2, GripVertical, Plus, ArrowUp, ArrowDown,
+  Download, Trash2, GripVertical, Plus,
   ChevronDown, ChevronRight, Loader2, Eye, EyeOff, ZoomIn, ZoomOut, Copy,
+  RotateCw, RotateCcw, Lock, FileText, Save, FolderOpen,
 } from 'lucide-react'
 
 const GridStitchMode = lazy(() => import('./GridStitchMode.tsx'))
@@ -28,6 +29,7 @@ interface PageEntry {
   thumbnail: string
   excluded: boolean
   copiedFrom?: number
+  rotation: number  // 0, 90, 180, 270
 }
 
 interface MergeFile extends PDFFile {
@@ -55,13 +57,14 @@ interface SortablePageItemProps {
   onContextMenu: (e: React.MouseEvent) => void
   onClick: (e: React.MouseEvent) => void
   onToggleExclude: (e: React.MouseEvent) => void
+  onRotate: (dir: 90 | -90) => void
   scrollRoot: HTMLDivElement | null
   onThumbnailNeeded: () => void
 }
 
 function SortablePageItem({
   page, pageIdx, isSelected, isCopiedSource,
-  onContextMenu, onClick, onToggleExclude,
+  onContextMenu, onClick, onToggleExclude, onRotate,
   scrollRoot, onThumbnailNeeded,
 }: SortablePageItemProps) {
   const {
@@ -119,6 +122,7 @@ function SortablePageItem({
           alt={`Page ${page.pageNumber}`}
           className="w-full h-auto rounded object-contain"
           draggable={false}
+          style={page.rotation !== 0 ? { transform: `rotate(${page.rotation}deg)` } : undefined}
         />
       ) : (
         <div className="w-full aspect-[8.5/11] rounded bg-white/[0.04] animate-pulse flex items-center justify-center">
@@ -161,6 +165,31 @@ function SortablePageItem({
         </div>
       )}
 
+      {/* Rotation buttons on hover */}
+      <div className="absolute bottom-2 right-2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={(e) => { e.stopPropagation(); onRotate(-90) }}
+          className="p-1 rounded bg-black/50 text-white/70 hover:text-white transition-colors"
+          title="Rotate left 90°"
+        >
+          <RotateCcw size={10} />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onRotate(90) }}
+          className="p-1 rounded bg-black/50 text-white/70 hover:text-white transition-colors"
+          title="Rotate right 90°"
+        >
+          <RotateCw size={10} />
+        </button>
+      </div>
+
+      {/* Rotation badge */}
+      {page.rotation !== 0 && (
+        <div className="absolute top-2 right-8 px-1 py-0.5 rounded text-[9px] font-bold bg-blue-500/70 text-white pointer-events-none">
+          {page.rotation}°
+        </div>
+      )}
+
       {/* Quick toggle on hover */}
       <button
         onClick={onToggleExclude}
@@ -169,6 +198,75 @@ function SortablePageItem({
       >
         {page.excluded ? <Eye size={12} /> : <EyeOff size={12} />}
       </button>
+    </div>
+  )
+}
+
+/* ── Sortable File Row (dnd-kit wrapper) ── */
+
+function SortableFileRow({ id, children }: {
+  id: string
+  children: (opts: { handleProps: Record<string, unknown>; isDragging: boolean }) => React.ReactNode
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({ handleProps: { ...attributes, ...listeners }, isDragging })}
+    </div>
+  )
+}
+
+/* ── Password Modal ── */
+
+function PasswordModal({ fileName, onSubmit, onCancel }: {
+  fileName: string
+  onSubmit: (password: string) => void
+  onCancel: () => void
+}) {
+  const [pw, setPw] = useState('')
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onCancel}>
+      <div className="bg-[#00171F] border border-white/[0.12] rounded-xl shadow-2xl p-6 w-96 max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg bg-[#F47B20]/15 flex items-center justify-center">
+            <Lock size={20} className="text-[#F47B20]" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white">Password Protected</h3>
+            <p className="text-xs text-white/40 truncate max-w-[240px]">{fileName}</p>
+          </div>
+        </div>
+        <form onSubmit={(e) => { e.preventDefault(); if (pw) onSubmit(pw) }}>
+          <input
+            type="password"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            placeholder="Enter PDF password"
+            className="w-full px-3 py-2 rounded-lg bg-white/[0.06] border border-white/[0.12] text-sm text-white placeholder-white/30 outline-none focus:border-[#F47B20]/50 mb-4"
+            autoFocus
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-3 py-1.5 rounded-lg text-sm text-white/50 hover:text-white/70 hover:bg-white/[0.06] transition-colors"
+            >
+              Skip
+            </button>
+            <button
+              type="submit"
+              disabled={!pw}
+              className="px-4 py-1.5 rounded-lg text-sm font-medium bg-[#F47B20] text-white hover:bg-[#E06D15] disabled:opacity-40 disabled:pointer-events-none transition-colors"
+            >
+              Unlock
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }
@@ -185,9 +283,15 @@ export default function PdfMergeTool() {
   const [mergeError, setMergeError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
 
-  // File-level drag state (native HTML5 DnD for file rows)
-  const [dragIdx, setDragIdx] = useState<number | null>(null)
-  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
+  // Password prompt queue
+  const [passwordPrompt, setPasswordPrompt] = useState<{ file: File; resolve: (pw: string | null) => void } | null>(null)
+
+  // Preview mode
+  const [showPreview, setShowPreview] = useState(false)
+
+  // File-level dnd-kit
+  const [fileDragId, setFileDragId] = useState<string | null>(null)
+  const fileSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   // Page selection & copy/paste
   const [selectedPage, setSelectedPage] = useState<{ fileId: string; pageIdx: number } | null>(null)
@@ -243,6 +347,35 @@ export default function PdfMergeTool() {
   const memoryPct = Math.min((memoryMB / MAX_MEMORY_MB) * 100, 100)
   const memoryColor = memoryPct < 50 ? '#22c55e' : memoryPct < 75 ? '#F47B20' : '#ef4444'
 
+  /* ── Estimated output size ── */
+
+  const estimatedSize = useMemo(() => {
+    let bytes = 0
+    for (const f of files) {
+      if (f.pages.length > 0) {
+        const included = f.pages.filter((p) => !p.excluded).length
+        if (included > 0) bytes += f.size * (included / f.pageCount)
+      } else {
+        bytes += f.size
+      }
+    }
+    return bytes
+  }, [files])
+
+  /* ── Smart filename ── */
+
+  const smartFilename = useMemo((): string => {
+    const names = files.map((f) => f.name.replace(/\.pdf$/i, ''))
+    if (names.length === 0) return 'merged.pdf'
+    if (names.length === 1) return `${names[0]}_combined.pdf`
+    if (names.length <= 3) {
+      const joined = names.join('_')
+      return (joined.length > 80 ? joined.slice(0, 77) + '...' : joined) + '.pdf'
+    }
+    const base = names[0]
+    return (base.length > 60 ? base.slice(0, 57) + '...' : base) + `_and_${names.length - 1}_more.pdf`
+  }, [files])
+
   /* ── Lazy thumbnail loader ── */
 
   const loadPageThumbnail = useCallback(async (fileId: string, pageUid: string, pageNumber: number) => {
@@ -278,7 +411,28 @@ export default function PdfMergeTool() {
         if (!file.name.toLowerCase().endsWith('.pdf') && !file.type.startsWith('image/')) continue
         try {
           if (file.type.startsWith('image/')) continue
-          const pdfFile = await loadPDFFile(file)
+          let pdfFile: PDFFile
+          try {
+            pdfFile = await loadPDFFile(file)
+          } catch (loadErr: unknown) {
+            // Check for password-protected PDF
+            const errMsg = loadErr instanceof Error ? loadErr.message : String(loadErr)
+            if (errMsg.toLowerCase().includes('password')) {
+              const password = await new Promise<string | null>((resolve) => {
+                setPasswordPrompt({ file, resolve })
+              })
+              setPasswordPrompt(null)
+              if (!password) continue // user skipped
+              try {
+                pdfFile = await loadPDFFile(file, password)
+              } catch {
+                useAppStore.getState().addToast({ type: 'error', message: `Incorrect password for ${file.name}` })
+                continue
+              }
+            } else {
+              throw loadErr
+            }
+          }
           const thumbnail = await generateThumbnail(pdfFile, 1, 120)
           pdfFiles.push({
             ...pdfFile,
@@ -312,32 +466,34 @@ export default function PdfMergeTool() {
     })
   }
 
-  /* ── File-level drag & drop ── */
+  /* ── File-level dnd-kit reorder ── */
 
-  const handleDragStart = (idx: number) => {
-    setDragIdx(idx)
+  const handleFileDragStart = (event: DragStartEvent) => {
+    setFileDragId(event.active.id as string)
   }
 
-  const handleDragOver = (e: React.DragEvent, idx: number) => {
-    e.preventDefault()
-    setDragOverIdx(idx)
-  }
-
-  const handleDrop = (e: React.DragEvent, targetIdx: number) => {
-    e.preventDefault()
-    if (dragIdx === null || dragIdx === targetIdx) {
-      setDragIdx(null)
-      setDragOverIdx(null)
-      return
-    }
+  const handleFileDragEnd = (event: DragEndEvent) => {
+    setFileDragId(null)
+    const { active, over } = event
+    if (!over || active.id === over.id) return
     setFiles((prev) => {
-      const newFiles = [...prev]
-      const [moved] = newFiles.splice(dragIdx, 1)
-      newFiles.splice(targetIdx, 0, moved)
-      return newFiles
+      const oldIdx = prev.findIndex((f) => f.id === active.id)
+      const newIdx = prev.findIndex((f) => f.id === over.id)
+      if (oldIdx === -1 || newIdx === -1) return prev
+      return arrayMove(prev, oldIdx, newIdx)
     })
-    setDragIdx(null)
-    setDragOverIdx(null)
+  }
+
+  /* ── Page rotation ── */
+
+  const rotatePage = (fileId: string, pageIdx: number, dir: 90 | -90) => {
+    setFiles((prev) => prev.map((f) => {
+      if (f.id !== fileId) return f
+      const newPages = [...f.pages]
+      const current = newPages[pageIdx].rotation
+      newPages[pageIdx] = { ...newPages[pageIdx], rotation: ((current + dir) % 360 + 360) % 360 }
+      return { ...f, pages: newPages }
+    }))
   }
 
   /* ── Expand / collapse — pages created instantly, thumbnails lazy-loaded ── */
@@ -353,6 +509,7 @@ export default function PdfMergeTool() {
         pageNumber: i + 1,
         thumbnail: '',
         excluded: false,
+        rotation: 0,
       }))
       return { ...f, expanded: true, loadingPages: false, pages }
     }))
@@ -421,10 +578,38 @@ export default function PdfMergeTool() {
     )
   }
 
+  // Selected file index for keyboard navigation
+  const [selectedFileIdx, setSelectedFileIdx] = useState<number | null>(null)
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't capture keys when in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
       if (e.key === 'Escape') {
         setSelectedPage(null)
+        setSelectedFileIdx(null)
+        return
+      }
+
+      // File-level keyboard shortcuts
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedFileIdx !== null && files[selectedFileIdx]) {
+          e.preventDefault()
+          removeFile(files[selectedFileIdx].id)
+          setSelectedFileIdx(null)
+          return
+        }
+      }
+
+      if (e.key === 'ArrowUp' && !selectedPage && selectedFileIdx !== null) {
+        e.preventDefault()
+        setSelectedFileIdx(Math.max(0, selectedFileIdx - 1))
+        return
+      }
+      if (e.key === 'ArrowDown' && !selectedPage && selectedFileIdx !== null) {
+        e.preventDefault()
+        setSelectedFileIdx(Math.min(files.length - 1, selectedFileIdx + 1))
         return
       }
 
@@ -450,6 +635,7 @@ export default function PdfMergeTool() {
           uid: makePageUid(),
           excluded: false,
           copiedFrom: copiedPage.page.copiedFrom ?? copiedPage.page.pageNumber,
+          rotation: copiedPage.page.rotation,
         }
         setFiles((prev) => prev.map((f) => {
           if (f.id !== selectedPage.fileId) return f
@@ -474,25 +660,52 @@ export default function PdfMergeTool() {
     setMergeError(null)
     setProgress(0)
     try {
+      // Build merge inputs with rotation data
       const mergeInputs = files
         .map((f) => {
           if (f.pages.length > 0) {
-            const includedPages = f.pages.filter((p) => !p.excluded).map((p) => p.pageNumber)
-            if (includedPages.length === 0) return null
-            return { file: f.file, pages: includedPages }
+            const included = f.pages.filter((p) => !p.excluded)
+            if (included.length === 0) return null
+            const pages = included.map((p) => p.pageNumber)
+            const rotations: Record<number, number> = {}
+            for (const p of included) {
+              if (p.rotation !== 0) rotations[p.pageNumber] = p.rotation
+            }
+            return { file: f.file, pages, rotations, fileName: f.name }
           }
-          return { file: f.file }
+          return { file: f.file, fileName: f.name }
         })
-        .filter((x): x is { file: File; pages?: number[] } => x !== null)
+        .filter((x): x is NonNullable<typeof x> => x !== null)
 
       if (mergeInputs.length === 0) {
         setIsMerging(false)
         return
       }
 
-      const result = await mergePDFs(mergeInputs, (current, total) => {
-        setProgress(Math.round((current / total) * 100))
-      })
+      // Build bookmark entries (file name → first page index)
+      const bookmarks: { title: string; pageIndex: number }[] = []
+      let pageOffset = 0
+      for (const input of mergeInputs) {
+        const title = input.fileName.replace(/\.pdf$/i, '')
+        bookmarks.push({ title, pageIndex: pageOffset })
+        if ('pages' in input && input.pages) {
+          pageOffset += input.pages.length
+        } else {
+          const mf = files.find((f) => f.file === input.file)
+          pageOffset += mf?.pageCount ?? 0
+        }
+      }
+
+      const result = await mergePDFs(
+        mergeInputs.map((input) => {
+          const base: { file: File; pages?: number[]; rotations?: Record<number, number> } = { file: input.file }
+          if ('pages' in input && input.pages) base.pages = input.pages
+          if ('rotations' in input && input.rotations) base.rotations = input.rotations
+          return base
+        }),
+        (current, total) => { setProgress(Math.round((current / total) * 100)) },
+        bookmarks.length > 1 ? bookmarks : undefined,
+      )
 
       const blob = new Blob([result], { type: 'application/pdf' })
 
@@ -500,7 +713,7 @@ export default function PdfMergeTool() {
         try {
           type PickerFn = (opts: unknown) => Promise<{ createWritable: () => Promise<{ write: (b: Blob) => Promise<void>; close: () => Promise<void> }> }>
           const handle = await (window as unknown as { showSaveFilePicker: PickerFn }).showSaveFilePicker({
-            suggestedName: 'merged.pdf',
+            suggestedName: smartFilename,
             types: [{ description: 'PDF Document', accept: { 'application/pdf': ['.pdf'] } }],
           })
           const writable = await handle.createWritable()
@@ -511,7 +724,7 @@ export default function PdfMergeTool() {
           throw e
         }
       } else {
-        downloadBlob(blob, 'merged.pdf')
+        downloadBlob(blob, smartFilename)
       }
     } catch (err) {
       console.error('Merge failed:', err)
@@ -520,16 +733,17 @@ export default function PdfMergeTool() {
       setIsMerging(false)
       setProgress(0)
     }
-  }, [files])
+  }, [files, smartFilename])
 
   /* ── Helper: get included page count ── */
 
-  const getIncludedCount = (file: MergeFile): string => {
+  const getIncludedPageInfo = (file: MergeFile): { text: string; hasExclusions: boolean } => {
     if (file.pages.length === 0) {
-      return `${file.pageCount} page${file.pageCount !== 1 ? 's' : ''}`
+      return { text: `${file.pageCount} page${file.pageCount !== 1 ? 's' : ''}`, hasExclusions: false }
     }
     const included = file.pages.filter((p) => !p.excluded).length
-    return `${included}/${file.pages.length} pages`
+    const hasExclusions = included < file.pages.length
+    return { text: `${included}/${file.pages.length} pages`, hasExclusions }
   }
 
   /* ── Native file drop on the main view ── */
@@ -737,6 +951,18 @@ export default function PdfMergeTool() {
         >
           Add Files
         </Button>
+        {/* Preview toggle */}
+        <button
+          onClick={() => setShowPreview((p) => !p)}
+          className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
+            showPreview ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'bg-white/[0.04] text-white/40 hover:text-white/60'
+          }`}
+          title={showPreview ? 'Back to file list' : 'Preview merge order'}
+        >
+          <FileText size={12} />
+          Preview
+        </button>
+
         <Button
           onClick={handleMerge}
           disabled={files.length < 1 || isMerging}
@@ -745,6 +971,15 @@ export default function PdfMergeTool() {
           {isMerging ? 'Merging...' : 'Merge & Download'}
         </Button>
       </div>
+
+      {/* Estimated output size + smart filename */}
+      {files.length > 0 && !isMerging && (
+        <div className="flex items-center gap-3 text-xs text-white/40 flex-shrink-0">
+          <span>Estimated output: ~{formatFileSize(estimatedSize)}</span>
+          <span className="text-white/20">·</span>
+          <span className="truncate max-w-[300px]" title={smartFilename}>{smartFilename}</span>
+        </div>
+      )}
 
       {/* Progress bar */}
       {isMerging && (
@@ -764,153 +999,212 @@ export default function PdfMergeTool() {
         </div>
       )}
 
-      {/* File list */}
-      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-1.5" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPage(null) }}>
-        {files.map((file, idx) => (
-          <div
-            key={file.id}
-            draggable={!file.expanded}
-            onDragStart={() => !file.expanded && handleDragStart(idx)}
-            onDragOver={(e) => !file.expanded && handleDragOver(e, idx)}
-            onDrop={(e) => !file.expanded && handleDrop(e, idx)}
-            onDragEnd={() => { setDragIdx(null); setDragOverIdx(null) }}
-            className={`
-              rounded-lg border transition-all
-              ${dragOverIdx === idx && !file.expanded ? 'border-[#F47B20]/40 bg-[#F47B20]/5' : 'border-white/[0.06] bg-white/[0.03]'}
-              ${dragIdx === idx ? 'opacity-40' : ''}
-              hover:border-white/[0.12]
-            `}
-          >
-            {/* File row */}
-            <div className="flex items-center gap-3 p-3">
-              {/* Drag handle */}
-              <div className={`text-white/20 hover:text-white/50 ${file.expanded ? 'opacity-30 pointer-events-none' : 'cursor-grab active:cursor-grabbing'}`}>
-                <GripVertical size={16} />
-              </div>
-
-              {/* Expand toggle */}
-              <button
-                onClick={() => toggleExpand(file.id)}
-                className="p-1 rounded text-white/30 hover:text-[#F47B20] transition-colors"
-                title={file.expanded ? 'Collapse pages' : 'Expand pages'}
-              >
-                {file.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-              </button>
-
-              {/* Order number */}
-              <div className="w-6 h-6 rounded-md bg-[#F47B20]/15 text-[#F47B20] text-xs font-semibold flex items-center justify-center flex-shrink-0">
-                {idx + 1}
-              </div>
-
-              {/* Thumbnail */}
-              {file.thumbnail && (
-                <img
-                  src={file.thumbnail}
-                  alt=""
-                  className="h-14 w-auto rounded border border-white/[0.08] flex-shrink-0"
-                />
-              )}
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-white truncate">{file.name}</p>
-                <p className="text-xs text-white/40">
-                  {getIncludedCount(file)} · {formatFileSize(file.size)}
-                </p>
-              </div>
-
-              {/* Reorder buttons */}
-              <div className="flex flex-col gap-0.5">
-                <button
-                  onClick={() => moveFile(idx, -1)}
-                  disabled={idx === 0}
-                  aria-label={`Move ${file.name} up`}
-                  className="p-1 rounded text-white/20 hover:text-white/60 disabled:opacity-20 disabled:pointer-events-none"
-                >
-                  <ArrowUp size={12} />
-                </button>
-                <button
-                  onClick={() => moveFile(idx, 1)}
-                  disabled={idx === files.length - 1}
-                  aria-label={`Move ${file.name} down`}
-                  className="p-1 rounded text-white/20 hover:text-white/60 disabled:opacity-20 disabled:pointer-events-none"
-                >
-                  <ArrowDown size={12} />
-                </button>
-              </div>
-
-              {/* Remove button */}
-              <button
-                onClick={() => removeFile(file.id)}
-                aria-label={`Remove ${file.name}`}
-                className="p-1.5 rounded-md text-white/20 hover:text-red-400 hover:bg-red-400/10 transition-colors"
-              >
-                <Trash2 size={14} />
-              </button>
-            </div>
-
-            {/* Expanded page grid with dnd-kit sortable */}
-            {file.expanded && (
-              <div className="px-3 pb-3 pt-0">
-                <div className="border-t border-white/[0.06] pt-3">
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragStart={handlePageDragStart}
-                    onDragEnd={(event) => handlePageDragEnd(event, file.id)}
-                  >
-                    <SortableContext items={file.pages.map((p) => p.uid)} strategy={rectSortingStrategy}>
-                      <div
-                        className="grid gap-2"
-                        style={{ gridTemplateColumns: `repeat(${zoomCols}, 1fr)` }}
-                      >
-                        {file.pages.map((page, pageIdx) => (
-                          <SortablePageItem
-                            key={page.uid}
-                            page={page}
-                            pageIdx={pageIdx}
-                            fileId={file.id}
-                            isSelected={selectedPage?.fileId === file.id && selectedPage.pageIdx === pageIdx}
-                            isCopiedSource={showCopied && selectedPage?.fileId === file.id && selectedPage.pageIdx === pageIdx}
-                            onContextMenu={(e) => handlePageContextMenu(e, file.id, pageIdx)}
-                            onClick={(e) => handlePageClick(e, file.id, pageIdx)}
-                            onToggleExclude={(e) => { e.stopPropagation(); togglePageExclude(file.id, pageIdx) }}
-                            scrollRoot={scrollRef.current}
-                            onThumbnailNeeded={() => loadPageThumbnail(file.id, page.uid, page.pageNumber)}
-                          />
-                        ))}
+      {/* Preview mode — flat view of all included pages in merge order */}
+      {showPreview ? (
+        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPage(null) }}>
+          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${zoomCols}, 1fr)` }}>
+            {(() => {
+              let pos = 0
+              return files.flatMap((file) => {
+                if (file.pages.length > 0) {
+                  return file.pages
+                    .filter((p) => !p.excluded)
+                    .map((page) => {
+                      pos++
+                      return (
+                        <div key={`${file.id}-${page.uid}`} className="relative rounded-lg border border-white/[0.06] bg-white/[0.03] p-1.5 flex items-center justify-center">
+                          {page.thumbnail ? (
+                            <img src={page.thumbnail} className="w-full h-auto rounded object-contain" draggable={false} style={page.rotation !== 0 ? { transform: `rotate(${page.rotation}deg)` } : undefined} />
+                          ) : (
+                            <div className="w-full aspect-[8.5/11] rounded bg-white/[0.04]" />
+                          )}
+                          <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-[#F47B20]/80">#{pos}</div>
+                          <div className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded text-[9px] text-white/60 bg-black/60 truncate max-w-[90%]">{file.name} p{page.pageNumber}</div>
+                          {page.rotation !== 0 && <div className="absolute top-2 right-2 px-1 py-0.5 rounded text-[9px] font-bold bg-blue-500/70 text-white">{page.rotation}°</div>}
+                        </div>
+                      )
+                    })
+                } else {
+                  return Array.from({ length: file.pageCount }, (_, i) => {
+                    pos++
+                    return (
+                      <div key={`${file.id}-all-${i}`} className="relative rounded-lg border border-white/[0.06] bg-white/[0.03] p-1.5 flex items-center justify-center">
+                        <div className="w-full aspect-[8.5/11] rounded bg-white/[0.04] flex items-center justify-center text-[10px] text-white/20">p{i + 1}</div>
+                        <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-[#F47B20]/80">#{pos}</div>
+                        <div className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded text-[9px] text-white/60 bg-black/60 truncate max-w-[90%]">{file.name}</div>
                       </div>
-                    </SortableContext>
-                    <DragOverlay adjustScale={false}>
-                      {activeDragId && (() => {
-                        const dragPage = file.pages.find((p) => p.uid === activeDragId)
-                        if (!dragPage) return null
-                        return (
-                          <div
-                            className="rounded-lg border-2 border-[#F47B20] p-1.5 bg-[#00171F]/90 shadow-lg shadow-[#F47B20]/20"
-                            style={activeDragWidth ? { width: activeDragWidth } : undefined}
-                          >
-                            {dragPage.thumbnail ? (
-                              <img src={dragPage.thumbnail} className="w-full h-auto rounded object-contain" draggable={false} />
-                            ) : (
-                              <div className="w-full aspect-[8.5/11] rounded bg-white/[0.08]" />
-                            )}
-                          </div>
-                        )
-                      })()}
-                    </DragOverlay>
-                  </DndContext>
-                </div>
-              </div>
-            )}
+                    )
+                  })
+                }
+              })
+            })()}
           </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        /* File list with dnd-kit sortable */
+        <DndContext
+          sensors={fileSensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleFileDragStart}
+          onDragEnd={handleFileDragEnd}
+        >
+          <SortableContext items={files.map((f) => f.id)} strategy={verticalListSortingStrategy}>
+            <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto space-y-1.5" onClick={(e) => { if (e.target === e.currentTarget) { setSelectedPage(null); setSelectedFileIdx(null) } }}>
+              {files.map((file, idx) => {
+                const pageInfo = getIncludedPageInfo(file)
+                return (
+                  <SortableFileRow key={file.id} id={file.id}>
+                    {({ handleProps, isDragging }) => (
+                      <div
+                        className={`
+                          rounded-lg border transition-all
+                          ${isDragging ? 'border-[#F47B20]/40 bg-[#F47B20]/5 opacity-40' : 'border-white/[0.06] bg-white/[0.03]'}
+                          hover:border-white/[0.12]
+                        `}
+                      >
+                        {/* File row */}
+                        <div
+                          className={`flex items-center gap-3 p-3 cursor-pointer ${selectedFileIdx === idx ? 'bg-white/[0.04]' : ''}`}
+                          onClick={() => setSelectedFileIdx(idx)}
+                        >
+                          {/* Drag handle */}
+                          <div {...handleProps} className="text-white/20 hover:text-white/50 cursor-grab active:cursor-grabbing">
+                            <GripVertical size={16} />
+                          </div>
+
+                          {/* Expand toggle */}
+                          <button
+                            onClick={() => toggleExpand(file.id)}
+                            className="p-1 rounded text-white/30 hover:text-[#F47B20] transition-colors"
+                            title={file.expanded ? 'Collapse pages' : 'Expand pages'}
+                          >
+                            {file.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                          </button>
+
+                          {/* Order number */}
+                          <div className="w-6 h-6 rounded-md bg-[#F47B20]/15 text-[#F47B20] text-xs font-semibold flex items-center justify-center flex-shrink-0">
+                            {idx + 1}
+                          </div>
+
+                          {/* Thumbnail */}
+                          {file.thumbnail && (
+                            <img
+                              src={file.thumbnail}
+                              alt=""
+                              className="h-14 w-auto rounded border border-white/[0.08] flex-shrink-0"
+                            />
+                          )}
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white truncate">{file.name}</p>
+                            <p className="text-xs text-white/40">
+                              <span className={pageInfo.hasExclusions ? 'text-[#F47B20]' : ''}>{pageInfo.text}</span>
+                              {' · '}
+                              {formatFileSize(file.size)}
+                            </p>
+                          </div>
+
+                          {/* Remove button */}
+                          <button
+                            onClick={() => removeFile(file.id)}
+                            aria-label={`Remove ${file.name}`}
+                            className="p-1.5 rounded-md text-white/20 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+
+                        {/* Expanded page grid with dnd-kit sortable */}
+                        {file.expanded && (
+                          <div className="px-3 pb-3 pt-0">
+                            <div className="border-t border-white/[0.06] pt-3">
+                              <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCenter}
+                                onDragStart={handlePageDragStart}
+                                onDragEnd={(event) => handlePageDragEnd(event, file.id)}
+                              >
+                                <SortableContext items={file.pages.map((p) => p.uid)} strategy={rectSortingStrategy}>
+                                  <div
+                                    className="grid gap-2"
+                                    style={{ gridTemplateColumns: `repeat(${zoomCols}, 1fr)` }}
+                                  >
+                                    {file.pages.map((page, pageIdx) => (
+                                      <SortablePageItem
+                                        key={page.uid}
+                                        page={page}
+                                        pageIdx={pageIdx}
+                                        fileId={file.id}
+                                        isSelected={selectedPage?.fileId === file.id && selectedPage.pageIdx === pageIdx}
+                                        isCopiedSource={showCopied && selectedPage?.fileId === file.id && selectedPage.pageIdx === pageIdx}
+                                        onContextMenu={(e) => handlePageContextMenu(e, file.id, pageIdx)}
+                                        onClick={(e) => handlePageClick(e, file.id, pageIdx)}
+                                        onToggleExclude={(e) => { e.stopPropagation(); togglePageExclude(file.id, pageIdx) }}
+                                        onRotate={(dir) => rotatePage(file.id, pageIdx, dir)}
+                                        scrollRoot={scrollRef.current}
+                                        onThumbnailNeeded={() => loadPageThumbnail(file.id, page.uid, page.pageNumber)}
+                                      />
+                                    ))}
+                                  </div>
+                                </SortableContext>
+                                <DragOverlay adjustScale={false}>
+                                  {activeDragId && (() => {
+                                    const dragPage = file.pages.find((p) => p.uid === activeDragId)
+                                    if (!dragPage) return null
+                                    return (
+                                      <div
+                                        className="rounded-lg border-2 border-[#F47B20] p-1.5 bg-[#00171F]/90 shadow-lg shadow-[#F47B20]/20"
+                                        style={activeDragWidth ? { width: activeDragWidth } : undefined}
+                                      >
+                                        {dragPage.thumbnail ? (
+                                          <img src={dragPage.thumbnail} className="w-full h-auto rounded object-contain" draggable={false} />
+                                        ) : (
+                                          <div className="w-full aspect-[8.5/11] rounded bg-white/[0.08]" />
+                                        )}
+                                      </div>
+                                    )
+                                  })()}
+                                </DragOverlay>
+                              </DndContext>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </SortableFileRow>
+                )
+              })}
+            </div>
+          </SortableContext>
+          <DragOverlay adjustScale={false}>
+            {fileDragId && (() => {
+              const dragFile = files.find((f) => f.id === fileDragId)
+              if (!dragFile) return null
+              return (
+                <div className="rounded-lg border-2 border-[#F47B20] bg-[#00171F]/90 shadow-lg shadow-[#F47B20]/20 p-3 flex items-center gap-3">
+                  {dragFile.thumbnail && <img src={dragFile.thumbnail} className="h-10 w-auto rounded" />}
+                  <span className="text-sm text-white truncate max-w-[200px]">{dragFile.name}</span>
+                </div>
+              )
+            })()}
+          </DragOverlay>
+        </DndContext>
+      )}
 
       {/* Footer hint */}
       <p className="text-[10px] text-white/25 text-center flex-shrink-0">
-        Drag files to reorder · Expand to manage pages · Right-click to exclude · Click + Ctrl/Cmd+C/V to copy-paste pages
+        Drag handle to reorder files · Expand to manage pages · Right-click to exclude · Hover for rotate · Ctrl/Cmd+C/V to copy-paste pages · Del to remove file
       </p>
+
+      {/* Password modal */}
+      {passwordPrompt && (
+        <PasswordModal
+          fileName={passwordPrompt.file.name}
+          onSubmit={(pw) => passwordPrompt.resolve(pw)}
+          onCancel={() => passwordPrompt.resolve(null)}
+        />
+      )}
 
     </div>
   )

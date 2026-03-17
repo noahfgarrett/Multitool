@@ -4,7 +4,7 @@
  * No Electron/filesystem dependencies - works entirely with File objects and Uint8Arrays.
  */
 
-import { PDFDocument } from 'pdf-lib'
+import { PDFDocument, PDFDict, PDFName, PDFHexString, PDFArray, PDFNumber, degrees } from 'pdf-lib'
 import * as pdfjsLib from 'pdfjs-dist'
 import type { PDFFile, PDFPage, PageRangeValidation } from '@/types'
 
@@ -71,7 +71,7 @@ export async function getPDFBytes(pdfFile: PDFFile): Promise<Uint8Array> {
  * Load a PDF file from a browser File object.
  * Returns metadata and a reference to the File (bytes are NOT retained in memory).
  */
-export async function loadPDFFile(file: File): Promise<PDFFile> {
+export async function loadPDFFile(file: File, password?: string): Promise<PDFFile> {
   if (file.size === 0) {
     throw new Error('File is empty')
   }
@@ -81,7 +81,9 @@ export async function loadPDFFile(file: File): Promise<PDFFile> {
   const buffer = await file.arrayBuffer()
   const data = new Uint8Array(buffer)
 
-  const doc = await pdfjsLib.getDocument({ data }).promise
+  const opts: { data: Uint8Array; password?: string } = { data }
+  if (password) opts.password = password
+  const doc = await pdfjsLib.getDocument(opts).promise
   const pageCount = doc.numPages
 
   if (pageCount === 0) {
@@ -285,17 +287,19 @@ export function parsePageRange(rangeStr: string, maxPages: number): number[] {
 
 /**
  * Merge multiple PDFs (or subsets of pages) into a single PDF.
+ * Supports per-page rotation and optional bookmarks.
  * Operates on raw Uint8Array data - no filesystem needed.
  */
 export async function mergePDFs(
-  files: { file: File; pages?: number[] }[],
+  files: { file: File; pages?: number[]; rotations?: Record<number, number> }[],
   onProgress?: (current: number, total: number) => void,
+  bookmarks?: { title: string; pageIndex: number }[],
 ): Promise<Uint8Array> {
   const mergedPdf = await PDFDocument.create()
   const total = files.length
 
   for (let i = 0; i < files.length; i++) {
-    const { file, pages } = files[i]
+    const { file, pages, rotations } = files[i]
     // Read bytes on demand — each file's buffer is GC-eligible after this iteration
     const buffer = await file.arrayBuffer()
     const sourcePdf = await PDFDocument.load(new Uint8Array(buffer))
@@ -305,14 +309,74 @@ export async function mergePDFs(
       : Array.from({ length: sourcePdf.getPageCount() }, (_, j) => j)
 
     const copiedPages = await mergedPdf.copyPages(sourcePdf, pagesToCopy)
-    for (const page of copiedPages) {
+    for (let j = 0; j < copiedPages.length; j++) {
+      const page = copiedPages[j]
+      // Apply rotation if specified
+      if (rotations) {
+        const pageNum = pages ? pages[j] : j + 1
+        const rot = rotations[pageNum]
+        if (rot) page.setRotation(degrees(rot))
+      }
       mergedPdf.addPage(page)
     }
 
     onProgress?.(i + 1, total)
   }
 
+  // Add bookmarks (PDF outline) if provided
+  if (bookmarks && bookmarks.length > 0) {
+    addPdfBookmarks(mergedPdf, bookmarks)
+  }
+
   return mergedPdf.save()
+}
+
+/**
+ * Add bookmarks (PDF outline / table of contents) to a PDF document.
+ * Each bookmark links to a specific page (fit-to-page view).
+ */
+function addPdfBookmarks(
+  pdfDoc: PDFDocument,
+  bookmarks: { title: string; pageIndex: number }[],
+): void {
+  if (bookmarks.length === 0) return
+  const ctx = pdfDoc.context
+
+  // Create each outline item
+  const itemRefs = bookmarks.map((bm) => {
+    const pageRef = pdfDoc.getPage(bm.pageIndex).ref
+    const dest = PDFArray.withContext(ctx)
+    dest.push(pageRef)
+    dest.push(PDFName.of('Fit'))
+
+    const item = PDFDict.withContext(ctx)
+    item.set(PDFName.of('Title'), PDFHexString.fromText(bm.title))
+    item.set(PDFName.of('Dest'), dest)
+    return ctx.register(item)
+  })
+
+  // Link siblings (Prev/Next)
+  for (let i = 0; i < itemRefs.length; i++) {
+    const dict = ctx.lookup(itemRefs[i]) as PDFDict
+    if (i > 0) dict.set(PDFName.of('Prev'), itemRefs[i - 1])
+    if (i < itemRefs.length - 1) dict.set(PDFName.of('Next'), itemRefs[i + 1])
+  }
+
+  // Create outline root
+  const root = PDFDict.withContext(ctx)
+  root.set(PDFName.of('Type'), PDFName.of('Outlines'))
+  root.set(PDFName.of('First'), itemRefs[0])
+  root.set(PDFName.of('Last'), itemRefs[itemRefs.length - 1])
+  root.set(PDFName.of('Count'), PDFNumber.of(itemRefs.length))
+  const rootRef = ctx.register(root)
+
+  // Set parent on all items
+  for (const ref of itemRefs) {
+    (ctx.lookup(ref) as PDFDict).set(PDFName.of('Parent'), rootRef)
+  }
+
+  // Add to document catalog
+  pdfDoc.catalog.set(PDFName.of('Outlines'), rootRef)
 }
 
 /**
