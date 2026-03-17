@@ -2,6 +2,7 @@ import type { FormElementType } from './types.ts'
 import {
   Type, AlignLeft, CheckSquare, Circle, ChevronDown,
   Calendar, PenTool, Image as ImageIcon, Minus, Heading, Tag,
+  Clock, Hash, Table2, Calculator, Camera,
 } from 'lucide-react'
 
 // ── Element type catalog ─────────────────────────────────────
@@ -15,9 +16,14 @@ const ELEMENT_TYPES: { type: FormElementType; label: string; icon: typeof Type; 
   { type: 'radio',      label: 'Radio Group',icon: Circle,       description: 'Multiple choice' },
   { type: 'select',     label: 'Dropdown',   icon: ChevronDown,  description: 'Select list' },
   { type: 'date',       label: 'Date',       icon: Calendar,     description: 'Date field' },
+  { type: 'datetime',   label: 'Date & Time',icon: Clock,        description: 'Date + time field' },
   { type: 'signature',  label: 'Signature',  icon: PenTool,      description: 'Signature line' },
   { type: 'image',      label: 'Image',      icon: ImageIcon,    description: 'Upload image/logo' },
   { type: 'divider',    label: 'Divider',    icon: Minus,        description: 'Horizontal rule' },
+  { type: 'number',     label: 'Number',     icon: Hash,         description: 'Numeric / currency' },
+  { type: 'table',      label: 'Table',      icon: Table2,       description: 'Data grid' },
+  { type: 'calculated', label: 'Calculated', icon: Calculator,   description: 'Auto-computed value' },
+  { type: 'photo',      label: 'Photos',     icon: Camera,       description: 'Photo evidence + comments' },
 ]
 
 // ── Component ────────────────────────────────────────────────

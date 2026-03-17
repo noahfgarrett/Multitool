@@ -26,6 +26,7 @@ export default function FormCreatorTool() {
   const [showExport, setShowExport] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
   const [showSavedForms, setShowSavedForms] = useState(false)
+  const [showTabOrder, setShowTabOrder] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ── Save handler ─────────────────────────────────────────
@@ -172,6 +173,8 @@ export default function FormCreatorTool() {
         onTemplates={() => setShowTemplates(true)}
         onSavedForms={() => setShowSavedForms(true)}
         onSave={handleSave}
+        showTabOrder={showTabOrder}
+        onToggleTabOrder={() => setShowTabOrder(p => !p)}
       />
 
       {/* Main area */}
@@ -181,7 +184,7 @@ export default function FormCreatorTool() {
 
         {/* Center: Canvas */}
         <div className="flex-1 relative">
-          <FormCanvas store={store} />
+          <FormCanvas store={store} showTabOrder={showTabOrder} />
 
           {/* Empty state */}
           {!hasElements && (

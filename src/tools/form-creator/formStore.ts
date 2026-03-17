@@ -249,6 +249,117 @@ export function useFormStore() {
     setSelectedIds(new Set(newElements.map(el => el.id)))
   }, [doc.elements, selectedIds, updateDoc])
 
+  // ── Alignment operations ───────────────────────────────
+
+  const alignElements = useCallback((direction: 'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom' | 'distribute-h' | 'distribute-v') => {
+    if (selectedIds.size < 2) return
+    const selected = doc.elements.filter(el => selectedIds.has(el.id))
+    if (selected.length < 2) return
+    updateDoc(prev => {
+      const els = prev.elements.filter(el => selectedIds.has(el.id))
+      const updates = new Map<string, Partial<FormElement>>()
+
+      switch (direction) {
+        case 'left': {
+          const minX = Math.min(...els.map(e => e.x))
+          for (const e of els) updates.set(e.id, { x: minX })
+          break
+        }
+        case 'right': {
+          const maxRight = Math.max(...els.map(e => e.x + e.width))
+          for (const e of els) updates.set(e.id, { x: maxRight - e.width })
+          break
+        }
+        case 'center-h': {
+          const minX = Math.min(...els.map(e => e.x))
+          const maxRight = Math.max(...els.map(e => e.x + e.width))
+          const cx = (minX + maxRight) / 2
+          for (const e of els) updates.set(e.id, { x: cx - e.width / 2 })
+          break
+        }
+        case 'top': {
+          const minY = Math.min(...els.map(e => e.y))
+          for (const e of els) updates.set(e.id, { y: minY })
+          break
+        }
+        case 'bottom': {
+          const maxBottom = Math.max(...els.map(e => e.y + e.height))
+          for (const e of els) updates.set(e.id, { y: maxBottom - e.height })
+          break
+        }
+        case 'center-v': {
+          const minY = Math.min(...els.map(e => e.y))
+          const maxBottom = Math.max(...els.map(e => e.y + e.height))
+          const cy = (minY + maxBottom) / 2
+          for (const e of els) updates.set(e.id, { y: cy - e.height / 2 })
+          break
+        }
+        case 'distribute-h': {
+          if (els.length < 3) break
+          const sorted = [...els].sort((a, b) => a.x - b.x)
+          const totalWidth = sorted.reduce((s, e) => s + e.width, 0)
+          const totalSpan = sorted[sorted.length - 1].x + sorted[sorted.length - 1].width - sorted[0].x
+          const gap = (totalSpan - totalWidth) / (sorted.length - 1)
+          let cx = sorted[0].x + sorted[0].width + gap
+          for (let i = 1; i < sorted.length - 1; i++) {
+            updates.set(sorted[i].id, { x: cx })
+            cx += sorted[i].width + gap
+          }
+          break
+        }
+        case 'distribute-v': {
+          if (els.length < 3) break
+          const sorted = [...els].sort((a, b) => a.y - b.y)
+          const totalHeight = sorted.reduce((s, e) => s + e.height, 0)
+          const totalSpan = sorted[sorted.length - 1].y + sorted[sorted.length - 1].height - sorted[0].y
+          const gap = (totalSpan - totalHeight) / (sorted.length - 1)
+          let cy = sorted[0].y + sorted[0].height + gap
+          for (let i = 1; i < sorted.length - 1; i++) {
+            updates.set(sorted[i].id, { y: cy })
+            cy += sorted[i].height + gap
+          }
+          break
+        }
+      }
+
+      return {
+        ...prev,
+        elements: prev.elements.map(el => {
+          const u = updates.get(el.id)
+          return u ? { ...el, ...u } : el
+        }),
+      }
+    })
+  }, [selectedIds, doc.elements, updateDoc])
+
+  // ── Grouping operations ───────────────────────────────
+
+  const groupSelected = useCallback(() => {
+    if (selectedIds.size < 2) return
+    const gid = crypto.randomUUID()
+    updateDoc(prev => ({
+      ...prev,
+      elements: prev.elements.map(el =>
+        selectedIds.has(el.id) ? { ...el, groupId: gid } : el,
+      ),
+    }))
+  }, [selectedIds, updateDoc])
+
+  const ungroupSelected = useCallback(() => {
+    if (selectedIds.size === 0) return
+    const groupIds = new Set<string>()
+    for (const el of doc.elements) {
+      if (selectedIds.has(el.id) && el.groupId) groupIds.add(el.groupId)
+    }
+    if (groupIds.size === 0) return
+    updateDoc(prev => ({
+      ...prev,
+      elements: prev.elements.map(el =>
+        el.groupId && groupIds.has(el.groupId) ? { ...el, groupId: undefined } : el,
+      ),
+    }))
+  }, [selectedIds, doc.elements, updateDoc])
+
   // ── Diagram operations ──────────────────────────────────
 
   const loadDocument = useCallback((newDoc: FormDocument) => {
@@ -332,6 +443,12 @@ export function useFormStore() {
 
     // Zoom
     zoomIn, zoomOut, resetZoom, zoomTo,
+
+    // Alignment
+    alignElements,
+
+    // Grouping
+    groupSelected, ungroupSelected,
   }
 }
 

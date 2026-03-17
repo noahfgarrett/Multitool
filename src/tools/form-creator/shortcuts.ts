@@ -60,6 +60,20 @@ export function attachShortcuts(
       return
     }
 
+    // ── Group: Ctrl/Cmd+G ─────────────────────
+    if (isMod && !e.shiftKey && e.key === 'g') {
+      e.preventDefault()
+      store.groupSelected()
+      return
+    }
+
+    // ── Ungroup: Ctrl/Cmd+Shift+G ─────────────
+    if (isMod && e.shiftKey && e.key === 'G') {
+      e.preventDefault()
+      store.ungroupSelected()
+      return
+    }
+
     // ── Copy: Ctrl/Cmd+C ────────────────────────
     if (isMod && e.key === 'c') {
       e.preventDefault()

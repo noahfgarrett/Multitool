@@ -7,11 +7,16 @@ export type FormElementType =
   | 'radio'
   | 'select'
   | 'date'
+  | 'datetime'
+  | 'number'
   | 'label'
   | 'heading'
   | 'signature'
   | 'image'
   | 'divider'
+  | 'table'
+  | 'calculated'
+  | 'photo'
 
 export interface FormElement {
   id: string
@@ -30,6 +35,28 @@ export interface FormElement {
   fontWeight?: 'normal' | 'bold'
   textAlign?: 'left' | 'center' | 'right'
   color?: string                // default '#000000'
+  // Number field
+  numberPrefix?: string         // '$', '#', '°F', etc.
+  numberMin?: number
+  numberMax?: number
+  numberDecimals?: number       // decimal places (default 0)
+  // Table element
+  tableRows?: number            // default 3
+  tableCols?: number            // default 4
+  tableHeaders?: string[]       // column header labels
+  tableCellData?: string[][]    // row × col cell values
+  // Calculated field
+  formula?: string              // e.g. '=SUM({field1}, {field2})'
+  // Conditional visibility
+  visibleWhen?: { fieldId: string; operator: 'equals' | 'notEquals' | 'contains' | 'isEmpty'; value: string } | null
+  // Grouping
+  groupId?: string
+  // Tab order
+  tabOrder?: number
+  // Repeating sections
+  repeatGroupId?: string
+  // Photo attachment element
+  photos?: { dataUrl: string; comment: string }[]
 }
 
 // ── Form Document ───────────────────────────────────────────
@@ -95,6 +122,11 @@ export const ELEMENT_DEFAULTS: Record<FormElementType, { width: number; height: 
   'signature':  { width: 250, height: 60,  label: 'Signature' },
   'image':      { width: 200, height: 150, label: 'Image' },
   'divider':    { width: 720, height: 4,   label: '' },
+  'datetime':   { width: 280, height: 50,  label: 'Date & Time' },
+  'number':     { width: 200, height: 50,  label: 'Number' },
+  'table':      { width: 720, height: 160, label: 'Data Table' },
+  'calculated': { width: 200, height: 40,  label: 'Total' },
+  'photo':      { width: 720, height: 200, label: 'Photo Evidence' },
 }
 
 // ── Factory Functions ───────────────────────────────────────
@@ -128,6 +160,12 @@ export function createElement(
     fontWeight: type === 'heading' ? 'bold' : 'normal',
     textAlign: type === 'heading' ? 'center' : 'left',
     color: '#000000',
+    // Number field defaults
+    ...(type === 'number' ? { numberPrefix: '', numberDecimals: 0 } : {}),
+    // Table defaults
+    ...(type === 'table' ? { tableRows: 3, tableCols: 4, tableHeaders: ['Column 1', 'Column 2', 'Column 3', 'Column 4'], tableCellData: [] } : {}),
+    // Calculated field defaults
+    ...(type === 'calculated' ? { formula: '' } : {}),
     ...overrides,
   }
 }

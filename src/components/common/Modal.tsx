@@ -60,7 +60,7 @@ export function Modal({ open, onClose, title, children, width = 'md' }: ModalPro
             </button>
           </div>
         )}
-        <div className="p-5">{children}</div>
+        <div className="p-5 max-h-[70vh] overflow-y-auto">{children}</div>
       </div>
     </div>
   )

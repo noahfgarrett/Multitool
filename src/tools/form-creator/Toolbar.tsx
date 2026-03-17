@@ -4,7 +4,9 @@ import type { PageSize } from './types.ts'
 import {
   Undo2, Redo2, ZoomIn, ZoomOut, Maximize2,
   Plus, Minus, Download, Upload, Trash2, Save, LayoutGrid, FolderOpen,
-  Pencil,
+  Pencil, Printer, ListOrdered,
+  AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
+  Rows, Columns, Group, Ungroup,
 } from 'lucide-react'
 
 // ── Component ───────────────────────────────────────────────
@@ -16,6 +18,8 @@ export function Toolbar({
   onTemplates,
   onSavedForms,
   onSave,
+  showTabOrder,
+  onToggleTabOrder,
 }: {
   store: FormStore
   onExport: () => void
@@ -23,14 +27,25 @@ export function Toolbar({
   onTemplates: () => void
   onSavedForms: () => void
   onSave: () => void
+  showTabOrder: boolean
+  onToggleTabOrder: () => void
 }) {
   const {
     viewport, canUndo, canRedo, undo, redo,
     zoomIn, zoomOut,
     doc, setTitle, setPageSize, addPage, removePage, selectedIds, removeSelectedElements,
+    alignElements, groupSelected, ungroupSelected,
   } = store
 
   const canDelete = selectedIds.size > 0
+  const canAlign = selectedIds.size >= 2
+  const canGroup = selectedIds.size >= 2
+  const canUngroup = (() => {
+    for (const el of doc.elements) {
+      if (selectedIds.has(el.id) && el.groupId) return true
+    }
+    return false
+  })()
 
   const fitToContent = () => {
     const fn = (window as unknown as Record<string, unknown>).__formFitToContent as (() => void) | undefined
@@ -86,6 +101,29 @@ export function Toolbar({
         />
       </ToolbarGroup>
 
+      {/* ── Alignment (when multi-selected) ────── */}
+      {canAlign && (
+        <>
+          <ToolbarDivider />
+          <ToolbarGroup>
+            <ToolbarButton icon={AlignLeft} label="Align Left" onClick={() => alignElements('left')} />
+            <ToolbarButton icon={AlignCenter} label="Align Center" onClick={() => alignElements('center-h')} />
+            <ToolbarButton icon={AlignRight} label="Align Right" onClick={() => alignElements('right')} />
+            <ToolbarButton icon={AlignStartVertical} label="Align Top" onClick={() => alignElements('top')} />
+            <ToolbarButton icon={AlignCenterVertical} label="Align Middle" onClick={() => alignElements('center-v')} />
+            <ToolbarButton icon={AlignEndVertical} label="Align Bottom" onClick={() => alignElements('bottom')} />
+            {selectedIds.size >= 3 && (
+              <>
+                <ToolbarButton icon={Columns} label="Distribute Horizontal" onClick={() => alignElements('distribute-h')} />
+                <ToolbarButton icon={Rows} label="Distribute Vertical" onClick={() => alignElements('distribute-v')} />
+              </>
+            )}
+            <ToolbarButton icon={Group} label="Group (Ctrl+G)" onClick={groupSelected} />
+            {canUngroup && <ToolbarButton icon={Ungroup} label="Ungroup (Ctrl+Shift+G)" onClick={ungroupSelected} />}
+          </ToolbarGroup>
+        </>
+      )}
+
       {/* ── Spacer ─────────────────────────────── */}
       <div className="flex-1" />
 
@@ -112,6 +150,16 @@ export function Toolbar({
           <Upload size={12} />
           Import
         </button>
+        <button
+          onClick={onToggleTabOrder}
+          className={`px-2.5 py-1 text-[10px] font-medium rounded transition-colors flex items-center gap-1 ${
+            showTabOrder ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+          }`}
+        >
+          <ListOrdered size={12} />
+          Tab Order
+        </button>
+        <ToolbarButton icon={Printer} label="Print" onClick={() => window.print()} />
         <ToolbarButton icon={Save} label="Save (Ctrl+S)" onClick={onSave} />
         <ToolbarButton icon={Download} label="Export" onClick={onExport} />
         {canDelete && (

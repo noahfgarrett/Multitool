@@ -38,7 +38,7 @@ interface SnapGuide {
 
 // ── Component ───────────────────────────────────────────────
 
-export function FormCanvas({ store }: { store: FormStore }) {
+export function FormCanvas({ store, showTabOrder }: { store: FormStore; showTabOrder?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
@@ -530,6 +530,43 @@ export function FormCanvas({ store }: { store: FormStore }) {
             }}
           />
         ))}
+
+        {/* Tab order overlay */}
+        {showTabOrder && (() => {
+          // Group elements by row band (elements within 20px Y are same row)
+          const interactive = doc.elements.filter(el =>
+            !['divider', 'image', 'heading', 'label'].includes(el.type),
+          )
+          const sorted = [...interactive].sort((a, b) => {
+            const bandA = Math.round(a.y / 20) * 20
+            const bandB = Math.round(b.y / 20) * 20
+            if (a.pageIndex !== b.pageIndex) return a.pageIndex - b.pageIndex
+            if (bandA !== bandB) return bandA - bandB
+            return a.x - b.x
+          })
+          return sorted.map((el, idx) => (
+            <div
+              key={el.id}
+              className="absolute pointer-events-none z-50"
+              style={{
+                left: el.x + el.width / 2 - 10,
+                top: pageTopY(el.pageIndex, doc.pageSize) + el.y - 10,
+                width: 20,
+                height: 20,
+                borderRadius: '50%',
+                backgroundColor: '#F47B20',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 9,
+                fontWeight: 'bold',
+                color: 'white',
+              }}
+            >
+              {idx + 1}
+            </div>
+          ))
+        })()}
 
         {/* Marquee rectangle */}
         {drag?.type === 'marquee' && drag.moved && (

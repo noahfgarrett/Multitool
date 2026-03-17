@@ -3,6 +3,7 @@ import { HANDLE_SIZE } from './types.ts'
 import {
   Type, AlignLeft, CheckSquare, Circle, ChevronDown,
   Calendar, PenTool, Image as ImageIcon, Minus, Heading,
+  Clock, Hash, Table2, Calculator, Camera, Plus, MessageSquare,
 } from 'lucide-react'
 
 // ── Resize handle positions ──────────────────────────────────
@@ -43,6 +44,11 @@ function TypeIcon({ type }: { type: FormElement['type'] }) {
     case 'heading': return <Heading {...props} />
     case 'signature': return <PenTool {...props} />
     case 'image': return <ImageIcon {...props} />
+    case 'datetime': return <Clock {...props} />
+    case 'number': return <Hash {...props} />
+    case 'table': return <Table2 {...props} />
+    case 'calculated': return <Calculator {...props} />
+    case 'photo': return <Camera {...props} />
     case 'divider': return <Minus {...props} />
   }
 }
@@ -131,6 +137,71 @@ function ElementContent({ element }: { element: FormElement }) {
         </div>
       )
 
+    case 'datetime':
+      return (
+        <div className="w-full h-full flex flex-col justify-center gap-1 px-1">
+          <span style={{ fontSize: 11, color: color ?? '#333' }}>{label}{element.required ? ' *' : ''}</span>
+          <div className="border-b border-gray-400 pb-1 flex items-center gap-1">
+            <Calendar size={10} className="text-gray-400" />
+            <Clock size={10} className="text-gray-400" />
+            <span className="text-gray-400" style={{ fontSize: 11 }}>MM/DD/YYYY HH:MM</span>
+          </div>
+        </div>
+      )
+
+    case 'number':
+      return (
+        <div className="w-full h-full flex flex-col justify-center gap-1 px-1">
+          <span style={{ fontSize: 11, color: color ?? '#333' }}>{label}{element.required ? ' *' : ''}</span>
+          <div className="border-b border-gray-400 pb-1">
+            <span className="text-gray-400" style={{ fontSize: 11 }}>{element.numberPrefix ?? ''}{placeholder || '0.00'}</span>
+          </div>
+        </div>
+      )
+
+    case 'table': {
+      const rows = element.tableRows ?? 3
+      const cols = element.tableCols ?? 3
+      const headers = element.tableHeaders ?? []
+      return (
+        <div className="w-full h-full overflow-auto px-1 pt-1">
+          <table className="w-full border-collapse" style={{ fontSize: 10 }}>
+            <thead>
+              <tr>
+                {Array.from({ length: cols }, (_, c) => (
+                  <th
+                    key={c}
+                    className="border border-gray-300 bg-gray-100 px-1 py-0.5 text-left font-medium text-gray-600"
+                  >
+                    {headers[c] ?? `Col ${c + 1}`}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: rows }, (_, r) => (
+                <tr key={r}>
+                  {Array.from({ length: cols }, (_, c) => (
+                    <td key={c} className="border border-gray-300 px-1 py-0.5">&nbsp;</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+    }
+
+    case 'calculated':
+      return (
+        <div className="w-full h-full flex flex-col justify-center gap-1 px-1">
+          <span style={{ fontSize: 11, color: color ?? '#333' }}>{label}</span>
+          <div className="bg-gray-100 border border-gray-300 rounded px-2 py-1" style={{ fontFamily: 'monospace', fontSize: 11, color: '#555' }}>
+            {element.formula ?? '= formula'}
+          </div>
+        </div>
+      )
+
     case 'signature':
       return (
         <div className="w-full h-full flex flex-col justify-end gap-1 px-1 pb-1">
@@ -151,6 +222,38 @@ function ElementContent({ element }: { element: FormElement }) {
         <div className="w-full h-full flex flex-col items-center justify-center gap-1 border-2 border-dashed border-gray-300 rounded">
           <ImageIcon size={20} className="text-gray-300" />
           <span className="text-[10px] text-gray-400">Drop image</span>
+        </div>
+      )
+
+    case 'photo':
+      return (
+        <div className="w-full h-full flex flex-col gap-1 px-1 pt-1">
+          <span style={{ fontSize: 11, color: color ?? '#333' }}>{label}</span>
+          <div className="flex-1 border-2 border-dashed border-gray-300 rounded flex flex-col items-center justify-center gap-1 bg-gray-50">
+            {(element.photos?.length ?? 0) > 0 ? (
+              <div className="flex gap-1 flex-wrap p-1 overflow-hidden">
+                {element.photos!.slice(0, 4).map((p, i) => (
+                  <div key={i} className="relative">
+                    <img src={p.dataUrl} alt="" className="w-12 h-12 object-cover rounded" draggable={false} />
+                    {p.comment && (
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
+                        <MessageSquare size={6} className="text-white" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {element.photos!.length > 4 && (
+                  <span className="text-[9px] text-gray-400 self-center">+{element.photos!.length - 4}</span>
+                )}
+              </div>
+            ) : (
+              <>
+                <Camera size={16} className="text-gray-300" />
+                <span className="text-[9px] text-gray-400">Drop photos or click to add</span>
+                <span className="text-[8px] text-gray-300">Add comments per photo</span>
+              </>
+            )}
+          </div>
         </div>
       )
 

@@ -5,7 +5,7 @@ import { ColorPicker } from '@/components/common/ColorPicker.tsx'
 import { Slider } from '@/components/common/Slider.tsx'
 import { readFileAsDataURL } from '@/utils/fileReader.ts'
 import { loadImage, resizeImage } from '@/utils/imageProcessing.ts'
-import { Trash2, Copy, Image as ImageIcon, X, Plus } from 'lucide-react'
+import { Trash2, Copy, Image as ImageIcon, X, Plus, Eye, EyeOff, Camera, MessageSquare } from 'lucide-react'
 
 const MAX_IMAGE_SIZE = 800
 
@@ -182,6 +182,140 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
           </PropSection>
         )}
 
+        {/* Number field properties */}
+        {el.type === 'number' && (
+          <PropSection label="Number Format">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] text-white/30 w-10">Prefix</span>
+                <select
+                  value={el.numberPrefix ?? ''}
+                  onChange={e => update({ numberPrefix: e.target.value })}
+                  className="flex-1 px-2 py-1 text-xs bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#F47B20]/40"
+                >
+                  <option value="">None</option>
+                  <option value="$">$ (Currency)</option>
+                  <option value="#"># (Number)</option>
+                  <option value="°F">°F (Fahrenheit)</option>
+                  <option value="°C">°C (Celsius)</option>
+                  <option value="%">% (Percent)</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <NumberInput label="Min" value={el.numberMin ?? 0} onChange={v => update({ numberMin: v })} />
+                <NumberInput label="Max" value={el.numberMax ?? 999999} onChange={v => update({ numberMax: v })} />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] text-white/30 w-14">Decimals</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={4}
+                  value={el.numberDecimals ?? 0}
+                  onChange={e => update({ numberDecimals: Number(e.target.value) })}
+                  className="flex-1 px-1.5 py-1 text-xs bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#F47B20]/40 w-0"
+                />
+              </div>
+            </div>
+          </PropSection>
+        )}
+
+        {/* Table properties */}
+        {el.type === 'table' && (
+          <PropSection label="Table">
+            <div className="grid grid-cols-2 gap-2">
+              <NumberInput label="Rows" value={el.tableRows ?? 3} onChange={v => update({ tableRows: Math.max(1, v) })} />
+              <NumberInput label="Cols" value={el.tableCols ?? 4} onChange={v => update({ tableCols: Math.max(1, Math.min(10, v)) })} />
+            </div>
+            <div className="space-y-1 mt-2">
+              <span className="text-[9px] text-white/30">Headers</span>
+              {(el.tableHeaders ?? []).map((h, i) => (
+                <input
+                  key={i}
+                  type="text"
+                  value={h}
+                  onChange={e => {
+                    const headers = [...(el.tableHeaders ?? [])]
+                    headers[i] = e.target.value
+                    update({ tableHeaders: headers })
+                  }}
+                  className="w-full px-2 py-1 text-xs bg-dark-surface border border-white/[0.06] rounded text-white/70 focus:outline-none focus:border-[#F47B20]/30"
+                  placeholder={`Column ${i + 1}`}
+                />
+              ))}
+            </div>
+          </PropSection>
+        )}
+
+        {/* Calculated field formula */}
+        {el.type === 'calculated' && (
+          <PropSection label="Formula">
+            <input
+              type="text"
+              value={el.formula ?? ''}
+              onChange={e => update({ formula: e.target.value })}
+              placeholder="=SUM({Field 1}, {Field 2})"
+              className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white font-mono focus:outline-none focus:border-[#F47B20]/40"
+            />
+            <p className="text-[8px] text-white/20 mt-1">Use {'{'}label{'}'} to reference fields. Supports SUM, COUNT, AVG, +, -, *, /</p>
+          </PropSection>
+        )}
+
+        {/* Conditional visibility */}
+        {el.type !== 'divider' && el.type !== 'heading' && (
+          <PropSection label="Conditional Visibility">
+            {el.visibleWhen ? (
+              <div className="space-y-2 p-2 bg-white/[0.02] rounded-lg border border-white/[0.06]">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] text-[#F47B20]">Show when...</span>
+                  <button onClick={() => update({ visibleWhen: null })} className="text-white/20 hover:text-red-400">
+                    <X size={10} />
+                  </button>
+                </div>
+                <select
+                  value={el.visibleWhen.fieldId}
+                  onChange={e => update({ visibleWhen: { ...el.visibleWhen!, fieldId: e.target.value } })}
+                  className="w-full px-2 py-1 text-[10px] bg-dark-surface border border-white/[0.08] rounded text-white/60"
+                >
+                  <option value="">Select field...</option>
+                  {doc.elements
+                    .filter(other => other.id !== el.id && !['divider', 'image', 'heading', 'label'].includes(other.type))
+                    .map(other => (
+                      <option key={other.id} value={other.id}>{other.label}</option>
+                    ))
+                  }
+                </select>
+                <select
+                  value={el.visibleWhen.operator}
+                  onChange={e => update({ visibleWhen: { ...el.visibleWhen!, operator: e.target.value as 'equals' | 'notEquals' | 'contains' | 'isEmpty' } })}
+                  className="w-full px-2 py-1 text-[10px] bg-dark-surface border border-white/[0.08] rounded text-white/60"
+                >
+                  <option value="equals">equals</option>
+                  <option value="notEquals">does not equal</option>
+                  <option value="contains">contains</option>
+                  <option value="isEmpty">is empty</option>
+                </select>
+                {el.visibleWhen.operator !== 'isEmpty' && (
+                  <input
+                    type="text"
+                    value={el.visibleWhen.value}
+                    onChange={e => update({ visibleWhen: { ...el.visibleWhen!, value: e.target.value } })}
+                    placeholder="Value..."
+                    className="w-full px-2 py-1 text-[10px] bg-dark-surface border border-white/[0.08] rounded text-white/60 focus:outline-none focus:border-[#F47B20]/30"
+                  />
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => update({ visibleWhen: { fieldId: '', operator: 'equals', value: '' } })}
+                className="flex items-center gap-1 text-[10px] text-white/30 hover:text-[#F47B20]/60"
+              >
+                <Eye size={10} /> Add condition...
+              </button>
+            )}
+          </PropSection>
+        )}
+
         {/* Image upload */}
         {el.type === 'image' && (
           <PropSection label="Image">
@@ -222,8 +356,71 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
           </PropSection>
         )}
 
+        {/* Photo attachment management */}
+        {el.type === 'photo' && (
+          <PropSection label="Photos">
+            <div className="space-y-2">
+              {(el.photos ?? []).map((photo, i) => (
+                <div key={i} className="flex gap-2 items-start bg-white/[0.02] rounded p-1.5 border border-white/[0.06]">
+                  <img src={photo.dataUrl} alt="" className="w-14 h-14 object-cover rounded flex-shrink-0" />
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <input
+                      type="text"
+                      value={photo.comment}
+                      onChange={e => {
+                        const photos = [...(el.photos ?? [])]
+                        photos[i] = { ...photos[i], comment: e.target.value }
+                        update({ photos })
+                      }}
+                      placeholder="Add comment..."
+                      className="w-full px-1.5 py-1 text-[10px] bg-dark-surface border border-white/[0.06] rounded text-white/70 focus:outline-none focus:border-[#F47B20]/30"
+                    />
+                    <button
+                      onClick={() => {
+                        const photos = (el.photos ?? []).filter((_, j) => j !== i)
+                        update({ photos })
+                      }}
+                      className="text-[9px] text-red-400/60 hover:text-red-400"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={() => {
+                  const input = document.createElement('input')
+                  input.type = 'file'
+                  input.accept = 'image/*'
+                  input.multiple = true
+                  input.onchange = async (ev) => {
+                    const files = (ev.target as HTMLInputElement).files
+                    if (!files) return
+                    const newPhotos = [...(el.photos ?? [])]
+                    for (const file of Array.from(files)) {
+                      const reader = new FileReader()
+                      const dataUrl = await new Promise<string>((resolve) => {
+                        reader.onload = () => resolve(reader.result as string)
+                        reader.readAsDataURL(file)
+                      })
+                      newPhotos.push({ dataUrl, comment: '' })
+                    }
+                    update({ photos: newPhotos })
+                  }
+                  input.click()
+                }}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 border-2 border-dashed border-white/[0.08] rounded-lg text-white/40 hover:border-[#F47B20]/30 hover:text-[#F47B20]/60 transition-colors"
+              >
+                <Camera size={13} />
+                <span className="text-[10px]">Add Photos</span>
+              </button>
+              <p className="text-[8px] text-white/20">Drop photos or click to add. Add comments per photo for reports.</p>
+            </div>
+          </PropSection>
+        )}
+
         {/* Font Size */}
-        {el.type !== 'divider' && el.type !== 'image' && (
+        {el.type !== 'divider' && el.type !== 'image' && el.type !== 'photo' && (
           <PropSection label="Font Size">
             <Slider
               min={8}
