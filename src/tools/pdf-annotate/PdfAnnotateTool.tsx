@@ -4,7 +4,7 @@ import { Button } from '@/components/common/Button.tsx'
 import { Modal } from '@/components/common/Modal.tsx'
 import { ColorPicker } from '@/components/common/ColorPicker.tsx'
 import { useAppStore } from '@/stores/appStore.ts'
-import { loadPDFFile, renderPageToCanvas, generateThumbnail, removePDFFromCache, getPDFBytes, extractPositionedText, getAllPageDimensions } from '@/utils/pdf.ts'
+import { loadPDFFile, renderPageToCanvas, generateThumbnail, removePDFFromCache, getPDFBytes, extractPositionedText, getAllPageDimensions, validatePageRange } from '@/utils/pdf.ts'
 import Tesseract from 'tesseract.js'
 import { downloadBlob } from '@/utils/download.ts'
 import { saveSession, loadSession, clearSession, computeFileHash } from './storage.ts'
@@ -21,6 +21,7 @@ import {
   Superscript, Subscript, List, ListOrdered,
   Search, Crop, Tag, Printer, FileSpreadsheet, StickyNote as StickyNoteIcon,
   MessageCircle, Mail, FileText, ScanText, Layers, ImagePlus, Eye, EyeOff, Plus, Trash2,
+  Copy, BookOpen, Blend, Star,
 } from 'lucide-react'
 
 // ── Extracted modules ─────────────────────────────────
@@ -201,6 +202,30 @@ export default function PdfAnnotateTool() {
   const [textDropdownOpen, setTextDropdownOpen] = useState(false)
   const [activeText, setActiveText] = useState<ToolType>('text')
 
+  // Tool presets (save/load/apply/delete are defined later after fillColor/dashPattern state)
+  interface ToolPreset { id: string; name: string; toolType: ToolType; color: string; strokeWidth: number; opacity: number; fontSize: number; fillColor: string | null; dashPattern: 'solid' | 'dashed' | 'dotted' }
+  const [toolPresets, setToolPresets] = useState<ToolPreset[]>(() => {
+    try { return JSON.parse(localStorage.getItem('lwt-tool-presets') || '[]') } catch { return [] }
+  })
+  const [presetsOpen, setPresetsOpen] = useState(false)
+
+  // Bookmark navigation
+  const [bookmarks, setBookmarks] = useState<{ title: string; pageNum: number; children: { title: string; pageNum: number }[] }[]>([])
+  const [bookmarksOpen, setBookmarksOpen] = useState(false)
+
+  // Markups list
+  const [markupsListOpen, setMarkupsListOpen] = useState(false)
+
+  // Compare mode
+  const [compareOpen, setCompareOpen] = useState(false)
+
+  // Custom stamp library
+  const [stampLibraryOpen, setStampLibraryOpen] = useState(false)
+
+  // Watermark on export
+  const [exportWatermark, setExportWatermark] = useState('')
+  const [exportWatermarkOpacity, setExportWatermarkOpacity] = useState(15)
+
   // Zoom presets dropdown
   const [zoomDropdownOpen, setZoomDropdownOpen] = useState(false)
 
@@ -210,6 +235,21 @@ export default function PdfAnnotateTool() {
   const [cornerRadius, setCornerRadius] = useState(0)
   const [dashPattern, setDashPattern] = useState<'solid' | 'dashed' | 'dotted'>('solid')
   const [arrowStart, setArrowStart] = useState(false)
+
+  // Tool preset callbacks (after fillColor/dashPattern are declared)
+  const saveToolPreset = useCallback((name: string) => {
+    const preset: ToolPreset = { id: crypto.randomUUID(), name, toolType: activeTool, color, strokeWidth, opacity, fontSize, fillColor, dashPattern }
+    setToolPresets(prev => { const next = [...prev, preset]; localStorage.setItem('lwt-tool-presets', JSON.stringify(next)); return next })
+  }, [activeTool, color, strokeWidth, opacity, fontSize, fillColor, dashPattern])
+
+  const applyToolPreset = useCallback((preset: ToolPreset) => {
+    setActiveTool(preset.toolType); setColor(preset.color); setStrokeWidth(preset.strokeWidth)
+    setOpacity(preset.opacity); setFontSize(preset.fontSize); setFillColor(preset.fillColor); setDashPattern(preset.dashPattern)
+  }, [])
+
+  const deleteToolPreset = useCallback((id: string) => {
+    setToolPresets(prev => { const next = prev.filter(p => p.id !== id); localStorage.setItem('lwt-tool-presets', JSON.stringify(next)); return next })
+  }, [])
 
   // Eraser
   const [eraserRadius, setEraserRadius] = useState(15)
@@ -1153,6 +1193,41 @@ export default function PdfAnnotateTool() {
       }
       maxCanvasWidthRef.current = maxW
       setDimsReady(v => v + 1)
+
+      // Load PDF bookmarks/outline
+      try {
+        const pdfBytes = await pdf.file.arrayBuffer()
+        const doc = await import('pdfjs-dist').then(m => m.getDocument({ data: new Uint8Array(pdfBytes) }).promise)
+        const outline = await doc.getOutline()
+        if (outline && outline.length > 0) {
+          const bms: { title: string; pageNum: number; children: { title: string; pageNum: number }[] }[] = []
+          for (const item of outline) {
+            let pageNum = 1
+            if (item.dest) {
+              try {
+                const dest = typeof item.dest === 'string' ? await doc.getDestination(item.dest) : item.dest
+                if (dest && dest[0]) { const idx = await doc.getPageIndex(dest[0]); pageNum = idx + 1 }
+              } catch { /* skip unresolvable dest */ }
+            }
+            const children: { title: string; pageNum: number }[] = []
+            for (const child of item.items || []) {
+              let cpn = 1
+              if (child.dest) {
+                try {
+                  const cd = typeof child.dest === 'string' ? await doc.getDestination(child.dest) : child.dest
+                  if (cd && cd[0]) { const ci = await doc.getPageIndex(cd[0]); cpn = ci + 1 }
+                } catch { /* skip */ }
+              }
+              children.push({ title: child.title, pageNum: cpn })
+            }
+            bms.push({ title: item.title, pageNum, children })
+          }
+          setBookmarks(bms)
+        } else {
+          setBookmarks([])
+        }
+        doc.destroy()
+      } catch { setBookmarks([]) }
 
       // Compute file hash for session matching
       const hash = await computeFileHash(file)
@@ -2191,8 +2266,29 @@ export default function PdfAnnotateTool() {
 
   // ── Pointer handlers ─────────────────────────────────
 
+  // Track active pointer IDs for multi-touch detection
+  const activeTouchIdsRef = useRef(new Set<number>())
+
   const handlePointerDown = useCallback((e: React.PointerEvent, pageNum: number) => {
     if (e.button !== 0) return
+
+    // Touch/stylus optimization: track active touches
+    if (e.pointerType === 'touch') {
+      activeTouchIdsRef.current.add(e.pointerId)
+      // 2+ simultaneous touches = pan/zoom, not draw
+      if (activeTouchIdsRef.current.size >= 2) {
+        const el = scrollRef.current
+        if (el) {
+          panRef.current = { startX: e.clientX, startY: e.clientY, scrollLeft: el.scrollLeft, scrollTop: el.scrollTop }
+          setCanvasCursor('grabbing')
+        }
+        return
+      }
+    }
+
+    // Pen events go straight to drawing tools; filter palm rests (very low pressure)
+    if (e.pointerType === 'pen' && e.pressure < 0.01) return
+
     // Space-to-pan: start panning instead of tool action
     if (spaceHeldRef.current) {
       const el = scrollRef.current
@@ -3337,7 +3433,9 @@ export default function PdfAnnotateTool() {
     redrawPage(ap)
   }, [getPointForPage, activeTool, annotations, redrawPage, eraserRadius, eraserMode, zoom, straightLineMode, selectedAnnId, findAnnotationAt])
 
-  const handlePointerUp = useCallback(() => {
+  const handlePointerUp = useCallback((e?: React.PointerEvent) => {
+    // Clean up touch tracking
+    if (e?.pointerType === 'touch') activeTouchIdsRef.current.delete(e.pointerId)
     if (!isDrawingRef.current) return
     isDrawingRef.current = false
     canvasSnapshotRef.current = null
@@ -5948,6 +6046,30 @@ export default function PdfAnnotateTool() {
             })} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-white/70 hover:text-white hover:bg-white/[0.06]">
               <MessageCircle size={11} />
               <span>Add Comment</span>
+            </button>
+            <div className="h-px bg-white/[0.08] my-1" />
+            <button onClick={() => doAction(() => {
+              const rangeStr = prompt('Duplicate to pages (e.g. "2-5, 8, All"):')
+              if (!rangeStr) return
+              const total = pdfFileRef.current?.pageCount ?? 1
+              let pages: number[]
+              if (rangeStr.trim().toLowerCase() === 'all') {
+                pages = Array.from({ length: total }, (_, i) => i + 1).filter(p => p !== cmPageNum)
+              } else {
+                const { pages: parsed } = validatePageRange(rangeStr, total)
+                pages = parsed.filter(p => p !== cmPageNum)
+              }
+              if (pages.length === 0) return
+              const next = { ...annotations }
+              for (const targetPage of pages) {
+                const dup: Annotation = { ...structuredClone(cmAnn), id: genId() }
+                next[targetPage] = [...(next[targetPage] || []), dup]
+              }
+              setAnnotations(next); pushHistory(next)
+              addToast({ type: 'success', message: `Duplicated to ${pages.length} page${pages.length !== 1 ? 's' : ''}` })
+            })} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-white/70 hover:text-white hover:bg-white/[0.06]">
+              <Copy size={11} />
+              <span>Duplicate to Pages...</span>
             </button>
             <div className="h-px bg-white/[0.08] my-1" />
             <button onClick={() => doAction(copyStyle)} className="w-full text-left px-3 py-1.5 text-xs text-white/70 hover:text-white hover:bg-white/[0.06]">Copy Style</button>
