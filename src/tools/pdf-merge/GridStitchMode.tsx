@@ -804,7 +804,7 @@ export default function GridStitchMode() {
           return
         }
         pushUndo()
-        const adjustDy = cellCol < neighborCol ? result.dy : -result.dy
+        const adjustDy = cellCol < neighborCol ? -result.dy : result.dy
         setCells(prev => prev.map(c =>
           c.id === cellId ? { ...c, offsetY: c.offsetY + adjustDy } : c,
         ))
@@ -816,7 +816,7 @@ export default function GridStitchMode() {
           return
         }
         pushUndo()
-        const adjustDx = cellRow < neighborRow ? result.dx : -result.dx
+        const adjustDx = cellRow < neighborRow ? -result.dx : result.dx
         setCells(prev => prev.map(c =>
           c.id === cellId ? { ...c, offsetX: c.offsetX + adjustDx } : c,
         ))
