@@ -7,7 +7,7 @@ import { downloadBlob } from '@/utils/download.ts'
 import { formatFileSize, readFileAsDataURL, readFileAsUint8Array } from '@/utils/fileReader.ts'
 import { loadImage } from '@/utils/imageProcessing.ts'
 import type { PDFFile } from '@/types'
-import { PDFDocument, rgb, degrees } from 'pdf-lib'
+import { PDFDocument, rgb, degrees, StandardFonts } from 'pdf-lib'
 import { Download, RotateCcw, Type, Image as ImageIcon, Move, Upload, X } from 'lucide-react'
 
 /** Typed wrapper around the File System Access API — eliminates `any` casts */
@@ -338,13 +338,16 @@ export default function WatermarkTool() {
         const g = parseInt(color.slice(3, 5), 16) / 255
         const b = parseInt(color.slice(5, 7), 16) / 255
 
+        // Embed font so we can measure text widths accurately (fixes preview↔export mismatch)
+        const font = await doc.embedFont(StandardFonts.Helvetica)
+        const measureFn = (t: string): number => font.widthOfTextAtSize(t, fontSize)
+
         for (const page of pages) {
           const { width, height } = page.getSize()
 
           if (position === 'tile') {
             const margin = fontSize * 2
             const maxLineWidth = width - margin * 2
-            const measureFn = (t: string) => t.length * fontSize * 0.5
             const lines = wrapTextToWidth(text, maxLineWidth, measureFn)
             const lineHeight = fontSize * 1.3
             const textBlockH = lines.length * lineHeight
@@ -368,6 +371,7 @@ export default function WatermarkTool() {
                     x: tx - lineW / 2,
                     y: ty + (startY + i * lineHeight),
                     size: fontSize,
+                    font,
                     color: rgb(r, g, b),
                     opacity: opacity / 100,
                     rotate: degrees(rotation),
@@ -379,7 +383,6 @@ export default function WatermarkTool() {
             const canvasPos = getWatermarkPos(width, height)
             const margin = fontSize * 2
             const maxWidth = width - margin * 2
-            const measureFn = (t: string) => t.length * fontSize * 0.5
             const lines = wrapTextToWidth(text, maxWidth, measureFn)
             const lineHeight = fontSize * 1.3
             const totalHeight = lines.length * lineHeight
@@ -393,6 +396,7 @@ export default function WatermarkTool() {
                 x: canvasPos.x - lineWidth / 2,
                 y: startY - i * lineHeight,
                 size: fontSize,
+                font,
                 color: rgb(r, g, b),
                 opacity: opacity / 100,
                 rotate: degrees(rotation),
