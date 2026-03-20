@@ -9,6 +9,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 const CATEGORIES: { key: string; label: string }[] = [
   { key: 'basic', label: 'Basic' },
   { key: 'flowchart', label: 'Flowchart' },
+  { key: 'containers', label: 'Containers' },
   { key: 'misc', label: 'Miscellaneous' },
 ]
 
@@ -109,12 +110,19 @@ function ShapeTile({
   const offsetX = (previewW - def.defaultWidth * scale) / 2
   const offsetY = (previewH - def.defaultHeight * scale) / 2
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData('application/flowchart-shape', def.type)
+    e.dataTransfer.effectAllowed = 'copy'
+  }
+
   return (
     <button
       title={def.label}
       onClick={onClick}
+      draggable
+      onDragStart={handleDragStart}
       className={`
-        flex flex-col items-center gap-1 py-1.5 px-1 rounded-lg transition-colors
+        flex flex-col items-center gap-1 py-1.5 px-1 rounded-lg transition-colors cursor-grab active:cursor-grabbing
         ${active
           ? 'bg-[#F47B20]/15 ring-1 ring-[#F47B20]/30'
           : 'hover:bg-white/[0.04]'

@@ -1,11 +1,14 @@
-import type { DiagramNode, DiagramEdge, DiagramState } from './types.ts'
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+
+import type { DiagramNode, DiagramEdge, DiagramState, PdfPageSize } from './types.ts'
+import { PDF_PAGE_SIZES } from './types.ts'
 import { getShapeDef } from './shapes.ts'
-import { edgePath, edgeMidpoint } from './connectors.ts'
+import { edgePath, edgeLabelPoint, edgeMidpoint, getEdgePoints } from './connectors.ts'
 import { downloadBlob, downloadText } from '@/utils/download.ts'
 
 // ── Bounds calculation ──────────────────────────────────────
 
-function calcBounds(nodes: DiagramNode[]) {
+function calcBounds(nodes: DiagramNode[]): { minX: number; minY: number; maxX: number; maxY: number } {
   if (nodes.length === 0) return { minX: 0, minY: 0, maxX: 800, maxY: 600 }
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
   for (const n of nodes) {
@@ -81,6 +84,14 @@ function renderToCanvas(
     ctx.save()
     ctx.translate(node.x, node.y)
 
+    // Apply rotation around node center (Agent A)
+    const rotation = node.rotation ?? 0
+    if (rotation !== 0) {
+      ctx.translate(node.width / 2, node.height / 2)
+      ctx.rotate((rotation * Math.PI) / 180)
+      ctx.translate(-node.width / 2, -node.height / 2)
+    }
+
     const def = getShapeDef(node.type)
     const path = def.svgPath(node.width, node.height)
     const p = new Path2D(path)
@@ -91,11 +102,20 @@ function renderToCanvas(
     ctx.lineWidth = node.style.strokeWidth
     ctx.stroke(p)
 
-    // Text
+    // Text with rich text support (Agent A)
+    const fontWeight = node.style.fontWeight === 'bold' ? 'bold' : ''
+    const fontStyleStr = node.style.fontStyle === 'italic' ? 'italic' : ''
+    const textAlign = node.style.textAlign ?? 'center'
+
     ctx.fillStyle = node.style.fontColor
-    ctx.font = `${node.style.fontSize}px sans-serif`
-    ctx.textAlign = 'center'
+    ctx.font = `${fontStyleStr} ${fontWeight} ${node.style.fontSize}px sans-serif`.trim()
+    ctx.textAlign = textAlign
     ctx.textBaseline = 'middle'
+
+    // Compute text x based on alignment
+    const textX = textAlign === 'left' ? 8
+      : textAlign === 'right' ? node.width - 8
+      : node.width / 2
 
     // Simple text wrapping
     const maxW = node.width - 16
@@ -116,7 +136,7 @@ function renderToCanvas(
     const lineH = node.style.fontSize * 1.3
     const startY = node.height / 2 - ((lines.length - 1) * lineH) / 2
     for (let i = 0; i < lines.length; i++) {
-      ctx.fillText(lines[i], node.width / 2, startY + i * lineH)
+      ctx.fillText(lines[i], textX, startY + i * lineH)
     }
 
     ctx.restore()
@@ -184,11 +204,11 @@ export async function copyPNGToClipboard(
 
 // ── Export as SVG ────────────────────────────────────────────
 
-export function exportSVG(
+export function exportSVGString(
   nodes: DiagramNode[],
   edges: DiagramEdge[],
-  filename: string = 'flowchart.svg',
-): void {
+  background: string = '#0a0a14',
+): string {
   const nodeMap = new Map(nodes.map(n => [n.id, n]))
   const { minX, minY, maxX, maxY } = calcBounds(nodes)
   const w = maxX - minX
@@ -196,7 +216,7 @@ export function exportSVG(
 
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${minX} ${minY} ${w} ${h}">`,
-    `<rect x="${minX}" y="${minY}" width="${w}" height="${h}" fill="#0a0a14"/>`,
+    `<rect x="${minX}" y="${minY}" width="${w}" height="${h}" fill="${background}"/>`,
     // Arrow marker
     `<defs><marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">`,
     `<polygon points="0 0, 10 3.5, 0 7" fill="rgba(244,123,32,0.5)"/></marker></defs>`,
@@ -223,16 +243,301 @@ export function exportSVG(
   for (const node of sortedNodes) {
     const def = getShapeDef(node.type)
     const path = def.svgPath(node.width, node.height)
-    parts.push(`<g transform="translate(${node.x},${node.y})">`)
+    const rotation = node.rotation ?? 0
+    const rotateAttr = rotation !== 0
+      ? ` rotate(${rotation}, ${node.width / 2}, ${node.height / 2})`
+      : ''
+    parts.push(`<g transform="translate(${node.x},${node.y})${rotateAttr}">`)
     parts.push(`<path d="${path}" fill="${node.style.fill}" stroke="${node.style.stroke}" stroke-width="${node.style.strokeWidth}"/>`)
-    parts.push(`<text x="${node.width / 2}" y="${node.height / 2}" text-anchor="middle" dominant-baseline="central" fill="${node.style.fontColor}" font-size="${node.style.fontSize}" font-family="sans-serif">${escapeXml(node.label)}</text>`)
+    const fontWeightAttr = node.style.fontWeight === 'bold' ? ' font-weight="bold"' : ''
+    const fontStyleAttr = node.style.fontStyle === 'italic' ? ' font-style="italic"' : ''
+    const textAnchorMap = { left: 'start', center: 'middle', right: 'end' } as const
+    const textAlign = node.style.textAlign ?? 'center'
+    const textAnchor = textAnchorMap[textAlign]
+    const textX = textAlign === 'left' ? 8 : textAlign === 'right' ? node.width - 8 : node.width / 2
+    parts.push(`<text x="${textX}" y="${node.height / 2}" text-anchor="${textAnchor}" dominant-baseline="central" fill="${node.style.fontColor}" font-size="${node.style.fontSize}" font-family="sans-serif"${fontWeightAttr}${fontStyleAttr}>${escapeXml(node.label)}</text>`)
     parts.push(`</g>`)
   }
 
   parts.push(`</svg>`)
+  return parts.join('\n')
+}
 
-  const blob = new Blob([parts.join('\n')], { type: 'image/svg+xml' })
+export function exportSVG(
+  nodes: DiagramNode[],
+  edges: DiagramEdge[],
+  filename: string = 'flowchart.svg',
+): void {
+  const svgStr = exportSVGString(nodes, edges)
+  const blob = new Blob([svgStr], { type: 'image/svg+xml' })
   downloadBlob(blob, filename)
+}
+
+// ── Export as PDF ────────────────────────────────────────────
+
+/** Parse a CSS rgba/hex color to pdf-lib rgb() */
+function parseCssColor(css: string): { r: number; g: number; b: number; a: number } {
+  // Handle rgba(r,g,b,a)
+  const rgbaMatch = css.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+))?\s*\)/)
+  if (rgbaMatch) {
+    return {
+      r: parseInt(rgbaMatch[1], 10) / 255,
+      g: parseInt(rgbaMatch[2], 10) / 255,
+      b: parseInt(rgbaMatch[3], 10) / 255,
+      a: rgbaMatch[4] !== undefined ? parseFloat(rgbaMatch[4]) : 1,
+    }
+  }
+  // Handle hex
+  const hexMatch = css.match(/^#([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})/)
+  if (hexMatch) {
+    return {
+      r: parseInt(hexMatch[1], 16) / 255,
+      g: parseInt(hexMatch[2], 16) / 255,
+      b: parseInt(hexMatch[3], 16) / 255,
+      a: 1,
+    }
+  }
+  return { r: 0, g: 0, b: 0, a: 1 }
+}
+
+/** Word-wrap text to fit within maxWidth using pdf-lib font metrics */
+function wrapText(
+  text: string,
+  fontSize: number,
+  maxWidth: number,
+  font: { widthOfTextAtSize: (text: string, size: number) => number },
+): string[] {
+  const words = text.split(' ')
+  const lines: string[] = []
+  let currentLine = ''
+
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word
+    const testWidth = font.widthOfTextAtSize(testLine, fontSize)
+    if (testWidth > maxWidth && currentLine) {
+      lines.push(currentLine)
+      currentLine = word
+    } else {
+      currentLine = testLine
+    }
+  }
+  if (currentLine) lines.push(currentLine)
+  return lines
+}
+
+export async function exportPDF(
+  nodes: DiagramNode[],
+  edges: DiagramEdge[],
+  pageSize: PdfPageSize = 'auto',
+  filename: string = 'flowchart.pdf',
+): Promise<void> {
+  const nodeMap = new Map(nodes.map(n => [n.id, n]))
+  const { minX, minY, maxX, maxY } = calcBounds(nodes)
+  const diagramW = maxX - minX
+  const diagramH = maxY - minY
+
+  // Determine page dimensions
+  let pageW: number
+  let pageH: number
+  let scale: number
+
+  if (pageSize === 'auto') {
+    // Fit content + padding
+    const padding = 40
+    pageW = diagramW + padding * 2
+    pageH = diagramH + padding * 2
+    scale = 1
+  } else {
+    const dims = PDF_PAGE_SIZES[pageSize]
+    // Auto-detect landscape vs portrait
+    const isLandscape = diagramW > diagramH
+    pageW = isLandscape ? Math.max(dims.width, dims.height) : Math.min(dims.width, dims.height)
+    pageH = isLandscape ? Math.min(dims.width, dims.height) : Math.max(dims.width, dims.height)
+    // Scale to fit
+    const padding = 40
+    scale = Math.min((pageW - padding * 2) / diagramW, (pageH - padding * 2) / diagramH, 1)
+  }
+
+  const pdfDoc = await PDFDocument.create()
+  const page = pdfDoc.addPage([pageW, pageH])
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+
+  // Coordinate transform: diagram coords → PDF coords
+  // PDF origin is bottom-left; diagram origin is top-left
+  const offsetX = (pageW - diagramW * scale) / 2 - minX * scale
+  const offsetY = (pageH - diagramH * scale) / 2 + maxY * scale
+
+  const toPdfX = (x: number): number => x * scale + offsetX
+  const toPdfY = (y: number): number => offsetY - y * scale
+
+  // White background
+  page.drawRectangle({
+    x: 0, y: 0, width: pageW, height: pageH,
+    color: rgb(1, 1, 1),
+  })
+
+  // Draw edges
+  for (const edge of edges) {
+    const points = getEdgePoints(edge, nodeMap)
+    if (points.length < 2) continue
+
+    const strokeColor = parseCssColor(edge.style.stroke)
+    const lineWidth = edge.style.strokeWidth * scale
+
+    // Draw line segments
+    for (let i = 0; i < points.length - 1; i++) {
+      page.drawLine({
+        start: { x: toPdfX(points[i].x), y: toPdfY(points[i].y) },
+        end: { x: toPdfX(points[i + 1].x), y: toPdfY(points[i + 1].y) },
+        thickness: lineWidth,
+        color: rgb(strokeColor.r, strokeColor.g, strokeColor.b),
+        opacity: strokeColor.a,
+        dashArray: edge.style.dashArray
+          ? edge.style.dashArray.split(' ').map(v => parseFloat(v) * scale)
+          : undefined,
+      })
+    }
+
+    // Draw arrowhead
+    if (edge.style.markerEnd && points.length >= 2) {
+      const last = points[points.length - 1]
+      const prev = points[points.length - 2]
+      const angle = Math.atan2(last.y - prev.y, last.x - prev.x)
+      const arrowLen = 10 * scale
+      const arrowWidth = 4 * scale
+
+      const tipX = toPdfX(last.x)
+      const tipY = toPdfY(last.y)
+      const left = {
+        x: tipX - arrowLen * Math.cos(angle - Math.PI / 2) * 0 - arrowLen * Math.cos(angle),
+        y: tipY + arrowLen * Math.sin(angle) + arrowWidth * Math.cos(angle),
+      }
+      const right = {
+        x: tipX - arrowLen * Math.cos(angle) + arrowWidth * Math.sin(angle),
+        y: tipY + arrowLen * Math.sin(angle) - arrowWidth * Math.cos(angle),
+      }
+      // Simplified arrow: draw two lines from tip
+      page.drawLine({
+        start: { x: tipX, y: tipY },
+        end: { x: left.x, y: left.y },
+        thickness: lineWidth,
+        color: rgb(strokeColor.r, strokeColor.g, strokeColor.b),
+        opacity: strokeColor.a,
+      })
+      page.drawLine({
+        start: { x: tipX, y: tipY },
+        end: { x: right.x, y: right.y },
+        thickness: lineWidth,
+        color: rgb(strokeColor.r, strokeColor.g, strokeColor.b),
+        opacity: strokeColor.a,
+      })
+    }
+
+    // Edge label
+    if (edge.label) {
+      const mid = edgeMidpoint(edge, nodeMap)
+      if (mid) {
+        const fontSize = 9 * scale
+        const textWidth = font.widthOfTextAtSize(edge.label, fontSize)
+        page.drawText(edge.label, {
+          x: toPdfX(mid.x) - textWidth / 2,
+          y: toPdfY(mid.y) - fontSize / 3,
+          size: fontSize,
+          font,
+          color: rgb(strokeColor.r, strokeColor.g, strokeColor.b),
+          opacity: Math.min(1, strokeColor.a + 0.3),
+        })
+      }
+    }
+  }
+
+  // Draw nodes (sorted by z-index)
+  const sortedNodes = [...nodes].sort((a, b) => a.zIndex - b.zIndex)
+  for (const node of sortedNodes) {
+    const fillColor = parseCssColor(node.style.fill)
+    const strokeColor = parseCssColor(node.style.stroke)
+    const fontColor = parseCssColor(node.style.fontColor)
+
+    const nx = toPdfX(node.x)
+    const ny = toPdfY(node.y + node.height) // PDF y is bottom-left
+    const nw = node.width * scale
+    const nh = node.height * scale
+
+    // For most shapes, draw a rectangle as approximation
+    // Special handling for specific shapes
+    if (node.type === 'diamond') {
+      const cx = nx + nw / 2
+      const cy = ny + nh / 2
+      // Draw diamond as 4 lines
+      const top = { x: cx, y: ny + nh }
+      const right = { x: nx + nw, y: cy }
+      const bottom = { x: cx, y: ny }
+      const left = { x: nx, y: cy }
+      const diamondPairs: [{ x: number; y: number }, { x: number; y: number }][] = [
+        [top, right], [right, bottom], [bottom, left], [left, top],
+      ]
+      for (const [start, end] of diamondPairs) {
+        page.drawLine({
+          start, end,
+          thickness: node.style.strokeWidth * scale,
+          color: rgb(strokeColor.r, strokeColor.g, strokeColor.b),
+          opacity: strokeColor.a,
+        })
+      }
+    } else if (node.type === 'circle') {
+      const rx = nw / 2
+      const ry = nh / 2
+      page.drawEllipse({
+        x: nx + rx,
+        y: ny + ry,
+        xScale: rx,
+        yScale: ry,
+        color: rgb(fillColor.r, fillColor.g, fillColor.b),
+        opacity: fillColor.a,
+        borderColor: rgb(strokeColor.r, strokeColor.g, strokeColor.b),
+        borderWidth: node.style.strokeWidth * scale,
+        borderOpacity: strokeColor.a,
+      })
+    } else {
+      // Rectangle-based shapes (rectangle, rounded-rectangle, pill, parallelogram, etc.)
+      page.drawRectangle({
+        x: nx,
+        y: ny,
+        width: nw,
+        height: nh,
+        color: rgb(fillColor.r, fillColor.g, fillColor.b),
+        opacity: fillColor.a,
+        borderColor: rgb(strokeColor.r, strokeColor.g, strokeColor.b),
+        borderWidth: node.style.strokeWidth * scale,
+        borderOpacity: strokeColor.a,
+      })
+    }
+
+    // Draw text label
+    if (node.label) {
+      const fontSize = node.style.fontSize * scale
+      const maxTextW = nw - 16 * scale
+      const lines = wrapText(node.label, fontSize, maxTextW, font)
+      const lineH = fontSize * 1.3
+      const totalTextH = lines.length * lineH
+      const textStartY = ny + nh / 2 + totalTextH / 2 - lineH / 2
+
+      for (let i = 0; i < lines.length; i++) {
+        const textWidth = font.widthOfTextAtSize(lines[i], fontSize)
+        page.drawText(lines[i], {
+          x: nx + nw / 2 - textWidth / 2,
+          y: textStartY - i * lineH - fontSize * 0.3,
+          size: fontSize,
+          font,
+          color: rgb(fontColor.r, fontColor.g, fontColor.b),
+          opacity: fontColor.a,
+        })
+      }
+    }
+  }
+
+  const pdfBytes = await pdfDoc.save()
+  downloadBlob(new Uint8Array(pdfBytes), filename, 'application/pdf')
 }
 
 // ── Export as JSON (save/load) ───────────────────────────────
@@ -270,7 +575,14 @@ export function importJSON(json: string): DiagramState {
     }
   }
 
-  return obj as unknown as DiagramState
+  // Ensure new fields have defaults for backward compatibility
+  const nodes = (obj.nodes as Record<string, unknown>[]).map(n => ({
+    ...n,
+    groupId: ('groupId' in n) ? n.groupId : null,
+    layerId: ('layerId' in n && typeof n.layerId === 'string') ? n.layerId : 'default',
+  }))
+
+  return { nodes, edges: obj.edges } as unknown as DiagramState
 }
 
 // ── Utility ─────────────────────────────────────────────────

@@ -180,6 +180,9 @@ function parsedToDiagram(
       height: def.defaultHeight,
       style,
       zIndex: i,
+      rotation: 0,
+      groupId: null,
+      layerId: 'default',
     }
   })
 
@@ -214,6 +217,7 @@ function parsedToDiagram(
         markerEnd: true,
       },
       waypoints: [],
+      labelPosition: 0.5,
     }
   })
 
@@ -230,21 +234,135 @@ export function importFromText(text: string): DiagramState {
 
 // ── Templates ───────────────────────────────────────────────
 
-export const TEMPLATES: { name: string; text: string }[] = [
+export interface FlowchartTemplate {
+  name: string
+  text: string
+  category: 'general' | 'construction'
+}
+
+export const TEMPLATES: FlowchartTemplate[] = [
+  // ── General templates ──────────────────────────────
   {
     name: 'Simple Process',
+    category: 'general',
     text: 'START Begin\nStep 1\nStep 2\nStep 3\nEND Done',
   },
   {
     name: 'Decision Flow',
+    category: 'general',
     text: 'START Receive Request\nValidate Input\nIF Input Valid?\nTHEN Process Request\nOR Return Error\nSend Response\nEND Complete',
   },
   {
     name: 'Approval Process',
+    category: 'general',
     text: 'START Submit Application\nReview Documents\nIF Documents Complete?\nTHEN Run Background Check\nOR Request Missing Docs\nIF Background Clear?\nTHEN Approve Application\nOR Deny Application\nNotify Applicant\nEND Process Complete',
   },
   {
     name: 'Support Ticket',
+    category: 'general',
     text: 'START Customer Contacts Support\nLog Ticket\nIF Urgent Issue?\nTHEN Escalate to Senior\nOR Assign to Queue\nInvestigate Issue\nIF Resolved?\nTHEN Close Ticket\nOR Escalate Further\nSend Follow-up\nEND Ticket Closed',
+  },
+
+  // ── Construction templates ────────────────────────
+  {
+    name: 'RFI Workflow',
+    category: 'construction',
+    text: [
+      'START RFI Initiated',
+      'Contractor Submits RFI',
+      'GC Reviews RFI',
+      'IF Complete & Clear?',
+      'THEN Forward to Architect',
+      'OR Return to Contractor',
+      'Architect Reviews',
+      'IF Engineering Input Needed?',
+      'THEN Engineer Provides Input',
+      'OR Architect Responds Directly',
+      'Issue RFI Response',
+      'Contractor Receives Response',
+      'IF Satisfactory?',
+      'THEN Close RFI',
+      'OR Resubmit RFI',
+      'END RFI Closed',
+    ].join('\n'),
+  },
+  {
+    name: 'Submittal Process',
+    category: 'construction',
+    text: [
+      'START Submittal Required',
+      'Subcontractor Prepares Submittal',
+      'Sub Sends to GC',
+      'GC Reviews for Completeness',
+      'IF Complete?',
+      'THEN Forward to Architect',
+      'OR Return to Sub for Revision',
+      'Architect Reviews Submittal',
+      'IF Approved?',
+      'THEN Mark Approved',
+      'OR Revise & Resubmit',
+      'Distribute Approved Submittal',
+      'END Submittal Complete',
+    ].join('\n'),
+  },
+  {
+    name: 'Building Inspection',
+    category: 'construction',
+    text: [
+      'START Inspection Required',
+      'Foundation Inspection',
+      'IF Foundation Passes?',
+      'THEN Framing Inspection',
+      'OR Correct Deficiencies',
+      'Rough Plumbing Inspection',
+      'Rough Electrical Inspection',
+      'Insulation Inspection',
+      'Drywall Inspection',
+      'Final Mechanical Inspection',
+      'IF All Systems Pass?',
+      'THEN Certificate of Occupancy',
+      'OR Reinspection Required',
+      'END Inspection Complete',
+    ].join('\n'),
+  },
+  {
+    name: 'Safety Procedure',
+    category: 'construction',
+    text: [
+      'START Hazard Identified',
+      'Conduct Risk Assessment',
+      'IF High Risk?',
+      'THEN Implement Engineering Controls',
+      'OR Implement Admin Controls',
+      'Select Required PPE',
+      'Train Workers on Procedure',
+      'IF Workers Certified?',
+      'THEN Authorize Work to Begin',
+      'OR Schedule Training',
+      'Monitor & Inspect Regularly',
+      'IF Incident Occurs?',
+      'THEN Stop Work & Investigate',
+      'OR Continue Monitoring',
+      'END Procedure Complete',
+    ].join('\n'),
+  },
+  {
+    name: 'Permit Acquisition',
+    category: 'construction',
+    text: [
+      'START Permit Required',
+      'Prepare Application Package',
+      'Submit to Permitting Authority',
+      'Authority Reviews Application',
+      'IF Approved?',
+      'THEN Receive Permit',
+      'OR Address Review Comments',
+      'IF Modifications Needed?',
+      'THEN Revise Plans',
+      'OR Resubmit Application',
+      'Post Permit on Site',
+      'Proceed with Permitted Work',
+      'END Permit Active',
+    ].join('\n'),
   },
 ]

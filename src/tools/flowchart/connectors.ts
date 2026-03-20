@@ -249,6 +249,57 @@ export function edgeMidpoint(
   }
 }
 
+/**
+ * Returns a point along the edge path at a given position (0-1).
+ * 0 = start, 1 = end, 0.5 = midpoint. Falls back to edgeMidpoint for unsupported cases.
+ */
+export function edgeLabelPoint(
+  edge: DiagramEdge,
+  nodeMap: Map<string, DiagramNode>,
+): Point | null {
+  const source = nodeMap.get(edge.sourceId)
+  const target = nodeMap.get(edge.targetId)
+  if (!source || !target) return null
+
+  const t = Math.max(0.05, Math.min(0.95, edge.labelPosition ?? 0.5))
+  const from = getPortPosition(source, edge.sourcePort)
+  const to = getPortPosition(target, edge.targetPort)
+
+  // Collect all points along the edge path
+  const points = getEdgePoints(edge, nodeMap)
+  if (points.length < 2) return edgeMidpoint(edge, nodeMap)
+
+  // Compute total path length
+  const segLengths: number[] = []
+  let totalLen = 0
+  for (let i = 0; i < points.length - 1; i++) {
+    const len = Math.hypot(points[i + 1].x - points[i].x, points[i + 1].y - points[i].y)
+    segLengths.push(len)
+    totalLen += len
+  }
+
+  if (totalLen === 0) {
+    return { x: from.x, y: from.y }
+  }
+
+  // Walk along the path to the target distance
+  const targetDist = t * totalLen
+  let accumulated = 0
+  for (let i = 0; i < segLengths.length; i++) {
+    if (accumulated + segLengths[i] >= targetDist) {
+      const remaining = targetDist - accumulated
+      const segT = segLengths[i] > 0 ? remaining / segLengths[i] : 0
+      return {
+        x: points[i].x + (points[i + 1].x - points[i].x) * segT,
+        y: points[i].y + (points[i + 1].y - points[i].y) * segT,
+      }
+    }
+    accumulated += segLengths[i]
+  }
+
+  return { x: to.x, y: to.y }
+}
+
 // ── Get all segments of an edge path ────────────────────────
 
 /**

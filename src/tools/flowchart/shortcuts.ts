@@ -7,6 +7,7 @@ import type { FlowchartStore } from './flowchartStore.ts'
 export function attachShortcuts(
   store: FlowchartStore,
   onExport: () => void,
+  onFindReplace?: () => void,
 ): () => void {
   const handler = (e: KeyboardEvent) => {
     const isMod = e.metaKey || e.ctrlKey
@@ -48,6 +49,20 @@ export function attachShortcuts(
       return
     }
 
+    // ── Copy Style: Ctrl/Cmd+Shift+C (Agent A) ─
+    if (isMod && e.shiftKey && e.key === 'C') {
+      e.preventDefault()
+      store.copyStyle()
+      return
+    }
+
+    // ── Paste Style: Ctrl/Cmd+Shift+V (Agent A) ─
+    if (isMod && e.shiftKey && e.key === 'V') {
+      e.preventDefault()
+      store.pasteStyle()
+      return
+    }
+
     // ── Copy: Ctrl/Cmd+C ──────────────────────
     if (isMod && e.key === 'c') {
       e.preventDefault()
@@ -77,10 +92,38 @@ export function attachShortcuts(
       return
     }
 
+    // ── Rotate: Ctrl/Cmd+R (Agent A) ────────────
+    if (isMod && e.key === 'r') {
+      e.preventDefault()
+      store.rotateSelected(90)
+      return
+    }
+
     // ── Export: Ctrl/Cmd+E ────────────────────
     if (isMod && e.key === 'e') {
       e.preventDefault()
       onExport()
+      return
+    }
+
+    // ── Find: Ctrl/Cmd+F (Agent B) ────────────
+    if (isMod && e.key === 'f') {
+      e.preventDefault()
+      onFindReplace?.()
+      return
+    }
+
+    // ── Group: Ctrl/Cmd+G (Agent C) ──────────
+    if (isMod && !e.shiftKey && e.key === 'g') {
+      e.preventDefault()
+      store.groupSelected()
+      return
+    }
+
+    // ── Ungroup: Ctrl/Cmd+Shift+U (Agent C) ──
+    if (isMod && e.shiftKey && (e.key === 'u' || e.key === 'U')) {
+      e.preventDefault()
+      store.ungroupSelected()
       return
     }
 
@@ -107,6 +150,21 @@ export function attachShortcuts(
     }
     if (!isMod && (e.key === 'c' || e.key === 'C')) {
       store.setToolMode('connect')
+      return
+    }
+
+    // ── Ctrl+Arrow: create connected node (Agent B) ──
+    if (isMod && store.selection.nodeIds.size === 1 &&
+        (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      e.preventDefault()
+      const sourceId = [...store.selection.nodeIds][0]
+      const directionMap: Record<string, 'up' | 'down' | 'left' | 'right'> = {
+        ArrowUp: 'up',
+        ArrowDown: 'down',
+        ArrowLeft: 'left',
+        ArrowRight: 'right',
+      }
+      store.createConnectedNode(sourceId, directionMap[e.key])
       return
     }
 

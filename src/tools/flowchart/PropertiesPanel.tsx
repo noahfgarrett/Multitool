@@ -6,7 +6,10 @@ import { Slider } from '@/components/common/Slider.tsx'
 import {
   ArrowRight, Minus, MoreHorizontal,
   MoveUp, MoveDown,
+  Bold, Italic,
+  AlignLeft, AlignCenter, AlignRight,
 } from 'lucide-react'
+import type { FontWeight, FontStyle, TextAlign } from './types.ts'
 
 // ── Component ───────────────────────────────────────────────
 
@@ -151,6 +154,75 @@ function NodeProperties({
             style: { ...node.style, fontColor: color },
           })}
         />
+      </PropSection>
+
+      {/* Bold / Italic */}
+      <PropSection label="Text Style">
+        <div className="flex gap-1">
+          <button
+            onClick={() => {
+              const next: FontWeight = node.style.fontWeight === 'bold' ? 'normal' : 'bold'
+              updateNode(node.id, { style: { ...node.style, fontWeight: next } })
+            }}
+            title="Bold"
+            className={`
+              flex items-center justify-center w-8 h-7 rounded transition-colors
+              ${node.style.fontWeight === 'bold'
+                ? 'bg-[#F47B20]/15 text-[#F47B20]'
+                : 'text-white/40 bg-white/[0.04] hover:bg-white/[0.08]'
+              }
+            `}
+          >
+            <Bold size={12} />
+          </button>
+          <button
+            onClick={() => {
+              const next: FontStyle = node.style.fontStyle === 'italic' ? 'normal' : 'italic'
+              updateNode(node.id, { style: { ...node.style, fontStyle: next } })
+            }}
+            title="Italic"
+            className={`
+              flex items-center justify-center w-8 h-7 rounded transition-colors
+              ${node.style.fontStyle === 'italic'
+                ? 'bg-[#F47B20]/15 text-[#F47B20]'
+                : 'text-white/40 bg-white/[0.04] hover:bg-white/[0.08]'
+              }
+            `}
+          >
+            <Italic size={12} />
+          </button>
+        </div>
+      </PropSection>
+
+      {/* Text Alignment */}
+      <PropSection label="Text Align">
+        <div className="flex gap-1">
+          {([
+            { value: 'left' as TextAlign, icon: AlignLeft, label: 'Left' },
+            { value: 'center' as TextAlign, icon: AlignCenter, label: 'Center' },
+            { value: 'right' as TextAlign, icon: AlignRight, label: 'Right' },
+          ]).map(opt => {
+            const isActive = node.style.textAlign === opt.value
+            return (
+              <button
+                key={opt.value}
+                onClick={() => updateNode(node.id, {
+                  style: { ...node.style, textAlign: opt.value },
+                })}
+                title={opt.label}
+                className={`
+                  flex items-center justify-center w-8 h-7 rounded transition-colors
+                  ${isActive
+                    ? 'bg-[#F47B20]/15 text-[#F47B20]'
+                    : 'text-white/40 bg-white/[0.04] hover:bg-white/[0.08]'
+                  }
+                `}
+              >
+                <opt.icon size={12} />
+              </button>
+            )
+          })}
+        </div>
       </PropSection>
 
       {/* Size */}

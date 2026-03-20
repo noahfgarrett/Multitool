@@ -1,9 +1,10 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from 'react'
 import type { FlowchartStore } from './flowchartStore.ts'
-import type { Point, DiagramNode, DiagramEdge, PortPosition } from './types.ts'
+import type { Point, DiagramNode, DiagramEdge, PortPosition, ShapeType } from './types.ts'
 import { emptySelection, MIN_ZOOM, MAX_ZOOM } from './types.ts'
-import { getShapeDef, getPortPosition } from './shapes.ts'
-import { edgePath, edgeMidpoint, hitTestEdge, autoDetectPorts, findClosestSegment } from './connectors.ts'
+import { getShapeDef, getPortPosition, SHAPE_DEFS } from './shapes.ts'
+import { edgePath, edgeLabelPoint, edgeMidpoint, hitTestEdge, autoDetectPorts, findClosestSegment } from './connectors.ts'
+import { routeOrthogonalPath, hasObstaclesInPath } from './routing.ts'
 
 // ── Constants ───────────────────────────────────────────────
 
@@ -13,8 +14,12 @@ const WAYPOINT_HANDLE_SIZE = 5
 const SELECTION_COLOR = '#3B82F6'
 const PORT_COLOR = '#3B82F6'
 const GUIDE_COLOR = 'rgba(59,130,246,0.5)'
-const GRID_DOT_COLOR = 'rgba(255,255,255,0.06)'
+const DEFAULT_GRID_DOT_COLOR = 'rgba(255,255,255,0.06)'
 const ALIGN_THRESHOLD = 6 // px in diagram space for snap + guide display
+const AUTOCONNECT_RADIUS = 10
+const AUTOCONNECT_OFFSET = 16
+const HOVER_DELAY_MS = 300
+const SPACING_THRESHOLD = 4
 
 // ── Interaction state (not in store — transient) ────────────
 
@@ -49,6 +54,15 @@ interface AlignGuide {
   pos: number
 }
 
+interface SpacingGuide {
+  axis: 'h' | 'v'
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  label: string
+}
+
 // ── Component ───────────────────────────────────────────────
 
 export function Canvas({ store }: { store: FlowchartStore }) {
@@ -76,6 +90,13 @@ export function Canvas({ store }: { store: FlowchartStore }) {
   // ── Alignment guides ──────────────────────────────────
   const [guides, setGuides] = useState<AlignGuide[]>([])
 
+  // ── Spacing guides ──────────────────────────────────
+  const [spacingGuides, setSpacingGuides] = useState<SpacingGuide[]>([])
+
+  // ── Ghost shape / AutoConnect ───────────────────────
+  const [autoConnectNodeId, setAutoConnectNodeId] = useState<string | null>(null)
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const {
     nodes, edges, selection, toolMode, viewport,
     editingNodeId, gridEnabled, gridSize, snapEnabled,
@@ -84,7 +105,7 @@ export function Canvas({ store }: { store: FlowchartStore }) {
     addEdge, addEdgeAutoPort, deleteSelected, snapToGrid,
     moveWaypoint, commitWaypointMove, addWaypoint, removeWaypoint,
     updateEdge, copySelected, paste, duplicateSelected,
-    bringToFront, sendToBack,
+    bringToFront, sendToBack, createConnectedNode,
   } = store
 
   const nodeMap = useMemo(() => new Map(nodes.map(n => [n.id, n])), [nodes])
@@ -343,6 +364,11 @@ export function Canvas({ store }: { store: FlowchartStore }) {
           moveNodes(idsToMove, snapDx, snapDy)
         }
 
+        // Compute spacing guides
+        const updatedMovingNodes = nodes.filter(n => idsToMove.has(n.id))
+        const newSpacingGuides = computeSpacingGuides(updatedMovingNodes, nodes, SPACING_THRESHOLD)
+        setSpacingGuides(newSpacingGuides)
+
         setDrag({ ...d, currentX: pt.x, currentY: pt.y, moved: true })
       }
       return
@@ -436,6 +462,7 @@ export function Canvas({ store }: { store: FlowchartStore }) {
 
     // Clear guides
     setGuides([])
+    setSpacingGuides([])
     setDrag(null)
   }, [nodes, edges, nodeMap, selection, commitMove, commitResize, commitWaypointMove, addEdge, setSelection])
 
@@ -570,13 +597,15 @@ export function Canvas({ store }: { store: FlowchartStore }) {
 
   // ── Render helpers ────────────────────────────────────────
 
+  const gridDotColor = store.activeTheme.gridColor || DEFAULT_GRID_DOT_COLOR
+
   const renderGrid = () => {
     if (!gridEnabled) return null
     const size = gridSize
     return (
       <defs>
         <pattern id="grid-dots" width={size} height={size} patternUnits="userSpaceOnUse">
-          <circle cx={size / 2} cy={size / 2} r={0.8} fill={GRID_DOT_COLOR} />
+          <circle cx={size / 2} cy={size / 2} r={0.8} fill={gridDotColor} />
         </pattern>
       </defs>
     )
@@ -601,12 +630,43 @@ export function Canvas({ store }: { store: FlowchartStore }) {
     const isConnectSource = connectSource === node.id
     const path = def.svgPath(node.width, node.height)
 
+    // Build transform with rotation around node center (Agent A)
+    const rotation = node.rotation ?? 0
+    const baseTransform = `translate(${node.x}, ${node.y})`
+    const rotateTransform = rotation !== 0
+      ? `${baseTransform} rotate(${rotation}, ${node.width / 2}, ${node.height / 2})`
+      : baseTransform
+
+    // Map textAlign to flexbox justifyContent (Agent A)
+    const justifyMap = { left: 'flex-start', center: 'center', right: 'flex-end' } as const
+    const textAlign = node.style.textAlign ?? 'center'
+    const fontWeight = node.style.fontWeight ?? 'normal'
+    const fontStyle = node.style.fontStyle ?? 'normal'
+
     return (
       <g
         key={node.id}
-        transform={`translate(${node.x}, ${node.y})`}
-        onMouseEnter={() => setHoveredNodeId(node.id)}
-        onMouseLeave={() => { setHoveredNodeId(null); setHoveredPort(null) }}
+        transform={rotateTransform}
+        onMouseEnter={() => {
+          setHoveredNodeId(node.id)
+          // Start autoconnect timer
+          if (toolMode === 'select' && !drag) {
+            if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+            hoverTimerRef.current = setTimeout(() => {
+              setAutoConnectNodeId(node.id)
+            }, HOVER_DELAY_MS)
+          }
+        }}
+        onMouseLeave={() => {
+          setHoveredNodeId(null)
+          setHoveredPort(null)
+          // Clear autoconnect timer
+          if (hoverTimerRef.current) {
+            clearTimeout(hoverTimerRef.current)
+            hoverTimerRef.current = null
+          }
+          setAutoConnectNodeId(null)
+        }}
         style={{ cursor: toolMode === 'connect' ? 'crosshair' : drag?.type === 'move' ? 'grabbing' : 'grab' }}
       >
         {/* Shape */}
@@ -632,11 +692,13 @@ export function Canvas({ store }: { store: FlowchartStore }) {
                 height: '100%',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
+                justifyContent: justifyMap[textAlign],
                 padding: '4px 8px',
                 fontSize: `${node.style.fontSize}px`,
                 color: node.style.fontColor,
-                textAlign: 'center',
+                fontWeight,
+                fontStyle,
+                textAlign,
                 lineHeight: 1.3,
                 overflow: 'hidden',
                 wordBreak: 'break-word',
@@ -678,7 +740,9 @@ export function Canvas({ store }: { store: FlowchartStore }) {
                 borderRadius: '4px',
                 color: node.style.fontColor,
                 fontSize: `${node.style.fontSize}px`,
-                textAlign: 'center',
+                fontWeight,
+                fontStyle,
+                textAlign,
                 resize: 'none',
                 outline: 'none',
                 padding: '4px',
@@ -761,10 +825,27 @@ export function Canvas({ store }: { store: FlowchartStore }) {
   }
 
   const renderEdge = (edge: DiagramEdge) => {
-    const d = edgePath(edge, nodeMap)
+    let d = edgePath(edge, nodeMap)
     if (!d) return null
+
+    // Try A* auto-routing for orthogonal edges without manual waypoints
+    if (edge.routeType === 'orthogonal' && edge.waypoints.length === 0) {
+      const sourceNode = nodeMap.get(edge.sourceId)
+      const targetNode = nodeMap.get(edge.targetId)
+      if (sourceNode && targetNode && hasObstaclesInPath(sourceNode, targetNode, nodes)) {
+        const routed = routeOrthogonalPath(
+          sourceNode, targetNode,
+          edge.sourcePort, edge.targetPort,
+          nodes,
+        )
+        if (routed) {
+          d = routed
+        }
+      }
+    }
+
     const isSelected = selection.edgeIds.has(edge.id)
-    const mid = edge.label || isSelected ? edgeMidpoint(edge, nodeMap) : null
+    const mid = edge.label || isSelected ? edgeLabelPoint(edge, nodeMap) : null
 
     return (
       <g key={edge.id}>
@@ -932,6 +1013,129 @@ export function Canvas({ store }: { store: FlowchartStore }) {
     )
   }
 
+  // ── AutoConnect "+" indicators ────────────────────────────
+
+  const renderAutoConnectIndicators = () => {
+    if (!autoConnectNodeId || toolMode !== 'select' || drag) return null
+    // Don't show when editing
+    if (editingNodeId) return null
+
+    const node = nodeMap.get(autoConnectNodeId)
+    if (!node) return null
+
+    const directions: { port: PortPosition; dx: number; dy: number; dir: 'up' | 'right' | 'down' | 'left' }[] = [
+      { port: 'top', dx: 0, dy: -AUTOCONNECT_OFFSET, dir: 'up' },
+      { port: 'right', dx: AUTOCONNECT_OFFSET, dy: 0, dir: 'right' },
+      { port: 'bottom', dx: 0, dy: AUTOCONNECT_OFFSET, dir: 'down' },
+      { port: 'left', dx: -AUTOCONNECT_OFFSET, dy: 0, dir: 'left' },
+    ]
+
+    return (
+      <g>
+        {directions.map(({ port, dx, dy, dir }) => {
+          const portPos = getPortPosition(node, port)
+          return (
+            <g
+              key={port}
+              onClick={(e) => {
+                e.stopPropagation()
+                createConnectedNode(autoConnectNodeId, dir)
+                setAutoConnectNodeId(null)
+              }}
+              style={{ cursor: 'pointer' }}
+            >
+              <circle
+                cx={portPos.x + dx}
+                cy={portPos.y + dy}
+                r={AUTOCONNECT_RADIUS / viewport.zoom}
+                fill="rgba(59, 130, 246, 0.15)"
+                stroke="rgba(59, 130, 246, 0.6)"
+                strokeWidth={1.5 / viewport.zoom}
+              />
+              <text
+                x={portPos.x + dx}
+                y={portPos.y + dy}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill="rgba(59, 130, 246, 0.8)"
+                fontSize={14 / viewport.zoom}
+                fontWeight="bold"
+                pointerEvents="none"
+              >
+                +
+              </text>
+            </g>
+          )
+        })}
+      </g>
+    )
+  }
+
+  // ── Spacing guides rendering ────────────────────────────
+
+  const renderSpacingGuides = () => {
+    if (spacingGuides.length === 0) return null
+    return (
+      <g pointerEvents="none">
+        {spacingGuides.map((sg, i) => (
+          <g key={i}>
+            <line
+              x1={sg.x1} y1={sg.y1} x2={sg.x2} y2={sg.y2}
+              stroke={GUIDE_COLOR}
+              strokeWidth={1 / viewport.zoom}
+              strokeDasharray={`${3 / viewport.zoom} ${2 / viewport.zoom}`}
+            />
+            <rect
+              x={(sg.x1 + sg.x2) / 2 - 16 / viewport.zoom}
+              y={(sg.y1 + sg.y2) / 2 - 7 / viewport.zoom}
+              width={32 / viewport.zoom}
+              height={14 / viewport.zoom}
+              rx={3 / viewport.zoom}
+              fill="rgba(10, 10, 20, 0.85)"
+              stroke={GUIDE_COLOR}
+              strokeWidth={0.5 / viewport.zoom}
+            />
+            <text
+              x={(sg.x1 + sg.x2) / 2}
+              y={(sg.y1 + sg.y2) / 2}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill={GUIDE_COLOR}
+              fontSize={9 / viewport.zoom}
+              fontFamily="sans-serif"
+            >
+              {sg.label}
+            </text>
+          </g>
+        ))}
+      </g>
+    )
+  }
+
+  // ── Drag-from-palette handlers ──────────────────────────
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('application/flowchart-shape')) {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'copy'
+    }
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    const shapeType = e.dataTransfer.getData('application/flowchart-shape')
+    if (!shapeType) return
+
+    e.preventDefault()
+    // Validate shape type
+    const validShape = SHAPE_DEFS.find(d => d.type === shapeType)
+    if (!validShape) return
+
+    const pt = screenToSvg(e.clientX, e.clientY)
+    const x = snapEnabled ? snapToGrid(pt.x) : pt.x
+    const y = snapEnabled ? snapToGrid(pt.y) : pt.y
+    addNode(shapeType as ShapeType, x, y)
+  }, [screenToSvg, snapEnabled, snapToGrid, addNode])
+
   // Sort nodes by z-index for rendering
   const sortedNodes = [...nodes].sort((a, b) => a.zIndex - b.zIndex)
 
@@ -946,8 +1150,10 @@ export function Canvas({ store }: { store: FlowchartStore }) {
   return (
     <div
       ref={containerRef}
-      className="w-full h-full overflow-hidden rounded-xl bg-dark-base relative"
-      style={{ cursor }}
+      className="w-full h-full overflow-hidden rounded-xl relative"
+      style={{ cursor, backgroundColor: store.activeTheme.canvasBackground }}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
     >
       <svg
         ref={svgRef}
@@ -1015,6 +1221,12 @@ export function Canvas({ store }: { store: FlowchartStore }) {
 
           {/* Place mode ghost preview */}
           {renderPlacePreview()}
+
+          {/* AutoConnect indicators */}
+          {renderAutoConnectIndicators()}
+
+          {/* Spacing guides */}
+          {renderSpacingGuides()}
         </g>
       </svg>
 
@@ -1265,4 +1477,147 @@ function computeAlignSnap(
     snapDx: bestSnapX !== Infinity ? bestSnapX : 0,
     snapDy: bestSnapY !== Infinity ? bestSnapY : 0,
   }
+}
+
+// ── Spacing guide computation ─────────────────────────────
+
+function computeSpacingGuides(
+  movingNodes: DiagramNode[],
+  allNodes: DiagramNode[],
+  threshold: number,
+): SpacingGuide[] {
+  const movingIds = new Set(movingNodes.map(n => n.id))
+  const others = allNodes.filter(n => !movingIds.has(n.id))
+  const guides: SpacingGuide[] = []
+
+  if (others.length < 2 || movingNodes.length === 0) return guides
+
+  // Compute all horizontal gaps between non-moving nodes (sorted by x)
+  const hSorted = [...others].sort((a, b) => a.x - b.x)
+  const hGaps: { gap: number; x1: number; x2: number; y: number }[] = []
+  for (let i = 0; i < hSorted.length - 1; i++) {
+    const left = hSorted[i]
+    const right = hSorted[i + 1]
+    const gap = right.x - (left.x + left.width)
+    if (gap > 0) {
+      hGaps.push({
+        gap,
+        x1: left.x + left.width,
+        x2: right.x,
+        y: Math.max(left.y, right.y) + Math.min(left.height, right.height) / 2,
+      })
+    }
+  }
+
+  // Check if gap between moving node and any neighbor matches existing gaps
+  for (const moving of movingNodes) {
+    for (const other of others) {
+      // Horizontal: moving is to the right of other
+      const gapRight = moving.x - (other.x + other.width)
+      if (gapRight > 0) {
+        for (const ref of hGaps) {
+          if (Math.abs(gapRight - ref.gap) < threshold) {
+            const midY = (Math.max(moving.y, other.y) + Math.min(moving.y + moving.height, other.y + other.height)) / 2
+            guides.push({
+              axis: 'h',
+              x1: other.x + other.width,
+              y1: midY,
+              x2: moving.x,
+              y2: midY,
+              label: `${Math.round(gapRight)}`,
+            })
+          }
+        }
+      }
+
+      // Horizontal: moving is to the left of other
+      const gapLeft = other.x - (moving.x + moving.width)
+      if (gapLeft > 0) {
+        for (const ref of hGaps) {
+          if (Math.abs(gapLeft - ref.gap) < threshold) {
+            const midY = (Math.max(moving.y, other.y) + Math.min(moving.y + moving.height, other.y + other.height)) / 2
+            guides.push({
+              axis: 'h',
+              x1: moving.x + moving.width,
+              y1: midY,
+              x2: other.x,
+              y2: midY,
+              label: `${Math.round(gapLeft)}`,
+            })
+          }
+        }
+      }
+    }
+  }
+
+  // Compute all vertical gaps between non-moving nodes (sorted by y)
+  const vSorted = [...others].sort((a, b) => a.y - b.y)
+  const vGaps: { gap: number; y1: number; y2: number; x: number }[] = []
+  for (let i = 0; i < vSorted.length - 1; i++) {
+    const top = vSorted[i]
+    const bottom = vSorted[i + 1]
+    const gap = bottom.y - (top.y + top.height)
+    if (gap > 0) {
+      vGaps.push({
+        gap,
+        y1: top.y + top.height,
+        y2: bottom.y,
+        x: Math.max(top.x, bottom.x) + Math.min(top.width, bottom.width) / 2,
+      })
+    }
+  }
+
+  for (const moving of movingNodes) {
+    for (const other of others) {
+      // Vertical: moving is below other
+      const gapBelow = moving.y - (other.y + other.height)
+      if (gapBelow > 0) {
+        for (const ref of vGaps) {
+          if (Math.abs(gapBelow - ref.gap) < threshold) {
+            const midX = (Math.max(moving.x, other.x) + Math.min(moving.x + moving.width, other.x + other.width)) / 2
+            guides.push({
+              axis: 'v',
+              x1: midX,
+              y1: other.y + other.height,
+              x2: midX,
+              y2: moving.y,
+              label: `${Math.round(gapBelow)}`,
+            })
+          }
+        }
+      }
+
+      // Vertical: moving is above other
+      const gapAbove = other.y - (moving.y + moving.height)
+      if (gapAbove > 0) {
+        for (const ref of vGaps) {
+          if (Math.abs(gapAbove - ref.gap) < threshold) {
+            const midX = (Math.max(moving.x, other.x) + Math.min(moving.x + moving.width, other.x + other.width)) / 2
+            guides.push({
+              axis: 'v',
+              x1: midX,
+              y1: moving.y + moving.height,
+              x2: midX,
+              y2: other.y,
+              label: `${Math.round(gapAbove)}`,
+            })
+          }
+        }
+      }
+    }
+  }
+
+  // Deduplicate by position (limit to 4 guides max for performance)
+  const seen = new Set<string>()
+  const deduped: SpacingGuide[] = []
+  for (const g of guides) {
+    const key = `${Math.round(g.x1)},${Math.round(g.y1)},${Math.round(g.x2)},${Math.round(g.y2)}`
+    if (!seen.has(key)) {
+      seen.add(key)
+      deduped.push(g)
+      if (deduped.length >= 4) break
+    }
+  }
+
+  return deduped
 }

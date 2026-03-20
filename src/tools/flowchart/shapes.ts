@@ -2,10 +2,12 @@ import type { ShapeType, Point, NodeStyle } from './types.ts'
 
 // ── Shape definition ────────────────────────────────────────
 
+export type ShapeCategory = 'basic' | 'flowchart' | 'misc' | 'containers'
+
 export interface ShapeDef {
   type: ShapeType
   label: string
-  category: 'basic' | 'flowchart' | 'misc'
+  category: ShapeCategory
   defaultWidth: number
   defaultHeight: number
   /** Default style overrides (merged with DEFAULT_NODE_STYLE) */
@@ -122,6 +124,122 @@ export const SHAPE_DEFS: ShapeDef[] = [
     },
   },
 
+  // ── Additional Flowchart (ISO 5807) — Agent A ─────
+  {
+    type: 'document-shape',
+    label: 'Document',
+    category: 'flowchart',
+    defaultWidth: 140,
+    defaultHeight: 80,
+    ports: standardPorts,
+    svgPath: (w, h) => {
+      const wave = h * 0.15
+      return `M 0 0 H ${w} V ${h - wave} C ${w * 0.75} ${h - wave * 2}, ${w * 0.25} ${h}, 0 ${h - wave} Z`
+    },
+  },
+  {
+    type: 'predefined-process',
+    label: 'Predefined Process',
+    category: 'flowchart',
+    defaultWidth: 160,
+    defaultHeight: 60,
+    ports: standardPorts,
+    svgPath: (w, h) => {
+      const inset = w * 0.1
+      // Outer rectangle + two inner vertical lines
+      return [
+        `M 0 0 H ${w} V ${h} H 0 Z`,
+        `M ${inset} 0 V ${h}`,
+        `M ${w - inset} 0 V ${h}`,
+      ].join(' ')
+    },
+  },
+  {
+    type: 'manual-operation',
+    label: 'Manual Operation',
+    category: 'flowchart',
+    defaultWidth: 140,
+    defaultHeight: 60,
+    ports: standardPorts,
+    svgPath: (w, h) => {
+      const inset = w * 0.15
+      // Trapezoid wider at top
+      return `M 0 0 H ${w} L ${w - inset} ${h} H ${inset} Z`
+    },
+  },
+  {
+    type: 'manual-input',
+    label: 'Manual Input',
+    category: 'flowchart',
+    defaultWidth: 140,
+    defaultHeight: 60,
+    ports: standardPorts,
+    svgPath: (w, h) => {
+      const slope = h * 0.25
+      // Flat bottom, angled top-left
+      return `M 0 ${slope} L ${w} 0 V ${h} H 0 Z`
+    },
+  },
+  {
+    type: 'delay',
+    label: 'Delay',
+    category: 'flowchart',
+    defaultWidth: 120,
+    defaultHeight: 60,
+    ports: standardPorts,
+    svgPath: (w, h) => {
+      // D-shape: flat left, rounded right (half-pill)
+      const r = h / 2
+      return `M 0 0 H ${w - r} A ${r} ${r} 0 0 1 ${w - r} ${h} H 0 Z`
+    },
+  },
+  {
+    type: 'on-page-ref',
+    label: 'On-Page Ref',
+    category: 'flowchart',
+    defaultWidth: 50,
+    defaultHeight: 50,
+    ports: standardPorts,
+    svgPath: (w, h) => {
+      // Small circle
+      const rx = w / 2, ry = h / 2
+      return `M ${rx} 0 A ${rx} ${ry} 0 1 1 ${rx} ${h} A ${rx} ${ry} 0 1 1 ${rx} 0 Z`
+    },
+  },
+  {
+    type: 'off-page-ref',
+    label: 'Off-Page Ref',
+    category: 'flowchart',
+    defaultWidth: 80,
+    defaultHeight: 80,
+    ports: standardPorts,
+    svgPath: (w, h) => {
+      // Pentagon / home-plate shape (house shape pointing down)
+      const bodyH = h * 0.6
+      return `M 0 0 H ${w} V ${bodyH} L ${w / 2} ${h} L 0 ${bodyH} Z`
+    },
+  },
+  {
+    type: 'stored-data',
+    label: 'Stored Data',
+    category: 'flowchart',
+    defaultWidth: 120,
+    defaultHeight: 60,
+    ports: standardPorts,
+    svgPath: (w, h) => {
+      // Cylinder-like open on left side
+      const curve = w * 0.12
+      return [
+        `M ${curve} 0`,
+        `H ${w}`,
+        `C ${w - curve * 2} ${h * 0.15}, ${w - curve * 2} ${h * 0.85}, ${w} ${h}`,
+        `H ${curve}`,
+        `C ${curve * 2} ${h * 0.85}, ${curve * 2} ${h * 0.15}, ${curve} 0`,
+        `Z`,
+      ].join(' ')
+    },
+  },
+
   // ── Misc ──────────────────────────────────────────
   {
     type: 'triangle',
@@ -217,6 +335,30 @@ export const SHAPE_DEFS: ShapeDef[] = [
       return `M ${points[0]} L ${points.slice(1).join(' L ')} Z`
     },
   },
+
+  // ── Containers — Agent C ─────────────────────────
+  {
+    type: 'swim-lane',
+    label: 'Swim Lane',
+    category: 'containers',
+    defaultWidth: 300,
+    defaultHeight: 500,
+    styleOverrides: {
+      fill: 'rgba(59,130,246,0.04)',
+      stroke: 'rgba(59,130,246,0.3)',
+      strokeWidth: 1.5,
+      fontSize: 14,
+    },
+    ports: standardPorts,
+    svgPath: (w, h) => {
+      // Rectangle body with a header band at the top (40px tall)
+      const headerH = 40
+      return [
+        `M 0 0 H ${w} V ${h} H 0 Z`,
+        `M 0 ${headerH} H ${w}`,
+      ].join(' ')
+    },
+  },
 ]
 
 // ── Lookup helpers ──────────────────────────────────────────
@@ -228,10 +370,28 @@ export function getShapeDef(type: ShapeType): ShapeDef {
 }
 
 export function getPortPosition(
-  node: { x: number; y: number; width: number; height: number; type: ShapeType },
+  node: { x: number; y: number; width: number; height: number; type: ShapeType; rotation?: number },
   port: 'top' | 'right' | 'bottom' | 'left',
 ): Point {
   const def = getShapeDef(node.type)
   const relative = def.ports(node.width, node.height)[port]
-  return { x: node.x + relative.x, y: node.y + relative.y }
+  const rotation = node.rotation ?? 0
+
+  if (rotation === 0) {
+    return { x: node.x + relative.x, y: node.y + relative.y }
+  }
+
+  // Rotate the port position around the node center
+  const cx = node.width / 2
+  const cy = node.height / 2
+  const dx = relative.x - cx
+  const dy = relative.y - cy
+  const rad = (rotation * Math.PI) / 180
+  const cos = Math.cos(rad)
+  const sin = Math.sin(rad)
+
+  return {
+    x: node.x + cx + dx * cos - dy * sin,
+    y: node.y + cy + dx * sin + dy * cos,
+  }
 }
