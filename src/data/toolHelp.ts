@@ -365,7 +365,7 @@ export const toolHelp: Partial<Record<ToolId, ToolHelpContent>> = {
       {
         heading: 'Supported Conversions',
         items: [
-          'Images: JPG, PNG, WebP, BMP — convert between any combination',
+          'Images: JPG, PNG, WebP, BMP, HEIC/HEIF — convert between formats (HEIC/HEIF input only)',
           'Documents: Markdown to HTML, HTML to Markdown, DOCX',
           'Data: CSV to JSON, JSON to CSV, Excel conversions',
           'PDF to images (with render scale options: 1x, 1.5x, 2x, 3x)',

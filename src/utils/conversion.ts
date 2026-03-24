@@ -81,6 +81,8 @@ const FORMAT_REGISTRY: Record<string, RegistryEntry> = {
   gif:  { category: 'image', outputs: [PNG, JPEG, WEBP, PDF] },
   bmp:  { category: 'image', outputs: [PNG, JPEG, WEBP, PDF] },
   svg:  { category: 'image', outputs: [PNG, JPEG, WEBP, PDF] },
+  heic: { category: 'image', outputs: [PNG, JPEG, WEBP, PDF] },
+  heif: { category: 'image', outputs: [PNG, JPEG, WEBP, PDF] },
   // PDF
   pdf:  { category: 'pdf', outputs: [PNG, JPEG, TXT] },
   // Spreadsheet / data
@@ -127,6 +129,15 @@ export async function convertFile(
   const quality = options.jpegQuality ?? 0.92
 
   if (category === 'image') {
+    // HEIC/HEIF: decode first, then convert as a standard image
+    if (ext === 'heic' || ext === 'heif') {
+      const decoded = await decodeHeic(file)
+      const decodedFile = new File([decoded], `${baseName}.png`, { type: 'image/png' })
+      return output.ext === 'pdf'
+        ? convertImageToPdf(decodedFile, baseName)
+        : convertImageToImage(decodedFile, output, quality, baseName)
+    }
+
     if (ext === 'svg') {
       return output.ext === 'pdf'
         ? convertSvgToPdf(file, baseName)
@@ -262,6 +273,26 @@ function parseSvgDimensions(svgText: string): { width: number; height: number } 
   }
   if (!w || !h) { w = 1024; h = 1024 }
   return { width: Math.round(w), height: Math.round(h) }
+}
+
+/**
+ * Decode a HEIC/HEIF file into a PNG blob using heic2any.
+ * Returns a standard image Blob that the browser can render via canvas.
+ */
+async function decodeHeic(file: File): Promise<Blob> {
+  const heic2any = (await import('heic2any')).default
+  let result: Blob | Blob[]
+  try {
+    result = await heic2any({ blob: file, toType: 'image/png', quality: 1 })
+  } catch (err) {
+    throw new Error(`Failed to decode HEIC file: ${err instanceof Error ? err.message : 'Unknown error'}`)
+  }
+  // heic2any can return a single Blob or an array (for multi-image HEIC containers)
+  if (Array.isArray(result)) {
+    if (result.length === 0) throw new Error('HEIC file contains no images')
+    return result[0]
+  }
+  return result
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

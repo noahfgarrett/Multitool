@@ -77,18 +77,19 @@ test.describe('File Converter tool', () => {
     await uploadFile(page, 'sample-image.png')
     await expect(page.locator('text=sample-image.png')).toBeVisible({ timeout: 5000 })
 
-    // Before selecting a format, there should be no Convert button
-    let convertBtn = page.locator('button').filter({ hasText: /^Convert$/ })
-    await expect(convertBtn).toBeHidden()
+    // Scope to the file entry card
+    const entry = page.locator('.rounded-xl.border').filter({ hasText: 'sample-image.png' })
+
+    // Before selecting a format, there should be no per-entry Convert button
+    await expect(entry.locator('button').filter({ hasText: /^Convert$/ })).toBeHidden()
 
     // Click a format option (the first available one)
-    const formatButtons = page.locator('button').filter({ hasText: /^(JPG|JPEG|WebP|BMP|GIF)$/ })
+    const formatButtons = entry.locator('button').filter({ hasText: /^(JPG|JPEG|WebP|BMP|GIF)$/ })
     const firstFormat = formatButtons.first()
     await firstFormat.click()
 
-    // Now a Convert button should appear
-    convertBtn = page.locator('button').filter({ hasText: /^Convert$/ })
-    await expect(convertBtn).toBeVisible()
+    // Now a per-entry Convert button should appear
+    await expect(entry.locator('button').filter({ hasText: /^Convert$/ })).toBeVisible()
   })
 
   test('converting a file shows download option', async ({ page }) => {
@@ -96,19 +97,20 @@ test.describe('File Converter tool', () => {
     await uploadFile(page, 'sample-image.png')
     await expect(page.locator('text=sample-image.png')).toBeVisible({ timeout: 5000 })
 
+    // Scope to the file entry card
+    const entry = page.locator('.rounded-xl.border').filter({ hasText: 'sample-image.png' })
+
     // Select a format
-    const formatButtons = page.locator('button').filter({ hasText: /^(JPG|JPEG|WebP)$/ })
+    const formatButtons = entry.locator('button').filter({ hasText: /^(JPG|JPEG|WebP)$/ })
     await formatButtons.first().click()
 
-    // Click Convert
-    const convertBtn = page.locator('button').filter({ hasText: /^Convert$/ })
+    // Click per-entry Convert button
+    const convertBtn = entry.locator('button').filter({ hasText: /^Convert$/ })
     await convertBtn.click()
 
-    // Wait for conversion to complete - a download button should appear on the file entry
-    await expect(page.locator('button').filter({ hasText: /^(JPG|JPEG|WebP|PNG)$/ }).locator('svg')).toBeVisible({ timeout: 15000 })
-
-    // The file entry should show "done" state with the format badge having a check icon
-    // The entry border should change to orange-tinted (border-[#F47B20]/20)
+    // Wait for conversion to complete — the entry should show "done" state
+    // The "1 converted" counter in the toolbar confirms the conversion succeeded
+    await expect(page.locator('text=/1 converted/')).toBeVisible({ timeout: 15000 })
   })
 
   test('clear button resets to empty state', async ({ page }) => {

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { FileDropZone } from '@/components/common/FileDropZone.tsx'
 import { Button } from '@/components/common/Button.tsx'
 import { Slider } from '@/components/common/Slider.tsx'
@@ -17,7 +17,7 @@ import {
 // ── Drop zone accept string (all supported inputs) ──────────────
 
 const ACCEPT = [
-  'image/*', '.svg',
+  'image/*', '.svg', '.heic', '.heif',
   '.pdf',
   '.csv', '.xlsx', '.xls', '.tsv', '.json',
   '.txt', '.md', '.html', '.htm',
@@ -71,6 +71,20 @@ const PDF_SCALES = [
 export default function ConverterTool() {
   const [entries, setEntries] = useState<FileEntry[]>([])
 
+  const [bulkProgress, setBulkProgress] = useState<{
+    current: number
+    total: number
+    startTime: number
+  } | null>(null)
+
+  // Tick every second while bulk conversion is running to update elapsed time
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    if (!bulkProgress) return
+    const id = setInterval(() => setTick((t) => t + 1), 1000)
+    return () => clearInterval(id)
+  }, [bulkProgress])
+
   const handleFiles = useCallback((files: File[]) => {
     const newEntries: FileEntry[] = files.map((file) => ({
       id: Math.random().toString(36).substring(2, 11),
@@ -113,7 +127,13 @@ export default function ConverterTool() {
 
   const handleConvertAll = useCallback(async () => {
     const eligible = entries.filter((e) => e.selectedFormat && e.status !== 'done')
-    for (const entry of eligible) {
+    if (eligible.length === 0) return
+
+    setBulkProgress({ current: 0, total: eligible.length, startTime: Date.now() })
+
+    for (let i = 0; i < eligible.length; i++) {
+      const entry = eligible[i]
+      setBulkProgress((prev) => prev ? { ...prev, current: i } : null)
       updateEntry(entry.id, { status: 'converting', error: null })
       try {
         const raw = await convertFile(entry.file, entry.selectedFormat!, entry.options)
@@ -126,6 +146,8 @@ export default function ConverterTool() {
         updateEntry(entry.id, { status: 'error', error: err instanceof Error ? err.message : 'Conversion failed' })
       }
     }
+
+    setBulkProgress(null)
   }, [entries, updateEntry])
 
   const handleDownload = useCallback(async (entry: FileEntry) => {
@@ -209,7 +231,7 @@ export default function ConverterTool() {
         </span>
         <div className="flex-1" />
 
-        {eligibleCount > 0 && (
+        {eligibleCount > 0 && !bulkProgress && (
           <Button onClick={handleConvertAll} size="sm">
             Convert{eligibleCount > 1 ? ` All (${eligibleCount})` : ''}
           </Button>
@@ -237,6 +259,28 @@ export default function ConverterTool() {
           <button onClick={() => setDownloadError(null)} className="p-1 text-red-400/60 hover:text-red-400 transition-colors" aria-label="Dismiss error">
             <X size={12} />
           </button>
+        </div>
+      )}
+
+      {bulkProgress && (
+        <div className="flex-shrink-0 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-white/70">
+              Converting {bulkProgress.current + 1} of {bulkProgress.total} files...
+            </span>
+            {(() => {
+              const elapsed = Math.floor((Date.now() - bulkProgress.startTime) / 1000)
+              return elapsed >= 3 ? (
+                <span className="text-white/30">{elapsed}s elapsed</span>
+              ) : null
+            })()}
+          </div>
+          <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
+            <div
+              className="h-full rounded-full bg-[#F47B20] transition-all duration-300 ease-out"
+              style={{ width: `${((bulkProgress.current + 1) / bulkProgress.total) * 100}%` }}
+            />
+          </div>
         </div>
       )}
 
