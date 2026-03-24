@@ -131,11 +131,22 @@ export async function convertFile(
   if (category === 'image') {
     // HEIC/HEIF: decode first, then convert as a standard image
     if (ext === 'heic' || ext === 'heif') {
-      const decoded = await decodeHeic(file)
-      const decodedFile = new File([decoded], `${baseName}.png`, { type: 'image/png' })
-      return output.ext === 'pdf'
-        ? convertImageToPdf(decodedFile, baseName)
-        : convertImageToImage(decodedFile, output, quality, baseName)
+      try {
+        const decoded = await decodeHeic(file)
+        const decodedFile = new File([decoded], `${baseName}.png`, { type: 'image/png' })
+        return output.ext === 'pdf'
+          ? convertImageToPdf(decodedFile, baseName)
+          : convertImageToImage(decodedFile, output, quality, baseName)
+      } catch (err) {
+        // If heic2any says the file is already browser-readable (e.g. JPEG with .heic extension),
+        // fall through to the standard image conversion pipeline
+        if (err instanceof HeicAlreadyReadableError) {
+          return output.ext === 'pdf'
+            ? convertImageToPdf(file, baseName)
+            : convertImageToImage(file, output, quality, baseName)
+        }
+        throw err
+      }
     }
 
     if (ext === 'svg') {
@@ -284,8 +295,18 @@ async function decodeHeic(file: File): Promise<Blob> {
   let result: Blob | Blob[]
   try {
     result = await heic2any({ blob: file, toType: 'image/png', quality: 1 })
-  } catch (err) {
-    throw new Error(`Failed to decode HEIC file: ${err instanceof Error ? err.message : 'Unknown error'}`)
+  } catch (err: unknown) {
+    // heic2any rejects with { code, message } objects, not Error instances
+    const msg = err instanceof Error ? err.message
+      : typeof err === 'string' ? err
+      : typeof err === 'object' && err !== null && 'message' in err
+        ? (err as { message: string }).message
+        : String(err)
+    // If the file is already browser-readable (e.g. JPEG with .heic extension), signal to caller
+    if (msg.includes('already browser readable')) {
+      throw new HeicAlreadyReadableError()
+    }
+    throw new Error(`Failed to decode HEIC file: ${msg}`)
   }
   // heic2any can return a single Blob or an array (for multi-image HEIC containers)
   if (Array.isArray(result)) {
@@ -293,6 +314,11 @@ async function decodeHeic(file: File): Promise<Blob> {
     return result[0]
   }
   return result
+}
+
+/** Sentinel error: the HEIC file is actually a browser-readable format (e.g. JPEG) */
+class HeicAlreadyReadableError extends Error {
+  constructor() { super('HEIC file is already browser readable') }
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
