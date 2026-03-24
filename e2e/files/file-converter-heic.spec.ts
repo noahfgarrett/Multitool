@@ -61,8 +61,8 @@ test.describe('File Converter — HEIC/HEIF support', () => {
     await entry.locator('button').filter({ hasText: 'PNG' }).click()
     await entry.locator('button').filter({ hasText: /^Convert$/ }).click()
 
-    // Should show error state (not crash, not hang)
-    await expect(entry.locator('text=/Failed to decode HEIC|error|Error/i')).toBeVisible({ timeout: 15000 })
+    // Should show error state (not crash, not hang) — error text appears in a red paragraph
+    await expect(entry.locator('.text-red-400')).toBeVisible({ timeout: 15000 })
   })
 
   test('HEIC file converts to PNG successfully', async ({ page }) => {

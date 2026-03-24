@@ -129,24 +129,13 @@ export async function convertFile(
   const quality = options.jpegQuality ?? 0.92
 
   if (category === 'image') {
-    // HEIC/HEIF: decode first, then convert as a standard image
+    // HEIC/HEIF: decode via libheif first, then convert as a standard image
     if (ext === 'heic' || ext === 'heif') {
-      try {
-        const decoded = await decodeHeic(file)
-        const decodedFile = new File([decoded], `${baseName}.png`, { type: 'image/png' })
-        return output.ext === 'pdf'
-          ? convertImageToPdf(decodedFile, baseName)
-          : convertImageToImage(decodedFile, output, quality, baseName)
-      } catch (err) {
-        // If heic2any says the file is already browser-readable (e.g. JPEG with .heic extension),
-        // fall through to the standard image conversion pipeline
-        if (err instanceof HeicAlreadyReadableError) {
-          return output.ext === 'pdf'
-            ? convertImageToPdf(file, baseName)
-            : convertImageToImage(file, output, quality, baseName)
-        }
-        throw err
-      }
+      const decoded = await decodeHeic(file)
+      const decodedFile = new File([decoded], `${baseName}.png`, { type: 'image/png' })
+      return output.ext === 'pdf'
+        ? convertImageToPdf(decodedFile, baseName)
+        : convertImageToImage(decodedFile, output, quality, baseName)
     }
 
     if (ext === 'svg') {
@@ -287,38 +276,43 @@ function parseSvgDimensions(svgText: string): { width: number; height: number } 
 }
 
 /**
- * Decode a HEIC/HEIF file into a PNG blob using heic2any.
- * Returns a standard image Blob that the browser can render via canvas.
+ * Decode a HEIC/HEIF file into a PNG blob using libheif-js.
+ * Uses the full libheif Emscripten build for broad codec support.
  */
 async function decodeHeic(file: File): Promise<Blob> {
-  const heic2any = (await import('heic2any')).default
-  let result: Blob | Blob[]
-  try {
-    result = await heic2any({ blob: file, toType: 'image/png', quality: 1 })
-  } catch (err: unknown) {
-    // heic2any rejects with { code, message } objects, not Error instances
-    const msg = err instanceof Error ? err.message
-      : typeof err === 'string' ? err
-      : typeof err === 'object' && err !== null && 'message' in err
-        ? (err as { message: string }).message
-        : String(err)
-    // If the file is already browser-readable (e.g. JPEG with .heic extension), signal to caller
-    if (msg.includes('already browser readable')) {
-      throw new HeicAlreadyReadableError()
-    }
-    throw new Error(`Failed to decode HEIC file: ${msg}`)
-  }
-  // heic2any can return a single Blob or an array (for multi-image HEIC containers)
-  if (Array.isArray(result)) {
-    if (result.length === 0) throw new Error('HEIC file contains no images')
-    return result[0]
-  }
-  return result
-}
+  const libheif = (await import('libheif-js')).default
+  const buffer = await file.arrayBuffer()
+  const decoder = new libheif.HeifDecoder()
+  const data = decoder.decode(new Uint8Array(buffer))
 
-/** Sentinel error: the HEIC file is actually a browser-readable format (e.g. JPEG) */
-class HeicAlreadyReadableError extends Error {
-  constructor() { super('HEIC file is already browser readable') }
+  if (!data || data.length === 0) {
+    throw new Error('HEIC file contains no images')
+  }
+
+  const image = data[0]
+  const width = image.get_width()
+  const height = image.get_height()
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Failed to create canvas context')
+
+  const imageData = ctx.createImageData(width, height)
+  await new Promise<void>((resolve, reject) => {
+    image.display(imageData, (displayData: ImageData | null) => {
+      if (!displayData) {
+        return reject(new Error('Failed to decode HEIC image data'))
+      }
+      resolve()
+    })
+  })
+
+  ctx.putImageData(imageData, 0, 0)
+  const blob = await canvasToBlob(canvas, 'image/png', 1)
+  canvas.width = 0
+  return blob
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
