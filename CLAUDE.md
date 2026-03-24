@@ -78,12 +78,48 @@ After a tool works functionally, do a second pass before marking done:
   ```
 
 ## Releasing to GitHub
-Every release **must** include the built `LotusWorksToolkit.html` as a release asset. The in-app update checker (`updateChecker.ts`) only shows the update modal if the release has an `.html` asset attached. Without it, users will never see the update prompt.
 
+When the user says "push a new release", "push to GitHub", or "release vX.Y.Z", follow this **exact** procedure. Every step is required for the in-app update modal to trigger for all users.
+
+### Release Checklist
+
+1. **Bump version** in `package.json`
+2. **Build**: `npm run build` → produces `dist/LotusWorksToolkit.html`
+3. **Verify version is baked in**: `grep -o '"X\.Y\.Z"' dist/LotusWorksToolkit.html | head -1` must show the new version
+4. **Commit and push** the version bump
+5. **Create the release with `target_commitish`** pointing to the actual commit SHA — this ensures `created_at` gets a fresh timestamp:
+   ```bash
+   COMMIT=$(git rev-parse HEAD)
+   gh api repos/noahfgarrett/LotusWorksToolkit/releases -X POST \
+     -f tag_name=vX.Y.Z \
+     -f target_commitish="$COMMIT" \
+     -f name="vX.Y.Z — Title" \
+     -f body="Release notes here" \
+     -F draft=false \
+     -F prerelease=false
+   ```
+6. **Upload the HTML asset**:
+   ```bash
+   gh release upload vX.Y.Z dist/LotusWorksToolkit.html
+   ```
+7. **Verify `/releases/latest` returns the new version**:
+   ```bash
+   gh api repos/noahfgarrett/LotusWorksToolkit/releases/latest --jq '{tag_name, created_at, assets: [.assets[].name]}'
+   ```
+   Must show: correct tag, fresh `created_at` date, and `LotusWorksToolkit.html` in assets.
+
+### Why `target_commitish` Matters
+GitHub's `/releases/latest` endpoint sorts by `created_at`, which is the **tag's target commit date** — NOT when the release was published. If you create a release against an old commit, it gets a stale `created_at` and may not be returned as "latest". Always pass `target_commitish` with the current HEAD SHA to guarantee a fresh timestamp.
+
+### Why the HTML Asset Matters
+The update checker (`updateChecker.ts`) fetches `/releases/latest`, checks if the remote version is newer than `__APP_VERSION__` (baked in at build time via `vite.config.ts`), and **only shows the update modal if the release has an `.html` asset attached**. No HTML asset = no update prompt.
+
+### Cleanup
+If `gh release create` fails with HTTP 500, it may leave orphaned **draft releases**. Check for and delete them:
 ```bash
-npm run build                                          # builds dist/LotusWorksToolkit.html
-gh release create vX.Y.Z --title "vX.Y.Z — Title" --notes "..."
-gh release upload vX.Y.Z dist/LotusWorksToolkit.html   # REQUIRED — attach the HTML file
+gh api repos/noahfgarrett/LotusWorksToolkit/releases --jq '.[] | select(.draft) | {id, tag_name}'
+# Delete any orphaned drafts:
+gh api repos/noahfgarrett/LotusWorksToolkit/releases/<id> -X DELETE
 ```
 
 ## Gotchas
