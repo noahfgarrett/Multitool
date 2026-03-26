@@ -10,6 +10,10 @@ interface AppState {
   // Toasts
   toasts: Toast[]
 
+  // Views (non-tool screens)
+  activeView: 'feedback' | null
+  showProfileModal: boolean
+
   // Actions
   setActiveTool: (tool: ToolId | null) => void
   goHome: () => void
@@ -18,6 +22,8 @@ interface AppState {
   toggleCategory: (category: string) => void
   addToast: (toast: Omit<Toast, 'id'>) => void
   removeToast: (id: string) => void
+  setActiveView: (view: 'feedback' | null) => void
+  setShowProfileModal: (show: boolean) => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -31,9 +37,13 @@ export const useAppStore = create<AppState>((set) => ({
     utilities: true,
   },
   toasts: [],
+  activeView: null,
+  showProfileModal: false,
 
-  setActiveTool: (tool) => set({ activeTool: tool }),
-  goHome: () => set({ activeTool: null }),
+  setActiveTool: (tool) => set({ activeTool: tool, activeView: null }),
+  goHome: () => set({ activeTool: null, activeView: null }),
+  setActiveView: (view) => set({ activeView: view, activeTool: null }),
+  setShowProfileModal: (show) => set({ showProfileModal: show }),
 
   toggleSidebar: () => set((s) => ({ sidebarExpanded: !s.sidebarExpanded })),
 
