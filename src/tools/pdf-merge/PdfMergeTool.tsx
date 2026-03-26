@@ -327,13 +327,15 @@ export default function PdfMergeTool() {
 
   // Thumbnail resolution
   const RES_LEVELS = [
-    { label: 'Low', height: 150 },
-    { label: 'Med', height: 300 },
-    { label: 'High', height: 600 },
+    { label: 'Low', height: 150, quality: 0.5 },
+    { label: 'Med', height: 300, quality: 0.7 },
+    { label: 'High', height: 600, quality: 0.85 },
   ]
   const [resIdx, setResIdx] = useState(1) // default Medium
   const resRef = useRef(RES_LEVELS[1].height)
   resRef.current = RES_LEVELS[resIdx].height
+  const qualityRef = useRef(RES_LEVELS[1].quality)
+  qualityRef.current = RES_LEVELS[resIdx].quality
 
   // Scroll container ref
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -406,7 +408,7 @@ export default function PdfMergeTool() {
     if (!file) return
 
     try {
-      const thumbnail = await generateThumbnail(file, pageNumber, resRef.current)
+      const thumbnail = await generateThumbnail(file, pageNumber, resRef.current, qualityRef.current)
       setFiles((prev) => prev.map((f) => {
         if (f.id !== fileId) return f
         return { ...f, pages: f.pages.map((p) => p.uid === pageUid ? { ...p, thumbnail } : p) }

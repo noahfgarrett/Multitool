@@ -7,6 +7,7 @@ import { useAppStore } from '@/stores/appStore.ts'
 import { readFileAsDataURL } from '@/utils/fileReader.ts'
 import { loadImage, resizeImage, canvasToBlob } from '@/utils/imageProcessing.ts'
 import { downloadBlob } from '@/utils/download.ts'
+import { canvasToThumbnailDataUrl } from '@/utils/pdf.ts'
 import { GridCell } from './GridCell.tsx'
 import type { GridCellData } from './GridCell.tsx'
 import { alignGrid, alignPair, type AlignResult } from './autoAlign.ts'
@@ -402,7 +403,7 @@ export default function GridStitchMode() {
           intent: 'display',
           annotationMode: pdfjsLib.AnnotationMode.DISABLE,
         }).promise
-        const thumbnail = canvas.toDataURL('image/jpeg', 0.7)
+        const thumbnail = canvasToThumbnailDataUrl(canvas, 0.7)
         page.cleanup()
         canvas.width = 0
         canvas.height = 0

@@ -109,10 +109,19 @@ export async function loadPDFFile(file: File, password?: string): Promise<PDFFil
  * Generate a thumbnail for a specific page of a PDF.
  * Returns a data URL string.
  */
+/** Encode canvas to a data URL, preferring WebP with JPEG fallback. */
+export function canvasToThumbnailDataUrl(canvas: HTMLCanvasElement, quality: number): string {
+  const webp = canvas.toDataURL('image/webp', quality)
+  // If browser doesn't support WebP, toDataURL returns a PNG fallback
+  if (webp.startsWith('data:image/webp')) return webp
+  return canvas.toDataURL('image/jpeg', quality)
+}
+
 export async function generateThumbnail(
   pdfFile: PDFFile,
   pageNumber: number,
   targetHeight: number = 200,
+  quality: number = 0.7,
 ): Promise<string> {
   const doc = await getCachedDoc(pdfFile.id, pdfFile.file)
 
@@ -138,7 +147,7 @@ export async function generateThumbnail(
     intent: 'display',
     annotationMode: pdfjsLib.AnnotationMode.DISABLE,
   }).promise
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
+  const dataUrl = canvasToThumbnailDataUrl(canvas, quality)
 
   page.cleanup()
   canvas.width = 0
