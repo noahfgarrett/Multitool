@@ -10,7 +10,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from '@dnd-kit/utilities'
 import {
   ListOrdered, Lightbulb, Pencil, MoreHorizontal, ChevronLeft, ChevronRight,
-  GripVertical, Plus, Trash2, Copy, X,
+  GripVertical, Plus, Trash2, Copy, X, Eye, EyeOff,
 } from 'lucide-react'
 import type { TocEntry, TocNumbering } from './tocUtils.ts'
 import { formatEntryNumber } from './tocUtils.ts'
@@ -264,6 +264,7 @@ export function TocEditorModal({
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [editingId, setEditingId] = useState<string | null>(null)
   const [detecting, setDetecting] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
   const [detectProgress, setDetectProgress] = useState<{ current: number; total: number } | null>(null)
 
   const lastClickedRef = useRef<string | null>(null)
@@ -718,6 +719,54 @@ export function TocEditorModal({
             </div>
           )}
         </div>
+
+        {/* ── Live Preview ─────────────────── */}
+        {entries.length > 0 && (
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => setShowPreview((p) => !p)}
+              className="flex items-center gap-1.5 text-[10px] text-white/30 hover:text-white/50 transition-colors mb-2"
+            >
+              {showPreview ? <EyeOff size={10} /> : <Eye size={10} />}
+              {showPreview ? 'Hide preview' : 'Preview TOC page'}
+            </button>
+            {showPreview && (
+              <div className="rounded-lg border border-white/[0.08] bg-white overflow-hidden">
+                <div className="p-4 max-h-[240px] overflow-y-auto" style={{ transform: 'scale(0.85)', transformOrigin: 'top left', width: '117.6%' }}>
+                  {/* Mini tabular TOC — matches the PDF output style */}
+                  <div style={{ fontFamily: 'Helvetica, Arial, sans-serif', color: '#000' }}>
+                    <div style={{ textAlign: 'center', marginBottom: 12 }}>
+                      <div style={{ fontSize: 13, fontWeight: 'bold', letterSpacing: 0.5 }}>TABLE OF CONTENTS</div>
+                    </div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid #ccc' }}>
+                          <th style={{ textAlign: 'left', padding: '3px 0', width: 45, fontWeight: 'bold' }}>No.</th>
+                          <th style={{ textAlign: 'left', padding: '3px 0', fontWeight: 'bold' }}>Description</th>
+                          <th style={{ textAlign: 'right', padding: '3px 0', width: 40, fontWeight: 'bold' }}>Page</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {entries.map((entry) => {
+                          const isParent = entry.indent === 0
+                          const num = numberMap.get(entry.id) ?? ''
+                          return (
+                            <tr key={entry.id} style={{ borderTop: isParent ? '1px solid #eee' : undefined }}>
+                              <td style={{ padding: '2px 0', paddingLeft: isParent ? 0 : 12, fontWeight: isParent ? 'bold' : 'normal', fontSize: isParent ? 10 : 9, color: isParent ? '#000' : '#444' }}>{num}</td>
+                              <td style={{ padding: '2px 0', fontWeight: isParent ? 'bold' : 'normal', fontSize: isParent ? 10 : 9, color: isParent ? '#000' : '#444' }}>{entry.label}</td>
+                              <td style={{ padding: '2px 0', textAlign: 'right', fontSize: 9, color: '#444' }}>{entry.pageIndex + estimatedTocPageCount + 1}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── Footer ────────────────────────── */}
         <div className="flex items-center justify-between pt-4 mt-4 border-t border-white/[0.06]">
