@@ -3,7 +3,7 @@ import { useAppStore } from '@/stores/appStore.ts'
 import { getUserProfile, hasUserProfile } from '@/utils/userProfile.ts'
 import { categories } from '@/tools/registry.ts'
 import {
-  Bug, Lightbulb, Mail, Info, RotateCcw,
+  Bug, Lightbulb, Mail, Info, RotateCcw, ClipboardCopy,
 } from 'lucide-react'
 
 type FeedbackType = 'bug' | 'enhancement' | null
@@ -87,6 +87,18 @@ export default function FeedbackForm() {
     return Object.keys(newErrors).length === 0
   }
 
+  async function copyFeedbackToClipboard(): Promise<void> {
+    if (!type || !profile) return
+    const emailSubject = buildSubject(type, tool, subject.trim())
+    const emailBody = buildEmailBody(
+      type, tool, priority, description.trim(),
+      profile.name, profile.email,
+    )
+    const clipboardText = `TO: ${RECIPIENT}\nSUBJECT: ${emailSubject}\n\n${emailBody}`
+    await navigator.clipboard.writeText(clipboardText)
+    addToast({ type: 'success', message: 'Feedback copied to clipboard — paste it into an email to ' + RECIPIENT })
+  }
+
   function handleSubmit(): void {
     if (!validate()) return
     if (!hasProfile || !profile) {
@@ -115,7 +127,24 @@ export default function FeedbackForm() {
       window.location.href = `mailto:${RECIPIENT}?subject=${encodedSubject}&body=${encodedBody}`
     }, 500)
 
-    addToast({ type: 'success', message: 'Email client opened — just hit Send!' })
+    // After 1.5s, check if the page still has focus — if so, no email client opened
+    setTimeout(() => {
+      if (document.hasFocus()) {
+        // No email client took focus — copy to clipboard as fallback
+        const clipboardText = `TO: ${RECIPIENT}\nSUBJECT: ${emailSubject}\n\n${emailBody}`
+        navigator.clipboard.writeText(clipboardText).then(() => {
+          addToast({
+            type: 'info',
+            message: 'No email client detected — feedback copied to clipboard. Paste it into an email to ' + RECIPIENT,
+            duration: 8000,
+          })
+        }).catch(() => {
+          addToast({ type: 'error', message: 'No email client detected and clipboard copy failed. Please copy the details manually.' })
+        })
+      } else {
+        addToast({ type: 'success', message: 'Email client opened — just hit Send!' })
+      }
+    }, 1500)
   }
 
   function handleClear(): void {
@@ -223,19 +252,26 @@ export default function FeedbackForm() {
             Priority
           </label>
           <div className="flex gap-1.5">
-            {(['low', 'medium', 'high'] as const).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPriority(p)}
-                className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  priority === p
-                    ? 'bg-[#F47B20]/10 border border-[#F47B20]/30 text-[#F47B20]'
-                    : 'bg-white/[0.04] border border-white/10 text-white/40 hover:text-white/60'
-                }`}
-              >
-                {p.charAt(0).toUpperCase() + p.slice(1)}
-              </button>
-            ))}
+            {(['low', 'medium', 'high'] as const).map((p) => {
+              const activeStyles: Record<Priority, string> = {
+                low: 'bg-green-500/10 border border-green-500/30 text-green-400',
+                medium: 'bg-[#F47B20]/10 border border-[#F47B20]/30 text-[#F47B20]',
+                high: 'bg-red-500/10 border border-red-500/30 text-red-400',
+              }
+              return (
+                <button
+                  key={p}
+                  onClick={() => setPriority(p)}
+                  className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
+                    priority === p
+                      ? activeStyles[p]
+                      : 'bg-white/[0.04] border border-white/10 text-white/40 hover:text-white/60'
+                  }`}
+                >
+                  {p.charAt(0).toUpperCase() + p.slice(1)}
+                </button>
+              )
+            })}
           </div>
         </div>
 
@@ -301,6 +337,14 @@ export default function FeedbackForm() {
           >
             <Mail size={14} />
             Open in Email Client
+          </button>
+          <button
+            onClick={copyFeedbackToClipboard}
+            disabled={!hasProfile || !type || !tool || !subject.trim() || !description.trim()}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white/[0.04] border border-white/10 text-white/40 text-sm hover:text-white/60 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <ClipboardCopy size={12} />
+            Copy to Clipboard
           </button>
           <button
             onClick={handleClear}
