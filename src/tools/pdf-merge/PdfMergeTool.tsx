@@ -1069,24 +1069,39 @@ export default function PdfMergeTool() {
           Preview
         </button>
 
-        <button
-          onClick={() => {
-            if (!tocEnabled) {
-              setTocEnabled(true)
-              setTocModalOpen(true)
-            } else {
-              setTocModalOpen(true)
-            }
-          }}
-          className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
-            tocEnabled ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'bg-white/[0.04] text-white/40 hover:text-white/60'
-          }`}
-          title="Table of Contents"
-        >
-          <ListOrdered size={12} />
-          TOC
-          {tocEnabled && <span className="w-1.5 h-1.5 rounded-full bg-[#F47B20]" />}
-        </button>
+        <div className="relative flex items-center">
+          <button
+            onClick={() => {
+              if (!tocEnabled) {
+                setTocEnabled(true)
+                setTocModalOpen(true)
+              } else {
+                setTocModalOpen(true)
+              }
+            }}
+            className={`flex items-center gap-1 py-1 rounded-md text-xs transition-colors ${
+              tocEnabled ? 'bg-[#F47B20]/20 text-[#F47B20] pl-2 pr-1' : 'bg-white/[0.04] text-white/40 hover:text-white/60 px-2'
+            }`}
+            title="Table of Contents"
+          >
+            <ListOrdered size={12} />
+            TOC
+          </button>
+          {tocEnabled && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setTocEnabled(false)
+                setTocEntries([])
+                setTocCustomPrefix('')
+              }}
+              className="ml-0.5 p-0.5 rounded text-[#F47B20]/50 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+              title="Remove Table of Contents"
+            >
+              <X size={10} />
+            </button>
+          )}
+        </div>
 
         <Button
           onClick={handleMerge}
