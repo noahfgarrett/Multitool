@@ -1,3 +1,8 @@
+import {
+  PDFDocument, StandardFonts, PDFArray, PDFDict, PDFName,
+  PDFNumber, rgb,
+} from 'pdf-lib'
+
 // ── Types ────────────────────────────────────────
 
 export interface TocEntry {
@@ -151,4 +156,238 @@ export function entriesToNestedBookmarks(
     }
   }
   return result
+}
+
+// ── TOC Page Renderer ───────────────────────────
+
+export async function renderTocPages(
+  pdfDoc: PDFDocument,
+  entries: TocEntry[],
+  numbering: TocNumbering,
+  customPrefix: string,
+): Promise<number> {
+  // Embed fonts
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+
+  // Get page dimensions from the first existing page, or default to US Letter
+  let pageWidth = 612
+  let pageHeight = 792
+  if (pdfDoc.getPageCount() > 0) {
+    const firstPage = pdfDoc.getPage(0)
+    const size = firstPage.getSize()
+    pageWidth = size.width
+    pageHeight = size.height
+  }
+
+  // Layout constants
+  const MARGIN = 72
+  const TITLE_SIZE = 16
+  const TITLE_GAP = 24
+  const HEADER_SIZE = 10
+  const HEADER_LINE_GAP = 8
+  const ROW_HEIGHT = 18
+  const PARENT_SIZE = 11
+  const CHILD_SIZE = 10
+  const CHILD_INDENT = 20
+  const NO_COL_X = MARGIN
+  const DESC_COL_X = MARGIN + 50
+  const PAGE_COL_RIGHT_X = pageWidth - MARGIN
+
+  const titleHeight = TITLE_SIZE + TITLE_GAP
+  const headerHeight = HEADER_SIZE + HEADER_LINE_GAP
+  const availableHeight = pageHeight - MARGIN - MARGIN - titleHeight - headerHeight
+  const entriesPerPage = Math.max(1, Math.floor(availableHeight / ROW_HEIGHT))
+  const tocPageCount = Math.max(1, Math.ceil(entries.length / entriesPerPage))
+
+  const grayColor = rgb(0.8, 0.8, 0.8)
+  const blackColor = rgb(0, 0, 0)
+
+  const ctx = pdfDoc.context
+
+  // Track parent index across pages for consistent numbering
+  let parentIdx = 0
+  let childIdx = 0
+
+  for (let pageNum = 0; pageNum < tocPageCount; pageNum++) {
+    const tocPage = pdfDoc.insertPage(pageNum, [pageWidth, pageHeight])
+
+    // Current Y position (top-down drawing)
+    let curY = pageHeight - MARGIN
+
+    // Draw title
+    const titleText = pageNum === 0
+      ? 'TABLE OF CONTENTS'
+      : 'TABLE OF CONTENTS (continued)'
+    const titleWidth = boldFont.widthOfTextAtSize(titleText, TITLE_SIZE)
+    tocPage.drawText(titleText, {
+      x: (pageWidth - titleWidth) / 2,
+      y: curY - TITLE_SIZE,
+      size: TITLE_SIZE,
+      font: boldFont,
+      color: blackColor,
+    })
+    curY -= titleHeight
+
+    // Draw column headers
+    tocPage.drawText('No.', {
+      x: NO_COL_X,
+      y: curY - HEADER_SIZE,
+      size: HEADER_SIZE,
+      font: boldFont,
+      color: blackColor,
+    })
+    tocPage.drawText('Description', {
+      x: DESC_COL_X,
+      y: curY - HEADER_SIZE,
+      size: HEADER_SIZE,
+      font: boldFont,
+      color: blackColor,
+    })
+    const pageHeaderText = 'Page'
+    const pageHeaderWidth = boldFont.widthOfTextAtSize(pageHeaderText, HEADER_SIZE)
+    tocPage.drawText(pageHeaderText, {
+      x: PAGE_COL_RIGHT_X - pageHeaderWidth,
+      y: curY - HEADER_SIZE,
+      size: HEADER_SIZE,
+      font: boldFont,
+      color: blackColor,
+    })
+    curY -= HEADER_SIZE + 4
+
+    // Header separator line
+    tocPage.drawLine({
+      start: { x: MARGIN, y: curY },
+      end: { x: pageWidth - MARGIN, y: curY },
+      thickness: 0.5,
+      color: grayColor,
+    })
+    curY -= HEADER_LINE_GAP - 4
+
+    // Determine slice of entries for this page
+    const startIdx = pageNum * entriesPerPage
+    const endIdx = Math.min(startIdx + entriesPerPage, entries.length)
+    const pageEntries = entries.slice(startIdx, endIdx)
+
+    // Collect link refs for this page
+    const linkRefs: ReturnType<typeof ctx.register>[] = []
+
+    // Track whether we need separator lines between parent groups
+    let isFirstParentOnPage = true
+
+    for (let i = 0; i < pageEntries.length; i++) {
+      const entry = pageEntries[i]
+      const isParent = entry.indent === 0
+
+      if (isParent) {
+        parentIdx++
+        childIdx = 0
+
+        // Separator line above parent groups (except the first one on the page)
+        if (!isFirstParentOnPage) {
+          tocPage.drawLine({
+            start: { x: MARGIN, y: curY + ROW_HEIGHT - 4 },
+            end: { x: pageWidth - MARGIN, y: curY + ROW_HEIGHT - 4 },
+            thickness: 0.5,
+            color: grayColor,
+          })
+        }
+        isFirstParentOnPage = false
+      } else {
+        childIdx++
+      }
+
+      const rowY = curY - (i * ROW_HEIGHT)
+      const fontSize = isParent ? PARENT_SIZE : CHILD_SIZE
+      const rowFont = isParent ? boldFont : font
+      const descX = isParent ? DESC_COL_X : DESC_COL_X + CHILD_INDENT
+
+      // Number column
+      const numText = isParent
+        ? formatEntryNumber(numbering, customPrefix, parentIdx)
+        : formatEntryNumber(numbering, customPrefix, parentIdx, childIdx)
+
+      if (numText) {
+        tocPage.drawText(numText, {
+          x: NO_COL_X,
+          y: rowY,
+          size: fontSize,
+          font: rowFont,
+          color: blackColor,
+        })
+      }
+
+      // Description column
+      tocPage.drawText(entry.label, {
+        x: descX,
+        y: rowY,
+        size: fontSize,
+        font: rowFont,
+        color: blackColor,
+      })
+
+      // Page number (right-aligned) — 1-based, offset by TOC pages
+      const displayPageNum = entry.pageIndex + tocPageCount + 1
+      const pageNumText = String(displayPageNum)
+      const pageNumWidth = font.widthOfTextAtSize(pageNumText, fontSize)
+      tocPage.drawText(pageNumText, {
+        x: PAGE_COL_RIGHT_X - pageNumWidth,
+        y: rowY,
+        size: fontSize,
+        font: font,
+        color: blackColor,
+      })
+
+      // Create clickable link annotation to the target page
+      const targetPageIdx = entry.pageIndex + tocPageCount
+      if (targetPageIdx >= 0 && targetPageIdx < pdfDoc.getPageCount()) {
+        const targetPage = pdfDoc.getPage(targetPageIdx)
+
+        // Destination: [pageRef, /Fit]
+        const dest = PDFArray.withContext(ctx)
+        dest.push(targetPage.ref)
+        dest.push(PDFName.of('Fit'))
+
+        // Link annotation dict
+        const linkDict = PDFDict.withContext(ctx)
+        linkDict.set(PDFName.of('Type'), PDFName.of('Annot'))
+        linkDict.set(PDFName.of('Subtype'), PDFName.of('Link'))
+
+        // Clickable rect: [x1, y1, x2, y2] — y is bottom-up in PDF
+        const rectArray = PDFArray.withContext(ctx)
+        rectArray.push(PDFNumber.of(MARGIN))
+        rectArray.push(PDFNumber.of(rowY - 4))
+        rectArray.push(PDFNumber.of(pageWidth - MARGIN))
+        rectArray.push(PDFNumber.of(rowY + 14))
+        linkDict.set(PDFName.of('Rect'), rectArray)
+
+        linkDict.set(PDFName.of('Dest'), dest)
+
+        // No visible border
+        const borderArray = PDFArray.withContext(ctx)
+        borderArray.push(PDFNumber.of(0))
+        borderArray.push(PDFNumber.of(0))
+        borderArray.push(PDFNumber.of(0))
+        linkDict.set(PDFName.of('Border'), borderArray)
+
+        const linkRef = ctx.register(linkDict)
+        linkRefs.push(linkRef)
+      }
+    }
+
+    // Attach all link annotations to the TOC page
+    if (linkRefs.length > 0) {
+      const existingAnnots = tocPage.node.lookup(PDFName.of('Annots'))
+      const annotsArray = existingAnnots instanceof PDFArray
+        ? existingAnnots
+        : PDFArray.withContext(ctx)
+
+      for (const ref of linkRefs) {
+        annotsArray.push(ref)
+      }
+      tocPage.node.set(PDFName.of('Annots'), annotsArray)
+    }
+  }
+
+  return tocPageCount
 }
