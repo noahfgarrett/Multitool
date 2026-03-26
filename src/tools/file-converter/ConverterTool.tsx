@@ -3,7 +3,7 @@ import { FileDropZone } from '@/components/common/FileDropZone.tsx'
 import { Button } from '@/components/common/Button.tsx'
 import { Slider } from '@/components/common/Slider.tsx'
 import { formatFileSize } from '@/utils/fileReader.ts'
-import { downloadBlob } from '@/utils/download.ts'
+import { saveBlob } from '@/utils/download.ts'
 import {
   getFileCategory, getOutputFormats, convertFile,
   type FileCategory, type OutputFormat, type ConversionResult, type ConversionOptions,
@@ -154,7 +154,7 @@ export default function ConverterTool() {
     try {
       // Single result — direct download
       if (entry.result) {
-        downloadBlob(entry.result.blob, entry.result.name)
+        await saveBlob(entry.result.blob, entry.result.name)
         return
       }
       // Multi-result — bundle into ZIP
@@ -163,9 +163,14 @@ export default function ConverterTool() {
         for (const r of entry.results) {
           zip.file(r.name, r.blob)
         }
-        const zipBlob = await zip.generateAsync({ type: 'blob' })
+        const zipBlob = await zip.generateAsync({
+          type: 'blob',
+          compression: 'DEFLATE',
+          compressionOptions: { level: 6 },
+          mimeType: 'application/zip',
+        })
         const baseName = entry.file.name.replace(/\.[^.]+$/, '')
-        downloadBlob(zipBlob, `${baseName}-converted.zip`)
+        await saveBlob(zipBlob, `${baseName}-converted.zip`)
       }
     } catch (err) {
       updateEntry(entry.id, { status: 'error', error: err instanceof Error ? err.message : 'Download failed' })
@@ -181,7 +186,7 @@ export default function ConverterTool() {
     try {
       // If only one entry with a single result, download directly
       if (done.length === 1 && done[0].result) {
-        downloadBlob(done[0].result.blob, done[0].result.name)
+        await saveBlob(done[0].result.blob, done[0].result.name)
         return
       }
 
@@ -194,8 +199,13 @@ export default function ConverterTool() {
           zip.file(entry.result.name, entry.result.blob)
         }
       }
-      const zipBlob = await zip.generateAsync({ type: 'blob' })
-      downloadBlob(zipBlob, 'converted-files.zip')
+      const zipBlob = await zip.generateAsync({
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 },
+        mimeType: 'application/zip',
+      })
+      await saveBlob(zipBlob, 'converted-files.zip')
     } catch (err) {
       setDownloadError(err instanceof Error ? err.message : 'Download failed')
     }

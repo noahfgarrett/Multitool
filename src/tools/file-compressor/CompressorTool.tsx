@@ -4,7 +4,7 @@ import { Button } from '@/components/common/Button.tsx'
 import { Slider } from '@/components/common/Slider.tsx'
 import { ProgressBar } from '@/components/common/ProgressBar.tsx'
 import { formatFileSize } from '@/utils/fileReader.ts'
-import { downloadBlob } from '@/utils/download.ts'
+import { saveBlob } from '@/utils/download.ts'
 import {
   compressImage,
   compressPDF,
@@ -105,7 +105,7 @@ export default function CompressorTool() {
       const f = completedFiles[0]
       const baseName = f.file.name.replace(/\.[^.]+$/, '')
       const ext = getCompressedExtension(f.fileType)
-      downloadBlob(f.compressedBlob!, `${baseName}-compressed.${ext}`)
+      await saveBlob(f.compressedBlob!, `${baseName}-compressed.${ext}`)
       return
     }
 
@@ -116,8 +116,13 @@ export default function CompressorTool() {
       const ext = getCompressedExtension(f.fileType)
       zip.file(`${baseName}-compressed.${ext}`, f.compressedBlob!)
     }
-    const zipBlob = await zip.generateAsync({ type: 'blob' })
-    downloadBlob(zipBlob, 'compressed-files.zip')
+    const zipBlob = await zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 },
+      mimeType: 'application/zip',
+    })
+    await saveBlob(zipBlob, 'compressed-files.zip')
   }, [files])
 
   const totalOriginal = files.reduce((sum, f) => sum + f.originalSize, 0)
