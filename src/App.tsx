@@ -31,6 +31,8 @@ const toolComponents: Record<ToolId, React.LazyExoticComponent<React.ComponentTy
   'json-csv-viewer': lazy(() => import('@/tools/json-csv-viewer/JsonCsvViewerTool.tsx')),
 }
 
+const FeedbackForm = lazy(() => import('@/tools/feedback/FeedbackForm.tsx'))
+
 function LoadingFallback() {
   return (
     <div className="flex items-center justify-center h-full">
@@ -41,9 +43,11 @@ function LoadingFallback() {
 
 export default function App() {
   const activeTool = useAppStore((s) => s.activeTool)
+  const activeView = useAppStore((s) => s.activeView)
+  const showProfileModal = useAppStore((s) => s.showProfileModal)
+  const setShowProfileModal = useAppStore((s) => s.setShowProfileModal)
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
-  const [showProfileModal, setShowProfileModal] = useState(false)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
 
   useEffect(() => {
@@ -66,7 +70,15 @@ export default function App() {
 
   return (
     <AppShell>
-      {ActiveComponent ? (
+      {activeView === 'feedback' ? (
+        <ToolContainer key="feedback">
+          <ErrorBoundary>
+            <Suspense fallback={<LoadingFallback />}>
+              <FeedbackForm />
+            </Suspense>
+          </ErrorBoundary>
+        </ToolContainer>
+      ) : ActiveComponent ? (
         <ToolContainer key={activeTool}>
           <ErrorBoundary>
             <Suspense fallback={<LoadingFallback />}>
