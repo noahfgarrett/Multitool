@@ -293,7 +293,7 @@ export default function FeedbackForm() {
             <div className="flex items-center gap-1.5 mt-1.5">
               <Info size={11} className="text-red-400/50 flex-shrink-0" />
               <p className="text-[10px] text-red-400/50">
-                Bug tip: Describe the steps that led to the issue — this helps us find the root cause faster.
+                Bug tip: Describe the steps that led to the issue — this helps me find the root cause faster.
               </p>
             </div>
           )}
