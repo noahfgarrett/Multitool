@@ -22,7 +22,7 @@ export function HelpModal({ toolId, open, onClose }: HelpModalProps) {
 
   return (
     <Modal open={open} onClose={onClose} title={content.title} width="lg">
-      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+      <div className="space-y-4">
         {/* Intro */}
         <p className="text-sm text-white/60 leading-relaxed">{content.intro}</p>
 
