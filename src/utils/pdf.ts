@@ -4,7 +4,7 @@
  * No Electron/filesystem dependencies - works entirely with File objects and Uint8Arrays.
  */
 
-import { PDFDocument, PDFDict, PDFName, PDFHexString, PDFArray, PDFNumber, degrees } from 'pdf-lib'
+import { PDFDocument, PDFDict, PDFName, PDFHexString, PDFArray, PDFNumber, PDFRef, degrees } from 'pdf-lib'
 import * as pdfjsLib from 'pdfjs-dist'
 import type { PDFFile, PDFPage, PageRangeValidation } from '@/types'
 
@@ -217,6 +217,53 @@ export async function renderPageToCanvas(
   page.cleanup()
 }
 
+/**
+ * Extract the most likely title text from a PDF page.
+ * Finds the largest-font text item on the page.
+ * Returns null if no good candidate found.
+ */
+export async function extractPageTitleCandidate(
+  file: File,
+  pageNumber: number,
+): Promise<string | null> {
+  const buffer = await file.arrayBuffer()
+  const data = new Uint8Array(buffer)
+  const doc = await pdfjsLib.getDocument({ data: data.slice() }).promise
+
+  try {
+    if (pageNumber < 1 || pageNumber > doc.numPages) return null
+    const page = await doc.getPage(pageNumber)
+    const content = await page.getTextContent()
+
+    let maxFontSize = 0
+    let bestText = ''
+
+    for (const item of content.items) {
+      if (!('str' in item) || !item.str.trim()) continue
+      const fontSize = Math.abs(item.transform[0]) || 12
+      if (fontSize > maxFontSize) {
+        maxFontSize = fontSize
+        bestText = item.str.trim()
+      }
+    }
+
+    page.cleanup()
+
+    if (!bestText) return null
+
+    let cleaned = bestText
+      .replace(/\bSHEET\s+\d+\s+OF\s+\d+\b/gi, '')
+      .replace(/\bPAGE\s+\d+\b/gi, '')
+      .replace(/\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/g, '')
+      .trim()
+
+    if (cleaned.length < 3 || cleaned.length > 80) return null
+    return cleaned
+  } finally {
+    doc.destroy()
+  }
+}
+
 // ============================================
 // Page Range Parsing
 // ============================================
@@ -293,7 +340,7 @@ export function parsePageRange(rangeStr: string, maxPages: number): number[] {
 export async function mergePDFs(
   files: { file: File; pages?: number[]; rotations?: Record<number, number> }[],
   onProgress?: (current: number, total: number) => void,
-  bookmarks?: { title: string; pageIndex: number }[],
+  bookmarks?: { title: string; pageIndex: number; children?: { title: string; pageIndex: number }[] }[],
 ): Promise<Uint8Array> {
   const mergedPdf = await PDFDocument.create()
   const total = files.length
@@ -331,19 +378,24 @@ export async function mergePDFs(
   return mergedPdf.save()
 }
 
+interface NestedBookmarkInput {
+  title: string
+  pageIndex: number
+  children?: NestedBookmarkInput[]
+}
+
 /**
- * Add bookmarks (PDF outline / table of contents) to a PDF document.
- * Each bookmark links to a specific page (fit-to-page view).
+ * Add bookmarks (PDF outline) to a PDF document.
+ * Supports one level of nesting (parent → children).
  */
-function addPdfBookmarks(
+export function addPdfBookmarks(
   pdfDoc: PDFDocument,
-  bookmarks: { title: string; pageIndex: number }[],
+  bookmarks: NestedBookmarkInput[],
 ): void {
   if (bookmarks.length === 0) return
   const ctx = pdfDoc.context
 
-  // Create each outline item
-  const itemRefs = bookmarks.map((bm) => {
+  function createItem(bm: NestedBookmarkInput): PDFRef {
     const pageRef = pdfDoc.getPage(bm.pageIndex).ref
     const dest = PDFArray.withContext(ctx)
     dest.push(pageRef)
@@ -353,29 +405,48 @@ function addPdfBookmarks(
     item.set(PDFName.of('Title'), PDFHexString.fromText(bm.title))
     item.set(PDFName.of('Dest'), dest)
     return ctx.register(item)
-  })
-
-  // Link siblings (Prev/Next)
-  for (let i = 0; i < itemRefs.length; i++) {
-    const dict = ctx.lookup(itemRefs[i]) as PDFDict
-    if (i > 0) dict.set(PDFName.of('Prev'), itemRefs[i - 1])
-    if (i < itemRefs.length - 1) dict.set(PDFName.of('Next'), itemRefs[i + 1])
   }
 
-  // Create outline root
+  const topRefs: PDFRef[] = []
+
+  for (const bm of bookmarks) {
+    const parentRef = createItem(bm)
+    topRefs.push(parentRef)
+
+    if (bm.children && bm.children.length > 0) {
+      const childRefs = bm.children.map((c) => createItem(c))
+
+      for (let i = 0; i < childRefs.length; i++) {
+        const dict = ctx.lookup(childRefs[i]) as PDFDict
+        dict.set(PDFName.of('Parent'), parentRef)
+        if (i > 0) dict.set(PDFName.of('Prev'), childRefs[i - 1])
+        if (i < childRefs.length - 1) dict.set(PDFName.of('Next'), childRefs[i + 1])
+      }
+
+      const parentDict = ctx.lookup(parentRef) as PDFDict
+      parentDict.set(PDFName.of('First'), childRefs[0])
+      parentDict.set(PDFName.of('Last'), childRefs[childRefs.length - 1])
+      parentDict.set(PDFName.of('Count'), PDFNumber.of(childRefs.length))
+    }
+  }
+
+  for (let i = 0; i < topRefs.length; i++) {
+    const dict = ctx.lookup(topRefs[i]) as PDFDict
+    if (i > 0) dict.set(PDFName.of('Prev'), topRefs[i - 1])
+    if (i < topRefs.length - 1) dict.set(PDFName.of('Next'), topRefs[i + 1])
+  }
+
   const root = PDFDict.withContext(ctx)
   root.set(PDFName.of('Type'), PDFName.of('Outlines'))
-  root.set(PDFName.of('First'), itemRefs[0])
-  root.set(PDFName.of('Last'), itemRefs[itemRefs.length - 1])
-  root.set(PDFName.of('Count'), PDFNumber.of(itemRefs.length))
+  root.set(PDFName.of('First'), topRefs[0])
+  root.set(PDFName.of('Last'), topRefs[topRefs.length - 1])
+  root.set(PDFName.of('Count'), PDFNumber.of(topRefs.length))
   const rootRef = ctx.register(root)
 
-  // Set parent on all items
-  for (const ref of itemRefs) {
+  for (const ref of topRefs) {
     (ctx.lookup(ref) as PDFDict).set(PDFName.of('Parent'), rootRef)
   }
 
-  // Add to document catalog
   pdfDoc.catalog.set(PDFName.of('Outlines'), rootRef)
 }
 
