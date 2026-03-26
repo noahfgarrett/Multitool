@@ -399,10 +399,10 @@ export default function GridStitchMode() {
         await page.render({
           canvasContext: ctx,
           viewport: thumbViewport,
-          intent: 'print',
+          intent: 'display',
           annotationMode: pdfjsLib.AnnotationMode.DISABLE,
         }).promise
-        const thumbnail = canvas.toDataURL('image/png')
+        const thumbnail = canvas.toDataURL('image/jpeg', 0.7)
         page.cleanup()
         canvas.width = 0
         canvas.height = 0
