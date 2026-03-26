@@ -995,7 +995,25 @@ export default function PdfMergeTool() {
         </Button>
         {/* Preview toggle */}
         <button
-          onClick={() => setShowPreview((p) => !p)}
+          onClick={() => {
+            setShowPreview((p) => {
+              if (!p) {
+                // Entering preview — auto-expand all files so thumbnails load
+                setFiles((prev) => prev.map((f) => {
+                  if (f.pages.length > 0) return f
+                  const pages: PageEntry[] = Array.from({ length: f.pageCount }, (_, i) => ({
+                    uid: makePageUid(),
+                    pageNumber: i + 1,
+                    thumbnail: '',
+                    excluded: false,
+                    rotation: 0,
+                  }))
+                  return { ...f, expanded: true, loadingPages: false, pages }
+                }))
+              }
+              return !p
+            })
+          }}
           className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
             showPreview ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'bg-white/[0.04] text-white/40 hover:text-white/60'
           }`}
@@ -1064,8 +1082,23 @@ export default function PdfMergeTool() {
       {showPreview ? (
         <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPage(null) }}>
           <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${zoomCols}, 1fr)` }}>
+            {/* TOC page preview cards */}
+            {tocEnabled && tocEntries.length > 0 && (() => {
+              const tocPages = estimateTocPageCount(tocEntries.length)
+              return Array.from({ length: tocPages }, (_, i) => (
+                <div key={`toc-page-${i}`} className="relative rounded-lg border border-[#F47B20]/20 bg-[#F47B20]/[0.04] p-1.5 flex items-center justify-center">
+                  <div className="w-full aspect-[8.5/11] rounded bg-white/[0.06] flex flex-col items-center justify-center gap-1">
+                    <ListOrdered size={16} className="text-[#F47B20]/60" />
+                    <span className="text-[9px] text-[#F47B20]/60 font-medium">
+                      {i === 0 ? 'TABLE OF CONTENTS' : 'TOC (continued)'}
+                    </span>
+                  </div>
+                  <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-[#F47B20]/80">#{i + 1}</div>
+                </div>
+              ))
+            })()}
             {(() => {
-              let pos = 0
+              let pos = tocEnabled && tocEntries.length > 0 ? estimateTocPageCount(tocEntries.length) : 0
               return files.flatMap((file) => {
                 if (file.pages.length > 0) {
                   return file.pages
