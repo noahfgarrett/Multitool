@@ -7,6 +7,7 @@ import { HelpCircle } from 'lucide-react'
 
 export function Header() {
   const activeTool = useAppStore((s) => s.activeTool)
+  const activeView = useAppStore((s) => s.activeView)
   const toolDef = activeTool ? tools.find((t) => t.id === activeTool) : null
   const [helpOpen, setHelpOpen] = useState(false)
 
@@ -14,7 +15,14 @@ export function Header() {
 
   return (
     <header className="h-14 flex items-center px-6 border-b border-white/[0.06] bg-black/10">
-      {toolDef ? (
+      {activeView === 'feedback' ? (
+        <div className="flex-1 min-w-0">
+          <h1 className="text-base font-display font-semibold text-white">
+            Report Bug / Idea
+          </h1>
+          <p className="text-xs text-white/50 -mt-0.5">Help us improve the toolkit</p>
+        </div>
+      ) : toolDef ? (
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-display font-semibold text-white">
             {toolDef.label}
