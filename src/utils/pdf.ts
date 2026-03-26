@@ -135,10 +135,10 @@ export async function generateThumbnail(
   await page.render({
     canvasContext: ctx,
     viewport,
-    intent: 'print',
+    intent: 'display',
     annotationMode: pdfjsLib.AnnotationMode.DISABLE,
   }).promise
-  const dataUrl = canvas.toDataURL('image/png')
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
 
   page.cleanup()
   canvas.width = 0
