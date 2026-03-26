@@ -16,7 +16,7 @@ import { CSS } from '@dnd-kit/utilities'
 import {
   Download, Trash2, GripVertical, Plus,
   ChevronDown, ChevronRight, Loader2, Eye, EyeOff, ZoomIn, ZoomOut, Copy,
-  RotateCw, RotateCcw, Lock, FileText, Save, FolderOpen, ListOrdered, CheckSquare, Square, Filter,
+  RotateCw, RotateCcw, Lock, FileText, Save, FolderOpen, ListOrdered, CheckSquare, Square, Filter, X,
 } from 'lucide-react'
 
 import { PDFDocument } from 'pdf-lib'
@@ -306,6 +306,17 @@ export default function PdfMergeTool() {
   const [copiedPage, setCopiedPage] = useState<{ fileId: string; page: PageEntry } | null>(null)
   const [showCopied, setShowCopied] = useState(false)
 
+  // ── Persisted settings (localStorage) — must be before TOC state ──
+  const SETTINGS_KEY = 'lwt-merge-settings'
+  function loadSettings(): { zoomCols: number; resIdx: number; tocNumbering: TocNumbering; tocCustomPrefix: string } {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY)
+      if (raw) return JSON.parse(raw) as ReturnType<typeof loadSettings>
+    } catch { /* ignore */ }
+    return { zoomCols: 5, resIdx: 1, tocNumbering: 'numeric', tocCustomPrefix: '' }
+  }
+  const savedSettings = useRef(loadSettings())
+
   // TOC state
   const [tocEnabled, setTocEnabled] = useState(false)
   const [tocEntries, setTocEntries] = useState<TocEntry[]>([])
@@ -317,17 +328,6 @@ export default function PdfMergeTool() {
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [activeDragWidth, setActiveDragWidth] = useState(0)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
-
-  // ── Persisted settings (localStorage) ──
-  const SETTINGS_KEY = 'lwt-merge-settings'
-  function loadSettings(): { zoomCols: number; resIdx: number; tocNumbering: TocNumbering; tocCustomPrefix: string } {
-    try {
-      const raw = localStorage.getItem(SETTINGS_KEY)
-      if (raw) return JSON.parse(raw) as ReturnType<typeof loadSettings>
-    } catch { /* ignore */ }
-    return { zoomCols: 5, resIdx: 1, tocNumbering: 'numeric', tocCustomPrefix: '' }
-  }
-  const savedSettings = useRef(loadSettings())
 
   // Thumbnail zoom — controls columns per row
   const MIN_COLS = 2
