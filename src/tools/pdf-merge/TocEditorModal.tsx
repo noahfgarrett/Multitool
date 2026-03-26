@@ -10,7 +10,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } 
 import { CSS } from '@dnd-kit/utilities'
 import {
   ListOrdered, Lightbulb, Pencil, MoreHorizontal, ChevronLeft, ChevronRight,
-  GripVertical, Plus, Trash2, Copy,
+  GripVertical, Plus, Trash2, Copy, X,
 } from 'lucide-react'
 import type { TocEntry, TocNumbering } from './tocUtils.ts'
 import { formatEntryNumber } from './tocUtils.ts'
@@ -589,18 +589,28 @@ export function TocEditorModal({
               {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={autoDetectNames}
-            disabled={detecting}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md bg-blue-500/10 border border-blue-500/25 text-blue-400 hover:bg-blue-500/20 transition-colors disabled:opacity-50"
-          >
-            <Lightbulb size={12} />
-            {detecting
-              ? `Detecting... ${detectProgress ? `${detectProgress.current}/${detectProgress.total}` : ''}`
-              : 'Auto-detect Names'
-            }
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={autoDetectNames}
+              disabled={detecting}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md bg-blue-500/10 border border-blue-500/25 text-blue-400 hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+            >
+              <Lightbulb size={12} />
+              {detecting
+                ? `Detecting... ${detectProgress ? `${detectProgress.current}/${detectProgress.total}` : ''}`
+                : 'Auto-detect Names'
+              }
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-md text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+              title="Close"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {/* ── Toolbar ───────────────────────── */}
@@ -611,7 +621,7 @@ export function TocEditorModal({
               <button
                 key={preset.value}
                 type="button"
-                onClick={() => onNumberingChange(preset.value)}
+                onClick={() => onNumberingChange(numbering === preset.value && preset.value === 'custom' ? 'numeric' : preset.value)}
                 className={`
                   px-2.5 py-1 text-[11px] rounded-md border transition-colors
                   ${numbering === preset.value
