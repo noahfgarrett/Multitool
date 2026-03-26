@@ -3,7 +3,7 @@ import { FileDropZone } from '@/components/common/FileDropZone.tsx'
 import { Button } from '@/components/common/Button.tsx'
 import { ProgressBar } from '@/components/common/ProgressBar.tsx'
 import { useAppStore } from '@/stores/appStore.ts'
-import { loadPDFFile, generateThumbnail, mergePDFs, removePDFFromCache, addPdfBookmarks } from '@/utils/pdf.ts'
+import { loadPDFFile, generateThumbnail, mergePDFs, removePDFFromCache, addPdfBookmarks, parsePageRange } from '@/utils/pdf.ts'
 import { downloadBlob } from '@/utils/download.ts'
 import { formatFileSize } from '@/utils/fileReader.ts'
 import type { PDFFile } from '@/types'
@@ -16,7 +16,7 @@ import { CSS } from '@dnd-kit/utilities'
 import {
   Download, Trash2, GripVertical, Plus,
   ChevronDown, ChevronRight, Loader2, Eye, EyeOff, ZoomIn, ZoomOut, Copy,
-  RotateCw, RotateCcw, Lock, FileText, Save, FolderOpen, ListOrdered,
+  RotateCw, RotateCcw, Lock, FileText, Save, FolderOpen, ListOrdered, CheckSquare, Square, Filter,
 } from 'lucide-react'
 
 import { PDFDocument } from 'pdf-lib'
@@ -1240,7 +1240,49 @@ export default function PdfMergeTool() {
                         {/* Expanded page grid with dnd-kit sortable */}
                         {file.expanded && (
                           <div className="px-3 pb-3 pt-0">
-                            <div className="border-t border-white/[0.06] pt-3">
+                            <div className="border-t border-white/[0.06] pt-2">
+                              {/* Page controls: Select All + Page Range */}
+                              <div className="flex items-center gap-2 mb-2">
+                                <button
+                                  onClick={() => setFiles((prev) => prev.map((f) => {
+                                    if (f.id !== file.id) return f
+                                    const allIncluded = f.pages.every((p) => !p.excluded)
+                                    return { ...f, pages: f.pages.map((p) => ({ ...p, excluded: allIncluded })) }
+                                  }))}
+                                  className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] text-white/40 hover:text-white/60 bg-white/[0.04] border border-white/[0.06] transition-colors"
+                                  title={file.pages.every((p) => !p.excluded) ? 'Exclude all pages' : 'Include all pages'}
+                                >
+                                  {file.pages.every((p) => !p.excluded) ? <CheckSquare size={10} /> : <Square size={10} />}
+                                  {file.pages.every((p) => !p.excluded) ? 'All' : 'None'}
+                                </button>
+                                <div className="flex items-center gap-1 flex-1">
+                                  <Filter size={10} className="text-white/25 flex-shrink-0" />
+                                  <input
+                                    type="text"
+                                    placeholder={`Pages: 1-${file.pageCount} (e.g. 1-5, 8, 12-15)`}
+                                    className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded px-2 py-0.5 text-[10px] text-white/70 placeholder-white/20 outline-none focus:border-[#F47B20]/30"
+                                    onKeyDown={(e) => {
+                                      if (e.key !== 'Enter') return
+                                      const input = e.currentTarget
+                                      const rangeStr = input.value.trim()
+                                      if (!rangeStr) {
+                                        // Empty = include all
+                                        setFiles((prev) => prev.map((f) => {
+                                          if (f.id !== file.id) return f
+                                          return { ...f, pages: f.pages.map((p) => ({ ...p, excluded: false })) }
+                                        }))
+                                        return
+                                      }
+                                      const included = new Set(parsePageRange(rangeStr, file.pageCount))
+                                      setFiles((prev) => prev.map((f) => {
+                                        if (f.id !== file.id) return f
+                                        return { ...f, pages: f.pages.map((p) => ({ ...p, excluded: !included.has(p.pageNumber) })) }
+                                      }))
+                                      input.value = ''
+                                    }}
+                                  />
+                                </div>
+                              </div>
                               <DndContext
                                 sensors={sensors}
                                 collisionDetection={closestCenter}
