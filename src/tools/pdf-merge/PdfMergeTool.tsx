@@ -3,7 +3,7 @@ import { FileDropZone } from '@/components/common/FileDropZone.tsx'
 import { Button } from '@/components/common/Button.tsx'
 import { ProgressBar } from '@/components/common/ProgressBar.tsx'
 import { useAppStore } from '@/stores/appStore.ts'
-import { loadPDFFile, generateThumbnail, mergePDFs, removePDFFromCache } from '@/utils/pdf.ts'
+import { loadPDFFile, generateThumbnail, mergePDFs, removePDFFromCache, addPdfBookmarks } from '@/utils/pdf.ts'
 import { downloadBlob } from '@/utils/download.ts'
 import { formatFileSize } from '@/utils/fileReader.ts'
 import type { PDFFile } from '@/types'
@@ -16,8 +16,16 @@ import { CSS } from '@dnd-kit/utilities'
 import {
   Download, Trash2, GripVertical, Plus,
   ChevronDown, ChevronRight, Loader2, Eye, EyeOff, ZoomIn, ZoomOut, Copy,
-  RotateCw, RotateCcw, Lock, FileText, Save, FolderOpen,
+  RotateCw, RotateCcw, Lock, FileText, Save, FolderOpen, ListOrdered,
 } from 'lucide-react'
+
+import { PDFDocument } from 'pdf-lib'
+import { TocEditorModal } from './TocEditorModal.tsx'
+import {
+  type TocEntry, type TocNumbering,
+  buildInitialEntries, recalcPageIndices, estimateTocPageCount,
+  renderTocPages, entriesToNestedBookmarks,
+} from './tocUtils.ts'
 
 const GridStitchMode = lazy(() => import('./GridStitchMode.tsx'))
 
@@ -297,6 +305,13 @@ export default function PdfMergeTool() {
   const [selectedPage, setSelectedPage] = useState<{ fileId: string; pageIdx: number } | null>(null)
   const [copiedPage, setCopiedPage] = useState<{ fileId: string; page: PageEntry } | null>(null)
   const [showCopied, setShowCopied] = useState(false)
+
+  // TOC state
+  const [tocEnabled, setTocEnabled] = useState(false)
+  const [tocEntries, setTocEntries] = useState<TocEntry[]>([])
+  const [tocNumbering, setTocNumbering] = useState<TocNumbering>('numeric')
+  const [tocCustomPrefix, setTocCustomPrefix] = useState('')
+  const [tocModalOpen, setTocModalOpen] = useState(false)
 
   // dnd-kit page-level drag
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
@@ -652,6 +667,22 @@ export default function PdfMergeTool() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedPage, copiedPage, files])
 
+  // Sync TOC entries when files change
+  useEffect(() => {
+    if (!tocEnabled) return
+    setTocEntries((prev) => {
+      if (prev.length === 0) {
+        return buildInitialEntries(files)
+      }
+      const fileIds = new Set(files.map((f) => f.id))
+      const filtered = prev.filter((e) => fileIds.has(e.sourceFileId))
+      const existingFileIds = new Set(filtered.map((e) => e.sourceFileId))
+      const newFiles = files.filter((f) => !existingFileIds.has(f.id))
+      const newEntries = buildInitialEntries(newFiles)
+      return recalcPageIndices([...filtered, ...newEntries])
+    })
+  }, [tocEnabled, files])
+
   /* ── Merge ── */
 
   const handleMerge = useCallback(async () => {
@@ -704,10 +735,21 @@ export default function PdfMergeTool() {
           return base
         }),
         (current, total) => { setProgress(Math.round((current / total) * 100)) },
-        bookmarks.length > 1 ? bookmarks : undefined,
+        !tocEnabled && bookmarks.length > 1 ? bookmarks : undefined,
       )
 
-      const blob = new Blob([result], { type: 'application/pdf' })
+      let finalBytes = result
+
+      // If TOC enabled, load merged doc, insert TOC pages, add nested bookmarks
+      if (tocEnabled && tocEntries.length > 0) {
+        const tocDoc = await PDFDocument.load(result)
+        const tocPageCount = await renderTocPages(tocDoc, tocEntries, tocNumbering, tocCustomPrefix)
+        const nestedBookmarks = entriesToNestedBookmarks(tocEntries, tocNumbering, tocCustomPrefix, tocPageCount)
+        addPdfBookmarks(tocDoc, nestedBookmarks)
+        finalBytes = await tocDoc.save()
+      }
+
+      const blob = new Blob([finalBytes], { type: 'application/pdf' })
 
       if ('showSaveFilePicker' in window) {
         try {
@@ -733,7 +775,7 @@ export default function PdfMergeTool() {
       setIsMerging(false)
       setProgress(0)
     }
-  }, [files, smartFilename])
+  }, [files, smartFilename, tocEnabled, tocEntries, tocNumbering, tocCustomPrefix])
 
   /* ── Helper: get included page count ── */
 
@@ -961,6 +1003,25 @@ export default function PdfMergeTool() {
         >
           <FileText size={12} />
           Preview
+        </button>
+
+        <button
+          onClick={() => {
+            if (!tocEnabled) {
+              setTocEnabled(true)
+              setTocModalOpen(true)
+            } else {
+              setTocModalOpen(true)
+            }
+          }}
+          className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
+            tocEnabled ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'bg-white/[0.04] text-white/40 hover:text-white/60'
+          }`}
+          title="Table of Contents"
+        >
+          <ListOrdered size={12} />
+          TOC
+          {tocEnabled && <span className="w-1.5 h-1.5 rounded-full bg-[#F47B20]" />}
         </button>
 
         <Button
@@ -1205,6 +1266,19 @@ export default function PdfMergeTool() {
           onCancel={() => passwordPrompt.resolve(null)}
         />
       )}
+
+      <TocEditorModal
+        open={tocModalOpen}
+        onClose={() => setTocModalOpen(false)}
+        entries={tocEntries}
+        onEntriesChange={setTocEntries}
+        numbering={tocNumbering}
+        onNumberingChange={setTocNumbering}
+        customPrefix={tocCustomPrefix}
+        onCustomPrefixChange={setTocCustomPrefix}
+        files={files}
+        estimatedTocPageCount={estimateTocPageCount(tocEntries.length)}
+      />
 
     </div>
   )
