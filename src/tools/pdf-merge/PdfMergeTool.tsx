@@ -309,8 +309,8 @@ export default function PdfMergeTool() {
   // TOC state
   const [tocEnabled, setTocEnabled] = useState(false)
   const [tocEntries, setTocEntries] = useState<TocEntry[]>([])
-  const [tocNumbering, setTocNumbering] = useState<TocNumbering>('numeric')
-  const [tocCustomPrefix, setTocCustomPrefix] = useState('')
+  const [tocNumbering, setTocNumbering] = useState<TocNumbering>(savedSettings.current.tocNumbering)
+  const [tocCustomPrefix, setTocCustomPrefix] = useState(savedSettings.current.tocCustomPrefix)
   const [tocModalOpen, setTocModalOpen] = useState(false)
 
   // dnd-kit page-level drag
@@ -318,10 +318,21 @@ export default function PdfMergeTool() {
   const [activeDragWidth, setActiveDragWidth] = useState(0)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
+  // ── Persisted settings (localStorage) ──
+  const SETTINGS_KEY = 'lwt-merge-settings'
+  function loadSettings(): { zoomCols: number; resIdx: number; tocNumbering: TocNumbering; tocCustomPrefix: string } {
+    try {
+      const raw = localStorage.getItem(SETTINGS_KEY)
+      if (raw) return JSON.parse(raw) as ReturnType<typeof loadSettings>
+    } catch { /* ignore */ }
+    return { zoomCols: 5, resIdx: 1, tocNumbering: 'numeric', tocCustomPrefix: '' }
+  }
+  const savedSettings = useRef(loadSettings())
+
   // Thumbnail zoom — controls columns per row
   const MIN_COLS = 2
   const MAX_COLS = 10
-  const [zoomCols, setZoomCols] = useState(5)
+  const [zoomCols, setZoomCols] = useState(savedSettings.current.zoomCols)
   const zoomIn = () => setZoomCols((c) => Math.max(c - 1, MIN_COLS))
   const zoomOut = () => setZoomCols((c) => Math.min(c + 1, MAX_COLS))
 
@@ -331,11 +342,18 @@ export default function PdfMergeTool() {
     { label: 'Med', height: 300, quality: 0.7 },
     { label: 'High', height: 600, quality: 0.85 },
   ]
-  const [resIdx, setResIdx] = useState(1) // default Medium
+  const [resIdx, setResIdx] = useState(savedSettings.current.resIdx)
   const resRef = useRef(RES_LEVELS[1].height)
   resRef.current = RES_LEVELS[resIdx].height
   const qualityRef = useRef(RES_LEVELS[1].quality)
   qualityRef.current = RES_LEVELS[resIdx].quality
+
+  // Persist settings on change
+  useEffect(() => {
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ zoomCols, resIdx, tocNumbering, tocCustomPrefix }))
+    } catch { /* quota exceeded — silent */ }
+  }, [zoomCols, resIdx, tocNumbering, tocCustomPrefix])
 
   // Scroll container ref
   const scrollRef = useRef<HTMLDivElement>(null)
