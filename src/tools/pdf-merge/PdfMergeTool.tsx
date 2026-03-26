@@ -393,6 +393,20 @@ export default function PdfMergeTool() {
     return (base.length > 60 ? base.slice(0, 57) + '...' : base) + `_and_${names.length - 1}_more.pdf`
   }, [files])
 
+  /* ── Thumbnail cache (sessionStorage) ── */
+
+  function thumbCacheKey(file: { name: string; size: number }, pageNumber: number, height: number): string {
+    return `thumb:${file.name}:${file.size}:${pageNumber}:${height}`
+  }
+
+  function getCachedThumb(key: string): string | null {
+    try { return sessionStorage.getItem(key) } catch { return null }
+  }
+
+  function setCachedThumb(key: string, dataUrl: string): void {
+    try { sessionStorage.setItem(key, dataUrl) } catch { /* quota exceeded — silent */ }
+  }
+
   /* ── Lazy thumbnail loader ── */
 
   const loadPageThumbnail = useCallback(async (fileId: string, pageUid: string, pageNumber: number) => {
@@ -408,7 +422,19 @@ export default function PdfMergeTool() {
     if (!file) return
 
     try {
+      // Check sessionStorage cache first
+      const cacheKey = thumbCacheKey(file, pageNumber, resRef.current)
+      const cached = getCachedThumb(cacheKey)
+      if (cached) {
+        setFiles((prev) => prev.map((f) => {
+          if (f.id !== fileId) return f
+          return { ...f, pages: f.pages.map((p) => p.uid === pageUid ? { ...p, thumbnail: cached } : p) }
+        }))
+        return
+      }
+
       const thumbnail = await generateThumbnail(file, pageNumber, resRef.current, qualityRef.current)
+      setCachedThumb(cacheKey, thumbnail)
       setFiles((prev) => prev.map((f) => {
         if (f.id !== fileId) return f
         return { ...f, pages: f.pages.map((p) => p.uid === pageUid ? { ...p, thumbnail } : p) }
