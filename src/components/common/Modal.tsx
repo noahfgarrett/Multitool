@@ -6,7 +6,7 @@ interface ModalProps {
   onClose: () => void
   title?: string
   children: ReactNode
-  width?: 'sm' | 'md' | 'lg' | 'xl'
+  width?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl'
 }
 
 const widths = {
@@ -14,6 +14,8 @@ const widths = {
   md: 'max-w-md',
   lg: 'max-w-lg',
   xl: 'max-w-xl',
+  '2xl': 'max-w-2xl',
+  '3xl': 'max-w-3xl',
 }
 
 export function Modal({ open, onClose, title, children, width = 'md' }: ModalProps) {
