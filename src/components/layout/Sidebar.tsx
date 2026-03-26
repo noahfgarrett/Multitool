@@ -7,7 +7,7 @@ import {
   Maximize2, Eraser, Archive, ArrowRightLeft,
   ClipboardList, Network, LayoutDashboard, GitBranch,
   QrCode, Table, ChevronDown, PanelLeftClose, PanelLeft,
-  Home,
+  Home, MessageSquarePlus,
 } from 'lucide-react'
 
 const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
@@ -31,6 +31,8 @@ export function Sidebar() {
   const goHome = useAppStore((s) => s.goHome)
   const toggleSidebar = useAppStore((s) => s.toggleSidebar)
   const toggleCategory = useAppStore((s) => s.toggleCategory)
+  const activeView = useAppStore((s) => s.activeView)
+  const setActiveView = useAppStore((s) => s.setActiveView)
 
   return (
     <aside
@@ -63,14 +65,14 @@ export function Sidebar() {
           className={`
             w-full flex items-center gap-2.5 rounded-md transition-all duration-150 mb-1
             ${sidebarExpanded ? 'px-2.5 py-2' : 'px-0 py-2 justify-center'}
-            ${!activeTool
+            ${!activeTool && !activeView
               ? 'bg-[#F47B20]/15 text-[#F47B20]'
               : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
             }
             relative
           `}
         >
-          {!activeTool && (
+          {!activeTool && !activeView && (
             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#F47B20] rounded-r-full" />
           )}
           <Home size={16} />
@@ -147,13 +149,34 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      {sidebarExpanded && (
-        <div className="px-3 py-3 border-t border-white/[0.06]">
-          <p className="text-[10px] text-white/30 text-center">
+      <div className="px-1.5 pb-2 pt-1 border-t border-white/[0.06] mt-auto">
+        <button
+          onClick={() => setActiveView('feedback')}
+          title={sidebarExpanded ? undefined : 'Report Bug / Idea'}
+          className={`
+            w-full flex items-center gap-2.5 rounded-md transition-all duration-150
+            ${sidebarExpanded ? 'px-2.5 py-2' : 'px-0 py-2 justify-center'}
+            ${activeView === 'feedback'
+              ? 'bg-[#F47B20]/15 text-[#F47B20]'
+              : 'text-[#F47B20]/70 hover:text-[#F47B20] hover:bg-[#F47B20]/[0.06]'
+            }
+            relative
+          `}
+        >
+          {activeView === 'feedback' && (
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#F47B20] rounded-r-full" />
+          )}
+          <MessageSquarePlus size={16} />
+          {sidebarExpanded && (
+            <span className="text-xs font-medium truncate">Report Bug / Idea</span>
+          )}
+        </button>
+        {sidebarExpanded && (
+          <p className="text-[10px] text-white/30 text-center mt-2">
             LotusWorks Toolkit v{__APP_VERSION__}
           </p>
-        </div>
-      )}
+        )}
+      </div>
     </aside>
   )
 }
