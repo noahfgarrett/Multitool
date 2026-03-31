@@ -11,6 +11,7 @@ import { getUserProfile, saveUserProfile, hasUserProfile } from '@/utils/userPro
 import type { UpdateInfo } from '@/utils/updateChecker.ts'
 import type { UserProfile } from '@/utils/userProfile.ts'
 import type { ToolId } from '@/types/index.ts'
+import { tools } from '@/tools/registry.ts'
 
 // Lazy-load each tool
 const toolComponents: Record<ToolId, React.LazyExoticComponent<React.ComponentType>> = {
@@ -67,6 +68,7 @@ export default function App() {
   }, [])
 
   const ActiveComponent = activeTool ? toolComponents[activeTool] : null
+  const activeToolDef = activeTool ? tools.find((t) => t.id === activeTool) : undefined
 
   return (
     <AppShell>
@@ -79,7 +81,7 @@ export default function App() {
           </ErrorBoundary>
         </ToolContainer>
       ) : ActiveComponent ? (
-        <ToolContainer key={activeTool}>
+        <ToolContainer key={activeTool} fullBleed={activeToolDef?.fullBleed}>
           <ErrorBoundary>
             <Suspense fallback={<LoadingFallback />}>
               <ActiveComponent />

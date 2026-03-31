@@ -23,6 +23,7 @@ export interface ToolDefinition {
   description: string
   category: ToolCategory
   icon: string
+  fullBleed?: boolean
 }
 
 export interface Toast {
