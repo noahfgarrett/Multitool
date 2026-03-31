@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { marked } from 'marked'
-import { Download, X } from 'lucide-react'
+import { Download, Loader2, X } from 'lucide-react'
 import { Modal } from '@/components/common/Modal.tsx'
 import { Button } from '@/components/common/Button.tsx'
 import type { UpdateInfo } from '@/utils/updateChecker.ts'
@@ -12,6 +12,8 @@ interface UpdateModalProps {
 }
 
 export function UpdateModal({ open, onClose, info }: UpdateModalProps) {
+  const [downloading, setDownloading] = useState(false)
+
   const renderedNotes = useMemo(() => {
     if (!info.releaseNotes) return ''
     let html = marked.parse(info.releaseNotes, { async: false }) as string
@@ -23,9 +25,30 @@ export function UpdateModal({ open, onClose, info }: UpdateModalProps) {
     return html
   }, [info.releaseNotes])
 
-  function handleDownload() {
-    if (info.downloadUrl) {
+  async function handleDownload(): Promise<void> {
+    if (!info.downloadUrl) return
+    setDownloading(true)
+    try {
+      // Fetch via GitHub API to avoid browser navigation to github.com,
+      // which can trigger GitHub 2FA prompts if the user has a stale session.
+      const res = await fetch(info.assetApiUrl, {
+        headers: { Accept: 'application/octet-stream' },
+      })
+      if (!res.ok) throw new Error('Download failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = info.assetName || 'LotusWorksToolkit.html'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      // Fallback: open in browser directly
       window.open(info.downloadUrl, '_blank', 'noopener')
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -63,8 +86,14 @@ export function UpdateModal({ open, onClose, info }: UpdateModalProps) {
           <Button variant="ghost" size="sm" onClick={onClose} icon={<X size={14} />}>
             Skip this version
           </Button>
-          <Button variant="primary" size="sm" onClick={handleDownload} disabled={!info.downloadUrl} icon={<Download size={14} />}>
-            Download v{info.version}
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => void handleDownload()}
+            disabled={!info.downloadUrl || downloading}
+            icon={downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+          >
+            {downloading ? 'Downloading...' : `Download v${info.version}`}
           </Button>
         </div>
       </div>

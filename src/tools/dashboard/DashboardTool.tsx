@@ -161,6 +161,48 @@ export default function DashboardTool() {
     exportDataCSV(ds.columns, ds.rows, `${ds.name}.csv`)
   }, [store])
 
+  // ── Missing data-source detection (hooks must stay above the early return) ─
+
+  const missingDataSourceIds = useMemo(() => {
+    if (!store.activeDashboardId) return new Set<string>()
+    const widgets = store.getDashboardWidgets(store.activeDashboardId)
+    const missing = new Set<string>()
+    for (const w of widgets) {
+      if (w.dataSourceId && !store.dataSources.has(w.dataSourceId)) {
+        missing.add(w.dataSourceId)
+      }
+    }
+    return missing
+  }, [store.activeDashboardId, store.getDashboardWidgets, store.dataSources])
+
+  const [isReconnecting, setIsReconnecting] = useState(false)
+  const [reconnectFailed, setReconnectFailed] = useState(false)
+
+  const handleReconnect = useCallback(async () => {
+    setIsReconnecting(true)
+    setReconnectFailed(false)
+
+    let anyReconnected = false
+    for (const dsId of missingDataSourceIds) {
+      try {
+        const file = await fileHandle.requestPermission(dsId)
+        if (file) {
+          const { parseFile } = await import('./xlsxParser.ts')
+          const dataSource = await parseFile(file)
+          // Re-add with same ID so widget references reconnect
+          store.addDataSource({ ...dataSource, id: dsId })
+          store.setActiveDataSource(dsId)
+          anyReconnected = true
+        }
+      } catch {
+        // individual reconnect failed — continue trying others
+      }
+    }
+
+    setIsReconnecting(false)
+    if (!anyReconnected) setReconnectFailed(true)
+  }, [missingDataSourceIds, fileHandle, store])
+
   // ── Dashboard list view (no active dashboard) ─
 
   if (isLoaded && !store.activeDashboardId) {
@@ -337,50 +379,8 @@ export default function DashboardTool() {
     ? store.getDataSource(store.activeDataSourceId)
     : undefined
 
-  // Detect widgets referencing data sources that aren't loaded
-  const missingDataSourceIds = useMemo(() => {
-    if (!store.activeDashboardId) return new Set<string>()
-    const widgets = store.getDashboardWidgets(store.activeDashboardId)
-    const missing = new Set<string>()
-    for (const w of widgets) {
-      if (w.dataSourceId && !store.dataSources.has(w.dataSourceId)) {
-        missing.add(w.dataSourceId)
-      }
-    }
-    return missing
-  }, [store.activeDashboardId, store.getDashboardWidgets, store.dataSources])
-
   const hasNoData = store.dataSources.size === 0
   const hasMissingData = missingDataSourceIds.size > 0
-
-  // Try auto-reconnect via stored file handles
-  const [isReconnecting, setIsReconnecting] = useState(false)
-  const [reconnectFailed, setReconnectFailed] = useState(false)
-
-  const handleReconnect = useCallback(async () => {
-    setIsReconnecting(true)
-    setReconnectFailed(false)
-
-    let anyReconnected = false
-    for (const dsId of missingDataSourceIds) {
-      try {
-        const file = await fileHandle.requestPermission(dsId)
-        if (file) {
-          const { parseFile } = await import('./xlsxParser.ts')
-          const dataSource = await parseFile(file)
-          // Re-add with same ID so widget references reconnect
-          store.addDataSource({ ...dataSource, id: dsId })
-          store.setActiveDataSource(dsId)
-          anyReconnected = true
-        }
-      } catch {
-        // individual reconnect failed — continue trying others
-      }
-    }
-
-    setIsReconnecting(false)
-    if (!anyReconnected) setReconnectFailed(true)
-  }, [missingDataSourceIds, fileHandle, store])
 
   // Check if we have stored handles for the missing sources
   const hasStoredHandles = fileHandle.storedHandles.some(

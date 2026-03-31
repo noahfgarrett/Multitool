@@ -6,10 +6,13 @@ export interface UpdateInfo {
   version: string
   releaseNotes: string
   downloadUrl: string
+  assetApiUrl: string
+  assetName: string
 }
 
 interface GitHubAsset {
   name: string
+  url: string
   browser_download_url: string
 }
 
@@ -68,6 +71,8 @@ export async function checkForUpdate(): Promise<UpdateInfo | null> {
       version: remoteVersion,
       releaseNotes: release.body ?? '',
       downloadUrl: htmlAsset.browser_download_url,
+      assetApiUrl: htmlAsset.url,
+      assetName: htmlAsset.name,
     }
   } catch {
     // Network error, timeout, offline — silently ignore
