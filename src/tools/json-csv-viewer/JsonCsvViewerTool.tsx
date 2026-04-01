@@ -25,16 +25,17 @@ export default function JsonCsvViewerTool() {
   const [isNested, setIsNested] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
-  const parseCSV = useCallback((text: string) => {
+  const parseCSV = useCallback((text: string, delimiter: ',' | '\t' = ',') => {
     const lines = text.trim().split('\n')
-    if (lines.length < 2) return { columns: [] as string[], rows: [] as Record<string, string>[] }
+    if (lines.length === 0) return { columns: [] as string[], rows: [] as Record<string, string>[] }
 
     // Parse header
-    const headers = parseCSVLine(lines[0])
+    const headers = parseCSVLine(lines[0], delimiter)
 
-    // Parse rows
-    const dataRows = lines.slice(1).map((line) => {
-      const values = parseCSVLine(line)
+    // Parse rows (may be empty for header-only files)
+    const dataLines = lines.slice(1).filter((line) => line.trim().length > 0)
+    const dataRows = dataLines.map((line) => {
+      const values = parseCSVLine(line, delimiter)
       const row: Record<string, string> = {}
       headers.forEach((h, i) => {
         row[h] = values[i] ?? ''
@@ -93,7 +94,8 @@ export default function JsonCsvViewerTool() {
     const ext = file.name.split('.').pop()?.toLowerCase()
 
     if (ext === 'csv' || ext === 'tsv') {
-      const result = parseCSV(text)
+      const delimiter = ext === 'tsv' ? '\t' : ','
+      const result = parseCSV(text, delimiter)
       setColumns(result.columns)
       setRows(result.rows)
       setJsonTree(null)
@@ -108,6 +110,8 @@ export default function JsonCsvViewerTool() {
         setIsNested(result.isNested)
         setViewMode(result.columns.length > 0 ? 'table' : 'tree')
       } catch {
+        setFileName(null)
+        setRawData('')
         setColumns([])
         setRows([])
         setJsonTree(null)
@@ -275,6 +279,8 @@ export default function JsonCsvViewerTool() {
             setRows([])
             setColumns([])
             setJsonTree(null)
+            setIsNested(false)
+            setLoadError(null)
           }}
           className="text-xs text-white/30 hover:text-white/60 transition-colors"
         >
@@ -349,8 +355,8 @@ function renderCellValue(value: unknown): string {
   return String(value)
 }
 
-/** Parse a single CSV line respecting quoted fields */
-function parseCSVLine(line: string): string[] {
+/** Parse a single CSV/TSV line respecting quoted fields */
+function parseCSVLine(line: string, delimiter: ',' | '\t' = ','): string[] {
   const result: string[] = []
   let current = ''
   let inQuotes = false
@@ -371,7 +377,7 @@ function parseCSVLine(line: string): string[] {
     } else {
       if (char === '"') {
         inQuotes = true
-      } else if (char === ',') {
+      } else if (char === delimiter) {
         result.push(current.trim())
         current = ''
       } else {

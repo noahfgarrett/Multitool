@@ -22,7 +22,7 @@ export default function ImageResizerTool() {
   const [width, setWidth] = useState(0)
   const [height, setHeight] = useState(0)
   const [lockAspect, setLockAspect] = useState(true)
-  const [quality, setQuality] = useState(92)
+  const [quality, setQuality] = useState(90)
   const [format, setFormat] = useState<OutputFormat>('image/png')
   const [outputBlob, setOutputBlob] = useState<Blob | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)

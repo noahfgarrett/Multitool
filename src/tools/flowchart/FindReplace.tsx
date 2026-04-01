@@ -11,7 +11,7 @@ export function FindReplace({
   store: FlowchartStore
   onClose: () => void
 }) {
-  const { nodes, edges, updateNode, updateEdge, setSelection, pushHistory, setViewport, viewport } = store
+  const { nodes, edges, updateNode, updateEdge, batchUpdateNodes, batchUpdateEdges, setSelection, pushHistory, setViewport, viewport } = store
   const [query, setQuery] = useState('')
   const [replacement, setReplacement] = useState('')
   const [showReplace, setShowReplace] = useState(false)
@@ -116,20 +116,23 @@ export function FindReplace({
   const replaceAll = useCallback(() => {
     if (matches.length === 0 || !replacement) return
 
-    pushHistory(nodes, edges)
-
     const regex = new RegExp(escapeRegex(query), 'gi')
 
+    const nodeUpdates = new Map<string, Partial<import('./types.ts').DiagramNode>>()
+    const edgeUpdates = new Map<string, Partial<import('./types.ts').DiagramEdge>>()
+
     for (const match of matches) {
+      const newLabel = match.label.replace(regex, replacement)
       if (match.type === 'node') {
-        const newLabel = match.label.replace(regex, replacement)
-        updateNode(match.id, { label: newLabel })
+        nodeUpdates.set(match.id, { label: newLabel })
       } else {
-        const newLabel = match.label.replace(regex, replacement)
-        updateEdge(match.id, { label: newLabel })
+        edgeUpdates.set(match.id, { label: newLabel })
       }
     }
-  }, [matches, query, replacement, nodes, edges, pushHistory, updateNode, updateEdge])
+
+    if (nodeUpdates.size > 0) batchUpdateNodes(nodeUpdates)
+    if (edgeUpdates.size > 0) batchUpdateEdges(edgeUpdates)
+  }, [matches, query, replacement, batchUpdateNodes, batchUpdateEdges])
 
   // ── Keyboard handling ───────────────────────────────────
 

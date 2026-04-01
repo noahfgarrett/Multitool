@@ -153,7 +153,7 @@ function SourcePageItem({
 
       {/* Page number badge */}
       <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-black/60 text-white/80">
-        {page.pageNumber}
+        <span className="sr-only">Page </span>{page.pageNumber}
       </div>
 
       {/* Doc color dots — show all non-active assignments */}
@@ -223,7 +223,7 @@ function SortablePageChip({ uid, pageNumber, docColor, onRemove, isActiveDoc }: 
         cursor-grab active:cursor-grabbing transition-colors select-none
         ${isDragging ? 'opacity-30' : 'hover:bg-white/[0.08]'}
       `}
-      title={`Page ${pageNumber} · Drag to reorder${isActiveDoc ? ' · Click × to remove' : ''}`}
+      title={`Slot #${pageNumber} · Drag to reorder${isActiveDoc ? ' · Click × to remove' : ''}`}
     >
       {pageNumber}
       {isActiveDoc ? (
@@ -729,6 +729,27 @@ export default function PdfSplitTool() {
     return count
   }
 
+  /* ── Submit range input ── */
+
+  const submitRange = useCallback(() => {
+    if (!pdfFile || !rangeInput.trim()) return
+    const result = validatePageRange(rangeInput.trim(), pdfFile.pageCount)
+    if (!result.valid) {
+      setRangeError(result.error ?? 'Invalid range')
+      return
+    }
+    if (result.pages.length === 0) {
+      setRangeError('No pages specified')
+      return
+    }
+    for (const pageNum of result.pages) {
+      const sourcePage = pages.find((p) => p.pageNumber === pageNum)
+      if (sourcePage) assignPage(sourcePage.uid, sourcePage.pageNumber)
+    }
+    setRangeInput('')
+    setRangeError(null)
+  }, [pdfFile, rangeInput, pages, assignPage])
+
   /* ── Reset ── */
 
   const handleReset = () => {
@@ -805,8 +826,7 @@ export default function PdfSplitTool() {
           <div className="flex items-center gap-1">
             <button
               onClick={zoomOut}
-              disabled={zoomCols >= MAX_COLS}
-              className="p-1 rounded text-white/30 hover:text-white/70 disabled:opacity-20 disabled:pointer-events-none transition-colors"
+              className={`p-1 rounded transition-colors ${zoomCols >= MAX_COLS ? 'opacity-20 cursor-default text-white/30' : 'text-white/30 hover:text-white/70'}`}
               title="Zoom out (more columns)"
               aria-label="Zoom out"
             >
@@ -815,8 +835,7 @@ export default function PdfSplitTool() {
             <span className="text-[10px] text-white/30 min-w-[28px] text-center">{zoomCols}col</span>
             <button
               onClick={zoomIn}
-              disabled={zoomCols <= MIN_COLS}
-              className="p-1 rounded text-white/30 hover:text-white/70 disabled:opacity-20 disabled:pointer-events-none transition-colors"
+              className={`p-1 rounded transition-colors ${zoomCols <= MIN_COLS ? 'opacity-20 cursor-default text-white/30' : 'text-white/30 hover:text-white/70'}`}
               title="Zoom in (fewer columns)"
               aria-label="Zoom in"
             >
@@ -882,7 +901,7 @@ export default function PdfSplitTool() {
         <div className="px-3 py-2.5 border-b border-white/[0.06] flex items-center gap-2">
           <Package size={14} className="text-white/40" />
           <span className="text-xs text-white/60 font-medium flex-1">Output Documents</span>
-          <span className="text-[10px] text-white/30">{outputDocs.length}</span>
+          <span className="text-[10px] text-white/30" data-testid="doc-count">{outputDocs.length}</span>
         </div>
 
         {/* Document list */}
@@ -915,6 +934,7 @@ export default function PdfSplitTool() {
                           onChange={(e) => setEditingName(e.target.value)}
                           autoFocus
                           onBlur={commitRename}
+                          aria-label="Rename document"
                           className="flex-1 min-w-0 text-xs bg-transparent border-b border-[#F47B20]/40 text-white outline-none px-0 py-0.5"
                         />
                         <button type="submit" className="p-0.5 text-[#F47B20]" aria-label="Confirm rename">
@@ -1045,44 +1065,30 @@ export default function PdfSplitTool() {
 
           {/* Page range bulk-add */}
           {activeDoc && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                if (!pdfFile || !rangeInput.trim()) return
-                const result = validatePageRange(rangeInput.trim(), pdfFile.pageCount)
-                if (!result.valid) {
-                  setRangeError(result.error ?? 'Invalid range')
-                  return
-                }
-                if (result.pages.length === 0) {
-                  setRangeError('No pages specified')
-                  return
-                }
-                for (const pageNum of result.pages) {
-                  const sourcePage = pages.find((p) => p.pageNumber === pageNum)
-                  if (sourcePage) assignPage(sourcePage.uid, sourcePage.pageNumber)
-                }
-                setRangeInput('')
-                setRangeError(null)
-              }}
-              className="flex items-center gap-1"
-            >
+            <div className="flex items-center gap-1">
               <input
                 type="text"
                 value={rangeInput}
                 onChange={(e) => { setRangeInput(e.target.value); setRangeError(null) }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    submitRange()
+                  }
+                }}
                 placeholder="e.g., 1-50, 75-100"
                 className="flex-1 min-w-0 px-2 py-1 text-[11px] bg-white/[0.04] border border-white/[0.08] rounded-md text-white placeholder:text-white/20 outline-none focus:border-[#F47B20]/40 transition-colors"
               />
               <button
-                type="submit"
+                type="button"
+                onClick={submitRange}
                 className="p-1 rounded-md bg-white/[0.06] text-white/40 hover:text-white/70 hover:bg-white/[0.1] transition-colors"
                 title="Add pages by range"
                 aria-label="Add pages by range"
               >
                 <Plus size={14} />
               </button>
-            </form>
+            </div>
           )}
           {rangeError && (
             <p className="text-[10px] text-red-400 px-0.5">{rangeError}</p>

@@ -8,7 +8,7 @@ const MAX_HISTORY = 50
 
 export function useOrgChartStore() {
   // ── Core state ──────────────────────────────────────────
-  const [nodes, setNodes] = useState<OrgNode[]>([
+  const [nodes, setNodes] = useState<OrgNode[]>(() => [
     createNode({ id: 'root', name: 'CEO', title: 'Chief Executive Officer', reportsTo: '' }),
   ])
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set())
@@ -23,7 +23,10 @@ export function useOrgChartStore() {
   nodesRef.current = nodes
 
   // ── Undo/redo (ref-based, structuredClone) ──────────────
-  const historyRef = useRef<OrgChartState[]>([{ nodes: [] }])
+  // Initialize history with the same root node as the initial state
+  const historyRef = useRef<OrgChartState[]>([{
+    nodes: [createNode({ id: 'root', name: 'CEO', title: 'Chief Executive Officer', reportsTo: '' })],
+  }])
   const historyIdxRef = useRef(0)
   const [, forceRender] = useState(0)
 

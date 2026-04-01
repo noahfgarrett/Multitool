@@ -646,6 +646,18 @@ function ModalOverlay({
   onClose: () => void
   wide?: boolean
 }) {
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        onClose()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [onClose])
+
   return (
     <div
       className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"

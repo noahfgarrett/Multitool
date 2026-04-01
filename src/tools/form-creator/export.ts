@@ -82,10 +82,9 @@ export async function exportFillablePDF(doc: FormDocument) {
         page.drawText(el.label + (el.required ? ' *' : ''), {
           x, y: y + h - 10, size: 8, font, color: rgb(0.3, 0.3, 0.3),
         })
-        // Create text field
+        // Create text field — set DA via helper before setFontSize/setAlignment
         const tf = form.createTextField(uniqueName(el.label))
-        tf.setFontSize(10)
-        tf.setAlignment(resolveAlignment(el.textAlign))
+        // Font size and alignment are handled by form.updateFieldAppearances()
         tf.addToPage(page, { x, y, width: w, height: h - 14, borderWidth: 0.5, textColor: hexToRgb(el.color ?? '#000000') })
         if (el.required) tf.enableRequired()
         break
@@ -97,8 +96,7 @@ export async function exportFillablePDF(doc: FormDocument) {
         })
         const tf = form.createTextField(uniqueName(el.label))
         tf.enableMultiline()
-        tf.setFontSize(10)
-        tf.setAlignment(resolveAlignment(el.textAlign))
+        // Font size and alignment are handled by form.updateFieldAppearances()
         tf.addToPage(page, { x, y, width: w, height: h - 14, borderWidth: 0.5, textColor: hexToRgb(el.color ?? '#000000') })
         if (el.required) tf.enableRequired()
         break
@@ -138,7 +136,7 @@ export async function exportFillablePDF(doc: FormDocument) {
         })
         const dd = form.createDropdown(uniqueName(el.label))
         dd.setOptions(el.options ?? [])
-        dd.setFontSize(10)
+        // Font size handled by form.updateFieldAppearances()
         dd.addToPage(page, { x, y, width: w, height: h - 14, borderWidth: 0.5, textColor: hexToRgb(el.color ?? '#000000') })
         if (el.required) dd.enableRequired()
         break
@@ -149,7 +147,7 @@ export async function exportFillablePDF(doc: FormDocument) {
           x, y: y + h - 10, size: 8, font, color: rgb(0.3, 0.3, 0.3),
         })
         const dtf = form.createTextField(uniqueName(el.label + '_date'))
-        dtf.setFontSize(10)
+        // Font size handled by form.updateFieldAppearances()
         dtf.addToPage(page, { x, y, width: w, height: h - 14, borderWidth: 0.5, textColor: hexToRgb(el.color ?? '#000000') })
         if (el.required) dtf.enableRequired()
         break
@@ -160,7 +158,7 @@ export async function exportFillablePDF(doc: FormDocument) {
           x, y: y + h - 10, size: 8, font, color: rgb(0.3, 0.3, 0.3),
         })
         const dttf = form.createTextField(uniqueName(el.label + '_datetime'))
-        dttf.setFontSize(10)
+        // Font size handled by form.updateFieldAppearances()
         dttf.addToPage(page, { x, y, width: w, height: h - 14, borderWidth: 0.5, textColor: hexToRgb(el.color ?? '#000000') })
         if (el.required) dttf.enableRequired()
         break
@@ -174,8 +172,7 @@ export async function exportFillablePDF(doc: FormDocument) {
           x, y: y + h - 10, size: 8, font, color: rgb(0.3, 0.3, 0.3),
         })
         const ntf = form.createTextField(uniqueName(el.label + '_number'))
-        ntf.setFontSize(10)
-        ntf.setAlignment(resolveAlignment(el.textAlign))
+        // Font size and alignment handled by form.updateFieldAppearances()
         ntf.addToPage(page, { x, y, width: w, height: h - 14, borderWidth: 0.5, textColor: hexToRgb(el.color ?? '#000000') })
         if (el.required) ntf.enableRequired()
         break
@@ -222,9 +219,8 @@ export async function exportFillablePDF(doc: FormDocument) {
                 thickness: 0.5, color: rgb(0.7, 0.7, 0.7),
               })
             }
-            // Cell text field (fillable)
+            // Cell text field (fillable) — font size handled by form.updateFieldAppearances()
             const cellTf = form.createTextField(uniqueName(`${el.label}_r${r}_c${c}`))
-            cellTf.setFontSize(7)
             const existingText = cellData[r]?.[c] ?? ''
             if (existingText) cellTf.setText(existingText)
             cellTf.addToPage(page, {
@@ -329,6 +325,10 @@ export async function exportFillablePDF(doc: FormDocument) {
       }
     }
   }
+
+  // Update field appearances so every form field has a /DA entry.
+  // Without this, pdf-lib throws "No /DA (default appearance) entry found".
+  form.updateFieldAppearances(font)
 
   const pdfBytes = await pdfDoc.save()
   const blob = new Blob([pdfBytes], { type: 'application/pdf' })

@@ -1084,8 +1084,8 @@ export default function TextExtractTool() {
     const doc = new Document({
       sections: [{ children }],
     })
-    const buf = await Packer.toBuffer(doc)
-    downloadBlob(new Uint8Array(buf), `${baseName}.docx`, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    const blob = await Packer.toBlob(doc)
+    downloadBlob(blob, `${baseName}.docx`, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     setExportOpen(false)
   }, [extractionMode, tableData, docPlainText, baseName])
 

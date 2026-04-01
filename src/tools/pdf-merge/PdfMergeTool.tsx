@@ -711,7 +711,7 @@ export default function PdfMergeTool() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedPage, copiedPage, files])
+  }, [selectedPage, copiedPage, files, selectedFileIdx])
 
   // Sync TOC entries when files change
   useEffect(() => {

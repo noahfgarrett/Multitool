@@ -129,6 +129,16 @@ export function useFlowchartStore() {
     pushHistory(nextNodes, edges)
   }, [nodes, edges, pushHistory])
 
+  /** Apply partial updates to multiple nodes in a single batch (avoids stale-closure overwrites). */
+  const batchUpdateNodes = useCallback((updates: Map<string, Partial<DiagramNode>>) => {
+    const nextNodes = nodes.map(n => {
+      const patch = updates.get(n.id)
+      return patch ? { ...n, ...patch } : n
+    })
+    setNodes(nextNodes)
+    pushHistory(nextNodes, edges)
+  }, [nodes, edges, pushHistory])
+
   const moveNodes = useCallback((ids: Set<string>, dx: number, dy: number) => {
     const nextNodes = nodes.map(n =>
       ids.has(n.id) ? { ...n, x: n.x + dx, y: n.y + dy } : n,
@@ -200,6 +210,16 @@ export function useFlowchartStore() {
 
   const updateEdge = useCallback((id: string, updates: Partial<DiagramEdge>) => {
     const nextEdges = edges.map(e => e.id === id ? { ...e, ...updates } : e)
+    setEdges(nextEdges)
+    pushHistory(nodes, nextEdges)
+  }, [nodes, edges, pushHistory])
+
+  /** Apply partial updates to multiple edges in a single batch (avoids stale-closure overwrites). */
+  const batchUpdateEdges = useCallback((updates: Map<string, Partial<DiagramEdge>>) => {
+    const nextEdges = edges.map(e => {
+      const patch = updates.get(e.id)
+      return patch ? { ...e, ...patch } : e
+    })
     setEdges(nextEdges)
     pushHistory(nodes, nextEdges)
   }, [nodes, edges, pushHistory])
@@ -866,10 +886,10 @@ export function useFlowchartStore() {
     setSketchMode,
 
     // Node actions
-    addNode, updateNode, moveNodes, commitMove, resizeNode, commitResize,
+    addNode, updateNode, batchUpdateNodes, moveNodes, commitMove, resizeNode, commitResize,
 
     // Edge actions
-    addEdge, addEdgeAutoPort, updateEdge,
+    addEdge, addEdgeAutoPort, updateEdge, batchUpdateEdges,
 
     // Waypoint actions
     addWaypoint, moveWaypoint, commitWaypointMove, removeWaypoint,

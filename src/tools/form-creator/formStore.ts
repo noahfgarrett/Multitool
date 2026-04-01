@@ -240,7 +240,7 @@ export function useFormStore() {
       ...el,
       id: crypto.randomUUID(),
       x: el.x + 20,
-      y: el.y + 20,
+      y: el.y + el.height + 8,
     }))
     updateDoc(prev => ({
       ...prev,

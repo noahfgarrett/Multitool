@@ -244,8 +244,8 @@ export default function FlowchartTool() {
               <FindReplace store={store} onClose={() => setShowFindReplace(false)} />
             )}
 
-            {/* Empty state overlay */}
-            {store.nodes.length === 0 && (
+            {/* Empty state overlay — hidden when placing or connecting so canvas receives clicks */}
+            {store.nodes.length === 0 && store.toolMode === 'select' && (
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <div className="text-center space-y-3 pointer-events-auto">
                   <p className="text-sm text-white/30">Start by placing shapes from the left panel</p>

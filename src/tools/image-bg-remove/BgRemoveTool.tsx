@@ -300,7 +300,7 @@ export default function BgRemoveTool() {
       {/* Right panel - Preview */}
       <div className="flex-1 flex items-center justify-center overflow-hidden" ref={containerRef}>
         <div className="flex flex-col items-center gap-4">
-          {outputBlob && !showOriginal ? (
+          {outputBlob && !showOriginal && !isPickingColor ? (
             <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
               <canvas ref={previewCanvasRef} className="max-w-full max-h-[60vh]" />
             </div>
@@ -312,7 +312,7 @@ export default function BgRemoveTool() {
                 className={`max-w-full max-h-[60vh] ${isPickingColor ? 'cursor-crosshair' : ''}`}
               />
               {isPickingColor && (
-                <div className="absolute top-2 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-[#F47B20]/90 text-white text-xs font-medium backdrop-blur-sm">
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-[#F47B20]/90 text-white text-xs font-medium backdrop-blur-sm pointer-events-none">
                   Click to select the background color
                 </div>
               )}

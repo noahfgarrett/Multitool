@@ -201,11 +201,10 @@ function ToolbarButton({
   return (
     <button
       title={label}
-      disabled={disabled}
       onClick={onClick}
       className={`
         p-1.5 rounded transition-colors
-        ${disabled ? 'opacity-30 pointer-events-none' : ''}
+        ${disabled ? 'opacity-30 cursor-default' : 'cursor-pointer'}
         ${danger
           ? 'text-white/40 hover:text-red-400 hover:bg-red-500/10'
           : 'text-white/40 hover:text-white hover:bg-white/[0.06]'
