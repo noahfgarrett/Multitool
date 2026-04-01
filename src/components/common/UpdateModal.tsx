@@ -24,10 +24,10 @@ function renderMarkdown(md: string): string {
   return html
 }
 
-const TYPE_BADGE: Record<ChangelogEntry['type'], { label: string; className: string }> = {
-  major: { label: 'Major', className: 'bg-[#F47B20]/20 text-[#F47B20]' },
-  feature: { label: 'Feature', className: 'bg-blue-500/20 text-blue-400' },
-  fix: { label: 'Fix', className: 'bg-emerald-500/20 text-emerald-400' },
+const TYPE_COLORS: Record<ChangelogEntry['type'], { bar: string; text: string; bg: string; label: string }> = {
+  major: { bar: 'border-l-[#F47B20]', text: 'text-[#F47B20]', bg: 'bg-[#F47B20]/[0.04]', label: 'Major' },
+  feature: { bar: 'border-l-blue-400', text: 'text-blue-400', bg: 'bg-blue-400/[0.04]', label: 'Feature' },
+  fix: { bar: 'border-l-emerald-400', text: 'text-emerald-400', bg: 'bg-emerald-400/[0.04]', label: 'Fix' },
 }
 
 const INITIAL_VISIBLE = 8
@@ -104,7 +104,7 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
   const modalTitle = info ? 'Update Available' : 'Changelog'
 
   return (
-    <Modal open={open} onClose={onClose} title={modalTitle} width="md">
+    <Modal open={open} onClose={onClose} title={modalTitle} width="xl">
       <div className="space-y-4">
         {/* Tabs — only show if info is available (both tabs make sense) */}
         {info && (
@@ -190,50 +190,46 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
               <div className="space-y-2">
                 {visibleEntries.map((entry, index) => {
                   const isExpanded = expandedVersions.has(entry.version)
-                  const isNewerThanCurrent = isNewer(entry.version, __APP_VERSION__)
                   const isLatest = index === 0
-                  const badge = TYPE_BADGE[entry.type]
+                  const colors = TYPE_COLORS[entry.type]
                   const stats = formatStats(entry)
 
                   return (
                     <div
                       key={entry.version}
-                      className={`rounded-lg bg-white/[0.03] border overflow-hidden ${
-                        isExpanded && isNewerThanCurrent
-                          ? 'border-l-2 border-l-[#F47B20] border-t-white/[0.06] border-r-white/[0.06] border-b-white/[0.06]'
-                          : isExpanded
-                            ? 'border-l-2 border-l-white/20 border-t-white/[0.06] border-r-white/[0.06] border-b-white/[0.06]'
-                            : 'border-white/[0.06]'
-                      }`}
+                      className={`rounded-r-lg border-l-[3px] ${colors.bar} ${isExpanded ? colors.bg : 'hover:bg-white/[0.02]'} transition-colors`}
                     >
                       {/* Accordion header */}
                       <button
                         type="button"
-                        className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-white/[0.03] transition-colors"
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors group"
                         onClick={() => toggleExpanded(entry.version)}
                       >
                         <ChevronDown
                           size={14}
-                          className={`text-white/40 shrink-0 transition-transform ${isExpanded ? '' : '-rotate-90'}`}
+                          className={`text-white/30 shrink-0 transition-transform ${isExpanded ? '' : '-rotate-90'}`}
                         />
-                        <span className="text-sm font-medium text-white/80">v{entry.version}</span>
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium ${badge.className}`}>
-                          {badge.label}
+                        <span className={`text-sm font-semibold ${isLatest ? colors.text : 'text-white/80'}`}>
+                          v{entry.version}
+                        </span>
+                        {/* Hover-reveal type label */}
+                        <span className={`text-[10px] font-medium ${colors.text} opacity-0 group-hover:opacity-100 transition-opacity duration-150`}>
+                          {colors.label}
                         </span>
                         {isLatest && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-white/10 text-white/50">
+                          <span className={`text-[9px] font-semibold uppercase tracking-wider ${colors.text} opacity-60`}>
                             latest
                           </span>
                         )}
-                        <span className="ml-auto text-[11px] text-white/30 shrink-0">{entry.date}</span>
+                        {stats && (
+                          <span className="text-[10px] text-white/25 hidden sm:inline">{stats}</span>
+                        )}
+                        <span className="ml-auto text-[11px] text-white/25 shrink-0">{entry.date}</span>
                       </button>
 
                       {/* Expanded content */}
                       {isExpanded && (
-                        <div className="px-3 pb-3">
-                          {stats && (
-                            <p className="text-[11px] text-white/40 mb-2">{stats}</p>
-                          )}
+                        <div className="px-3 pb-3 pl-9">
                           <div
                             className="text-sm text-white/60 [&_h3]:text-white/80 [&_h3]:font-medium [&_h3]:text-sm [&_h3]:mt-2 [&_h3]:mb-1 [&_h4]:text-white/70 [&_h4]:font-medium [&_h4]:text-xs [&_h4]:mt-2 [&_h4]:mb-1 [&_strong]:text-white/70"
                             dangerouslySetInnerHTML={{ __html: renderMarkdown(entry.notes) }}
