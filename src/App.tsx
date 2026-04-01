@@ -47,6 +47,8 @@ export default function App() {
   const activeView = useAppStore((s) => s.activeView)
   const showProfileModal = useAppStore((s) => s.showProfileModal)
   const setShowProfileModal = useAppStore((s) => s.setShowProfileModal)
+  const showChangelog = useAppStore((s) => s.showChangelog)
+  const setShowChangelog = useAppStore((s) => s.setShowChangelog)
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
@@ -91,13 +93,16 @@ export default function App() {
       ) : (
         <WelcomeScreen />
       )}
-      {updateInfo && (
-        <UpdateModal
-          open={showUpdateModal}
-          onClose={() => setShowUpdateModal(false)}
-          info={updateInfo}
-        />
-      )}
+      <UpdateModal
+        open={showUpdateModal || showChangelog}
+        onClose={() => {
+          setShowUpdateModal(false)
+          setShowChangelog(false)
+          localStorage.setItem('lastSeenVersion', __APP_VERSION__)
+        }}
+        info={showUpdateModal ? updateInfo : null}
+        defaultTab={showChangelog && !showUpdateModal ? 'changelog' : undefined}
+      />
       <UserProfileModal
         isOpen={showProfileModal}
         onClose={(profile) => {
