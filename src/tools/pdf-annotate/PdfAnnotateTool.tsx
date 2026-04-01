@@ -6016,46 +6016,12 @@ export default function PdfAnnotateTool() {
       })()}
 
       {/* ── Compact status bar ────────────────────── */}
-      <div className="grid grid-cols-3 items-center px-3 py-1.5 border-t border-white/[0.06] flex-shrink-0">
+      <div className="flex items-center justify-between px-3 py-1.5 border-t border-white/[0.06] flex-shrink-0">
         {/* Left: file info */}
         <div className="flex items-center gap-1.5 text-[10px] text-white/30 min-w-0">
           <span className="truncate max-w-[160px]">{pdfFile.name}</span>
           <span>{formatFileSize(pdfFile.size)}</span>
           {currentRotation !== 0 && <span>{currentRotation}°</span>}
-        </div>
-
-        {/* Center: page nav */}
-        <div className="flex items-center justify-center gap-1">
-          {pdfFile.pageCount > 1 ? (
-            <>
-              <button onClick={() => navigateToPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                className="p-0.5 text-white/40 hover:text-white disabled:opacity-30 rounded hover:bg-white/[0.06]">
-                <ChevronLeft size={14} />
-              </button>
-              <span className="text-[11px] text-white/50 flex items-center gap-0.5">
-                <input
-                  type="number"
-                  min={1}
-                  max={pdfFile.pageCount}
-                  key={currentPage}
-                  defaultValue={currentPage}
-                  onBlur={e => { const val = parseInt(e.target.value); if (!isNaN(val)) navigateToPage(Math.max(1, Math.min(pdfFile.pageCount, val))) }}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') { const val = parseInt(e.currentTarget.value); if (!isNaN(val)) { navigateToPage(Math.max(1, Math.min(pdfFile.pageCount, val))); e.currentTarget.blur() } }
-                    if (e.key === 'Escape') e.currentTarget.blur()
-                  }}
-                  className="w-8 px-0.5 py-0 text-[11px] text-center text-white/50 bg-transparent border border-white/[0.1] rounded focus:border-[#F47B20]/50 focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                />
-                <span>/ {pdfFile.pageCount}</span>
-              </span>
-              <button onClick={() => navigateToPage(p => Math.min(pdfFile.pageCount, p + 1))} disabled={currentPage === pdfFile.pageCount}
-                className="p-0.5 text-white/40 hover:text-white disabled:opacity-30 rounded hover:bg-white/[0.06]">
-                <ChevronRight size={14} />
-              </button>
-            </>
-          ) : (
-            <span className="text-[10px] text-white/30">1 page</span>
-          )}
         </div>
 
         {/* Right: annotations + hint */}
