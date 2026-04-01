@@ -10,6 +10,7 @@ import { Modal } from '@/components/common/Modal.tsx'
 import { useAppStore } from '@/stores/appStore.ts'
 import {
   Image as ImageIcon, FileJson, FileCode, Clipboard, FileSpreadsheet, Users,
+  ZoomIn, ZoomOut,
 } from 'lucide-react'
 
 // ── Helper: trigger fitToContent via window bridge ──────────
@@ -136,6 +137,31 @@ export default function OrgChartTool() {
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 relative">
           <Canvas store={store} />
+
+          {/* Floating zoom buttons for touch / tablet */}
+          <div className="absolute bottom-3 left-3 flex items-center gap-0.5 bg-dark-elevated/80 rounded-lg border border-white/[0.06] p-0.5">
+            <button
+              onClick={() => store.setViewport(prev => ({ ...prev, zoom: Math.min(2, prev.zoom + 0.25) }))}
+              title="Zoom in"
+              className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/[0.06]"
+            >
+              <ZoomIn size={16} />
+            </button>
+            <button
+              onClick={() => store.setViewport(prev => ({ ...prev, zoom: Math.max(0.25, prev.zoom - 0.25) }))}
+              title="Zoom out"
+              className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/[0.06]"
+            >
+              <ZoomOut size={16} />
+            </button>
+            <button
+              onClick={() => store.setViewport(prev => ({ ...prev, zoom: 1 }))}
+              title="Reset zoom"
+              className="text-xs text-white/40 hover:text-white/80 px-1.5 py-0.5 rounded hover:bg-white/[0.06] tabular-nums"
+            >
+              {Math.round(store.viewport.zoom * 100)}%
+            </button>
+          </div>
 
           {/* Empty state overlay */}
           {store.nodes.length === 0 && (
