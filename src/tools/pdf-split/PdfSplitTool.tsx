@@ -7,7 +7,7 @@ import { downloadBlob } from '@/utils/download.ts'
 import { formatFileSize } from '@/utils/fileReader.ts'
 import type { PDFFile } from '@/types'
 import {
-  DndContext, closestCenter, DragOverlay, PointerSensor, useSensor, useSensors,
+  DndContext, closestCenter, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors,
 } from '@dnd-kit/core'
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, useSortable, rectSortingStrategy, arrayMove } from '@dnd-kit/sortable'
@@ -296,7 +296,10 @@ export default function PdfSplitTool() {
   outputDocsRef.current = outputDocs
 
   // dnd-kit sensors for sidebar reorder
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+  )
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
 
   /* ── Lazy thumbnail loader ── */

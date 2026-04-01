@@ -32,7 +32,7 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
   activeTool: null,
-  sidebarExpanded: true,
+  sidebarExpanded: typeof window !== 'undefined' ? window.innerWidth >= 1024 : true,
   sidebarCategories: {
     documents: true,
     images: true,
