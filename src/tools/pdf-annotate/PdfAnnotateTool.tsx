@@ -22,6 +22,7 @@ import {
   Search, Crop, Tag, Printer, FileSpreadsheet, StickyNote as StickyNoteIcon,
   MessageCircle, Mail, FileText, ScanText, Layers, ImagePlus, Eye, EyeOff, Plus, Trash2,
   Copy, BookOpen, Blend, Star, MoreHorizontal, ChevronsLeft, ChevronsRight,
+  Maximize2, Minimize2, Pin,
 } from 'lucide-react'
 
 // ── Extracted modules ─────────────────────────────────
@@ -131,6 +132,8 @@ function annLabel(ann: Annotation): string {
 
 export default function PdfAnnotateTool() {
   const addToast = useAppStore(s => s.addToast)
+  const focusMode = useAppStore(s => s.focusMode)
+  const setFocusMode = useAppStore(s => s.setFocusMode)
 
   // State
   const [pdfFile, setPdfFile] = useState<PDFFile | null>(null)
@@ -236,6 +239,19 @@ export default function PdfAnnotateTool() {
     return saved !== null ? saved === 'true' : true
   })
   const [moreToolsOpen, setMoreToolsOpen] = useState(false)
+
+  // Slide-out drawer for tablet focus mode
+  const isTouchDevice = typeof window !== 'undefined' && matchMedia('(any-pointer: coarse)').matches
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [drawerPinned, setDrawerPinned] = useState(() => {
+    return localStorage.getItem('pdfAnnotate.drawerPinned') === 'true'
+  })
+  // Drawer-specific dropdown open states (separate from sidebar to avoid conflicts)
+  const [drawerShapesOpen, setDrawerShapesOpen] = useState(false)
+  const [drawerTextOpen, setDrawerTextOpen] = useState(false)
+  const [drawerMeasureOpen, setDrawerMeasureOpen] = useState(false)
+  const [drawerStampOpen, setDrawerStampOpen] = useState(false)
+  const [drawerMoreToolsOpen, setDrawerMoreToolsOpen] = useState(false)
 
   // Watermark on export
   const [exportWatermark, setExportWatermark] = useState('')
@@ -368,6 +384,8 @@ export default function PdfAnnotateTool() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef(zoom)
+  const focusModeRef = useRef(focusMode)
+  focusModeRef.current = focusMode
   const currentPageRef = useRef(currentPage)
   currentPageRef.current = currentPage
   const panRef = useRef<{ startX: number; startY: number; scrollLeft: number; scrollTop: number } | null>(null)
@@ -401,6 +419,11 @@ export default function PdfAnnotateTool() {
   useEffect(() => {
     localStorage.setItem('pdfAnnotate.toolbarExpanded', String(toolbarExpanded))
   }, [toolbarExpanded])
+
+  // Persist drawer pin state
+  useEffect(() => {
+    localStorage.setItem('pdfAnnotate.drawerPinned', String(drawerPinned))
+  }, [drawerPinned])
 
   // Session restore
   const pendingScrollRef = useRef<{ scrollTop: number; scrollLeft: number } | null>(null)
@@ -1984,6 +2007,18 @@ export default function PdfAnnotateTool() {
         setActiveDraw('polygon')
         return
       }
+      // Shift+F → Focus mode toggle
+      if (e.shiftKey && e.key === 'F') {
+        e.preventDefault()
+        const next = !focusModeRef.current
+        setFocusMode(next)
+        if (next && document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {})
+        } else if (!next && document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {})
+        }
+        return
+      }
     }
     const keyUpHandler = (e: KeyboardEvent) => {
       if (e.key === ' ') {
@@ -1997,7 +2032,18 @@ export default function PdfAnnotateTool() {
     return () => { window.removeEventListener('keydown', handler); window.removeEventListener('keyup', keyUpHandler) }
   }, [undo, redo, selectedAnnId, editingTextId, removeAnnotation, activeTool, selectedMeasureId,
       redrawAll, redrawPage, annotations, commitAnnotation, updateAnnotation, fitToWindow, selectedArrowIdx, navigateToPage, selectTextToolbar, zoomAtCenter, pushHistory, addToast,
-      contextMenu, findOpen, findMatches])
+      contextMenu, findOpen, findMatches, focusMode, setFocusMode])
+
+  // ── Sync fullscreen exit with focus mode ──────────
+  useEffect(() => {
+    const handler = (): void => {
+      if (!document.fullscreenElement && focusMode) {
+        setFocusMode(false)
+      }
+    }
+    document.addEventListener('fullscreenchange', handler)
+    return () => document.removeEventListener('fullscreenchange', handler)
+  }, [focusMode, setFocusMode])
 
   // ── Zoom with scroll wheel (cursor-position) ────────
 
@@ -4527,6 +4573,12 @@ export default function PdfAnnotateTool() {
   const activeTextDef = TEXT_TOOLS.find(s => s.type === activeTool) || TEXT_TOOLS.find(s => s.type === activeText)!
   const ActiveTextIcon = activeTextDef.icon
 
+  // Helper: select a tool inside the drawer and auto-close if not pinned
+  const selectToolInDrawer = (action: () => void): void => {
+    action()
+    if (!drawerPinned) setDrawerOpen(false)
+  }
+
   // Compute scaled layout dimensions for innerRef so it centers when zoomed out.
   // CSS transform: scale() shrinks visually but the layout box stays at unscaled size;
   // setting explicit width/height + margin:auto makes the box match its visual size.
@@ -4567,6 +4619,16 @@ export default function PdfAnnotateTool() {
     <div className="h-full flex flex-col">
       {/* ── Top Bar: Zoom + Export only ── */}
       <div className="flex items-center gap-1 px-3 py-1 border-b border-white/[0.06] flex-shrink-0">
+        {focusMode && (
+          <button
+            onClick={() => { setFocusMode(false); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}) }}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs text-white/50 hover:text-white/80 hover:bg-white/[0.06] mr-1"
+            title="Exit focus mode"
+          >
+            <Minimize2 size={12} />
+            <span>Exit</span>
+          </button>
+        )}
         {/* Sidebar toggle */}
         {pdfFile.pageCount > 1 && (
           <>
@@ -4615,6 +4677,23 @@ export default function PdfAnnotateTool() {
         <button onClick={fitToWindow} title="Fit to window (F)"
           className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/[0.06]">
           <Maximize size={14} />
+        </button>
+        <button
+          onClick={() => {
+            const next = !focusMode
+            setFocusMode(next)
+            if (next && document.documentElement.requestFullscreen) {
+              document.documentElement.requestFullscreen().catch(() => {})
+            } else if (!next && document.fullscreenElement) {
+              document.exitFullscreen().catch(() => {})
+            }
+          }}
+          title={focusMode ? 'Exit focus mode (Shift+F)' : 'Focus mode (Shift+F)'}
+          className={`p-1 rounded-lg transition-colors ${
+            focusMode ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+          }`}
+        >
+          {focusMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
         </button>
 
         {/* Page jump input */}
@@ -5326,426 +5405,800 @@ export default function PdfAnnotateTool() {
         </div>
 
         {/* ── Right Tool Panel ── */}
-        <div className={`border-l border-white/[0.06] bg-black/20 flex flex-col py-2 gap-0.5 flex-shrink-0 overflow-y-auto overflow-x-hidden transition-all duration-200 ease-out ${
-          toolbarExpanded ? 'w-[140px] px-1.5 items-stretch' : 'w-10 px-0.5 items-center'
-        }`}>
-          {/* Toggle collapse */}
-          <button
-            onClick={() => setToolbarExpanded(prev => !prev)}
-            className="flex items-center justify-center py-1 mb-1 text-white/30 hover:text-white/60 transition-colors rounded-lg hover:bg-white/[0.06]"
-            title={toolbarExpanded ? 'Collapse toolbar' : 'Expand toolbar'}
-          >
-            {toolbarExpanded ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
-          </button>
-          <div className={`${toolbarExpanded ? 'w-full' : 'w-6'} h-px bg-white/[0.06] mb-1 self-center`} />
+        {focusMode && isTouchDevice ? (
+          /* ── DRAWER MODE (tablet focus) ── */
+          <>
+            {/* Handle tab at right edge */}
+            {!drawerOpen && (
+              <button
+                onClick={() => setDrawerOpen(true)}
+                className="fixed right-0 top-1/2 -translate-y-1/2 z-40 w-6 h-20 bg-white/10 hover:bg-white/20 rounded-l-lg flex items-center justify-center transition-colors"
+                title="Open tools"
+              >
+                <ChevronsLeft size={14} className="text-white/50" />
+              </button>
+            )}
 
-          {/* ── Primary Tools ── */}
+            {/* Backdrop (only when open and not pinned) */}
+            {drawerOpen && !drawerPinned && (
+              <div
+                className="fixed inset-0 bg-black/30 z-40"
+                onClick={() => setDrawerOpen(false)}
+              />
+            )}
 
-          {/* Select */}
-          <button onClick={() => setActiveTool('select')} title="Select (S)"
-            className={`flex items-center rounded-lg transition-colors ${
-              toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
-            } ${
-              activeTool === 'select'
-                ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
-                : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
-            }`}>
-            <MousePointer2 size={toolbarExpanded ? 15 : 16} />
-            {toolbarExpanded && (
-              <>
+            {/* Drawer panel */}
+            <div className={`fixed top-0 right-0 h-full w-[200px] bg-[#0a1929]/95 backdrop-blur-sm border-l border-white/[0.06] z-50 transform transition-transform duration-200 ease-out ${
+              drawerOpen ? 'translate-x-0' : 'translate-x-full'
+            } flex flex-col py-3 px-2 overflow-y-auto`}>
+              {/* Drawer header */}
+              <div className="flex items-center justify-between px-2 pb-2 mb-2 border-b border-white/[0.06]">
+                <span className="text-xs text-white/40 font-medium">Tools</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setDrawerPinned(p => !p)}
+                    className={`p-1 rounded transition-colors ${drawerPinned ? 'text-[#F47B20]' : 'text-white/30 hover:text-white/60'}`}
+                    title={drawerPinned ? 'Unpin drawer' : 'Pin drawer open'}
+                  >
+                    <Pin size={12} />
+                  </button>
+                  <button
+                    onClick={() => setDrawerOpen(false)}
+                    className="p-1 rounded text-white/30 hover:text-white/60 transition-colors"
+                    title="Close"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              </div>
+
+              {/* ── Primary Tools (drawer, always expanded) ── */}
+
+              {/* Select */}
+              <button onClick={() => selectToolInDrawer(() => setActiveTool('select'))} title="Select (S)"
+                className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
+                  activeTool === 'select'
+                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                    : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                }`}>
+                <MousePointer2 size={15} />
                 <span className="text-xs truncate">Select</span>
                 <span className="ml-auto text-[10px] opacity-40">S</span>
-              </>
-            )}
-          </button>
+              </button>
 
-          {/* Shapes dropdown */}
-          <div ref={shapesDropdownRef} className="relative">
-            <button
-              onClick={() => { if (!isDrawTool) setActiveTool(activeDraw); setShapesDropdownOpen(o => !o) }}
-              title={activeDrawDef.label}
-              className={`flex items-center rounded-lg transition-colors ${
-                toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
-              } ${
-                isDrawTool
-                  ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
-                  : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
-              }`}>
-              <ActiveDrawIcon size={toolbarExpanded ? 15 : 16} />
-              {toolbarExpanded && (
-                <>
-                  <span className="text-xs truncate">{activeDrawDef.label}</span>
-                  <ChevronDown size={10} className="ml-auto opacity-40" />
-                </>
-              )}
-            </button>
-            {shapesDropdownOpen && (
-              <div className="absolute top-0 right-full mr-1 bg-[#001a24] border border-white/[0.1] rounded-lg shadow-lg z-50 py-1 min-w-[140px]">
-                {DRAW_TOOLS.map(s => (
-                  <button key={s.type}
-                    onClick={() => { setActiveTool(s.type); setActiveDraw(s.type); setShapesDropdownOpen(false) }}
-                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
-                      activeTool === s.type ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
-                    }`}>
-                    <s.icon size={14} />
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Highlight */}
-          <button
-            onClick={() => {
-              if (selectTextToolbar) {
-                const ann: Annotation = { id: genId(), type: 'highlighter', points: [{ x: 0, y: 0 }], color: '#FFFF00', strokeWidth: 0, opacity: 0.4, fontSize, rects: [...selectTextToolbar.rects] }
-                commitAnnotation(ann); setSelectTextToolbar(null); redrawAll()
-              } else { setActiveTool('highlighter'); setActiveHighlight('highlighter') }
-            }}
-            title="Highlight (H)"
-            className={`flex items-center rounded-lg transition-colors ${
-              toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
-            } ${
-              activeTool === 'highlighter'
-                ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
-                : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
-            }`}>
-            <Highlighter size={toolbarExpanded ? 15 : 16} />
-            {toolbarExpanded && (
-              <>
-                <span className="text-xs truncate">Highlight</span>
-                <span className="ml-auto text-[10px] opacity-40">H</span>
-              </>
-            )}
-          </button>
-
-          {/* Strikethrough */}
-          <button
-            onClick={() => {
-              if (selectTextToolbar) {
-                const ann: Annotation = { id: genId(), type: 'highlighter', points: [{ x: 0, y: 0 }], color: '#FF0000', strokeWidth: 0, opacity: 1, fontSize, rects: [...selectTextToolbar.rects], strikethrough: true }
-                commitAnnotation(ann); setSelectTextToolbar(null); redrawAll()
-              } else { setActiveTool('textStrikethrough'); setActiveHighlight('textStrikethrough') }
-            }}
-            title="Strikethrough (Shift+X)"
-            className={`flex items-center rounded-lg transition-colors ${
-              toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
-            } ${
-              activeTool === 'textStrikethrough'
-                ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
-                : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
-            }`}>
-            <Strikethrough size={toolbarExpanded ? 15 : 16} />
-            {toolbarExpanded && (
-              <span className="text-xs truncate">Strikethrough</span>
-            )}
-          </button>
-
-          {/* Text tools dropdown */}
-          <div ref={textDropdownRef} className="relative">
-            <button
-              onClick={() => { if (!isTextTool) setActiveTool(activeText); setTextDropdownOpen(o => !o) }}
-              title={activeTextDef.label}
-              className={`flex items-center rounded-lg transition-colors ${
-                toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
-              } ${
-                isTextTool
-                  ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
-                  : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
-              }`}>
-              <ActiveTextIcon size={toolbarExpanded ? 15 : 16} />
-              {toolbarExpanded && (
-                <>
-                  <span className="text-xs truncate">{activeTextDef.label}</span>
-                  <ChevronDown size={10} className="ml-auto opacity-40" />
-                </>
-              )}
-            </button>
-            {textDropdownOpen && (
-              <div className="absolute top-0 right-full mr-1 bg-[#001a24] border border-white/[0.1] rounded-lg shadow-lg z-50 py-1 min-w-[140px]">
-                {TEXT_TOOLS.map(s => (
-                  <button key={s.type}
-                    onClick={() => { setActiveTool(s.type); setActiveText(s.type); setTextDropdownOpen(false) }}
-                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
-                      activeTool === s.type ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
-                    }`}>
-                    <s.icon size={14} />
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Eraser */}
-          <button onClick={() => setActiveTool('eraser')} title="Eraser (E)"
-            className={`flex items-center rounded-lg transition-colors ${
-              toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
-            } ${
-              activeTool === 'eraser'
-                ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
-                : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
-            }`}>
-            <Eraser size={toolbarExpanded ? 15 : 16} />
-            {toolbarExpanded && (
-              <>
-                <span className="text-xs truncate">Eraser</span>
-                <span className="ml-auto text-[10px] opacity-40">E</span>
-              </>
-            )}
-          </button>
-
-          {/* Measure dropdown */}
-          <div ref={measureDropdownRef} className="relative">
-            <button onClick={() => { if (activeTool === 'measure') { setMeasureDropdownOpen(o => !o) } else { setActiveTool('measure'); setMeasureDropdownOpen(false) } }} title="Measure (M)"
-              className={`flex items-center rounded-lg transition-colors relative ${
-                toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
-              } ${
-                activeTool === 'measure'
-                  ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
-                  : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
-              }`}>
-              <Ruler size={toolbarExpanded ? 15 : 16} />
-              {toolbarExpanded ? (
-                <>
-                  <span className="text-xs truncate">Measure</span>
-                  <span className="ml-auto text-[10px] opacity-40">M</span>
-                </>
-              ) : (
-                <ChevronDown size={7} className="absolute bottom-0.5 right-0.5 opacity-50" />
-              )}
-            </button>
-            {measureDropdownOpen && (
-              <div className="absolute top-0 right-full mr-1 bg-[#001a24] border border-white/[0.08] rounded-lg shadow-xl py-1 z-50 min-w-[160px]">
-                {MEASURE_MODES.map(({ mode, label }) => (
-                  <button key={mode}
-                    onClick={() => { setMeasureMode(mode); setActiveTool('measure'); setMeasureDropdownOpen(false) }}
-                    className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
-                      measureMode === mode ? 'text-[#F47B20] bg-[#F47B20]/10' : 'text-white/70 hover:text-white hover:bg-white/[0.06]'
-                    }`}>
-                    {label}
-                  </button>
-                ))}
-                <div className="h-px bg-white/[0.08] my-1" />
-                <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-white/70 cursor-pointer hover:bg-white/[0.06]">
-                  <input type="checkbox" checked={edgeSnappingEnabled}
-                    onChange={e => setEdgeSnappingEnabled(e.target.checked)}
-                    className="rounded border-white/20 bg-white/10 text-[#F47B20] focus:ring-[#F47B20]" />
-                  Edge Snap
-                </label>
-                <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-white/70 cursor-pointer hover:bg-white/[0.06]">
-                  <input type="checkbox" checked={precisionSnapMode}
-                    onChange={e => setPrecisionSnapMode(e.target.checked)}
-                    className="rounded border-white/20 bg-white/10 text-[#F47B20] focus:ring-[#F47B20]" />
-                  Precision Mode
-                </label>
-              </div>
-            )}
-          </div>
-
-          {/* ── Divider between primary and secondary ── */}
-          <div className={`${toolbarExpanded ? 'w-full' : 'w-6'} h-px bg-white/[0.06] my-1 self-center`} />
-
-          {/* ── More Tools Expander ── */}
-          <button
-            onClick={() => setMoreToolsOpen(prev => !prev)}
-            className={`flex items-center rounded-lg transition-colors border border-dashed border-white/[0.08] ${
-              toolbarExpanded ? 'gap-2 px-2.5 py-1.5 w-full' : 'justify-center p-1.5'
-            } text-white/30 hover:text-white/50`}
-            title="More tools"
-          >
-            <MoreHorizontal size={14} />
-            {toolbarExpanded && (
-              <>
-                <span className="text-xs">More tools</span>
-                <ChevronDown size={12} className={`ml-auto transition-transform ${moreToolsOpen ? 'rotate-180' : ''}`} />
-              </>
-            )}
-          </button>
-
-          {/* ── Secondary Tools (collapsible) ── */}
-          {moreToolsOpen && (
-            <>
-              {/* Stamp */}
-              <div ref={stampDropdownRef} className="relative">
+              {/* Shapes dropdown (inline) */}
+              <div className="relative">
                 <button
-                  onClick={() => { setActiveTool('stamp'); setStampDropdownOpen(o => !o) }}
-                  title="Stamp"
-                  className={`flex items-center rounded-lg transition-colors ${
-                    toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
-                  } ${
-                    activeTool === 'stamp'
+                  onClick={() => { if (!isDrawTool) setActiveTool(activeDraw); setDrawerShapesOpen(o => !o) }}
+                  title={activeDrawDef.label}
+                  className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
+                    isDrawTool
                       ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
                       : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                   }`}>
-                  <Tag size={toolbarExpanded ? 15 : 16} />
-                  {toolbarExpanded && (
-                    <>
-                      <span className="text-xs truncate">Stamp</span>
-                      <ChevronDown size={10} className="ml-auto opacity-40" />
-                    </>
-                  )}
+                  <ActiveDrawIcon size={15} />
+                  <span className="text-xs truncate">{activeDrawDef.label}</span>
+                  <ChevronDown size={10} className={`ml-auto opacity-40 transition-transform ${drawerShapesOpen ? 'rotate-180' : ''}`} />
                 </button>
-                {stampDropdownOpen && (
-                  <div className="absolute top-0 right-full mr-1 bg-[#001a24] border border-white/[0.1] rounded-lg shadow-lg z-50 py-1 min-w-[160px]">
-                    {STAMP_PRESETS.map(preset => (
-                      <button key={preset.label}
-                        onClick={() => { setActiveStampPreset(preset); setStampDropdownOpen(false) }}
-                        className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
-                          activeStampPreset.label === preset.label ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
+                {drawerShapesOpen && (
+                  <div className="ml-4 border-l border-white/[0.06] pl-2 py-1">
+                    {DRAW_TOOLS.map(s => (
+                      <button key={s.type}
+                        onClick={() => selectToolInDrawer(() => { setActiveTool(s.type); setActiveDraw(s.type); setDrawerShapesOpen(false) })}
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded transition-colors ${
+                          activeTool === s.type ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
                         }`}>
-                        <span className="font-bold text-[10px]" style={{ color: preset.color }}>{preset.label}</span>
+                        <s.icon size={14} />
+                        {s.label}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
 
-              {/* Crop */}
-              <button onClick={() => setActiveTool('crop')} title="Crop page"
-                className={`flex items-center rounded-lg transition-colors ${
-                  toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
-                } ${
-                  activeTool === 'crop'
+              {/* Highlight */}
+              <button
+                onClick={() => selectToolInDrawer(() => {
+                  if (selectTextToolbar) {
+                    const ann: Annotation = { id: genId(), type: 'highlighter', points: [{ x: 0, y: 0 }], color: '#FFFF00', strokeWidth: 0, opacity: 0.4, fontSize, rects: [...selectTextToolbar.rects] }
+                    commitAnnotation(ann); setSelectTextToolbar(null); redrawAll()
+                  } else { setActiveTool('highlighter'); setActiveHighlight('highlighter') }
+                })}
+                title="Highlight (H)"
+                className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
+                  activeTool === 'highlighter'
                     ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
                     : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                 }`}>
-                <Crop size={toolbarExpanded ? 15 : 16} />
-                {toolbarExpanded && (
-                  <span className="text-xs truncate">Crop</span>
-                )}
+                <Highlighter size={15} />
+                <span className="text-xs truncate">Highlight</span>
+                <span className="ml-auto text-[10px] opacity-40">H</span>
               </button>
 
-              {/* Image Stamp */}
-              <button onClick={() => {
-                setActiveTool('imageStamp')
-                // Open file picker immediately
-                const input = document.createElement('input')
-                input.type = 'file'
-                input.accept = 'image/png,image/jpeg,image/svg+xml,image/webp'
-                input.onchange = async () => {
-                  const file = input.files?.[0]
-                  if (!file) return
-                  const reader = new FileReader()
-                  reader.onload = () => {
-                    const dataUrl = reader.result as string
-                    // Store pending image for next canvas click
-                    pendingImageRef.current = dataUrl
-                  }
-                  reader.readAsDataURL(file)
-                }
-                input.click()
-              }} title="Image Stamp (I)"
-                className={`flex items-center rounded-lg transition-colors ${
-                  toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
-                } ${
-                  activeTool === 'imageStamp'
+              {/* Strikethrough */}
+              <button
+                onClick={() => selectToolInDrawer(() => {
+                  if (selectTextToolbar) {
+                    const ann: Annotation = { id: genId(), type: 'highlighter', points: [{ x: 0, y: 0 }], color: '#FF0000', strokeWidth: 0, opacity: 1, fontSize, rects: [...selectTextToolbar.rects], strikethrough: true }
+                    commitAnnotation(ann); setSelectTextToolbar(null); redrawAll()
+                  } else { setActiveTool('textStrikethrough'); setActiveHighlight('textStrikethrough') }
+                })}
+                title="Strikethrough (Shift+X)"
+                className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
+                  activeTool === 'textStrikethrough'
                     ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
                     : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                 }`}>
-                <ImagePlus size={toolbarExpanded ? 15 : 16} />
-                {toolbarExpanded && (
-                  <>
+                <Strikethrough size={15} />
+                <span className="text-xs truncate">Strikethrough</span>
+              </button>
+
+              {/* Text tools dropdown (inline) */}
+              <div className="relative">
+                <button
+                  onClick={() => { if (!isTextTool) setActiveTool(activeText); setDrawerTextOpen(o => !o) }}
+                  title={activeTextDef.label}
+                  className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
+                    isTextTool
+                      ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                      : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                  }`}>
+                  <ActiveTextIcon size={15} />
+                  <span className="text-xs truncate">{activeTextDef.label}</span>
+                  <ChevronDown size={10} className={`ml-auto opacity-40 transition-transform ${drawerTextOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {drawerTextOpen && (
+                  <div className="ml-4 border-l border-white/[0.06] pl-2 py-1">
+                    {TEXT_TOOLS.map(s => (
+                      <button key={s.type}
+                        onClick={() => selectToolInDrawer(() => { setActiveTool(s.type); setActiveText(s.type); setDrawerTextOpen(false) })}
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded transition-colors ${
+                          activeTool === s.type ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
+                        }`}>
+                        <s.icon size={14} />
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Eraser */}
+              <button onClick={() => selectToolInDrawer(() => setActiveTool('eraser'))} title="Eraser (E)"
+                className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
+                  activeTool === 'eraser'
+                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                    : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                }`}>
+                <Eraser size={15} />
+                <span className="text-xs truncate">Eraser</span>
+                <span className="ml-auto text-[10px] opacity-40">E</span>
+              </button>
+
+              {/* Measure dropdown (inline) */}
+              <div className="relative">
+                <button onClick={() => { if (activeTool === 'measure') { setDrawerMeasureOpen(o => !o) } else { setActiveTool('measure'); setDrawerMeasureOpen(false) } }} title="Measure (M)"
+                  className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
+                    activeTool === 'measure'
+                      ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                      : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                  }`}>
+                  <Ruler size={15} />
+                  <span className="text-xs truncate">Measure</span>
+                  <ChevronDown size={10} className={`ml-auto opacity-40 transition-transform ${drawerMeasureOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {drawerMeasureOpen && (
+                  <div className="ml-4 border-l border-white/[0.06] pl-2 py-1">
+                    {MEASURE_MODES.map(({ mode, label }) => (
+                      <button key={mode}
+                        onClick={() => { setMeasureMode(mode); setActiveTool('measure'); setDrawerMeasureOpen(false); if (!drawerPinned) setDrawerOpen(false) }}
+                        className={`w-full text-left px-2 py-1.5 text-xs rounded transition-colors ${
+                          measureMode === mode ? 'text-[#F47B20] bg-[#F47B20]/10' : 'text-white/70 hover:text-white hover:bg-white/[0.06]'
+                        }`}>
+                        {label}
+                      </button>
+                    ))}
+                    <div className="h-px bg-white/[0.08] my-1" />
+                    <label className="flex items-center gap-2 px-2 py-1.5 text-xs text-white/70 cursor-pointer hover:bg-white/[0.06] rounded">
+                      <input type="checkbox" checked={edgeSnappingEnabled}
+                        onChange={e => setEdgeSnappingEnabled(e.target.checked)}
+                        className="rounded border-white/20 bg-white/10 text-[#F47B20] focus:ring-[#F47B20]" />
+                      Edge Snap
+                    </label>
+                    <label className="flex items-center gap-2 px-2 py-1.5 text-xs text-white/70 cursor-pointer hover:bg-white/[0.06] rounded">
+                      <input type="checkbox" checked={precisionSnapMode}
+                        onChange={e => setPrecisionSnapMode(e.target.checked)}
+                        className="rounded border-white/20 bg-white/10 text-[#F47B20] focus:ring-[#F47B20]" />
+                      Precision Mode
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Divider between primary and secondary ── */}
+              <div className="w-full h-px bg-white/[0.06] my-1.5" />
+
+              {/* ── More Tools Expander ── */}
+              <button
+                onClick={() => setDrawerMoreToolsOpen(prev => !prev)}
+                className="flex items-center gap-2 px-2.5 py-1.5 w-full rounded-lg transition-colors border border-dashed border-white/[0.08] text-white/30 hover:text-white/50"
+                title="More tools"
+              >
+                <MoreHorizontal size={14} />
+                <span className="text-xs">More tools</span>
+                <ChevronDown size={12} className={`ml-auto transition-transform ${drawerMoreToolsOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* ── Secondary Tools (collapsible) ── */}
+              {drawerMoreToolsOpen && (
+                <>
+                  {/* Stamp (inline) */}
+                  <div className="relative">
+                    <button
+                      onClick={() => { setActiveTool('stamp'); setDrawerStampOpen(o => !o) }}
+                      title="Stamp"
+                      className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
+                        activeTool === 'stamp'
+                          ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                          : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                      }`}>
+                      <Tag size={15} />
+                      <span className="text-xs truncate">Stamp</span>
+                      <ChevronDown size={10} className={`ml-auto opacity-40 transition-transform ${drawerStampOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {drawerStampOpen && (
+                      <div className="ml-4 border-l border-white/[0.06] pl-2 py-1">
+                        {STAMP_PRESETS.map(preset => (
+                          <button key={preset.label}
+                            onClick={() => selectToolInDrawer(() => { setActiveStampPreset(preset); setDrawerStampOpen(false) })}
+                            className={`w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded transition-colors ${
+                              activeStampPreset.label === preset.label ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
+                            }`}>
+                            <span className="font-bold text-[10px]" style={{ color: preset.color }}>{preset.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Crop */}
+                  <button onClick={() => selectToolInDrawer(() => setActiveTool('crop'))} title="Crop page"
+                    className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
+                      activeTool === 'crop'
+                        ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                        : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                    }`}>
+                    <Crop size={15} />
+                    <span className="text-xs truncate">Crop</span>
+                  </button>
+
+                  {/* Image Stamp */}
+                  <button onClick={() => selectToolInDrawer(() => {
+                    setActiveTool('imageStamp')
+                    const input = document.createElement('input')
+                    input.type = 'file'
+                    input.accept = 'image/png,image/jpeg,image/svg+xml,image/webp'
+                    input.onchange = async () => {
+                      const file = input.files?.[0]
+                      if (!file) return
+                      const reader = new FileReader()
+                      reader.onload = () => {
+                        const dataUrl = reader.result as string
+                        pendingImageRef.current = dataUrl
+                      }
+                      reader.readAsDataURL(file)
+                    }
+                    input.click()
+                  })} title="Image Stamp (I)"
+                    className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
+                      activeTool === 'imageStamp'
+                        ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                        : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                    }`}>
+                    <ImagePlus size={15} />
                     <span className="text-xs truncate">Image Stamp</span>
                     <span className="ml-auto text-[10px] opacity-40">I</span>
-                  </>
-                )}
-              </button>
+                  </button>
 
-              {/* OCR Region Scan */}
-              <button onClick={() => { setActiveTool('ocrRegion'); setOcrRegionResult(null) }} title="OCR Region Scan"
-                className={`flex items-center rounded-lg transition-colors ${
-                  toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
-                } ${
-                  activeTool === 'ocrRegion'
-                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
-                    : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
-                }`}>
-                <ScanText size={toolbarExpanded ? 15 : 16} />
-                {toolbarExpanded && (
-                  <span className="text-xs truncate">OCR Scan</span>
-                )}
-              </button>
+                  {/* OCR Region Scan */}
+                  <button onClick={() => selectToolInDrawer(() => { setActiveTool('ocrRegion'); setOcrRegionResult(null) })} title="OCR Region Scan"
+                    className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
+                      activeTool === 'ocrRegion'
+                        ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                        : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                    }`}>
+                    <ScanText size={15} />
+                    <span className="text-xs truncate">OCR Scan</span>
+                  </button>
 
-              {/* Sticky Note */}
-              <button onClick={() => setActiveTool('note')} title="Sticky Note (N)"
-                className={`flex items-center rounded-lg transition-colors ${
-                  toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
-                } ${
-                  activeTool === 'note'
-                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
-                    : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
-                }`}>
-                <StickyNoteIcon size={toolbarExpanded ? 15 : 16} />
-                {toolbarExpanded && (
-                  <>
+                  {/* Sticky Note */}
+                  <button onClick={() => selectToolInDrawer(() => setActiveTool('note'))} title="Sticky Note (N)"
+                    className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
+                      activeTool === 'note'
+                        ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                        : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                    }`}>
+                    <StickyNoteIcon size={15} />
                     <span className="text-xs truncate">Sticky Note</span>
                     <span className="ml-auto text-[10px] opacity-40">N</span>
+                  </button>
+                </>
+              )}
+
+              {/* ── Divider before panel toggles ── */}
+              <div className="w-full h-px bg-white/[0.06] my-1.5" />
+
+              {/* ── Panel Toggles ── */}
+
+              {/* Layers panel */}
+              <button onClick={() => selectToolInDrawer(() => setLayersPanelOpen(prev => !prev))} title="Layers"
+                className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
+                  layersPanelOpen
+                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                    : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                }`}>
+                <Layers size={15} />
+                <span className="text-xs truncate">Layers</span>
+              </button>
+
+              {/* Comments panel */}
+              <button onClick={() => selectToolInDrawer(() => setCommentsPanelOpen(prev => !prev))} title="Comments panel"
+                className={`relative flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
+                  commentsPanelOpen
+                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                    : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                }`}>
+                <MessageCircle size={15} />
+                <span className="text-xs truncate">Comments</span>
+                {commentThreads.length > 0 && (
+                  <span className="ml-auto min-w-[14px] h-[14px] flex items-center justify-center px-0.5 text-[8px] font-bold bg-[#F47B20] text-white rounded-full">
+                    {commentThreads.length > 99 ? '99+' : commentThreads.length}
+                  </span>
+                )}
+              </button>
+
+              {/* ── Undo / Redo / Rotate pinned at bottom ── */}
+              <div className="mt-auto" />
+              <div className="w-full h-px bg-white/[0.06] my-1.5" />
+              <div className="flex gap-1 justify-center">
+                <button onClick={undo} disabled={!canUndo} className="p-1.5 rounded-lg text-white/30 hover:text-white/60 disabled:text-white/10 transition-colors" title="Undo (Ctrl+Z)">
+                  <Undo2 size={14} />
+                </button>
+                <button onClick={redo} disabled={!canRedo} className="p-1.5 rounded-lg text-white/30 hover:text-white/60 disabled:text-white/10 transition-colors" title="Redo (Ctrl+Shift+Z)">
+                  <Redo2 size={14} />
+                </button>
+                <button onClick={() => rotatePage(-90)} className="p-1.5 rounded-lg text-white/30 hover:text-white/60 transition-colors" title="Rotate CCW">
+                  <RotateCcw size={14} />
+                </button>
+                <button onClick={() => rotatePage(90)} className="p-1.5 rounded-lg text-white/30 hover:text-white/60 transition-colors" title="Rotate CW">
+                  <RotateCw size={14} />
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          /* ── NORMAL SIDEBAR MODE ── */
+          <div className={`border-l border-white/[0.06] bg-black/20 flex flex-col py-2 gap-0.5 flex-shrink-0 overflow-y-auto overflow-x-hidden transition-all duration-200 ease-out ${
+            toolbarExpanded ? 'w-[140px] px-1.5 items-stretch' : 'w-10 px-0.5 items-center'
+          }`}>
+            {/* Toggle collapse */}
+            <button
+              onClick={() => setToolbarExpanded(prev => !prev)}
+              className="flex items-center justify-center py-1 mb-1 text-white/30 hover:text-white/60 transition-colors rounded-lg hover:bg-white/[0.06]"
+              title={toolbarExpanded ? 'Collapse toolbar' : 'Expand toolbar'}
+            >
+              {toolbarExpanded ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
+            </button>
+            <div className={`${toolbarExpanded ? 'w-full' : 'w-6'} h-px bg-white/[0.06] mb-1 self-center`} />
+
+            {/* ── Primary Tools ── */}
+
+            {/* Select */}
+            <button onClick={() => setActiveTool('select')} title="Select (S)"
+              className={`flex items-center rounded-lg transition-colors ${
+                toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
+              } ${
+                activeTool === 'select'
+                  ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                  : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+              }`}>
+              <MousePointer2 size={toolbarExpanded ? 15 : 16} />
+              {toolbarExpanded && (
+                <>
+                  <span className="text-xs truncate">Select</span>
+                  <span className="ml-auto text-[10px] opacity-40">S</span>
+                </>
+              )}
+            </button>
+
+            {/* Shapes dropdown */}
+            <div ref={shapesDropdownRef} className="relative">
+              <button
+                onClick={() => { if (!isDrawTool) setActiveTool(activeDraw); setShapesDropdownOpen(o => !o) }}
+                title={activeDrawDef.label}
+                className={`flex items-center rounded-lg transition-colors ${
+                  toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
+                } ${
+                  isDrawTool
+                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                    : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                }`}>
+                <ActiveDrawIcon size={toolbarExpanded ? 15 : 16} />
+                {toolbarExpanded && (
+                  <>
+                    <span className="text-xs truncate">{activeDrawDef.label}</span>
+                    <ChevronDown size={10} className="ml-auto opacity-40" />
                   </>
                 )}
               </button>
-            </>
-          )}
+              {shapesDropdownOpen && (
+                <div className="absolute top-0 right-full mr-1 bg-[#001a24] border border-white/[0.1] rounded-lg shadow-lg z-50 py-1 min-w-[140px]">
+                  {DRAW_TOOLS.map(s => (
+                    <button key={s.type}
+                      onClick={() => { setActiveTool(s.type); setActiveDraw(s.type); setShapesDropdownOpen(false) }}
+                      className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
+                        activeTool === s.type ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
+                      }`}>
+                      <s.icon size={14} />
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
-          {/* ── Divider before panel toggles ── */}
-          <div className={`${toolbarExpanded ? 'w-full' : 'w-6'} h-px bg-white/[0.06] my-1 self-center`} />
+            {/* Highlight */}
+            <button
+              onClick={() => {
+                if (selectTextToolbar) {
+                  const ann: Annotation = { id: genId(), type: 'highlighter', points: [{ x: 0, y: 0 }], color: '#FFFF00', strokeWidth: 0, opacity: 0.4, fontSize, rects: [...selectTextToolbar.rects] }
+                  commitAnnotation(ann); setSelectTextToolbar(null); redrawAll()
+                } else { setActiveTool('highlighter'); setActiveHighlight('highlighter') }
+              }}
+              title="Highlight (H)"
+              className={`flex items-center rounded-lg transition-colors ${
+                toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
+              } ${
+                activeTool === 'highlighter'
+                  ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                  : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+              }`}>
+              <Highlighter size={toolbarExpanded ? 15 : 16} />
+              {toolbarExpanded && (
+                <>
+                  <span className="text-xs truncate">Highlight</span>
+                  <span className="ml-auto text-[10px] opacity-40">H</span>
+                </>
+              )}
+            </button>
 
-          {/* ── Panel Toggles ── */}
+            {/* Strikethrough */}
+            <button
+              onClick={() => {
+                if (selectTextToolbar) {
+                  const ann: Annotation = { id: genId(), type: 'highlighter', points: [{ x: 0, y: 0 }], color: '#FF0000', strokeWidth: 0, opacity: 1, fontSize, rects: [...selectTextToolbar.rects], strikethrough: true }
+                  commitAnnotation(ann); setSelectTextToolbar(null); redrawAll()
+                } else { setActiveTool('textStrikethrough'); setActiveHighlight('textStrikethrough') }
+              }}
+              title="Strikethrough (Shift+X)"
+              className={`flex items-center rounded-lg transition-colors ${
+                toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
+              } ${
+                activeTool === 'textStrikethrough'
+                  ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                  : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+              }`}>
+              <Strikethrough size={toolbarExpanded ? 15 : 16} />
+              {toolbarExpanded && (
+                <span className="text-xs truncate">Strikethrough</span>
+              )}
+            </button>
 
-          {/* Layers panel */}
-          <button onClick={() => setLayersPanelOpen(prev => !prev)} title="Layers"
-            className={`flex items-center rounded-lg transition-colors ${
-              toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
-            } ${
-              layersPanelOpen
-                ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
-                : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
-            }`}>
-            <Layers size={toolbarExpanded ? 15 : 16} />
-            {toolbarExpanded && (
-              <span className="text-xs truncate">Layers</span>
+            {/* Text tools dropdown */}
+            <div ref={textDropdownRef} className="relative">
+              <button
+                onClick={() => { if (!isTextTool) setActiveTool(activeText); setTextDropdownOpen(o => !o) }}
+                title={activeTextDef.label}
+                className={`flex items-center rounded-lg transition-colors ${
+                  toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
+                } ${
+                  isTextTool
+                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                    : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                }`}>
+                <ActiveTextIcon size={toolbarExpanded ? 15 : 16} />
+                {toolbarExpanded && (
+                  <>
+                    <span className="text-xs truncate">{activeTextDef.label}</span>
+                    <ChevronDown size={10} className="ml-auto opacity-40" />
+                  </>
+                )}
+              </button>
+              {textDropdownOpen && (
+                <div className="absolute top-0 right-full mr-1 bg-[#001a24] border border-white/[0.1] rounded-lg shadow-lg z-50 py-1 min-w-[140px]">
+                  {TEXT_TOOLS.map(s => (
+                    <button key={s.type}
+                      onClick={() => { setActiveTool(s.type); setActiveText(s.type); setTextDropdownOpen(false) }}
+                      className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
+                        activeTool === s.type ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
+                      }`}>
+                      <s.icon size={14} />
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Eraser */}
+            <button onClick={() => setActiveTool('eraser')} title="Eraser (E)"
+              className={`flex items-center rounded-lg transition-colors ${
+                toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
+              } ${
+                activeTool === 'eraser'
+                  ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                  : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+              }`}>
+              <Eraser size={toolbarExpanded ? 15 : 16} />
+              {toolbarExpanded && (
+                <>
+                  <span className="text-xs truncate">Eraser</span>
+                  <span className="ml-auto text-[10px] opacity-40">E</span>
+                </>
+              )}
+            </button>
+
+            {/* Measure dropdown */}
+            <div ref={measureDropdownRef} className="relative">
+              <button onClick={() => { if (activeTool === 'measure') { setMeasureDropdownOpen(o => !o) } else { setActiveTool('measure'); setMeasureDropdownOpen(false) } }} title="Measure (M)"
+                className={`flex items-center rounded-lg transition-colors relative ${
+                  toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
+                } ${
+                  activeTool === 'measure'
+                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                    : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                }`}>
+                <Ruler size={toolbarExpanded ? 15 : 16} />
+                {toolbarExpanded ? (
+                  <>
+                    <span className="text-xs truncate">Measure</span>
+                    <span className="ml-auto text-[10px] opacity-40">M</span>
+                  </>
+                ) : (
+                  <ChevronDown size={7} className="absolute bottom-0.5 right-0.5 opacity-50" />
+                )}
+              </button>
+              {measureDropdownOpen && (
+                <div className="absolute top-0 right-full mr-1 bg-[#001a24] border border-white/[0.08] rounded-lg shadow-xl py-1 z-50 min-w-[160px]">
+                  {MEASURE_MODES.map(({ mode, label }) => (
+                    <button key={mode}
+                      onClick={() => { setMeasureMode(mode); setActiveTool('measure'); setMeasureDropdownOpen(false) }}
+                      className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                        measureMode === mode ? 'text-[#F47B20] bg-[#F47B20]/10' : 'text-white/70 hover:text-white hover:bg-white/[0.06]'
+                      }`}>
+                      {label}
+                    </button>
+                  ))}
+                  <div className="h-px bg-white/[0.08] my-1" />
+                  <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-white/70 cursor-pointer hover:bg-white/[0.06]">
+                    <input type="checkbox" checked={edgeSnappingEnabled}
+                      onChange={e => setEdgeSnappingEnabled(e.target.checked)}
+                      className="rounded border-white/20 bg-white/10 text-[#F47B20] focus:ring-[#F47B20]" />
+                    Edge Snap
+                  </label>
+                  <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-white/70 cursor-pointer hover:bg-white/[0.06]">
+                    <input type="checkbox" checked={precisionSnapMode}
+                      onChange={e => setPrecisionSnapMode(e.target.checked)}
+                      className="rounded border-white/20 bg-white/10 text-[#F47B20] focus:ring-[#F47B20]" />
+                    Precision Mode
+                  </label>
+                </div>
+              )}
+            </div>
+
+            {/* ── Divider between primary and secondary ── */}
+            <div className={`${toolbarExpanded ? 'w-full' : 'w-6'} h-px bg-white/[0.06] my-1 self-center`} />
+
+            {/* ── More Tools Expander ── */}
+            <button
+              onClick={() => setMoreToolsOpen(prev => !prev)}
+              className={`flex items-center rounded-lg transition-colors border border-dashed border-white/[0.08] ${
+                toolbarExpanded ? 'gap-2 px-2.5 py-1.5 w-full' : 'justify-center p-1.5'
+              } text-white/30 hover:text-white/50`}
+              title="More tools"
+            >
+              <MoreHorizontal size={14} />
+              {toolbarExpanded && (
+                <>
+                  <span className="text-xs">More tools</span>
+                  <ChevronDown size={12} className={`ml-auto transition-transform ${moreToolsOpen ? 'rotate-180' : ''}`} />
+                </>
+              )}
+            </button>
+
+            {/* ── Secondary Tools (collapsible) ── */}
+            {moreToolsOpen && (
+              <>
+                {/* Stamp */}
+                <div ref={stampDropdownRef} className="relative">
+                  <button
+                    onClick={() => { setActiveTool('stamp'); setStampDropdownOpen(o => !o) }}
+                    title="Stamp"
+                    className={`flex items-center rounded-lg transition-colors ${
+                      toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
+                    } ${
+                      activeTool === 'stamp'
+                        ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                        : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                    }`}>
+                    <Tag size={toolbarExpanded ? 15 : 16} />
+                    {toolbarExpanded && (
+                      <>
+                        <span className="text-xs truncate">Stamp</span>
+                        <ChevronDown size={10} className="ml-auto opacity-40" />
+                      </>
+                    )}
+                  </button>
+                  {stampDropdownOpen && (
+                    <div className="absolute top-0 right-full mr-1 bg-[#001a24] border border-white/[0.1] rounded-lg shadow-lg z-50 py-1 min-w-[160px]">
+                      {STAMP_PRESETS.map(preset => (
+                        <button key={preset.label}
+                          onClick={() => { setActiveStampPreset(preset); setStampDropdownOpen(false) }}
+                          className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
+                            activeStampPreset.label === preset.label ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
+                          }`}>
+                          <span className="font-bold text-[10px]" style={{ color: preset.color }}>{preset.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Crop */}
+                <button onClick={() => setActiveTool('crop')} title="Crop page"
+                  className={`flex items-center rounded-lg transition-colors ${
+                    toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
+                  } ${
+                    activeTool === 'crop'
+                      ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                      : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                  }`}>
+                  <Crop size={toolbarExpanded ? 15 : 16} />
+                  {toolbarExpanded && (
+                    <span className="text-xs truncate">Crop</span>
+                  )}
+                </button>
+
+                {/* Image Stamp */}
+                <button onClick={() => {
+                  setActiveTool('imageStamp')
+                  // Open file picker immediately
+                  const input = document.createElement('input')
+                  input.type = 'file'
+                  input.accept = 'image/png,image/jpeg,image/svg+xml,image/webp'
+                  input.onchange = async () => {
+                    const file = input.files?.[0]
+                    if (!file) return
+                    const reader = new FileReader()
+                    reader.onload = () => {
+                      const dataUrl = reader.result as string
+                      // Store pending image for next canvas click
+                      pendingImageRef.current = dataUrl
+                    }
+                    reader.readAsDataURL(file)
+                  }
+                  input.click()
+                }} title="Image Stamp (I)"
+                  className={`flex items-center rounded-lg transition-colors ${
+                    toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
+                  } ${
+                    activeTool === 'imageStamp'
+                      ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                      : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                  }`}>
+                  <ImagePlus size={toolbarExpanded ? 15 : 16} />
+                  {toolbarExpanded && (
+                    <>
+                      <span className="text-xs truncate">Image Stamp</span>
+                      <span className="ml-auto text-[10px] opacity-40">I</span>
+                    </>
+                  )}
+                </button>
+
+                {/* OCR Region Scan */}
+                <button onClick={() => { setActiveTool('ocrRegion'); setOcrRegionResult(null) }} title="OCR Region Scan"
+                  className={`flex items-center rounded-lg transition-colors ${
+                    toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
+                  } ${
+                    activeTool === 'ocrRegion'
+                      ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                      : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                  }`}>
+                  <ScanText size={toolbarExpanded ? 15 : 16} />
+                  {toolbarExpanded && (
+                    <span className="text-xs truncate">OCR Scan</span>
+                  )}
+                </button>
+
+                {/* Sticky Note */}
+                <button onClick={() => setActiveTool('note')} title="Sticky Note (N)"
+                  className={`flex items-center rounded-lg transition-colors ${
+                    toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
+                  } ${
+                    activeTool === 'note'
+                      ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                      : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                  }`}>
+                  <StickyNoteIcon size={toolbarExpanded ? 15 : 16} />
+                  {toolbarExpanded && (
+                    <>
+                      <span className="text-xs truncate">Sticky Note</span>
+                      <span className="ml-auto text-[10px] opacity-40">N</span>
+                    </>
+                  )}
+                </button>
+              </>
             )}
-          </button>
 
-          {/* Comments panel */}
-          <button onClick={() => setCommentsPanelOpen(prev => !prev)} title="Comments panel"
-            className={`relative flex items-center rounded-lg transition-colors ${
-              toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
-            } ${
-              commentsPanelOpen
-                ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
-                : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
-            }`}>
-            <MessageCircle size={toolbarExpanded ? 15 : 16} />
-            {toolbarExpanded && (
-              <span className="text-xs truncate">Comments</span>
-            )}
-            {commentThreads.length > 0 && (
-              <span className={`${toolbarExpanded ? 'ml-auto' : 'absolute -top-1 -right-1'} min-w-[14px] h-[14px] flex items-center justify-center px-0.5 text-[8px] font-bold bg-[#F47B20] text-white rounded-full`}>
-                {commentThreads.length > 99 ? '99+' : commentThreads.length}
-              </span>
-            )}
-          </button>
+            {/* ── Divider before panel toggles ── */}
+            <div className={`${toolbarExpanded ? 'w-full' : 'w-6'} h-px bg-white/[0.06] my-1 self-center`} />
 
-          {/* ── Undo / Redo / Rotate pinned at bottom ── */}
-          <div className="mt-auto" />
-          <div className={`${toolbarExpanded ? 'w-full' : 'w-6'} h-px bg-white/[0.06] my-1 self-center`} />
-          <div className={`flex ${toolbarExpanded ? 'gap-1 justify-center' : 'flex-col gap-0.5 items-center'}`}>
-            <button onClick={undo} disabled={!canUndo} className="p-1.5 rounded-lg text-white/30 hover:text-white/60 disabled:text-white/10 transition-colors" title="Undo (Ctrl+Z)">
-              <Undo2 size={14} />
+            {/* ── Panel Toggles ── */}
+
+            {/* Layers panel */}
+            <button onClick={() => setLayersPanelOpen(prev => !prev)} title="Layers"
+              className={`flex items-center rounded-lg transition-colors ${
+                toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
+              } ${
+                layersPanelOpen
+                  ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                  : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+              }`}>
+              <Layers size={toolbarExpanded ? 15 : 16} />
+              {toolbarExpanded && (
+                <span className="text-xs truncate">Layers</span>
+              )}
             </button>
-            <button onClick={redo} disabled={!canRedo} className="p-1.5 rounded-lg text-white/30 hover:text-white/60 disabled:text-white/10 transition-colors" title="Redo (Ctrl+Shift+Z)">
-              <Redo2 size={14} />
+
+            {/* Comments panel */}
+            <button onClick={() => setCommentsPanelOpen(prev => !prev)} title="Comments panel"
+              className={`relative flex items-center rounded-lg transition-colors ${
+                toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
+              } ${
+                commentsPanelOpen
+                  ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                  : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+              }`}>
+              <MessageCircle size={toolbarExpanded ? 15 : 16} />
+              {toolbarExpanded && (
+                <span className="text-xs truncate">Comments</span>
+              )}
+              {commentThreads.length > 0 && (
+                <span className={`${toolbarExpanded ? 'ml-auto' : 'absolute -top-1 -right-1'} min-w-[14px] h-[14px] flex items-center justify-center px-0.5 text-[8px] font-bold bg-[#F47B20] text-white rounded-full`}>
+                  {commentThreads.length > 99 ? '99+' : commentThreads.length}
+                </span>
+              )}
             </button>
-            <button onClick={() => rotatePage(-90)} className="p-1.5 rounded-lg text-white/30 hover:text-white/60 transition-colors" title="Rotate CCW">
-              <RotateCcw size={14} />
-            </button>
-            <button onClick={() => rotatePage(90)} className="p-1.5 rounded-lg text-white/30 hover:text-white/60 transition-colors" title="Rotate CW">
-              <RotateCw size={14} />
-            </button>
+
+            {/* ── Undo / Redo / Rotate pinned at bottom ── */}
+            <div className="mt-auto" />
+            <div className={`${toolbarExpanded ? 'w-full' : 'w-6'} h-px bg-white/[0.06] my-1 self-center`} />
+            <div className={`flex ${toolbarExpanded ? 'gap-1 justify-center' : 'flex-col gap-0.5 items-center'}`}>
+              <button onClick={undo} disabled={!canUndo} className="p-1.5 rounded-lg text-white/30 hover:text-white/60 disabled:text-white/10 transition-colors" title="Undo (Ctrl+Z)">
+                <Undo2 size={14} />
+              </button>
+              <button onClick={redo} disabled={!canRedo} className="p-1.5 rounded-lg text-white/30 hover:text-white/60 disabled:text-white/10 transition-colors" title="Redo (Ctrl+Shift+Z)">
+                <Redo2 size={14} />
+              </button>
+              <button onClick={() => rotatePage(-90)} className="p-1.5 rounded-lg text-white/30 hover:text-white/60 transition-colors" title="Rotate CCW">
+                <RotateCcw size={14} />
+              </button>
+              <button onClick={() => rotatePage(90)} className="p-1.5 rounded-lg text-white/30 hover:text-white/60 transition-colors" title="Rotate CW">
+                <RotateCw size={14} />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ── Fixed-position textarea overlay (Konva.js pattern: positioned via screen coords) ── */}
@@ -6016,6 +6469,7 @@ export default function PdfAnnotateTool() {
       })()}
 
       {/* ── Compact status bar ────────────────────── */}
+      {!focusMode && (
       <div className="flex items-center justify-between px-3 py-1.5 border-t border-white/[0.06] flex-shrink-0">
         {/* Left: file info */}
         <div className="flex items-center gap-1.5 text-[10px] text-white/30 min-w-0">
@@ -6055,6 +6509,7 @@ export default function PdfAnnotateTool() {
           }</span>
         </div>
       </div>
+      )}
 
       {/* ── Calibration modal ───────────────────────── */}
       <Modal open={calibrateModalOpen} onClose={() => setCalibrateModalOpen(false)} title="Calibrate Measurement" width="sm">
