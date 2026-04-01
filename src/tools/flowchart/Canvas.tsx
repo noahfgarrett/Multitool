@@ -157,9 +157,12 @@ export function Canvas({ store }: { store: FlowchartStore }) {
     return () => container.removeEventListener('wheel', handleWheel)
   }, [viewport, setViewport])
 
-  // ── Mouse down ────────────────────────────────────────────
+  // ── Pointer down ──────────────────────────────────────────
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    // Capture pointer so move/up fire even outside the SVG
+    ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
+
     // Close context menu on any click
     if (contextMenu) setContextMenu(null)
 
@@ -315,9 +318,9 @@ export function Canvas({ store }: { store: FlowchartStore }) {
     setSelection, addNode, addEdgeAutoPort, snapEnabled, snapToGrid, connectSource,
   ])
 
-  // ── Mouse move ────────────────────────────────────────────
+  // ── Pointer move ──────────────────────────────────────────
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
     // Track cursor for connect mode preview
     if (toolMode === 'connect' && connectSource) {
       const pt = screenToSvg(e.clientX, e.clientY)
@@ -400,9 +403,9 @@ export function Canvas({ store }: { store: FlowchartStore }) {
     }
   }, [screenToSvg, selection, moveNodes, resizeNode, moveWaypoint, setViewport, snapEnabled, gridSize, toolMode, connectSource, placeCursor, nodes])
 
-  // ── Mouse up ──────────────────────────────────────────────
+  // ── Pointer up ────────────────────────────────────────────
 
-  const handleMouseUp = useCallback(() => {
+  const handlePointerUp = useCallback(() => {
     const d = dragRef.current
     if (!d) return
 
@@ -578,7 +581,7 @@ export function Canvas({ store }: { store: FlowchartStore }) {
 
   // ── Port interaction start ────────────────────────────────
 
-  const handlePortMouseDown = useCallback((e: React.MouseEvent, nodeId: string, port: PortPosition) => {
+  const handlePortPointerDown = useCallback((e: React.PointerEvent, nodeId: string, port: PortPosition) => {
     e.stopPropagation()
     const node = nodeMap.get(nodeId)
     if (!node) return
@@ -772,7 +775,7 @@ export function Canvas({ store }: { store: FlowchartStore }) {
                   style={{ cursor: 'crosshair' }}
                   onMouseEnter={() => setHoveredPort({ nodeId: node.id, port })}
                   onMouseLeave={() => setHoveredPort(null)}
-                  onMouseDown={(e) => handlePortMouseDown(e, node.id, port)}
+                  onPointerDown={(e) => handlePortPointerDown(e, node.id, port)}
                 />
               )
             })}
@@ -1160,10 +1163,11 @@ export function Canvas({ store }: { store: FlowchartStore }) {
         className="w-full h-full"
         role="application"
         aria-label="Flowchart diagram canvas"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        style={{ touchAction: 'none' }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
       >
