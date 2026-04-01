@@ -1,3 +1,5 @@
+import { isNewer } from '@/utils/semver.ts'
+
 const GITHUB_API_URL =
   'https://api.github.com/repos/noahfgarrett/LotusWorksToolkit/releases/latest'
 const TIMEOUT_MS = 5000
@@ -21,20 +23,6 @@ interface GitHubRelease {
   body?: string
   html_url: string
   assets?: GitHubAsset[]
-}
-
-/** Compare two semver strings (e.g. "1.2.3" > "1.2.2"). */
-function isNewer(remote: string, local: string): boolean {
-  const r = remote.replace(/^v/, '').split('.').map(Number)
-  const l = local.replace(/^v/, '').split('.').map(Number)
-  const len = Math.max(r.length, l.length)
-  for (let i = 0; i < len; i++) {
-    const rv = r[i] ?? 0
-    const lv = l[i] ?? 0
-    if (rv > lv) return true
-    if (rv < lv) return false
-  }
-  return false
 }
 
 /**
