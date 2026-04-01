@@ -12,6 +12,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '3.0.1',
+    date: '2026-04-01',
+    type: 'feature',
+    stats: { features: 4 },
+    notes: `### Changelog Modal
+- **Built-in changelog** — View the full release history right inside the app, no internet required
+- **Release type indicators** — Color-coded left bars show major releases, features, and fixes at a glance (hover to see the label)
+- **"What's New" notification** — Orange dot on the version number lets you know when you're running a new version
+- **Clickable version link** — Click "LotusWorks Toolkit v3.0.1" in the sidebar footer to open the changelog anytime`,
+  },
+  {
     version: '3.0.0',
     date: '2026-04-01',
     type: 'major',
