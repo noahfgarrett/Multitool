@@ -85,9 +85,22 @@ When the user says "push a new release", "push to GitHub", or "release vX.Y.Z", 
 
 1. **Bump version** in `package.json`
 2. **Build**: `npm run build` → produces `dist/LotusWorksToolkit.html`
-3. **Verify version is baked in**: `grep -o '"X\.Y\.Z"' dist/LotusWorksToolkit.html | head -1` must show the new version
-4. **Commit and push** the version bump
-5. **Create the release with `target_commitish`** pointing to the actual commit SHA — this ensures `created_at` gets a fresh timestamp:
+3. **Update changelog** — Add a new entry to the TOP of `src/data/changelog.ts`:
+   ```typescript
+   {
+     version: 'X.Y.Z',
+     date: 'YYYY-MM-DD',
+     type: 'major' | 'feature' | 'fix',  // major=x.0.0, feature=x.y.0, fix=x.y.z
+     stats: { features: N, fixes: N, tools: N },  // optional, count from release notes
+     notes: `...release notes markdown...`,
+   },
+   ```
+   - Add to the TOP of the `CHANGELOG` array (newest first)
+   - Follow release notes style (short, user-facing, no QA mentions)
+   - Rebuild after adding so the changelog is baked into the HTML
+4. **Verify version is baked in**: `grep -o '"X\.Y\.Z"' dist/LotusWorksToolkit.html | head -1` must show the new version
+5. **Commit and push** the version bump
+6. **Create the release with `target_commitish`** pointing to the actual commit SHA — this ensures `created_at` gets a fresh timestamp:
    ```bash
    COMMIT=$(git rev-parse HEAD)
    gh api repos/noahfgarrett/LotusWorksToolkit/releases -X POST \
@@ -98,11 +111,11 @@ When the user says "push a new release", "push to GitHub", or "release vX.Y.Z", 
      -F draft=false \
      -F prerelease=false
    ```
-6. **Upload the HTML asset**:
+7. **Upload the HTML asset**:
    ```bash
    gh release upload vX.Y.Z dist/LotusWorksToolkit.html
    ```
-7. **Verify `/releases/latest` returns the new version**:
+8. **Verify `/releases/latest` returns the new version**:
    ```bash
    gh api repos/noahfgarrett/LotusWorksToolkit/releases/latest --jq '{tag_name, created_at, assets: [.assets[].name]}'
    ```
