@@ -8,6 +8,15 @@ import type { ChangelogEntry } from '@/data/changelog.ts'
 import type { UpdateInfo } from '@/utils/updateChecker.ts'
 import { isNewer } from '@/utils/semver.ts'
 
+function formatDate(iso: string): string {
+  const d = new Date(iso)
+  const month = d.toLocaleString('en-US', { month: 'short' })
+  const day = d.getDate()
+  const year = d.getFullYear()
+  const time = d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+  return `${month} ${day}, ${year} · ${time}`
+}
+
 interface UpdateModalProps {
   open: boolean
   onClose: () => void
@@ -224,7 +233,7 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
                         {stats && (
                           <span className="text-[10px] text-white/25 hidden sm:inline">{stats}</span>
                         )}
-                        <span className="ml-auto text-[11px] text-white/25 shrink-0">{entry.date}</span>
+                        <span className="ml-auto text-[11px] text-white/25 shrink-0">{formatDate(entry.date)}</span>
                       </button>
 
                       {/* Expanded content */}

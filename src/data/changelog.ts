@@ -13,7 +13,7 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '3.0.1',
-    date: '2026-04-01',
+    date: '2026-04-01T22:15:47Z',
     type: 'feature',
     stats: { features: 4 },
     notes: `### Changelog Modal
@@ -24,7 +24,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '3.0.0',
-    date: '2026-04-01',
+    date: '2026-04-01T20:00:50Z',
     type: 'major',
     stats: {
       features: 4,
@@ -51,7 +51,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.9.2',
-    date: '2026-03-31',
+    date: '2026-03-31T20:23:56Z',
     type: 'fix',
     stats: {
       fixes: 1,
@@ -61,7 +61,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.9.1',
-    date: '2026-03-31',
+    date: '2026-03-31T18:13:23Z',
     type: 'fix',
     stats: {
       fixes: 2,
@@ -71,7 +71,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.9.0',
-    date: '2026-03-26',
+    date: '2026-03-26T20:08:04Z',
     type: 'feature',
     stats: {
       features: 6,
@@ -85,7 +85,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.8.1',
-    date: '2026-03-26',
+    date: '2026-03-26T17:28:44Z',
     type: 'fix',
     stats: {
       fixes: 1,
@@ -94,7 +94,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.8.0',
-    date: '2026-03-26',
+    date: '2026-03-26T17:02:17Z',
     type: 'feature',
     stats: {
       features: 1,
@@ -103,7 +103,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.7.3',
-    date: '2026-03-26',
+    date: '2026-03-26T14:50:00Z',
     type: 'fix',
     stats: {
       fixes: 2,
@@ -113,7 +113,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.7.2',
-    date: '2026-03-24',
+    date: '2026-03-24T20:29:10Z',
     type: 'fix',
     stats: {
       fixes: 1,
@@ -122,7 +122,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.7.1',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'fix',
     stats: {
       fixes: 1,
@@ -131,7 +131,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.7.0',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'feature',
     stats: {
       features: 2,
@@ -142,7 +142,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.6.0',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'feature',
     stats: {
       features: 28,
@@ -171,7 +171,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.5.2',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'fix',
     stats: {
       fixes: 1,
@@ -180,7 +180,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.5.1',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'fix',
     stats: {
       fixes: 1,
@@ -189,7 +189,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.5.0',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'feature',
     stats: {
       features: 8,
@@ -205,7 +205,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.4.0',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'feature',
     stats: {
       features: 9,
@@ -222,7 +222,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.3.0',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'feature',
     stats: {
       features: 12,
@@ -242,7 +242,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.2.0',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'feature',
     stats: {
       features: 5,
@@ -257,7 +257,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.1.4',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'fix',
     stats: {
       features: 2,
@@ -271,7 +271,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.1.3',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'fix',
     stats: {
       fixes: 1,
@@ -280,7 +280,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.1.2',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'fix',
     stats: {
       features: 1,
@@ -293,7 +293,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.1.1',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'fix',
     stats: {
       features: 1,
@@ -304,7 +304,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.1.0',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'feature',
     stats: {
       features: 1,
@@ -316,7 +316,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.0.10',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'fix',
     stats: {
       fixes: 1,
@@ -325,7 +325,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.0.9',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'fix',
     stats: {
       fixes: 1,
@@ -334,7 +334,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.0.8',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'fix',
     stats: {
       features: 2,
@@ -344,7 +344,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.0.7',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'fix',
     stats: {
       features: 1,
@@ -355,7 +355,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.0.6',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'fix',
     stats: {
       features: 1,
@@ -364,7 +364,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.0.5',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'fix',
     stats: {
       features: 3,
@@ -375,7 +375,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.0.4',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'fix',
     stats: {
       features: 6,
@@ -389,7 +389,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.0.3',
-    date: '2026-03-13',
+    date: '2026-03-13T11:03:31Z',
     type: 'fix',
     stats: {
       features: 1,
@@ -400,7 +400,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.0.2',
-    date: '2026-03-13',
+    date: '2026-03-13T10:47:30Z',
     type: 'fix',
     stats: {
       features: 1,
@@ -409,7 +409,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.0.1',
-    date: '2026-03-12',
+    date: '2026-03-12T18:24:19Z',
     type: 'fix',
     stats: {
       features: 1,
@@ -418,7 +418,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '2.0.0',
-    date: '2026-03-12',
+    date: '2026-03-12T15:30:11Z',
     type: 'major',
     stats: {
       features: 7,
@@ -433,7 +433,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.9.0',
-    date: '2026-03-08',
+    date: '2026-03-08T18:26:53Z',
     type: 'feature',
     stats: {
       features: 1,
@@ -442,7 +442,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.8.7',
-    date: '2026-03-09',
+    date: '2026-03-09T11:55:53Z',
     type: 'fix',
     stats: {
       features: 6,
@@ -456,7 +456,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.8.6',
-    date: '2026-03-09',
+    date: '2026-03-09T10:59:49Z',
     type: 'fix',
     stats: {
       fixes: 2,
@@ -466,7 +466,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.8.5',
-    date: '2026-03-04',
+    date: '2026-03-04T18:25:01Z',
     type: 'fix',
     stats: {
       features: 2,
@@ -480,7 +480,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.8.4',
-    date: '2026-03-04',
+    date: '2026-03-04T18:25:01Z',
     type: 'fix',
     stats: {
       fixes: 2,
@@ -490,7 +490,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.8.3',
-    date: '2026-03-04',
+    date: '2026-03-04T18:25:01Z',
     type: 'fix',
     stats: {
       fixes: 4,
@@ -502,7 +502,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.8.2',
-    date: '2026-03-04',
+    date: '2026-03-04T18:25:01Z',
     type: 'fix',
     stats: {
       fixes: 1,
@@ -511,7 +511,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.8.1',
-    date: '2026-03-04',
+    date: '2026-03-04T18:25:01Z',
     type: 'fix',
     stats: {
       fixes: 1,
@@ -520,7 +520,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.8.0',
-    date: '2026-03-04',
+    date: '2026-03-04T18:25:01Z',
     type: 'feature',
     stats: {
       features: 10,
@@ -536,7 +536,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.7.8',
-    date: '2026-03-04',
+    date: '2026-03-04T18:25:01Z',
     type: 'fix',
     stats: {
       features: 2,
@@ -549,7 +549,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.7.7',
-    date: '2026-03-04',
+    date: '2026-03-04T18:25:01Z',
     type: 'fix',
     stats: {
       features: 3,
@@ -560,7 +560,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.7.6',
-    date: '2026-03-04',
+    date: '2026-03-04T18:25:01Z',
     type: 'fix',
     stats: {
       features: 6,
@@ -575,7 +575,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.7.5',
-    date: '2026-03-05',
+    date: '2026-03-05T14:55:58Z',
     type: 'fix',
     stats: {
       features: 5,
@@ -594,7 +594,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.7.1',
-    date: '2026-03-04',
+    date: '2026-03-04T18:25:01Z',
     type: 'fix',
     stats: {
       features: 3,
@@ -608,7 +608,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.7.0',
-    date: '2026-03-04',
+    date: '2026-03-04T18:25:01Z',
     type: 'feature',
     stats: {
       fixes: 4,
@@ -620,7 +620,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.6.0',
-    date: '2026-03-04',
+    date: '2026-03-04T18:25:01Z',
     type: 'feature',
     stats: {
       features: 2,
@@ -636,7 +636,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.5.2',
-    date: '2026-03-03',
+    date: '2026-03-03T12:55:12Z',
     type: 'fix',
     stats: {
       fixes: 1,
@@ -645,7 +645,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.5.1',
-    date: '2026-03-03',
+    date: '2026-03-03T15:30:08Z',
     type: 'fix',
     stats: {
       fixes: 2,
@@ -655,7 +655,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.5.0',
-    date: '2026-03-03',
+    date: '2026-03-03T14:53:16Z',
     type: 'feature',
     stats: {
       features: 5,
@@ -678,7 +678,7 @@ All PDF pages now display in a single scrollable view — just like Adobe Acroba
   },
   {
     version: '1.4.0',
-    date: '2026-03-03',
+    date: '2026-03-03T12:55:12Z',
     type: 'feature',
     stats: {
       features: 11,
@@ -698,7 +698,7 @@ All PDF pages now display in a single scrollable view — just like Adobe Acroba
   },
   {
     version: '1.3.1',
-    date: '2026-03-02',
+    date: '2026-03-02T15:54:13Z',
     type: 'fix',
     stats: {
       fixes: 1,
@@ -707,7 +707,7 @@ All PDF pages now display in a single scrollable view — just like Adobe Acroba
   },
   {
     version: '1.3.0',
-    date: '2026-03-02',
+    date: '2026-03-02T15:32:00Z',
     type: 'feature',
     stats: {
       features: 5,
@@ -720,13 +720,13 @@ All PDF pages now display in a single scrollable view — just like Adobe Acroba
   },
   {
     version: '1.2.5',
-    date: '2026-02-27',
+    date: '2026-02-27T13:28:59Z',
     type: 'fix',
     notes: `Test release — verifying update instructions appear in modal`,
   },
   {
     version: '1.2.4',
-    date: '2026-02-27',
+    date: '2026-02-27T13:25:17Z',
     type: 'fix',
     notes: `Added download instructions to update modal`,
   },
