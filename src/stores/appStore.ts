@@ -14,6 +14,10 @@ interface AppState {
   activeView: 'feedback' | null
   showProfileModal: boolean
 
+  // Changelog
+  showChangelog: boolean
+  setShowChangelog: (show: boolean) => void
+
   // Actions
   setActiveTool: (tool: ToolId | null) => void
   goHome: () => void
@@ -39,11 +43,13 @@ export const useAppStore = create<AppState>((set) => ({
   toasts: [],
   activeView: null,
   showProfileModal: false,
+  showChangelog: false,
 
   setActiveTool: (tool) => set({ activeTool: tool, activeView: null }),
   goHome: () => set({ activeTool: null, activeView: null }),
   setActiveView: (view) => set({ activeView: view, activeTool: null }),
   setShowProfileModal: (show) => set({ showProfileModal: show }),
+  setShowChangelog: (show) => set({ showChangelog: show }),
 
   toggleSidebar: () => set((s) => ({ sidebarExpanded: !s.sidebarExpanded })),
 

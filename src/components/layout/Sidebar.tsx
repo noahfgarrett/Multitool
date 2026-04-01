@@ -33,6 +33,7 @@ export function Sidebar() {
   const toggleCategory = useAppStore((s) => s.toggleCategory)
   const activeView = useAppStore((s) => s.activeView)
   const setActiveView = useAppStore((s) => s.setActiveView)
+  const setShowChangelog = useAppStore((s) => s.setShowChangelog)
 
   return (
     <aside
@@ -172,9 +173,19 @@ export function Sidebar() {
           )}
         </button>
         {sidebarExpanded && (
-          <p className="text-[10px] text-white/30 text-center mt-2">
+          <button
+            onClick={() => {
+              setShowChangelog(true)
+              localStorage.setItem('lastSeenVersion', __APP_VERSION__)
+            }}
+            className="relative text-[10px] text-white/30 hover:text-white/50 text-center mt-2 w-full transition-colors cursor-pointer"
+            title="View changelog"
+          >
             LotusWorks Toolkit v{__APP_VERSION__}
-          </p>
+            {localStorage.getItem('lastSeenVersion') !== __APP_VERSION__ && (
+              <span className="absolute -top-0.5 -right-1 w-1.5 h-1.5 rounded-full bg-[#F47B20] animate-pulse" />
+            )}
+          </button>
         )}
       </div>
     </aside>
