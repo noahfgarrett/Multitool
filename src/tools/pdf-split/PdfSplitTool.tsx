@@ -85,15 +85,14 @@ interface SourcePageItemProps {
   activeDocColor: string | null
   isAssignedToActive: boolean
   duplicateCount: number
-  onMouseDown: (e: React.MouseEvent) => void
-  onMouseEnter: (e: React.MouseEvent) => void
+  onPointerDown: (e: React.PointerEvent) => void
   scrollRoot: HTMLDivElement | null
   onThumbnailNeeded: () => void
 }
 
 function SourcePageItem({
   page, otherDocColors, activeDocColor, isAssignedToActive, duplicateCount,
-  onMouseDown, onMouseEnter, scrollRoot, onThumbnailNeeded,
+  onPointerDown, scrollRoot, onThumbnailNeeded,
 }: SourcePageItemProps) {
   const nodeRef = useRef<HTMLDivElement | null>(null)
   const thumbCbRef = useRef(onThumbnailNeeded)
@@ -125,8 +124,9 @@ function SourcePageItem({
   return (
     <div
       ref={nodeRef}
-      onMouseDown={onMouseDown}
-      onMouseEnter={onMouseEnter}
+      data-page-num={page.pageNumber}
+      data-page-uid={page.uid}
+      onPointerDown={onPointerDown}
       className={`
         relative group rounded-lg border-2 p-1 transition-all cursor-pointer flex items-center justify-center select-none
         ${isAssignedToActive ? 'ring-2 shadow-md' : ''}
@@ -414,11 +414,12 @@ export default function PdfSplitTool() {
     }))
   }, [])
 
-  /* ── Paint-select: mousedown starts, mouseenter continues, mouseup ends ── */
+  /* ── Paint-select: pointerdown starts, pointermove continues, pointerup ends ── */
 
   const shiftHeldRef = useRef(false)
+  const gridContainerRef = useRef<HTMLDivElement>(null)
 
-  const handlePageMouseDown = useCallback((e: React.MouseEvent, pageUid: string, pageNumber: number) => {
+  const handlePagePointerDown = useCallback((e: React.PointerEvent, pageUid: string, pageNumber: number) => {
     e.preventDefault()
     if (!activeDocIdRef.current) return
 
@@ -428,6 +429,12 @@ export default function PdfSplitTool() {
     shiftHeldRef.current = e.shiftKey
     isPainting.current = true
     paintedThisStroke.current = new Set([pageUid])
+
+    // Capture pointer on the grid container so we get pointermove even outside thumbnails
+    const container = gridContainerRef.current
+    if (container) {
+      container.setPointerCapture(e.pointerId)
+    }
 
     // Shift+Click: always add a duplicate copy
     if (e.shiftKey) {
@@ -446,8 +453,29 @@ export default function PdfSplitTool() {
     }
   }, [assignPage, unassignPage])
 
-  const handlePageMouseEnter = useCallback((_e: React.MouseEvent, pageUid: string, pageNumber: number) => {
+  const handleContainerPointerMove = useCallback((e: React.PointerEvent) => {
     if (!isPainting.current || !activeDocIdRef.current) return
+
+    // Use elementFromPoint to detect which thumbnail the pointer is over
+    // Release capture temporarily so elementFromPoint can find the actual element
+    const container = gridContainerRef.current
+    if (container && container.hasPointerCapture(e.pointerId)) {
+      container.releasePointerCapture(e.pointerId)
+    }
+    const el = document.elementFromPoint(e.clientX, e.clientY)
+    if (container) {
+      container.setPointerCapture(e.pointerId)
+    }
+
+    if (!el) return
+    const thumbEl = el.closest('[data-page-uid]') as HTMLElement | null
+    if (!thumbEl) return
+
+    const pageUid = thumbEl.dataset.pageUid
+    const pageNumStr = thumbEl.dataset.pageNum
+    if (!pageUid || !pageNumStr) return
+    const pageNumber = Number(pageNumStr)
+
     if (paintedThisStroke.current.has(pageUid)) return
     paintedThisStroke.current.add(pageUid)
 
@@ -458,14 +486,14 @@ export default function PdfSplitTool() {
     }
   }, [assignPage, unassignPage])
 
-  // Global mouseup to end painting
+  // Global pointerup to end painting
   useEffect(() => {
-    const handleMouseUp = () => {
+    const handlePointerUp = () => {
       isPainting.current = false
       paintedThisStroke.current.clear()
     }
-    window.addEventListener('mouseup', handleMouseUp)
-    return () => window.removeEventListener('mouseup', handleMouseUp)
+    window.addEventListener('pointerup', handlePointerUp)
+    return () => window.removeEventListener('pointerup', handlePointerUp)
   }, [])
 
   /* ── New Document: lock current, create next ── */
@@ -871,7 +899,15 @@ export default function PdfSplitTool() {
 
         {/* Page grid */}
         <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-1">
-          <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${zoomCols}, 1fr)` }}>
+          <div
+            ref={gridContainerRef}
+            className="grid gap-2"
+            style={{
+              gridTemplateColumns: `repeat(${zoomCols}, 1fr)`,
+              touchAction: 'none',
+            }}
+            onPointerMove={handleContainerPointerMove}
+          >
             {pages.map((page) => (
               <SourcePageItem
                 key={page.uid}
@@ -880,8 +916,7 @@ export default function PdfSplitTool() {
                 activeDocColor={activeDocColor}
                 isAssignedToActive={page.assignedTo.includes(activeDocId ?? '')}
                 duplicateCount={getDuplicateCount(page.uid)}
-                onMouseDown={(e) => handlePageMouseDown(e, page.uid, page.pageNumber)}
-                onMouseEnter={(e) => handlePageMouseEnter(e, page.uid, page.pageNumber)}
+                onPointerDown={(e) => handlePagePointerDown(e, page.uid, page.pageNumber)}
                 scrollRoot={scrollRef.current}
                 onThumbnailNeeded={() => loadPageThumbnail(page.uid, page.pageNumber)}
               />

@@ -475,7 +475,7 @@ export function FormCanvas({ store, showTabOrder }: { store: FormStore; showTabO
     <div
       ref={containerRef}
       className="w-full h-full overflow-hidden relative"
-      style={{ cursor: spaceHeld ? (drag?.type === 'pan' ? 'grabbing' : 'grab') : drag?.type === 'pan' ? 'grabbing' : 'default' }}
+      style={{ cursor: spaceHeld ? (drag?.type === 'pan' ? 'grabbing' : 'grab') : drag?.type === 'pan' ? 'grabbing' : 'default', touchAction: 'none' }}
       onPointerDown={handleBackgroundPointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
