@@ -14,20 +14,18 @@ export function Header() {
   const hasHelp = toolDef && toolHelp[toolDef.id]
 
   return (
-    <header className="h-14 flex items-center px-6 border-b border-white/[0.06] bg-black/10">
+    <header className={`${toolDef || activeView === 'feedback' ? 'h-10' : 'h-14'} flex items-center px-6 border-b border-white/[0.06] bg-black/10`}>
       {activeView === 'feedback' ? (
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex items-center">
           <h1 className="text-base font-display font-semibold text-white">
             Report Bug / Idea
           </h1>
-          <p className="text-xs text-white/50 -mt-0.5">Help us improve the toolkit</p>
         </div>
       ) : toolDef ? (
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex items-center">
           <h1 className="text-base font-display font-semibold text-white">
             {toolDef.label}
           </h1>
-          <p className="text-xs text-white/50 -mt-0.5">{toolDef.description}</p>
         </div>
       ) : (
         <div className="flex-1 min-w-0">
