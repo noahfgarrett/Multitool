@@ -4709,16 +4709,7 @@ export default function PdfAnnotateTool() {
           )}
         </div>
 
-        {/* Export, Email, Print, Report, Reset */}
-        {exportError && (
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20">
-            <span className="text-[10px] text-red-400">{exportError}</span>
-            <button onClick={() => setExportError(null)} className="p-0.5 text-red-400/60 hover:text-red-400"><X size={10} /></button>
-          </div>
-        )}
-        <Button size="sm" onClick={() => setExportModalOpen(true)} disabled={isExporting} icon={<Download size={12} />}>
-          {isExporting ? 'Exporting...' : 'Export PDF'}
-        </Button>
+        {/* Email, Print, Report, CSV, New, Export */}
         <Button variant="ghost" size="sm" onClick={() => setEmailModalOpen(true)} icon={<Mail size={12} />}>
           Email
         </Button>
@@ -4755,6 +4746,15 @@ export default function PdfAnnotateTool() {
         )}
         <Button variant="ghost" size="sm" onClick={handleReset} icon={<RotateCcw size={12} />}>
           New
+        </Button>
+        {exportError && (
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20">
+            <span className="text-[10px] text-red-400">{exportError}</span>
+            <button onClick={() => setExportError(null)} className="p-0.5 text-red-400/60 hover:text-red-400"><X size={10} /></button>
+          </div>
+        )}
+        <Button size="sm" onClick={() => setExportModalOpen(true)} disabled={isExporting} icon={<Download size={12} />}>
+          {isExporting ? 'Exporting...' : 'Export PDF'}
         </Button>
       </div>
 
