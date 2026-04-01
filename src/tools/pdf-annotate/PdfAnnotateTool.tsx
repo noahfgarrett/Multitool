@@ -21,7 +21,7 @@ import {
   Superscript, Subscript, List, ListOrdered,
   Search, Crop, Tag, Printer, FileSpreadsheet, StickyNote as StickyNoteIcon,
   MessageCircle, Mail, FileText, ScanText, Layers, ImagePlus, Eye, EyeOff, Plus, Trash2,
-  Copy, BookOpen, Blend, Star,
+  Copy, BookOpen, Blend, Star, MoreHorizontal,
 } from 'lucide-react'
 
 // ── Extracted modules ─────────────────────────────────
@@ -225,6 +225,10 @@ export default function PdfAnnotateTool() {
 
   // Custom stamp library
   const [stampLibraryOpen, setStampLibraryOpen] = useState(false)
+
+  // More menu dropdown
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+  const moreMenuRef = useRef<HTMLDivElement>(null)
 
   // Watermark on export
   const [exportWatermark, setExportWatermark] = useState('')
@@ -1584,6 +1588,18 @@ export default function PdfAnnotateTool() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [contextMenu])
+
+  // More menu: close on click outside
+  useEffect(() => {
+    if (!moreMenuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setMoreMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [moreMenuOpen])
 
   // ── Zoom at viewport center ─────────────────────────
 
@@ -4613,54 +4629,73 @@ export default function PdfAnnotateTool() {
 
         <div className="flex-1" />
 
-        {/* Find button */}
+        {/* Find button — stays visible with label */}
         <button onClick={() => { setFindOpen(o => !o); setTimeout(() => findInputRef.current?.focus(), 50) }} title="Find text (Ctrl+F)"
-          className={`p-1 rounded-lg transition-colors ${findOpen ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'}`}>
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs transition-colors ${findOpen ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30' : 'text-white/50 hover:text-white/80 hover:bg-white/[0.06]'}`}>
           <Search size={14} />
+          <span>Find</span>
         </button>
 
-        {/* Annotation list button with count badge */}
-        <button onClick={() => setAnnListOpen(o => !o)} title="Annotation list"
-          className={`relative p-1 rounded-lg transition-colors ${annListOpen ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'}`}>
-          <List size={14} />
-          {totalAnnotationCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] bg-[#F47B20] rounded-full text-[8px] text-white font-bold flex items-center justify-center px-0.5">
-              {totalAnnotationCount > 99 ? '99+' : totalAnnotationCount}
-            </span>
-          )}
-        </button>
-
-        {/* Markups List */}
-        <button onClick={() => setMarkupsListOpen(o => !o)} title="Markups list"
-          className={`p-1 rounded-lg transition-colors ${markupsListOpen ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'}`}>
-          <FileSpreadsheet size={14} />
-        </button>
-
-        {/* Bookmarks */}
-        {bookmarks.length > 0 && (
-          <button onClick={() => setBookmarksOpen(o => !o)} title="Bookmarks"
-            className={`p-1 rounded-lg transition-colors ${bookmarksOpen ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'}`}>
-            <BookOpen size={14} />
+        {/* More dropdown — replaces icon-only buttons */}
+        <div className="relative" ref={moreMenuRef}>
+          <button onClick={() => setMoreMenuOpen(o => !o)} title="More tools"
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs transition-colors ${
+              moreMenuOpen ? 'bg-white/[0.1] text-white' : 'text-white/50 hover:text-white/80 hover:bg-white/[0.06]'
+            }`}>
+            <MoreHorizontal size={14} />
+            <span>More</span>
+            <ChevronDown size={10} className={`transition-transform ${moreMenuOpen ? 'rotate-180' : ''}`} />
           </button>
-        )}
 
-        {/* Tool Presets */}
-        <button onClick={() => setPresetsOpen(o => !o)} title="Tool presets"
-          className={`p-1 rounded-lg transition-colors ${presetsOpen ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'}`}>
-          <Star size={14} />
-        </button>
+          {moreMenuOpen && (
+            <div className="absolute top-full right-0 mt-1 w-52 bg-[#0a1929] border border-white/[0.1] rounded-xl shadow-2xl py-1.5 z-50">
+              <button onClick={() => { setAnnListOpen(o => !o); setMoreMenuOpen(false) }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-white/80 hover:bg-white/[0.06] transition-colors">
+                <List size={15} className="text-white/40 shrink-0" />
+                <span>Annotation List</span>
+                {totalAnnotationCount > 0 && (
+                  <span className="ml-auto min-w-[18px] h-[18px] bg-[#F47B20] rounded-full text-[9px] text-white font-bold flex items-center justify-center px-1">
+                    {totalAnnotationCount > 99 ? '99+' : totalAnnotationCount}
+                  </span>
+                )}
+              </button>
+              <button onClick={() => { setMarkupsListOpen(o => !o); setMoreMenuOpen(false) }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-white/80 hover:bg-white/[0.06] transition-colors">
+                <FileSpreadsheet size={15} className="text-white/40 shrink-0" />
+                <span>Markups List</span>
+              </button>
 
-        {/* Compare PDFs */}
-        <button onClick={() => setCompareOpen(true)} title="Compare PDFs"
-          className="p-1 rounded-lg transition-colors text-white/50 hover:text-white hover:bg-white/[0.06]">
-          <Blend size={14} />
-        </button>
+              {bookmarks.length > 0 && (
+                <button onClick={() => { setBookmarksOpen(o => !o); setMoreMenuOpen(false) }}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-white/80 hover:bg-white/[0.06] transition-colors">
+                  <BookOpen size={15} className="text-white/40 shrink-0" />
+                  <span>Bookmarks</span>
+                </button>
+              )}
 
-        {/* Custom Stamps */}
-        <button onClick={() => setStampLibraryOpen(true)} title="Custom stamp library"
-          className="p-1 rounded-lg transition-colors text-white/50 hover:text-white hover:bg-white/[0.06]">
-          <ImagePlus size={14} />
-        </button>
+              <div className="h-px bg-white/[0.06] my-1 mx-3" />
+
+              <button onClick={() => { setPresetsOpen(o => !o); setMoreMenuOpen(false) }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-white/80 hover:bg-white/[0.06] transition-colors">
+                <Star size={15} className="text-white/40 shrink-0" />
+                <span>Tool Presets</span>
+              </button>
+              <button onClick={() => { setCompareOpen(true); setMoreMenuOpen(false) }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-white/80 hover:bg-white/[0.06] transition-colors">
+                <Blend size={15} className="text-white/40 shrink-0" />
+                <span>Compare PDFs</span>
+              </button>
+
+              <div className="h-px bg-white/[0.06] my-1 mx-3" />
+
+              <button onClick={() => { setStampLibraryOpen(true); setMoreMenuOpen(false) }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-white/80 hover:bg-white/[0.06] transition-colors">
+                <ImagePlus size={15} className="text-white/40 shrink-0" />
+                <span>Stamp Library</span>
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Export, Email, Print, Report, Reset */}
         {exportError && (
