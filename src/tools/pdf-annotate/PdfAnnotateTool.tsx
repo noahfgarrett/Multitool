@@ -5829,7 +5829,7 @@ export default function PdfAnnotateTool() {
           </>
         ) : (
           /* ── NORMAL SIDEBAR MODE ── */
-          <div className={`border-l border-white/[0.06] bg-black/20 flex flex-col py-2 gap-0.5 flex-shrink-0 overflow-y-auto overflow-x-hidden transition-all duration-200 ease-out ${
+          <div className={`border-l border-white/[0.06] bg-black/20 flex flex-col py-2 gap-0.5 flex-shrink-0 overflow-y-auto overflow-x-hidden transition-all duration-200 ease-out [&_button]:whitespace-nowrap [&_button]:overflow-hidden ${
             toolbarExpanded ? 'w-[140px] px-1.5 items-stretch' : 'w-10 px-0.5 items-center'
           }`}>
             {/* Toggle collapse */}
@@ -6053,16 +6053,16 @@ export default function PdfAnnotateTool() {
             {/* ── More Tools Expander ── */}
             <button
               onClick={() => setMoreToolsOpen(prev => !prev)}
-              className={`flex items-center rounded-lg transition-colors border border-dashed border-white/[0.08] ${
+              className={`flex items-center rounded-lg transition-colors border border-dashed border-white/[0.08] whitespace-nowrap overflow-hidden ${
                 toolbarExpanded ? 'gap-2 px-2.5 py-1.5 w-full' : 'justify-center p-1.5'
               } text-white/30 hover:text-white/50`}
               title="More tools"
             >
-              <MoreHorizontal size={14} />
+              <MoreHorizontal size={14} className="shrink-0" />
               {toolbarExpanded && (
                 <>
                   <span className="text-xs">More tools</span>
-                  <ChevronDown size={12} className={`ml-auto transition-transform ${moreToolsOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown size={12} className={`ml-auto shrink-0 transition-transform ${moreToolsOpen ? 'rotate-180' : ''}`} />
                 </>
               )}
             </button>
