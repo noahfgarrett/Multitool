@@ -2346,6 +2346,9 @@ export default function PdfAnnotateTool() {
 
   // Track active pointer IDs for multi-touch detection
   const activeTouchIdsRef = useRef(new Set<number>())
+  // Track touch positions for pinch-to-zoom (pointer ID → {x, y})
+  const touchPositionsRef = useRef(new Map<number, { x: number; y: number }>())
+  const prevPinchDistRef = useRef<number | null>(null)
 
   const handlePointerDown = useCallback((e: React.PointerEvent, pageNum: number) => {
     if (e.button !== 0) return
@@ -2353,8 +2356,19 @@ export default function PdfAnnotateTool() {
     // Touch/stylus optimization: track active touches
     if (e.pointerType === 'touch') {
       activeTouchIdsRef.current.add(e.pointerId)
+      touchPositionsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
       // 2+ simultaneous touches = pan/zoom, not draw
       if (activeTouchIdsRef.current.size >= 2) {
+        // Initialize pinch distance from current touch positions
+        if (activeTouchIdsRef.current.size === 2) {
+          const positions = Array.from(touchPositionsRef.current.values())
+          if (positions.length >= 2) {
+            prevPinchDistRef.current = Math.hypot(
+              positions[1].x - positions[0].x,
+              positions[1].y - positions[0].y,
+            )
+          }
+        }
         const el = scrollRef.current
         if (el) {
           panRef.current = { startX: e.clientX, startY: e.clientY, scrollLeft: el.scrollLeft, scrollTop: el.scrollTop }
@@ -3043,6 +3057,30 @@ export default function PdfAnnotateTool() {
       tooltipDivRef.current.style.left = `${e.clientX + 14}px`
       tooltipDivRef.current.style.top = `${e.clientY - 28}px`
     }
+    // Pinch-to-zoom: detect 2-finger pinch on touch devices
+    if (e.pointerType === 'touch') {
+      touchPositionsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (activeTouchIdsRef.current.size === 2 && touchPositionsRef.current.size >= 2) {
+        const positions = Array.from(touchPositionsRef.current.values())
+        const dist = Math.hypot(positions[1].x - positions[0].x, positions[1].y - positions[0].y)
+        if (prevPinchDistRef.current !== null) {
+          const delta = dist - prevPinchDistRef.current
+          // Only zoom if the pinch delta exceeds a small threshold to avoid jitter
+          if (Math.abs(delta) > 3) {
+            const currentZoom = zoomRef.current
+            const step = delta > 0 ? 0.05 : -0.05
+            const newZoom = Math.round(Math.min(4.0, Math.max(0.25, currentZoom + step)) * 100) / 100
+            if (newZoom !== currentZoom) {
+              zoomAtCenter(newZoom)
+            }
+            prevPinchDistRef.current = dist
+          }
+        } else {
+          prevPinchDistRef.current = dist
+        }
+        return
+      }
+    }
     // Space-to-pan: scroll viewport
     if (spaceHeldRef.current && panRef.current) {
       const el = scrollRef.current
@@ -3421,8 +3459,14 @@ export default function PdfAnnotateTool() {
         currentPtsRef.current = [currentPtsRef.current[0], pt]
         currentPressureRef.current = [currentPressureRef.current[0], e.pressure]
       } else {
-        currentPtsRef.current.push(pt)
-        currentPressureRef.current.push(e.pressure)
+        // Get coalesced events for smoother curves (Apple Pencil, stylus)
+        const nativeEvent = e.nativeEvent as PointerEvent
+        const coalescedEvents = nativeEvent.getCoalescedEvents?.() ?? [nativeEvent]
+        for (const ce of coalescedEvents) {
+          const cePt = getPointForPage(ap, ce)
+          currentPtsRef.current.push(cePt)
+          currentPressureRef.current.push(ce.pressure)
+        }
         // Incremental rendering: restore snapshot + draw only current stroke
         if (!straightLineMode && canvasSnapshotRef.current) {
           const annCanvas = pageRefsMap.current.get(ap)?.annCanvas
@@ -3509,11 +3553,18 @@ export default function PdfAnnotateTool() {
       currentPtsRef.current = [start, endPt]
     }
     redrawPage(ap)
-  }, [getPointForPage, activeTool, annotations, redrawPage, eraserRadius, eraserMode, zoom, straightLineMode, selectedAnnId, findAnnotationAt])
+  }, [getPointForPage, activeTool, annotations, redrawPage, eraserRadius, eraserMode, zoom, straightLineMode, selectedAnnId, findAnnotationAt, zoomAtCenter])
 
   const handlePointerUp = useCallback((e?: React.PointerEvent) => {
     // Clean up touch tracking
-    if (e?.pointerType === 'touch') activeTouchIdsRef.current.delete(e.pointerId)
+    if (e?.pointerType === 'touch') {
+      activeTouchIdsRef.current.delete(e.pointerId)
+      touchPositionsRef.current.delete(e.pointerId)
+      // Reset pinch state when fewer than 2 touches remain
+      if (activeTouchIdsRef.current.size < 2) {
+        prevPinchDistRef.current = null
+      }
+    }
     if (!isDrawingRef.current) return
     isDrawingRef.current = false
     canvasSnapshotRef.current = null
