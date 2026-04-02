@@ -110,6 +110,11 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
     if (!info?.downloadUrl) return
     setDownloading(true)
     setDownloadError(null)
+
+    // Open the tab synchronously (in the click handler stack) so the browser
+    // doesn't block it as a popup. We'll redirect it after the fetch completes.
+    const newTab = window.open('about:blank', '_blank')
+
     try {
       // Try the API endpoint first (returns binary with octet-stream accept header)
       let blob: Blob | null = null
@@ -139,11 +144,15 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
       document.body.removeChild(a)
       URL.revokeObjectURL(downloadUrl)
 
-      // Open the new version in a new tab so the user can start using it immediately
+      // Navigate the pre-opened tab to the new version
       const openUrl = URL.createObjectURL(blob)
-      window.open(openUrl, '_blank')
+      if (newTab) {
+        newTab.location.href = openUrl
+      }
       setUpdated(true)
     } catch {
+      // Close the blank tab if the download failed
+      if (newTab) newTab.close()
       setDownloadError('Download failed. Check your internet connection and try again.')
     } finally {
       setDownloading(false)
