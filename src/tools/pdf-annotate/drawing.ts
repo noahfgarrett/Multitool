@@ -333,6 +333,17 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, ann: Annotation, s
     }
     case 'text': {
       if (!ann.text || !pts.length) break
+
+      // Apply rotation transform for text annotations rotated with the page
+      if (ann.rotation && ann.width !== undefined && ann.height !== undefined) {
+        const cx = (pts[0].x + ann.width / 2) * scale
+        const cy = (pts[0].y + ann.height / 2) * scale
+        ctx.save()
+        ctx.translate(cx, cy)
+        ctx.rotate((ann.rotation * Math.PI) / 180)
+        ctx.translate(-cx, -cy)
+      }
+
       const baseFontSize = ann.fontSize || 16
       let effectiveFontSize = baseFontSize
       let yOffset = 0
@@ -434,10 +445,22 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, ann: Annotation, s
         }
       }
       if (ann.width && ann.height) ctx.restore()
+      if (ann.rotation) ctx.restore()
       break
     }
     case 'callout': {
       if (!pts.length || !ann.width || !ann.height) break
+
+      // Apply rotation transform for callout annotations rotated with the page
+      if (ann.rotation) {
+        const cx = (pts[0].x + ann.width / 2) * scale
+        const cy = (pts[0].y + ann.height / 2) * scale
+        ctx.save()
+        ctx.translate(cx, cy)
+        ctx.rotate((ann.rotation * Math.PI) / 180)
+        ctx.translate(-cx, -cy)
+      }
+
       const bx = pts[0].x * scale, by = pts[0].y * scale
       const bw = ann.width * scale, bh = ann.height * scale
       const calloutColor = ann.color || '#000000'
@@ -538,6 +561,7 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, ann: Annotation, s
           ctx.closePath(); ctx.fill()
         }
       }
+      if (ann.rotation) ctx.restore()
       break
     }
     case 'stamp': {

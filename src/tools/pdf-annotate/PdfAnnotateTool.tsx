@@ -1107,10 +1107,30 @@ export default function PdfAnnotateTool() {
     if (pageAnns && pageAnns.length > 0) {
       const tp = (p: Point) => rotatePoint(p, oldRot, newRot, origW, origH)
       const transformed = pageAnns.map(ann => {
+        const isTextType = ann.type === 'text' || ann.type === 'callout'
         const newPoints = ann.points.map(tp)
         let newWidth = ann.width
         let newHeight = ann.height
-        // For annotations with width/height, transform the bounding box corners
+        // For text/callout: keep original dimensions, accumulate rotation angle
+        // The text content will be rendered rotated via canvas transform
+        if (isTextType && ann.width !== undefined && ann.height !== undefined) {
+          // Transform the center point to the new position
+          const cx = ann.points[0].x + ann.width / 2
+          const cy = ann.points[0].y + ann.height / 2
+          const newCenter = tp({ x: cx, y: cy })
+          newPoints[0] = { x: newCenter.x - ann.width / 2, y: newCenter.y - ann.height / 2 }
+          // Keep original width/height, accumulate rotation
+          newWidth = ann.width
+          newHeight = ann.height
+          const prevRotation = ann.rotation || 0
+          return {
+            ...ann, points: newPoints,
+            width: newWidth, height: newHeight,
+            rotation: ((prevRotation + delta) % 360 + 360) % 360,
+            ...(ann.arrows ? { arrows: ann.arrows.map(tp) } : {}),
+          }
+        }
+        // For non-text annotations: transform bounding box corners (existing behavior)
         if (ann.width !== undefined && ann.height !== undefined) {
           const tl = ann.points[0]
           const br = { x: tl.x + ann.width, y: tl.y + ann.height }
