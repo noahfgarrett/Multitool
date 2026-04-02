@@ -18,6 +18,10 @@ interface AppState {
   showChangelog: boolean
   setShowChangelog: (show: boolean) => void
 
+  // Focus mode
+  focusMode: boolean
+  setFocusMode: (focus: boolean) => void
+
   // Actions
   setActiveTool: (tool: ToolId | null) => void
   goHome: () => void
@@ -44,6 +48,8 @@ export const useAppStore = create<AppState>((set) => ({
   activeView: null,
   showProfileModal: false,
   showChangelog: false,
+  focusMode: false,
+  setFocusMode: (focus) => set({ focusMode: focus }),
 
   setActiveTool: (tool) => set({ activeTool: tool, activeView: null }),
   goHome: () => set({ activeTool: null, activeView: null }),

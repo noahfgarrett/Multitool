@@ -12,6 +12,29 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '3.1.0',
+    date: '2026-04-02T00:30:00Z',
+    type: 'feature',
+    stats: { features: 8, fixes: 3, tools: 15 },
+    notes: `### Tablet & Touch Support
+- **All 15 tools now work on iPad and Android tablets** — Touch input works across every tool
+- **Apple Pencil support** — Pressure-sensitive drawing with palm rejection in PDF Annotate
+- **Pinch-to-zoom** — Two-finger zoom on the PDF canvas
+- **Smoother stylus strokes** — Uses coalesced pointer events for higher-fidelity curves
+
+### Focus Mode
+- **Full-screen annotation** — New Focus button hides the sidebar, header, and status bar for maximum canvas space
+- **Slide-out tool drawer** — On tablets in focus mode, tools slide out from the right edge with a tap or swipe
+- **Pin the drawer open** — Keep tools visible while you work, or let them auto-hide after selection
+- **Keyboard shortcut** — Shift+F toggles focus mode
+
+### Touch Polish
+- **Larger touch targets** — Buttons automatically enlarge on touch devices
+- **Hover-hidden buttons now visible** — Action buttons that were only visible on mouse hover are always visible on touch
+- **Sidebar auto-collapses** — On tablet-sized screens, the sidebar starts collapsed for more workspace
+- **Smoother drag-and-drop** — PDF Merge and Split now distinguish between scroll and drag on touch`,
+  },
+  {
     version: '3.0.1',
     date: '2026-04-01T22:15:47Z',
     type: 'feature',
