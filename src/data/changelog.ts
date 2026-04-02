@@ -12,6 +12,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '3.1.5',
+    date: '2026-04-02',
+    type: 'fix',
+    stats: { fixes: 1 },
+    notes: `### Stability
+- **Improved update reliability** — Fixed an issue that could prevent updates from downloading correctly`,
+  },
+  {
     version: '3.1.4',
     date: '2026-04-02',
     type: 'feature',
