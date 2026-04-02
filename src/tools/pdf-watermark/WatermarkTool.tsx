@@ -374,7 +374,7 @@ export default function WatermarkTool() {
                     font,
                     color: rgb(r, g, b),
                     opacity: opacity / 100,
-                    rotate: degrees(rotation),
+                    rotate: degrees(-rotation),
                   })
                 }
               }
@@ -399,7 +399,7 @@ export default function WatermarkTool() {
                 font,
                 color: rgb(r, g, b),
                 opacity: opacity / 100,
-                rotate: degrees(rotation),
+                rotate: degrees(-rotation),
               })
             }
           }
@@ -431,7 +431,7 @@ export default function WatermarkTool() {
                   y: ty - imgH / 2,
                   width: imgW,
                   height: imgH,
-                  rotate: degrees(rotation),
+                  rotate: degrees(-rotation),
                   opacity: opacity / 100,
                 })
               }
@@ -444,7 +444,7 @@ export default function WatermarkTool() {
               y: pdfCenterY - imgH / 2,
               width: imgW,
               height: imgH,
-              rotate: degrees(rotation),
+              rotate: degrees(-rotation),
               opacity: opacity / 100,
             })
           }

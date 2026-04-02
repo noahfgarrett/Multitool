@@ -12,6 +12,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '3.1.3',
+    date: '2026-04-02',
+    type: 'fix',
+    stats: { fixes: 1 },
+    notes: `### PDF Watermark — Export Rotation Fix
+- **Watermarks now export with the correct rotation** — Previously, watermark rotation in the exported PDF was mirrored compared to the preview. Text and image watermarks now match the preview exactly at all angles and positions.`,
+  },
+  {
     version: '3.1.2',
     date: '2026-04-02T01:30:00Z',
     type: 'fix',
