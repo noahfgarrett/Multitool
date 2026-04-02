@@ -61,6 +61,49 @@ export function drawSmoothPath(ctx: CanvasRenderingContext2D, pts: Point[], scal
   ctx.stroke()
 }
 
+// ── Freehand stroke rendering (shared by live + committed) ──
+
+/**
+ * Render a freehand stroke using perfect-freehand's variable-width algorithm.
+ * Used for both live drawing (last=false) and committed rendering (last=true).
+ */
+export function renderFreehandStroke(
+  ctx: CanvasRenderingContext2D,
+  points: Array<[number, number, number]>,
+  options: {
+    size: number
+    simulatePressure: boolean
+    last: boolean
+    color: string
+    opacity: number
+  },
+): void {
+  if (points.length < 2) return
+
+  const strokeOutline = getStroke(points, {
+    size: options.size,
+    thinning: 0.5,
+    smoothing: 0.5,
+    streamline: 0.5,
+    simulatePressure: options.simulatePressure,
+    last: options.last,
+  })
+
+  if (strokeOutline.length === 0) return
+
+  ctx.save()
+  ctx.globalAlpha = options.opacity
+  ctx.fillStyle = options.color
+  ctx.beginPath()
+  ctx.moveTo(strokeOutline[0][0], strokeOutline[0][1])
+  for (let i = 1; i < strokeOutline.length; i++) {
+    ctx.lineTo(strokeOutline[i][0], strokeOutline[i][1])
+  }
+  ctx.closePath()
+  ctx.fill()
+  ctx.restore()
+}
+
 // ── List prefix helper ──────────────────────────────────
 
 function applyListPrefix(text: string, listType: 'none' | 'bullet' | 'numbered' | undefined): string {
@@ -165,23 +208,13 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, ann: Annotation, s
         // Pressure-sensitive rendering via perfect-freehand
         const inputPts = pts.map((p, i) => [p.x * scale, p.y * scale, ann.pressure![i]] as [number, number, number])
         const hasTruePressure = ann.pressure.some(p => p !== 0.5 && p !== 0)
-        const strokeOutline = getStroke(inputPts, {
+        renderFreehandStroke(ctx, inputPts, {
           size: ann.strokeWidth * scale * 2,
-          thinning: hasTruePressure ? 0.5 : 0,
-          smoothing: 0.5,
-          streamline: 0.5,
           simulatePressure: !hasTruePressure,
+          last: true,
+          color: ctx.strokeStyle as string,
+          opacity: ctx.globalAlpha,
         })
-        if (strokeOutline.length > 0) {
-          ctx.beginPath()
-          ctx.moveTo(strokeOutline[0][0], strokeOutline[0][1])
-          for (let i = 1; i < strokeOutline.length; i++) {
-            const [x, y] = strokeOutline[i]
-            ctx.lineTo(x, y)
-          }
-          ctx.closePath()
-          ctx.fill()
-        }
       } else {
         drawSmoothPath(ctx, pts, scale)
       }
