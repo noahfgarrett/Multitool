@@ -85,11 +85,11 @@ When the user says "push a new release", "push to GitHub", or "release vX.Y.Z", 
 
 1. **Bump version** in `package.json`
 2. **Build**: `npm run build` → produces `dist/LotusWorksToolkit.html`
-3. **Update changelog** — Add a new entry to the TOP of `src/data/changelog.ts`:
+3. **Update changelog** — Add a new entry to the TOP of `src/data/changelog.ts` with a **placeholder date**:
    ```typescript
    {
      version: 'X.Y.Z',
-     date: 'YYYY-MM-DD',
+     date: 'PLACEHOLDER',  // will be patched with real timestamp in step 9
      type: 'major' | 'feature' | 'fix',  // major=x.0.0, feature=x.y.0, fix=x.y.z
      stats: { features: N, fixes: N, tools: N },  // optional, count from release notes
      notes: `...release notes markdown...`,
@@ -120,6 +120,19 @@ When the user says "push a new release", "push to GitHub", or "release vX.Y.Z", 
    gh api repos/noahfgarrett/LotusWorksToolkit/releases/latest --jq '{tag_name, created_at, assets: [.assets[].name]}'
    ```
    Must show: correct tag, fresh `created_at` date, and `LotusWorksToolkit.html` in assets.
+9. **Patch changelog with real timestamp** — Pull the actual `published_at` from GitHub, update the changelog entry, rebuild, and re-upload:
+   ```bash
+   REAL_DATE=$(gh api repos/noahfgarrett/LotusWorksToolkit/releases/tags/vX.Y.Z --jq '.published_at')
+   # Replace 'PLACEHOLDER' with $REAL_DATE in src/data/changelog.ts
+   npm run build
+   # Delete old asset and re-upload
+   ASSET_ID=$(gh api repos/noahfgarrett/LotusWorksToolkit/releases/tags/vX.Y.Z --jq '.assets[0].id')
+   gh api repos/noahfgarrett/LotusWorksToolkit/releases/assets/$ASSET_ID -X DELETE
+   gh release upload vX.Y.Z dist/LotusWorksToolkit.html
+   git add src/data/changelog.ts && git add -f dist/LotusWorksToolkit.html
+   git commit -m "fix: patch changelog timestamp for vX.Y.Z" && git push
+   ```
+   This ensures the changelog displays the exact date and time the release was published.
 
 ### Why `target_commitish` Matters
 GitHub's `/releases/latest` endpoint sorts by `created_at`, which is the **tag's target commit date** — NOT when the release was published. If you create a release against an old commit, it gets a stale `created_at` and may not be returned as "latest". Always pass `target_commitish` with the current HEAD SHA to guarantee a fresh timestamp.
