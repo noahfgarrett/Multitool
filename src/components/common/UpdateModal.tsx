@@ -189,7 +189,7 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
                 </p>
               </div>
               <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 text-xs text-white/40 text-center max-w-sm">
-                A copy was also saved to your Downloads folder. Replace your current LotusWorksToolkit.html with it to keep future updates working.
+                A copy was also saved to your Downloads folder. Replace your current LotusWorksToolkit.html with it, or update your bookmark to point to the new file.
               </div>
             </div>
           ) : (
