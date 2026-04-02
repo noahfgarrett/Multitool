@@ -25,6 +25,8 @@ const grouped = groupByCategory()
 
 // ── Component ───────────────────────────────────────────────
 
+const isTouchDevice = typeof window !== 'undefined' && matchMedia('(any-pointer: coarse)').matches
+
 export function ShapeLibrary({ store }: { store: FlowchartStore }) {
   const { toolMode, setToolMode } = store
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
@@ -119,10 +121,11 @@ function ShapeTile({
     <button
       title={def.label}
       onClick={onClick}
-      draggable
-      onDragStart={handleDragStart}
+      draggable={!isTouchDevice}
+      onDragStart={!isTouchDevice ? handleDragStart : undefined}
       className={`
-        flex flex-col items-center gap-1 py-1.5 px-1 rounded-lg transition-colors cursor-grab active:cursor-grabbing
+        flex flex-col items-center gap-1 py-1.5 px-1 rounded-lg transition-colors
+        ${isTouchDevice ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}
         ${active
           ? 'bg-[#F47B20]/15 ring-1 ring-[#F47B20]/30'
           : 'hover:bg-white/[0.04]'

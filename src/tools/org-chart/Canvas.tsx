@@ -166,9 +166,10 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     return null
   }, [])
 
-  // ── Mouse handlers ──────────────────────────────────────
+  // ── Pointer handlers ────────────────────────────────────
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    (e.currentTarget as HTMLCanvasElement).setPointerCapture(e.pointerId)
     if (contextMenu) setContextMenu(null)
     if (e.button === 1) {
       // Middle click → pan
@@ -243,7 +244,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     }
   }, [screenToCanvas, hitTestNode, hitTestAddButton, store, contextMenu])
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
     const pt = screenToCanvas(e.clientX, e.clientY)
     const hit = hitTestNode(pt)
     const addBtn = hitTestAddButton(pt)
@@ -358,7 +359,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     }
   }, [screenToCanvas, hitTestNode, hitTestAddButton, store])
 
-  const handleMouseUp = useCallback(() => {
+  const handlePointerUp = useCallback(() => {
     const d = dragRef.current
 
     if (d?.type === 'move' && d.moved) {
@@ -581,10 +582,11 @@ export function Canvas({ store }: { store: OrgChartStore }) {
       <canvas
         ref={canvasRef}
         className="w-full h-full"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        style={{ touchAction: 'none' }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
         onWheel={handleWheel}
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}

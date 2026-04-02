@@ -178,15 +178,16 @@ export function Minimap({ store }: { store: FlowchartStore }) {
     }))
   }, [setViewport])
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
     isDragging.current = true
     const pt = minimapToViewport(e.clientX, e.clientY)
     panToPoint(pt)
   }, [minimapToViewport, panToPoint])
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDragging.current) return
     e.preventDefault()
     e.stopPropagation()
@@ -194,7 +195,7 @@ export function Minimap({ store }: { store: FlowchartStore }) {
     panToPoint(pt)
   }, [minimapToViewport, panToPoint])
 
-  const handleMouseUp = useCallback(() => {
+  const handlePointerUp = useCallback(() => {
     isDragging.current = false
   }, [])
 
@@ -205,11 +206,11 @@ export function Minimap({ store }: { store: FlowchartStore }) {
     <div
       ref={containerRef}
       className="absolute bottom-3 right-3 z-10 rounded-lg overflow-hidden shadow-xl"
-      style={{ width: MINIMAP_W, height: MINIMAP_H }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      style={{ width: MINIMAP_W, height: MINIMAP_H, touchAction: 'none' }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
     >
       <canvas
         ref={canvasRef}

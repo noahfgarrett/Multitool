@@ -282,6 +282,25 @@
   .stagger-5 { animation-delay: 300ms; }
 }
 
+/* ── Tablet Touch Support ─────────────────── */
+@media (any-pointer: coarse) {
+  /* Enlarge small toolbar buttons for touch (44px minimum per Apple HIG) */
+  button.p-1 { padding: 0.5rem; }
+  button.p-1\.5 { padding: 0.625rem; }
+}
+
+@media (hover: none) {
+  /* Reveal hover-hidden action buttons on touch-only devices */
+  .group:hover .group-hover\:opacity-100,
+  .group\/chip:hover .group-hover\/chip\:opacity-100 { opacity: 0.7 !important; }
+  [class*="group-hover\:opacity-100"] { opacity: 0.7 !important; }
+  [class*="group-hover\:text-white\\/70"] { color: rgba(255, 255, 255, 0.5) !important; }
+  [class*="group-hover\:text-white\\/40"] { color: rgba(255, 255, 255, 0.3) !important; }
+  [class*="group-hover\:text-white\\/80"] { color: rgba(255, 255, 255, 0.5) !important; }
+  /* group-hover text-white/0 patterns (hidden text) */
+  [class*="group-hover\:text-white\\/60"][class*="text-white\\/0"] { color: rgba(255, 255, 255, 0.4) !important; }
+}
+
 /* Grid Stitch snap guide fade */
 @keyframes snapFade {
   from { opacity: 1; }

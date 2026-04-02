@@ -8,7 +8,7 @@ import { downloadBlob } from '@/utils/download.ts'
 import { formatFileSize } from '@/utils/fileReader.ts'
 import type { PDFFile } from '@/types'
 import {
-  DndContext, closestCenter, DragOverlay, PointerSensor, useSensor, useSensors,
+  DndContext, closestCenter, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors,
 } from '@dnd-kit/core'
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, useSortable, rectSortingStrategy, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
@@ -299,7 +299,10 @@ export default function PdfMergeTool() {
 
   // File-level dnd-kit
   const [fileDragId, setFileDragId] = useState<string | null>(null)
-  const fileSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+  const fileSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+  )
 
   // Page selection & copy/paste
   const [selectedPage, setSelectedPage] = useState<{ fileId: string; pageIdx: number } | null>(null)
@@ -327,7 +330,10 @@ export default function PdfMergeTool() {
   // dnd-kit page-level drag
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
   const [activeDragWidth, setActiveDragWidth] = useState(0)
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+  )
 
   // Thumbnail zoom — controls columns per row
   const MIN_COLS = 2

@@ -3,7 +3,7 @@ import { Modal } from '@/components/common/Modal.tsx'
 import { useAppStore } from '@/stores/appStore.ts'
 import { extractPageTitleCandidate } from '@/utils/pdf.ts'
 import {
-  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+  DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors,
 } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
@@ -271,6 +271,7 @@ export function TocEditorModal({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   )
 
   // ── Compute numbering indices ──────────────────
