@@ -12,6 +12,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '3.1.2',
+    date: '2026-04-02T01:30:00Z',
+    type: 'fix',
+    stats: { fixes: 1 },
+    notes: `### PDF Annotate — Text Rotation Fix
+- **Text annotations now rotate with the page** — When you rotate a page, text and callout annotations rotate with it instead of staying horizontal. What you see is what you get.`,
+  },
+  {
     version: '3.1.1',
     date: '2026-04-02T01:00:00Z',
     type: 'fix',
