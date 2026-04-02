@@ -104,15 +104,30 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
     })
   }
 
+  const [downloadError, setDownloadError] = useState<string | null>(null)
+
   async function handleDownload(): Promise<void> {
     if (!info?.downloadUrl) return
     setDownloading(true)
+    setDownloadError(null)
     try {
-      const res = await fetch(info.assetApiUrl, {
-        headers: { Accept: 'application/octet-stream' },
-      })
-      if (!res.ok) throw new Error('Download failed')
-      const blob = await res.blob()
+      // Try the API endpoint first (returns binary with octet-stream accept header)
+      let blob: Blob | null = null
+      try {
+        const res = await fetch(info.assetApiUrl, {
+          headers: { Accept: 'application/octet-stream' },
+        })
+        if (res.ok) blob = await res.blob()
+      } catch {
+        // API fetch failed (CORS, network) — try browser_download_url directly
+      }
+
+      // Fallback: fetch the browser download URL directly
+      if (!blob) {
+        const res = await fetch(info.downloadUrl)
+        if (!res.ok) throw new Error('Download failed')
+        blob = await res.blob()
+      }
 
       // Save a copy to downloads folder
       const downloadUrl = URL.createObjectURL(blob)
@@ -129,7 +144,7 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
       window.open(openUrl, '_blank')
       setUpdated(true)
     } catch {
-      window.open(info.downloadUrl, '_blank', 'noopener')
+      setDownloadError('Download failed. Check your internet connection and try again.')
     } finally {
       setDownloading(false)
     }
@@ -215,6 +230,12 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
                 <p className="text-white/70 font-medium">What happens when you click update:</p>
                 <p>The new version will <span className="text-white/60 font-medium">open in a new tab</span> and a copy will be saved to your Downloads folder. Replace your current LotusWorksToolkit.html with the downloaded file to keep future updates working.</p>
               </div>
+
+              {downloadError && (
+                <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-400">
+                  {downloadError}
+                </div>
+              )}
 
               <div className="flex items-center gap-2 justify-end pt-1">
                 <Button variant="ghost" size="sm" onClick={onClose} icon={<X size={14} />}>
