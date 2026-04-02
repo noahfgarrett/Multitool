@@ -45,7 +45,7 @@ import {
   decimatePoints,
 } from './geometry.ts'
 import {
-  drawCloudEdge, drawSmoothPath, drawAnnotation, drawSelectionUI, drawMeasurement,
+  drawCloudEdge, drawAnnotation, drawSelectionUI, drawMeasurement, renderFreehandStroke,
 } from './drawing.ts'
 import { snapToEdge } from './edgeSnapping.ts'
 import { drawPolylength, drawAreaPolygon, drawCountMarker, drawCountGroupSummary } from './measurementDrawing.ts'
@@ -3513,14 +3513,23 @@ export default function PdfAnnotateTool() {
                   }
                 }
               } else {
-                ctx.save()
-                ctx.globalAlpha = opacity / 100
-                ctx.strokeStyle = color
-                ctx.lineWidth = strokeWidth * pageRs
-                ctx.lineCap = 'round'
-                ctx.lineJoin = 'round'
-                drawSmoothPath(ctx, currentPtsRef.current, pageRs)
-                ctx.restore()
+                const livePts = currentPtsRef.current
+                const livePressure = currentPressureRef.current
+                if (livePts.length >= 2) {
+                  const inputPts = livePts.map((p, i) => [
+                    p.x * pageRs,
+                    p.y * pageRs,
+                    livePressure[i] ?? 0.5,
+                  ] as [number, number, number])
+                  const hasTruePressure = livePressure.some(p => p !== 0.5 && p !== 0)
+                  renderFreehandStroke(ctx, inputPts, {
+                    size: strokeWidth * pageRs * 2,
+                    simulatePressure: !hasTruePressure,
+                    last: false,
+                    color,
+                    opacity: opacity / 100,
+                  })
+                }
               }
               return
             }
