@@ -42,7 +42,6 @@ import {
   snapToContent, rotatePoint,
   isPointInAnyTextItem, findIntersectingTextItems, flowSelectTextItems,
   hitTestMeasurementLabel,
-  decimatePoints,
 } from './geometry.ts'
 import {
   drawCloudEdge, drawAnnotation, drawSelectionUI, drawMeasurement, renderFreehandStroke,
@@ -3856,7 +3855,7 @@ export default function PdfAnnotateTool() {
     const isHL = activeTool === 'highlighter'
     const isPencilOrHL = activeTool === 'pencil' || isHL
     // Highlighter uses raw points (no decimation) so committed path exactly matches in-progress
-    const finalPts = isHL ? [...pts] : (isPencilOrHL ? decimatePoints([...pts], 0.5) : [...pts])
+    const finalPts = [...pts]
     const ann: Annotation = {
       id: genId(),
       type: activeTool as Exclude<ToolType, 'select' | 'eraser' | 'measure' | 'textHighlight' | 'textStrikethrough' | 'crop' | 'note'>,
