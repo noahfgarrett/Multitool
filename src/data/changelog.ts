@@ -12,6 +12,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '3.1.4',
+    date: '2026-04-02',
+    type: 'feature',
+    stats: { features: 2, fixes: 1 },
+    notes: `### Update Experience Improvements
+- **One-click update** — Clicking "Update" now opens the new version in a new tab automatically, no digging through your Downloads folder
+- **Changelog shows new version immediately** — The Changelog tab now displays the incoming version's release notes before you even download it
+- **"You're all set" confirmation** — After updating, the modal confirms success and reminds you to close the old tab`,
+  },
+  {
     version: '3.1.3',
     date: '2026-04-02',
     type: 'fix',
