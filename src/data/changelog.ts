@@ -13,7 +13,7 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '3.1.5',
-    date: '2026-04-02',
+    date: '2026-04-02T14:15:22Z',
     type: 'fix',
     stats: { fixes: 1 },
     notes: `### Stability
@@ -21,7 +21,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '3.1.4',
-    date: '2026-04-02',
+    date: '2026-04-02T14:06:35Z',
     type: 'feature',
     stats: { features: 2, fixes: 1 },
     notes: `### Update Experience Improvements
@@ -31,7 +31,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '3.1.3',
-    date: '2026-04-02',
+    date: '2026-04-02T13:38:16Z',
     type: 'fix',
     stats: { fixes: 1 },
     notes: `### PDF Watermark — Export Rotation Fix
