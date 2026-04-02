@@ -61,9 +61,35 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
     return renderMarkdown(info.releaseNotes)
   }, [info?.releaseNotes])
 
-  const hasNewerVersions = CHANGELOG.length > 0 && isNewer(CHANGELOG[0].version, __APP_VERSION__)
+  // If an update is available and the new version isn't in the local changelog yet,
+  // synthesize an entry from the GitHub release notes so users see it immediately.
+  const changelogWithUpdate = useMemo(() => {
+    if (!info?.version || !info.releaseNotes) return CHANGELOG
+    const alreadyIncluded = CHANGELOG.some((e) => e.version === info.version)
+    if (alreadyIncluded) return CHANGELOG
+    const synthetic: ChangelogEntry = {
+      version: info.version,
+      date: new Date().toISOString(),
+      type: 'fix',
+      notes: info.releaseNotes,
+    }
+    return [synthetic, ...CHANGELOG]
+  }, [info?.version, info?.releaseNotes])
 
-  const visibleEntries = showAll ? CHANGELOG : CHANGELOG.slice(0, INITIAL_VISIBLE)
+  // Auto-expand the latest changelog entry (including synthetic ones from updates)
+  useEffect(() => {
+    if (changelogWithUpdate.length > 0) {
+      setExpandedVersions((prev) => {
+        const next = new Set(prev)
+        next.add(changelogWithUpdate[0].version)
+        return next
+      })
+    }
+  }, [changelogWithUpdate])
+
+  const hasNewerVersions = changelogWithUpdate.length > 0 && isNewer(changelogWithUpdate[0].version, __APP_VERSION__)
+
+  const visibleEntries = showAll ? changelogWithUpdate : changelogWithUpdate.slice(0, INITIAL_VISIBLE)
 
   function toggleExpanded(version: string): void {
     setExpandedVersions((prev) => {
@@ -252,13 +278,13 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
             </div>
 
             {/* See all releases link */}
-            {!showAll && CHANGELOG.length > INITIAL_VISIBLE && (
+            {!showAll && changelogWithUpdate.length > INITIAL_VISIBLE && (
               <button
                 type="button"
                 className="text-xs text-[#F47B20] hover:text-[#F47B20]/80 transition-colors"
                 onClick={() => setShowAll(true)}
               >
-                See all {CHANGELOG.length} releases
+                See all {changelogWithUpdate.length} releases
               </button>
             )}
           </div>
