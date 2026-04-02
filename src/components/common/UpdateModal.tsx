@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { marked } from 'marked'
-import { Download, Loader2, X, ChevronDown } from 'lucide-react'
+import { Download, Loader2, X, ChevronDown, CheckCircle2 } from 'lucide-react'
 import { Modal } from '@/components/common/Modal.tsx'
 import { Button } from '@/components/common/Button.tsx'
 import { CHANGELOG } from '@/data/changelog.ts'
@@ -43,6 +43,7 @@ const INITIAL_VISIBLE = 8
 
 export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProps) {
   const [downloading, setDownloading] = useState(false)
+  const [updated, setUpdated] = useState(false)
   const [activeTab, setActiveTab] = useState<'update' | 'changelog'>(
     defaultTab ?? (info ? 'update' : 'changelog'),
   )
@@ -126,6 +127,7 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
       // Open the new version in a new tab so the user can start using it immediately
       const openUrl = URL.createObjectURL(blob)
       window.open(openUrl, '_blank')
+      setUpdated(true)
     } catch {
       window.open(info.downloadUrl, '_blank', 'noopener')
     } finally {
@@ -177,44 +179,59 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
 
         {/* Update Tab */}
         {activeTab === 'update' && info && (
-          <>
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-white/10 text-white/60">
-                v{__APP_VERSION__}
-              </span>
-              <span className="text-white/30">&rarr;</span>
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#F47B20]/20 text-[#F47B20]">
-                v{info.version}
-              </span>
+          updated ? (
+            <div className="flex flex-col items-center gap-4 py-6">
+              <CheckCircle2 size={48} className="text-emerald-400" />
+              <div className="text-center space-y-1.5">
+                <p className="text-lg font-semibold text-white">You&apos;re all set!</p>
+                <p className="text-sm text-white/50">
+                  v{info.version} is open in a new tab. You can close this tab.
+                </p>
+              </div>
+              <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 text-xs text-white/40 text-center max-w-sm">
+                A copy was also saved to your Downloads folder. Replace your current LotusWorksToolkit.html with it to keep future updates working.
+              </div>
             </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-white/10 text-white/60">
+                  v{__APP_VERSION__}
+                </span>
+                <span className="text-white/30">&rarr;</span>
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#F47B20]/20 text-[#F47B20]">
+                  v{info.version}
+                </span>
+              </div>
 
-            {renderedNotes && (
-              <div
-                className="release-notes max-h-60 overflow-y-auto overscroll-contain rounded-lg bg-white/[0.03] border border-white/[0.06] p-4 text-sm text-white/70"
-                dangerouslySetInnerHTML={{ __html: renderedNotes }}
-              />
-            )}
+              {renderedNotes && (
+                <div
+                  className="release-notes max-h-60 overflow-y-auto overscroll-contain rounded-lg bg-white/[0.03] border border-white/[0.06] p-4 text-sm text-white/70"
+                  dangerouslySetInnerHTML={{ __html: renderedNotes }}
+                />
+              )}
 
-            <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 text-xs text-white/50 space-y-1.5">
-              <p className="text-white/70 font-medium">What happens when you click update:</p>
-              <p>The new version will <span className="text-white/60 font-medium">open in a new tab</span> and a copy will be saved to your Downloads folder. Replace your current LotusWorksToolkit.html with the downloaded file to keep future updates working.</p>
-            </div>
+              <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 text-xs text-white/50 space-y-1.5">
+                <p className="text-white/70 font-medium">What happens when you click update:</p>
+                <p>The new version will <span className="text-white/60 font-medium">open in a new tab</span> and a copy will be saved to your Downloads folder. Replace your current LotusWorksToolkit.html with the downloaded file to keep future updates working.</p>
+              </div>
 
-            <div className="flex items-center gap-2 justify-end pt-1">
-              <Button variant="ghost" size="sm" onClick={onClose} icon={<X size={14} />}>
-                Skip this version
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => void handleDownload()}
-                disabled={!info.downloadUrl || downloading}
-                icon={downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-              >
-                {downloading ? 'Updating...' : `Update to v${info.version}`}
-              </Button>
-            </div>
-          </>
+              <div className="flex items-center gap-2 justify-end pt-1">
+                <Button variant="ghost" size="sm" onClick={onClose} icon={<X size={14} />}>
+                  Skip this version
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => void handleDownload()}
+                  disabled={!info.downloadUrl || downloading}
+                  icon={downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                >
+                  {downloading ? 'Updating...' : `Update to v${info.version}`}
+                </Button>
+              </div>
+            </>
+          )
         )}
 
         {/* Changelog Tab */}
