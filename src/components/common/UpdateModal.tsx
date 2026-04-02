@@ -112,14 +112,20 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
       })
       if (!res.ok) throw new Error('Download failed')
       const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
+
+      // Save a copy to downloads folder
+      const downloadUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = url
+      a.href = downloadUrl
       a.download = info.assetName || 'LotusWorksToolkit.html'
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      URL.revokeObjectURL(downloadUrl)
+
+      // Open the new version in a new tab so the user can start using it immediately
+      const openUrl = URL.createObjectURL(blob)
+      window.open(openUrl, '_blank')
     } catch {
       window.open(info.downloadUrl, '_blank', 'noopener')
     } finally {
@@ -190,9 +196,8 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
             )}
 
             <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 text-xs text-white/50 space-y-1.5">
-              <p className="text-white/70 font-medium">After downloading:</p>
-              <p><span className="text-white/60 font-medium">Option A:</span> Delete your current LotusWorksToolkit.html, then move the new file to the same location.</p>
-              <p><span className="text-white/60 font-medium">Option B:</span> Open the downloaded file and update your bookmark to point to the new copy.</p>
+              <p className="text-white/70 font-medium">What happens when you click update:</p>
+              <p>The new version will <span className="text-white/60 font-medium">open in a new tab</span> and a copy will be saved to your Downloads folder. Replace your current LotusWorksToolkit.html with the downloaded file to keep future updates working.</p>
             </div>
 
             <div className="flex items-center gap-2 justify-end pt-1">
@@ -206,7 +211,7 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
                 disabled={!info.downloadUrl || downloading}
                 icon={downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
               >
-                {downloading ? 'Downloading...' : `Download v${info.version}`}
+                {downloading ? 'Updating...' : `Update to v${info.version}`}
               </Button>
             </div>
           </>
