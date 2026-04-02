@@ -12,6 +12,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '3.1.1',
+    date: '2026-04-02T01:00:00Z',
+    type: 'fix',
+    stats: { features: 1, fixes: 1 },
+    notes: `### PDF Annotate — Draw Tool Overhaul
+- **Velocity-sensitive strokes** — Drawing fast creates thin lines, drawing slow creates thick lines. Works with both mouse and Apple Pencil.
+- **No more settling jolt** — Strokes no longer visibly jump or shift when you release the mouse button. What you see while drawing is exactly what you get.`,
+  },
+  {
     version: '3.1.0',
     date: '2026-04-02T00:30:00Z',
     type: 'feature',
