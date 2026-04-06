@@ -3,6 +3,18 @@ import type { OrgNode, OrgChartState, OrgChartVersion, Viewport, LayoutDirection
 import { createNode, DEFAULT_VIEWPORT, MIN_ZOOM, MAX_ZOOM, MAX_VERSIONS, genId } from './types.ts'
 
 const MAX_HISTORY = 50
+const VERSIONS_KEY = 'lwt-orgchart-versions'
+
+function loadVersions(): OrgChartVersion[] {
+  try {
+    const raw = localStorage.getItem(VERSIONS_KEY)
+    return raw ? JSON.parse(raw) as OrgChartVersion[] : []
+  } catch { return [] }
+}
+
+function persistVersions(versions: OrgChartVersion[]): void {
+  localStorage.setItem(VERSIONS_KEY, JSON.stringify(versions))
+}
 
 // ── Hook: useOrgChartStore ──────────────────────────────────
 
@@ -291,6 +303,50 @@ export function useOrgChartStore() {
     pushHistory(nextNodes)
   }, [nodes, pushHistory])
 
+  // ── Version control ──────────────────────────────────
+
+  const getVersions = useCallback((): OrgChartVersion[] => loadVersions(), [])
+
+  const saveVersion = useCallback((name: string) => {
+    const versions = loadVersions()
+    if (versions.length >= MAX_VERSIONS) {
+      versions.pop() // remove oldest (last in array)
+    }
+    const version: OrgChartVersion = {
+      id: genId(),
+      name,
+      timestamp: Date.now(),
+      nodeCount: nodes.length,
+      snapshot: structuredClone(nodes),
+    }
+    versions.unshift(version) // newest first
+    persistVersions(versions)
+  }, [nodes])
+
+  const restoreVersion = useCallback((versionId: string) => {
+    const versions = loadVersions()
+    const version = versions.find(v => v.id === versionId)
+    if (!version) return
+    const restored = structuredClone(version.snapshot)
+    setNodes(restored)
+    pushHistory(restored)
+    setSelectedNodeIds(new Set())
+  }, [pushHistory])
+
+  const deleteVersion = useCallback((versionId: string) => {
+    const versions = loadVersions().filter(v => v.id !== versionId)
+    persistVersions(versions)
+  }, [])
+
+  const renameVersion = useCallback((versionId: string, newName: string) => {
+    const versions = loadVersions()
+    const version = versions.find(v => v.id === versionId)
+    if (version) {
+      version.name = newName
+      persistVersions(versions)
+    }
+  }, [])
+
   // ── Viewport helpers ──────────────────────────────────
 
   const zoomTo = useCallback((newZoom: number, center?: { x: number; y: number }) => {
@@ -353,6 +409,9 @@ export function useOrgChartStore() {
 
     // Section actions
     addSection, updateSectionTitle,
+
+    // Version control
+    getVersions, saveVersion, restoreVersion, deleteVersion, renameVersion,
 
     // History
     undo, redo,
