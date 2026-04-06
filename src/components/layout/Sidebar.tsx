@@ -188,8 +188,9 @@ export function Sidebar() {
           className={`
             w-full flex items-center gap-2.5 rounded-md transition-all duration-150
             ${sidebarExpanded ? 'px-2.5 py-2' : 'px-0 py-2 justify-center'}
-            text-white/50 hover:text-white hover:bg-white/[0.06]
+            hover:bg-[#F47B20]/[0.06]
           `}
+          style={{ color: 'var(--text-muted)' }}
         >
           {profile?.photo ? (
             <img src={profile.photo} className="w-5 h-5 rounded-full object-cover flex-shrink-0" alt="" />
@@ -208,7 +209,8 @@ export function Sidebar() {
               setShowChangelog(true)
               localStorage.setItem('lastSeenVersion', __APP_VERSION__)
             }}
-            className="relative text-[10px] text-white/30 hover:text-white/50 text-center mt-2 w-full transition-colors cursor-pointer"
+            className="relative text-[10px] text-center mt-2 w-full transition-colors cursor-pointer"
+            style={{ color: 'var(--text-disabled)' }}
             title="View changelog"
           >
             LotusWorks Toolkit v{__APP_VERSION__}

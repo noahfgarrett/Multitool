@@ -99,17 +99,28 @@ export function WelcomeScreen() {
                         onClick={() => setActiveTool(tool.id as ToolId)}
                         className="
                           group flex flex-col items-start gap-2 p-4 rounded-xl
-                          bg-white/[0.03] border border-white/[0.06]
-                          hover:bg-[#F47B20]/[0.06] hover:border-[#F47B20]/30
-                          transition-all duration-200 text-left
+                          border transition-all duration-200 text-left
+                          hover:border-[#F47B20]/30 hover:bg-[#F47B20]/[0.06]
                         "
+                        style={{
+                          borderColor: 'var(--border-subtle)',
+                          backgroundColor: 'var(--bg-surface)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = 'rgba(244,123,32,0.3)'
+                          e.currentTarget.style.backgroundColor = 'rgba(244,123,32,0.06)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--border-subtle)'
+                          e.currentTarget.style.backgroundColor = 'var(--bg-surface)'
+                        }}
                       >
-                        <div className="w-9 h-9 rounded-lg bg-white/[0.06] flex items-center justify-center text-white/40 group-hover:text-lotus-orange group-hover:bg-lotus-orange/10 transition-colors">
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center group-hover:text-lotus-orange group-hover:bg-lotus-orange/10 transition-colors" style={{ background: 'var(--bg-elevated)', color: 'var(--text-disabled)' }}>
                           {ToolIcon && <ToolIcon size={18} />}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-white">{tool.label}</p>
-                          <p className="text-xs text-white/40 mt-0.5 line-clamp-2">{tool.description}</p>
+                          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{tool.label}</p>
+                          <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--text-muted)' }}>{tool.description}</p>
                         </div>
                       </button>
                     )
