@@ -13,6 +13,7 @@ export interface OrgNode {
   nodeColor: string           // accent color (top bar on card)
   offsetX: number             // manual position offset from auto-layout (default 0)
   offsetY: number             // manual position offset from auto-layout (default 0)
+  sectionTitle: string        // section header text — only meaningful when reportsTo === ''
 }
 
 export interface LayoutNode extends OrgNode {
@@ -26,6 +27,18 @@ export interface LayoutNode extends OrgNode {
 export interface OrgChartState {
   nodes: OrgNode[]
 }
+
+export interface OrgChartVersion {
+  id: string
+  name: string
+  timestamp: number
+  nodeCount: number
+  snapshot: OrgNode[]
+}
+
+export const MAX_VERSIONS = 20
+export const SECTION_TITLE_HEIGHT = 40
+export const SECTION_GAP = 100
 
 // ── Viewport ────────────────────────────────────────────────
 
@@ -85,6 +98,7 @@ export function createNode(overrides: Partial<OrgNode> = {}): OrgNode {
     nodeColor: '#F47B20',
     offsetX: 0,
     offsetY: 0,
+    sectionTitle: '',
     ...overrides,
   }
 }
