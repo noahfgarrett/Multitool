@@ -46,17 +46,21 @@ export function Modal({ open, onClose, title, children, width = 'md' }: ModalPro
       <div
         className={`
           relative w-full ${widths[width]}
-          bg-dark-elevated border border-white/[0.1]
-          rounded-xl shadow-dark-xl
-          animate-scale-in
+          rounded-xl animate-scale-in
         `}
+        style={{
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border-default)',
+          boxShadow: 'var(--shadow-xl)',
+        }}
       >
         {title && (
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
-            <h2 className="text-base font-display font-semibold text-white">{title}</h2>
+          <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <h2 className="text-base font-display font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h2>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-md text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+              className="p-1.5 rounded-md transition-colors"
+              style={{ color: 'var(--text-disabled)' }}
             >
               <X size={16} />
             </button>

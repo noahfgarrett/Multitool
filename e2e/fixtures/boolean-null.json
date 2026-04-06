@@ -1,0 +1,5 @@
+[
+  {"id": 1, "name": "Active", "enabled": true, "notes": null},
+  {"id": 2, "name": "Inactive", "enabled": false, "notes": "deprecated"},
+  {"id": 3, "name": "Pending", "enabled": null, "notes": null}
+]

@@ -41,10 +41,11 @@ const ToastItem = memo(function ToastItem({
       `}
     >
       <Icon size={18} className={`mt-0.5 flex-shrink-0 ${iconColors[toast.type]}`} />
-      <p className="text-sm text-white flex-1">{toast.message}</p>
+      <p className="text-sm flex-1" style={{ color: 'var(--text-primary)' }}>{toast.message}</p>
       <button
         onClick={() => onRemove(toast.id)}
-        className="text-white/40 hover:text-white/70 transition-colors flex-shrink-0"
+        className="transition-colors flex-shrink-0"
+        style={{ color: 'var(--text-disabled)' }}
       >
         <X size={14} />
       </button>

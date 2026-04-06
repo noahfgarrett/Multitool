@@ -1,0 +1,194 @@
+<h2>Right Sidebar: Collapsible Hybrid (Option D refined)</h2>
+<p class="subtitle">Expanded by default with labels. Collapse button shrinks to icon-only strip. Toggle persists in localStorage.</p>
+
+<div class="split" style="gap: 32px; align-items: flex-start;">
+
+  <!-- Expanded State -->
+  <div class="mockup" style="flex: 1;">
+    <div class="mockup-header">Expanded (default for new users)</div>
+    <div class="mockup-body" style="background: #0d1b2a; padding: 12px; display: flex; justify-content: center;">
+      <div style="width: 140px; display: flex; flex-direction: column; gap: 1px; background: #11212d; border-radius: 10px; padding: 6px; border: 1px solid rgba(255,255,255,0.06);">
+
+        <!-- Collapse toggle -->
+        <div style="display: flex; align-items: center; justify-content: flex-end; padding: 2px 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 4px;">
+          <div style="display: flex; align-items: center; gap: 4px; cursor: pointer; opacity: 0.4;" title="Collapse toolbar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><polyline points="15 18 9 12 15 6"/><polyline points="22 18 16 12 22 6"/></svg>
+          </div>
+        </div>
+
+        <!-- Primary tools -->
+        <div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: rgba(244,123,32,0.15); border: 1px solid rgba(244,123,32,0.3);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F47B20" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+          <span style="color: #F47B20; font-size: 12.5px; font-weight: 600;">Select</span>
+          <span style="margin-left: auto; color: rgba(244,123,32,0.5); font-size: 10px;">S</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          <span style="color: #ccd; font-size: 12.5px;">Pencil</span>
+          <span style="margin-left: auto; color: #445; font-size: 10px;">P</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>
+          <span style="color: #ccd; font-size: 12.5px;">Highlight</span>
+          <span style="margin-left: auto; color: #445; font-size: 10px;">H</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><path d="M16 4 7 13H3l-1 4 4-1V12l9-9z"/></svg>
+          <span style="color: #ccd; font-size: 12.5px;">Strikethrough</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px;">
+          <span style="color: #8899aa; font-size: 15px; font-weight: 700; width: 15px; text-align: center;">T</span>
+          <span style="color: #ccd; font-size: 12.5px;">Text</span>
+          <span style="margin-left: auto; color: #445; font-size: 10px;">T</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l4.6 4.6"/><path d="M22 21H7"/></svg>
+          <span style="color: #ccd; font-size: 12.5px;">Eraser</span>
+          <span style="margin-left: auto; color: #445; font-size: 10px;">E</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><path d="M21.3 8.7 8.7 21.3c-1 1-2.5 1-3.4 0l-2.6-2.6c-1-1-1-2.5 0-3.4L15.3 2.7"/></svg>
+          <span style="color: #ccd; font-size: 12.5px;">Measure</span>
+          <span style="margin-left: auto; color: #445; font-size: 10px;">M</span>
+        </div>
+
+        <div style="height: 1px; background: rgba(255,255,255,0.06); margin: 4px 0;"></div>
+
+        <!-- More tools expander -->
+        <div style="display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; cursor: pointer; border: 1px dashed rgba(255,255,255,0.08);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#667" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+          <span style="color: #778; font-size: 12px;">More tools</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#556" stroke-width="2" style="margin-left: auto;"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+
+        <div style="height: 1px; background: rgba(255,255,255,0.06); margin: 4px 0;"></div>
+
+        <!-- Panels -->
+        <div style="display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          <span style="color: #aab; font-size: 12px;">Layers</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span style="color: #aab; font-size: 12px;">Comments</span>
+        </div>
+
+        <div style="height: 1px; background: rgba(255,255,255,0.06); margin: 4px 0;"></div>
+
+        <!-- Undo/Redo/Rotate pinned -->
+        <div style="display: flex; gap: 4px; justify-content: center; padding: 2px 0;">
+          <div style="width: 28px; height: 28px; border-radius: 6px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center;" title="Undo">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#556" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          </div>
+          <div style="width: 28px; height: 28px; border-radius: 6px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center;" title="Redo">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#556" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </div>
+          <div style="width: 28px; height: 28px; border-radius: 6px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center;" title="Rotate CCW">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#556" stroke-width="2"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          </div>
+          <div style="width: 28px; height: 28px; border-radius: 6px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center;" title="Rotate CW">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#556" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Collapsed State -->
+  <div class="mockup" style="flex: 0.5;">
+    <div class="mockup-header">Collapsed (power user mode)</div>
+    <div class="mockup-body" style="background: #0d1b2a; padding: 12px; display: flex; justify-content: center;">
+      <div style="width: 48px; display: flex; flex-direction: column; align-items: center; gap: 2px; background: #11212d; border-radius: 10px; padding: 6px 4px; border: 1px solid rgba(255,255,255,0.06);">
+
+        <!-- Expand toggle -->
+        <div style="display: flex; align-items: center; justify-content: center; padding: 2px 0 6px; border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 4px; width: 100%; cursor: pointer;" title="Expand toolbar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><polyline points="9 18 15 12 9 6"/><polyline points="2 18 8 12 2 6"/></svg>
+        </div>
+
+        <div style="width: 36px; height: 36px; border-radius: 6px; background: rgba(244,123,32,0.15); border: 1px solid rgba(244,123,32,0.3); display: flex; align-items: center; justify-content: center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F47B20" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+        </div>
+        <div style="width: 36px; height: 36px; border-radius: 6px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </div>
+        <div style="width: 36px; height: 36px; border-radius: 6px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>
+        </div>
+        <div style="width: 36px; height: 36px; border-radius: 6px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><path d="M16 4 7 13H3l-1 4 4-1V12l9-9z"/></svg>
+        </div>
+        <div style="width: 36px; height: 36px; border-radius: 6px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center;">
+          <span style="color: #8899aa; font-size: 15px; font-weight: 700;">T</span>
+        </div>
+        <div style="width: 36px; height: 36px; border-radius: 6px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l4.6 4.6"/><path d="M22 21H7"/></svg>
+        </div>
+        <div style="width: 36px; height: 36px; border-radius: 6px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><path d="M21.3 8.7 8.7 21.3c-1 1-2.5 1-3.4 0l-2.6-2.6c-1-1-1-2.5 0-3.4L15.3 2.7"/></svg>
+        </div>
+
+        <div style="width: 28px; height: 1px; background: rgba(255,255,255,0.08); margin: 3px 0;"></div>
+
+        <div style="width: 36px; height: 36px; border-radius: 6px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#667" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </div>
+
+        <div style="width: 28px; height: 1px; background: rgba(255,255,255,0.08); margin: 3px 0;"></div>
+
+        <div style="width: 36px; height: 36px; border-radius: 6px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </div>
+        <div style="width: 36px; height: 36px; border-radius: 6px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+
+        <div style="width: 28px; height: 1px; background: rgba(255,255,255,0.08); margin: 3px 0;"></div>
+
+        <div style="display: flex; gap: 2px;">
+          <div style="width: 22px; height: 22px; border-radius: 4px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#556" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          </div>
+          <div style="width: 22px; height: 22px; border-radius: 4px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#556" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </div>
+        </div>
+        <div style="display: flex; gap: 2px;">
+          <div style="width: 22px; height: 22px; border-radius: 4px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#556" stroke-width="2"><path d="M1 4v6h6"/></svg>
+          </div>
+          <div style="width: 22px; height: 22px; border-radius: 4px; background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#556" stroke-width="2"><polyline points="23 4 23 10 17 10"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 28px;">
+  <h3>Behavior</h3>
+  <ul style="color: #aab; font-size: 14px; line-height: 2;">
+    <li><strong>Default:</strong> Expanded with labels (first-time users)</li>
+    <li><strong>Toggle:</strong> Chevron button at top of sidebar (collapse/expand)</li>
+    <li><strong>Persistence:</strong> Saved to localStorage — remembers user preference</li>
+    <li><strong>Animation:</strong> Smooth width transition (~200ms ease-out)</li>
+    <li><strong>Collapsed tooltips:</strong> Show tool name on hover when collapsed</li>
+    <li><strong>"More tools" expander:</strong> Opens an inline section with Stamp, Crop, Image Stamp, OCR, Sticky Note (same in both modes)</li>
+    <li><strong>Keyboard shortcuts:</strong> Still work regardless of collapsed/expanded state</li>
+  </ul>
+</div>
+
+<div class="options" style="margin-top: 20px;">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter" style="background: #2d8a4e;">Y</div>
+    <div class="content">
+      <h3>Looks good, let's go with this</h3>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter" style="background: #c0392b;">R</div>
+    <div class="content">
+      <h3>Needs changes (tell me in terminal)</h3>
+    </div>
+  </div>
+</div>

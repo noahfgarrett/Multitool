@@ -1,0 +1,218 @@
+<h2>TOC Editor Modal — Full Layout</h2>
+<p class="subtitle">The main editing experience when "Table of Contents" is toggled on</p>
+
+<div class="mockup" style="max-width:900px; margin:0 auto;">
+  <div class="mockup-header">TOC Editor Modal (opened from merge toolbar)</div>
+  <div class="mockup-body" style="background:#0d0d14; padding:0; font-family:system-ui,sans-serif;">
+
+    <!-- Modal header -->
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid rgba(255,255,255,0.06);">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F47B20" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><text x="4" y="7" font-size="8" fill="#F47B20" stroke="none">1</text><text x="4" y="13" font-size="8" fill="#F47B20" stroke="none">2</text><text x="4" y="19" font-size="8" fill="#F47B20" stroke="none">3</text></svg>
+        <span style="font-size:15px; font-weight:600; color:#fff;">Table of Contents</span>
+        <span style="font-size:11px; color:rgba(255,255,255,0.3); margin-left:4px;">8 entries</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <!-- Auto-detect button -->
+        <div style="padding:6px 12px; background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.25); border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(59,130,246,0.8)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+          <span style="font-size:11px; color:rgba(59,130,246,0.9); font-weight:500;">Auto-detect Names</span>
+        </div>
+        <!-- Close -->
+        <div style="padding:4px; cursor:pointer; color:rgba(255,255,255,0.4);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toolbar row -->
+    <div style="display:flex; align-items:center; gap:8px; padding:10px 20px; border-bottom:1px solid rgba(255,255,255,0.04); background:rgba(255,255,255,0.01);">
+      <!-- Numbering selector -->
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-size:10px; color:rgba(255,255,255,0.35); text-transform:uppercase; letter-spacing:0.5px;">Numbering:</span>
+        <div style="display:flex; gap:3px;">
+          <div style="padding:3px 10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:4px; font-size:11px; color:rgba(255,255,255,0.4); cursor:pointer;">None</div>
+          <div style="padding:3px 10px; background:rgba(244,123,32,0.1); border:1px solid rgba(244,123,32,0.3); border-radius:4px; font-size:11px; color:rgba(244,123,32,0.9); cursor:pointer; font-weight:500;">1, 2, 3</div>
+          <div style="padding:3px 10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:4px; font-size:11px; color:rgba(255,255,255,0.4); cursor:pointer;">A, B, C</div>
+          <div style="padding:3px 10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:4px; font-size:11px; color:rgba(255,255,255,0.4); cursor:pointer;">I, II, III</div>
+          <div style="padding:3px 10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:4px; font-size:11px; color:rgba(255,255,255,0.4); cursor:pointer;">Custom...</div>
+        </div>
+      </div>
+      <div style="flex:1;"></div>
+      <!-- Bulk actions -->
+      <div style="display:flex; align-items:center; gap:4px;">
+        <div style="padding:3px 8px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:4px; font-size:10px; color:rgba(255,255,255,0.3); cursor:pointer;">Select All</div>
+        <div style="padding:3px 8px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:4px; font-size:10px; color:rgba(255,255,255,0.3); cursor:pointer; display:flex; align-items:center; gap:3px;">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          Indent
+        </div>
+        <div style="padding:3px 8px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:4px; font-size:10px; color:rgba(255,255,255,0.3); cursor:pointer; display:flex; align-items:center; gap:3px;">
+          Outdent
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column headers -->
+    <div style="display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.02);">
+      <div style="width:28px;"></div><!-- checkbox col -->
+      <div style="width:28px;"></div><!-- drag handle col -->
+      <div style="width:50px; font-size:10px; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:0.5px;">No.</div>
+      <div style="flex:1; font-size:10px; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:0.5px;">Description</div>
+      <div style="width:50px; font-size:10px; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:0.5px; text-align:center;">Pages</div>
+      <div style="width:60px; font-size:10px; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:0.5px; text-align:center;">Page</div>
+      <div style="width:30px;"></div><!-- actions col -->
+    </div>
+
+    <!-- Entry rows -->
+    <div style="max-height:360px; overflow-y:auto;">
+
+      <!-- Parent entry 1 — selected -->
+      <div style="display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid rgba(255,255,255,0.03); background:rgba(244,123,32,0.04);">
+        <div style="width:28px;">
+          <div style="width:14px; height:14px; border-radius:3px; border:1.5px solid #F47B20; background:rgba(244,123,32,0.3); display:flex; align-items:center; justify-content:center;">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#F47B20" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+        </div>
+        <div style="width:28px; cursor:grab; color:rgba(255,255,255,0.15);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+        </div>
+        <div style="width:50px; font-size:12px; color:rgba(244,123,32,0.8); font-weight:600;">1.</div>
+        <div style="flex:1; display:flex; align-items:center; gap:6px;">
+          <span style="font-size:13px; color:#fff; font-weight:500;">Structural Plans</span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </div>
+        <div style="width:50px; font-size:11px; color:rgba(255,255,255,0.35); text-align:center;">6 pg</div>
+        <div style="width:60px; font-size:11px; color:rgba(255,255,255,0.4); text-align:center;">1</div>
+        <div style="width:30px; display:flex; align-items:center; gap:2px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" style="cursor:pointer;"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </div>
+      </div>
+
+      <!-- Child entry 1.1 -->
+      <div style="display:flex; align-items:center; padding:7px 20px; border-bottom:1px solid rgba(255,255,255,0.02); padding-left:44px;">
+        <div style="width:28px;">
+          <div style="width:14px; height:14px; border-radius:3px; border:1.5px solid rgba(255,255,255,0.15);"></div>
+        </div>
+        <div style="width:28px; cursor:grab; color:rgba(255,255,255,0.1);">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+        </div>
+        <div style="width:50px; font-size:11px; color:rgba(255,255,255,0.3);">1.1</div>
+        <div style="flex:1; display:flex; align-items:center; gap:6px;">
+          <span style="font-size:12px; color:rgba(255,255,255,0.6);">Foundation Details</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </div>
+        <div style="width:50px; font-size:11px; color:rgba(255,255,255,0.25); text-align:center;">3 pg</div>
+        <div style="width:60px; font-size:11px; color:rgba(255,255,255,0.3); text-align:center;">1</div>
+        <div style="width:30px;"></div>
+      </div>
+
+      <!-- Child entry 1.2 -->
+      <div style="display:flex; align-items:center; padding:7px 20px; border-bottom:1px solid rgba(255,255,255,0.02); padding-left:44px;">
+        <div style="width:28px;">
+          <div style="width:14px; height:14px; border-radius:3px; border:1.5px solid rgba(255,255,255,0.15);"></div>
+        </div>
+        <div style="width:28px; cursor:grab; color:rgba(255,255,255,0.1);">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+        </div>
+        <div style="width:50px; font-size:11px; color:rgba(255,255,255,0.3);">1.2</div>
+        <div style="flex:1; display:flex; align-items:center; gap:6px;">
+          <span style="font-size:12px; color:rgba(255,255,255,0.6);">Framing Layout</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </div>
+        <div style="width:50px; font-size:11px; color:rgba(255,255,255,0.25); text-align:center;">3 pg</div>
+        <div style="width:60px; font-size:11px; color:rgba(255,255,255,0.3); text-align:center;">4</div>
+        <div style="width:30px;"></div>
+      </div>
+
+      <!-- Parent entry 2 -->
+      <div style="display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid rgba(255,255,255,0.03);">
+        <div style="width:28px;">
+          <div style="width:14px; height:14px; border-radius:3px; border:1.5px solid rgba(255,255,255,0.15);"></div>
+        </div>
+        <div style="width:28px; cursor:grab; color:rgba(255,255,255,0.15);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+        </div>
+        <div style="width:50px; font-size:12px; color:rgba(255,255,255,0.5); font-weight:600;">2.</div>
+        <div style="flex:1; display:flex; align-items:center; gap:6px;">
+          <span style="font-size:13px; color:rgba(255,255,255,0.8); font-weight:500;">Mechanical Plans</span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </div>
+        <div style="width:50px; font-size:11px; color:rgba(255,255,255,0.35); text-align:center;">5 pg</div>
+        <div style="width:60px; font-size:11px; color:rgba(255,255,255,0.4); text-align:center;">7</div>
+        <div style="width:30px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" style="cursor:pointer;"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </div>
+      </div>
+
+      <!-- Parent entry 3 -->
+      <div style="display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid rgba(255,255,255,0.03);">
+        <div style="width:28px;">
+          <div style="width:14px; height:14px; border-radius:3px; border:1.5px solid rgba(255,255,255,0.15);"></div>
+        </div>
+        <div style="width:28px; cursor:grab; color:rgba(255,255,255,0.15);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+        </div>
+        <div style="width:50px; font-size:12px; color:rgba(255,255,255,0.5); font-weight:600;">3.</div>
+        <div style="flex:1; display:flex; align-items:center; gap:6px;">
+          <span style="font-size:13px; color:rgba(255,255,255,0.8); font-weight:500;">Electrical Plans</span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </div>
+        <div style="width:50px; font-size:11px; color:rgba(255,255,255,0.35); text-align:center;">5 pg</div>
+        <div style="width:60px; font-size:11px; color:rgba(255,255,255,0.4); text-align:center;">12</div>
+        <div style="width:30px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" style="cursor:pointer;"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </div>
+      </div>
+
+      <!-- Parent entry 4 — with fallback indicator -->
+      <div style="display:flex; align-items:center; padding:8px 20px; border-bottom:1px solid rgba(255,255,255,0.03);">
+        <div style="width:28px;">
+          <div style="width:14px; height:14px; border-radius:3px; border:1.5px solid rgba(255,255,255,0.15);"></div>
+        </div>
+        <div style="width:28px; cursor:grab; color:rgba(255,255,255,0.15);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+        </div>
+        <div style="width:50px; font-size:12px; color:rgba(255,255,255,0.5); font-weight:600;">4.</div>
+        <div style="flex:1; display:flex; align-items:center; gap:6px;">
+          <span style="font-size:13px; color:rgba(255,255,255,0.8); font-weight:500;">Site Survey - Page 1</span>
+          <!-- Subtle auto-fallback indicator -->
+          <span style="font-size:9px; color:rgba(255,255,255,0.2); font-style:italic;">(auto)</span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer;"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </div>
+        <div style="width:50px; font-size:11px; color:rgba(255,255,255,0.35); text-align:center;">3 pg</div>
+        <div style="width:60px; font-size:11px; color:rgba(255,255,255,0.4); text-align:center;">17</div>
+        <div style="width:30px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" style="cursor:pointer;"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 20px; border-top:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.01);">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-size:10px; color:rgba(255,255,255,0.25);">Tab to indent selected &middot; Shift+Tab to outdent &middot; Click name to edit</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div style="padding:6px 12px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1); border-radius:6px; cursor:pointer; font-size:12px; color:rgba(255,255,255,0.5);">Add Entry</div>
+        <div style="padding:6px 16px; background:#F47B20; border-radius:6px; cursor:pointer; font-size:12px; color:#fff; font-weight:600;">Done</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:20px; padding:16px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px;">
+  <h3 style="margin:0 0 10px 0; font-size:14px;">Interaction Details</h3>
+  <ul style="margin:0; padding-left:18px; font-size:13px; line-height:1.9; color:rgba(255,255,255,0.55);">
+    <li><strong>Checkboxes</strong> — Select one or multiple entries. Bulk indent/outdent applies to selection.</li>
+    <li><strong>Tab / Shift+Tab</strong> — Indent or outdent selected entries (makes them children or promotes to parents).</li>
+    <li><strong>Drag handles</strong> — Reorder entries within their level.</li>
+    <li><strong>Pencil icon / Click name</strong> — Inline edit the description text.</li>
+    <li><strong>Three-dot menu</strong> — Add child entry, delete, duplicate.</li>
+    <li><strong>"Auto-detect Names"</strong> — Scans pages via pdfjs text extraction, updates labels. Shows <em>(auto)</em> tag on fallback names.</li>
+    <li><strong>"Add Entry"</strong> — Manually add a new entry (prompts for page number).</li>
+    <li><strong>No. column</strong> — Auto-calculated from numbering preset + hierarchy level.</li>
+    <li><strong>Pages column</strong> — Shows page count for that section (parent = sum of children).</li>
+    <li><strong>Page column</strong> — Starting page number in the merged document.</li>
+  </ul>
+</div>

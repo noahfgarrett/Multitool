@@ -1,0 +1,10 @@
+{
+  "name": "Test Config",
+  "version": "1.0.0",
+  "settings": {
+    "theme": "dark",
+    "language": "en",
+    "notifications": true
+  },
+  "features": ["auth", "dashboard", "reports"]
+}

@@ -15,7 +15,7 @@ export function HelpModal({ toolId, open, onClose }: HelpModalProps) {
   if (!content) {
     return (
       <Modal open={open} onClose={onClose} title="Help" width="md">
-        <p className="text-sm text-white/50">No help available for this tool yet.</p>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No help available for this tool yet.</p>
       </Modal>
     )
   }
@@ -24,17 +24,17 @@ export function HelpModal({ toolId, open, onClose }: HelpModalProps) {
     <Modal open={open} onClose={onClose} title={content.title} width="lg">
       <div className="space-y-4">
         {/* Intro */}
-        <p className="text-sm text-white/60 leading-relaxed">{content.intro}</p>
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>{content.intro}</p>
 
         {/* Sections */}
         {content.sections.map((section, sIdx) => (
           <div key={sIdx}>
-            <h3 className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-1.5">
+            <h3 className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--text-secondary)' }}>
               {section.heading}
             </h3>
             <ul className="space-y-1">
               {section.items.map((item, iIdx) => (
-                <li key={iIdx} className="flex items-start gap-2 text-sm text-white/55 leading-relaxed">
+                <li key={iIdx} className="flex items-start gap-2 text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                   <span className="text-[#F47B20] mt-1 flex-shrink-0">&bull;</span>
                   <span>{item}</span>
                 </li>
@@ -52,7 +52,7 @@ export function HelpModal({ toolId, open, onClose }: HelpModalProps) {
             </div>
             <ul className="space-y-1">
               {content.tips.map((tip, tIdx) => (
-                <li key={tIdx} className="flex items-start gap-2 text-[13px] text-white/50 leading-relaxed">
+                <li key={tIdx} className="flex items-start gap-2 text-[13px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                   <span className="text-[#F47B20]/60 mt-0.5 flex-shrink-0">&bull;</span>
                   <span>{tip}</span>
                 </li>

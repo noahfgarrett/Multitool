@@ -10,14 +10,14 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
-  const focusMode = useAppStore((s) => s.focusMode)
+  const theme = useAppStore((s) => s.theme)
 
   return (
     <div className="flex h-full w-full">
-      <ShootingStars />
-      {!focusMode && <Sidebar />}
+      {theme === 'night-sky' && <ShootingStars />}
+      <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
-        {!focusMode && <Header />}
+        <Header />
         <main className="flex-1 flex flex-col overflow-hidden relative">
           {children}
         </main>

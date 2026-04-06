@@ -1,0 +1,67 @@
+<h2>PDF Annotate UI Redesign — Before / After</h2>
+<p class="subtitle">All 5 changes implemented and visually verified. Ready for your review.</p>
+
+<div class="section">
+  <h3>Changes Implemented</h3>
+  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+    <thead>
+      <tr style="border-bottom: 2px solid rgba(255,255,255,0.1);">
+        <th style="text-align: left; padding: 8px; color: #F47B20;">#</th>
+        <th style="text-align: left; padding: 8px; color: #F47B20;">Change</th>
+        <th style="text-align: left; padding: 8px; color: #F47B20;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <td style="padding: 8px; color: #aab;">1</td>
+        <td style="padding: 8px; color: #dde;">Compact header — subtitle removed, height reduced from 56px to 40px when tool active</td>
+        <td style="padding: 8px; color: #2d8a4e;">Verified</td>
+      </tr>
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <td style="padding: 8px; color: #aab;">2</td>
+        <td style="padding: 8px; color: #dde;">Top toolbar "More" dropdown — 5 icon-only buttons replaced with labeled dropdown menu</td>
+        <td style="padding: 8px; color: #2d8a4e;">Verified</td>
+      </tr>
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <td style="padding: 8px; color: #aab;">3</td>
+        <td style="padding: 8px; color: #dde;">Right sidebar — collapsible hybrid with icon+label (expanded default), collapse to icon-only strip</td>
+        <td style="padding: 8px; color: #2d8a4e;">Verified</td>
+      </tr>
+      <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <td style="padding: 8px; color: #aab;">4</td>
+        <td style="padding: 8px; color: #dde;">Bottom bar — duplicate page navigation removed</td>
+        <td style="padding: 8px; color: #2d8a4e;">Verified</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px; color: #aab;">5</td>
+        <td style="padding: 8px; color: #dde;">Comments panel — already defaults to closed (no change needed)</td>
+        <td style="padding: 8px; color: #2d8a4e;">Confirmed</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>Canvas Space Gained</h3>
+  <ul style="color: #aab; font-size: 14px; line-height: 2;">
+    <li><strong>16px vertical</strong> from compact header (56px to 40px)</li>
+    <li><strong>~100px horizontal</strong> from right sidebar collapse option (140px to 40px)</li>
+    <li><strong>~250px horizontal</strong> from comments panel defaulting closed</li>
+    <li><strong>~30px vertical</strong> from bottom bar simplification (removed page nav row height)</li>
+  </ul>
+</div>
+
+<div class="options" style="margin-top: 24px;">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter" style="background: #2d8a4e;">Y</div>
+    <div class="content">
+      <h3>Looks great — merge to main branch</h3>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter" style="background: #c0392b;">R</div>
+    <div class="content">
+      <h3>Needs changes (tell me in terminal)</h3>
+    </div>
+  </div>
+</div>

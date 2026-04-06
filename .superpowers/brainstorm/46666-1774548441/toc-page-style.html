@@ -1,0 +1,173 @@
+<h2>TOC Page Style — What gets inserted into the PDF</h2>
+<p class="subtitle">Click the style that fits your construction users best</p>
+
+<div class="cards">
+  <!-- Option A: Clean Professional -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:20px; background:#fff; font-family:'Times New Roman',serif; color:#000; min-height:320px;">
+      <div style="text-align:center; margin-bottom:24px;">
+        <div style="font-size:20px; font-weight:bold; letter-spacing:1px;">TABLE OF CONTENTS</div>
+        <div style="width:60px; height:2px; background:#333; margin:8px auto;"></div>
+      </div>
+      <div style="font-size:12px; line-height:2.2;">
+        <div style="display:flex; justify-content:space-between;">
+          <span><b>1.</b> &nbsp;Structural Plans</span>
+          <span>1</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding-left:24px; color:#444;">
+          <span>1.1 &nbsp;Foundation Details</span>
+          <span>1</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding-left:24px; color:#444;">
+          <span>1.2 &nbsp;Framing Layout</span>
+          <span>4</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:4px;">
+          <span><b>2.</b> &nbsp;Mechanical Plans</span>
+          <span>7</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding-left:24px; color:#444;">
+          <span>2.1 &nbsp;HVAC Layout</span>
+          <span>7</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; padding-left:24px; color:#444;">
+          <span>2.2 &nbsp;Plumbing Details</span>
+          <span>10</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:4px;">
+          <span><b>3.</b> &nbsp;Electrical Plans</span>
+          <span>13</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:4px;">
+          <span><b>4.</b> &nbsp;Site Survey</span>
+          <span>18</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Clean Professional</h3>
+      <p>Centered title, numbered entries with dot leaders implied, bold parents, indented children. Classic document style — think engineering submittals.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Tabular -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:20px; background:#fff; font-family:Arial,sans-serif; color:#000; min-height:320px;">
+      <div style="font-size:16px; font-weight:bold; margin-bottom:16px; border-bottom:2px solid #000; padding-bottom:6px;">TABLE OF CONTENTS</div>
+      <table style="width:100%; font-size:11px; border-collapse:collapse;">
+        <thead>
+          <tr style="border-bottom:1px solid #ccc; text-align:left;">
+            <th style="padding:4px 0; width:50px;">No.</th>
+            <th style="padding:4px 0;">Description</th>
+            <th style="padding:4px 0; width:50px; text-align:right;">Page</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="font-weight:bold;">
+            <td style="padding:3px 0;">1</td>
+            <td>Structural Plans</td>
+            <td style="text-align:right;">1</td>
+          </tr>
+          <tr style="color:#444;">
+            <td style="padding:2px 0 2px 12px;">1.1</td>
+            <td>Foundation Details</td>
+            <td style="text-align:right;">1</td>
+          </tr>
+          <tr style="color:#444;">
+            <td style="padding:2px 0 2px 12px;">1.2</td>
+            <td>Framing Layout</td>
+            <td style="text-align:right;">4</td>
+          </tr>
+          <tr style="font-weight:bold; border-top:1px solid #eee;">
+            <td style="padding:3px 0;">2</td>
+            <td>Mechanical Plans</td>
+            <td style="text-align:right;">7</td>
+          </tr>
+          <tr style="color:#444;">
+            <td style="padding:2px 0 2px 12px;">2.1</td>
+            <td>HVAC Layout</td>
+            <td style="text-align:right;">7</td>
+          </tr>
+          <tr style="color:#444;">
+            <td style="padding:2px 0 2px 12px;">2.2</td>
+            <td>Plumbing Details</td>
+            <td style="text-align:right;">10</td>
+          </tr>
+          <tr style="font-weight:bold; border-top:1px solid #eee;">
+            <td style="padding:3px 0;">3</td>
+            <td>Electrical Plans</td>
+            <td style="text-align:right;">13</td>
+          </tr>
+          <tr style="font-weight:bold; border-top:1px solid #eee;">
+            <td style="padding:3px 0;">4</td>
+            <td>Site Survey</td>
+            <td style="text-align:right;">18</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-body">
+      <h3>B. Tabular</h3>
+      <p>Structured table with No./Description/Page columns. Header row with separator lines. Feels like a construction submittal index or drawing register.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Minimal -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:20px; background:#fff; font-family:Helvetica,Arial,sans-serif; color:#000; min-height:320px;">
+      <div style="font-size:14px; font-weight:600; margin-bottom:20px; color:#333;">Contents</div>
+      <div style="font-size:11px; line-height:2.4; color:#333;">
+        <div style="display:flex; align-items:baseline;">
+          <span style="font-weight:600;">Structural Plans</span>
+          <span style="flex:1; border-bottom:1px dotted #ccc; margin:0 8px; position:relative; top:-3px;"></span>
+          <span>1</span>
+        </div>
+        <div style="display:flex; align-items:baseline; padding-left:20px; color:#666;">
+          <span>Foundation Details</span>
+          <span style="flex:1; border-bottom:1px dotted #ddd; margin:0 8px; position:relative; top:-3px;"></span>
+          <span>1</span>
+        </div>
+        <div style="display:flex; align-items:baseline; padding-left:20px; color:#666;">
+          <span>Framing Layout</span>
+          <span style="flex:1; border-bottom:1px dotted #ddd; margin:0 8px; position:relative; top:-3px;"></span>
+          <span>4</span>
+        </div>
+        <div style="display:flex; align-items:baseline;">
+          <span style="font-weight:600;">Mechanical Plans</span>
+          <span style="flex:1; border-bottom:1px dotted #ccc; margin:0 8px; position:relative; top:-3px;"></span>
+          <span>7</span>
+        </div>
+        <div style="display:flex; align-items:baseline; padding-left:20px; color:#666;">
+          <span>HVAC Layout</span>
+          <span style="flex:1; border-bottom:1px dotted #ddd; margin:0 8px; position:relative; top:-3px;"></span>
+          <span>7</span>
+        </div>
+        <div style="display:flex; align-items:baseline; padding-left:20px; color:#666;">
+          <span>Plumbing Details</span>
+          <span style="flex:1; border-bottom:1px dotted #ddd; margin:0 8px; position:relative; top:-3px;"></span>
+          <span>10</span>
+        </div>
+        <div style="display:flex; align-items:baseline;">
+          <span style="font-weight:600;">Electrical Plans</span>
+          <span style="flex:1; border-bottom:1px dotted #ccc; margin:0 8px; position:relative; top:-3px;"></span>
+          <span>13</span>
+        </div>
+        <div style="display:flex; align-items:baseline;">
+          <span style="font-weight:600;">Site Survey</span>
+          <span style="flex:1; border-bottom:1px dotted #ccc; margin:0 8px; position:relative; top:-3px;"></span>
+          <span>18</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Minimal with Dot Leaders</h3>
+      <p>No numbers by default, dotted leaders connecting entry to page number. Clean, modern. Numbers are optional via the numbering preset.</p>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:16px; padding:16px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px;">
+  <p style="font-size:13px; color:rgba(255,255,255,0.5); margin:0;">
+    <strong>Note:</strong> All styles would support clickable links in the PDF (clicking a TOC entry jumps to that page). The chosen numbering convention (1/2/3, A/B/C, etc.) applies on top of whichever style you pick. Which style fits the construction industry best?
+  </p>
+</div>

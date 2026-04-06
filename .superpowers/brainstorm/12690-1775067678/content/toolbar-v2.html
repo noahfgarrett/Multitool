@@ -1,0 +1,130 @@
+<h2>Refined: Single Dropdown with Find kept visible</h2>
+<p class="subtitle">Find (Ctrl+F) stays in toolbar. The 5 secondary tools collapse into a labeled dropdown.</p>
+
+<div class="split" style="gap: 24px;">
+  <div class="mockup" style="flex: 1;">
+    <div class="mockup-header">Before (current)</div>
+    <div class="mockup-body" style="background: #0d1b2a; padding: 14px 16px; border-radius: 8px;">
+      <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+        <!-- Zoom/Nav cluster -->
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+        <span style="color: white; font-size: 13px; padding: 2px 6px;">100%</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        <span style="color: white; font-size: 13px; padding: 2px 6px;">1 / 2</span>
+
+        <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.12); margin: 0 4px;"></div>
+
+        <!-- Problem area: 6 mystery icons -->
+        <div style="display: flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1.5px dashed #F47B20; border-radius: 6px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M11 18H8a2 2 0 0 1-2-2V9"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+          <span style="color: #F47B20; font-size: 10px; white-space: nowrap;">???</span>
+        </div>
+
+        <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.12); margin: 0 4px;"></div>
+
+        <span style="background: #F47B20; color: white; padding: 5px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; white-space: nowrap;">Export PDF</span>
+        <span style="color: #ccc; font-size: 13px;">Email</span>
+        <span style="color: #ccc; font-size: 13px;">Print</span>
+        <span style="color: #ccc; font-size: 13px;">Report</span>
+        <span style="color: #ccc; font-size: 13px;">New</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup" style="flex: 1;">
+    <div class="mockup-header">After (proposed)</div>
+    <div class="mockup-body" style="background: #0d1b2a; padding: 14px 16px; border-radius: 8px;">
+      <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+        <!-- Zoom/Nav cluster (unchanged) -->
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+        <span style="color: white; font-size: 13px; padding: 2px 6px;">100%</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        <span style="color: white; font-size: 13px; padding: 2px 6px;">1 / 2</span>
+
+        <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.12); margin: 0 4px;"></div>
+
+        <!-- Find stays visible (labeled) -->
+        <div style="display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.06); padding: 5px 10px; border-radius: 6px; cursor: pointer;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b0bec5" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span style="color: #b0bec5; font-size: 12px;">Find</span>
+        </div>
+
+        <!-- Single dropdown replaces 5 icons -->
+        <div style="position: relative; display: inline-block;">
+          <div style="display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.06); padding: 5px 10px; border-radius: 6px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b0bec5" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+            <span style="color: #b0bec5; font-size: 12px;">More</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#667788" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <!-- Dropdown menu -->
+          <div style="position: absolute; top: 38px; left: 0; background: #1a2d40; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 6px 0; width: 230px; z-index: 10; box-shadow: 0 12px 32px rgba(0,0,0,0.5);">
+            <div style="padding: 9px 16px; color: #e0e0e0; font-size: 13px; display: flex; align-items: center; gap: 12px; border-radius: 6px; margin: 0 4px; cursor: pointer;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              <span>Annotation List</span>
+            </div>
+            <div style="padding: 9px 16px; color: #e0e0e0; font-size: 13px; display: flex; align-items: center; gap: 12px; border-radius: 6px; margin: 0 4px; cursor: pointer;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span>Markups List</span>
+            </div>
+            <div style="height: 1px; background: rgba(255,255,255,0.06); margin: 6px 12px;"></div>
+            <div style="padding: 9px 16px; color: #e0e0e0; font-size: 13px; display: flex; align-items: center; gap: 12px; border-radius: 6px; margin: 0 4px; cursor: pointer;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/></svg>
+              <span>Tool Presets</span>
+            </div>
+            <div style="padding: 9px 16px; color: #e0e0e0; font-size: 13px; display: flex; align-items: center; gap: 12px; border-radius: 6px; margin: 0 4px; cursor: pointer;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M11 18H8a2 2 0 0 1-2-2V9"/></svg>
+              <span>Compare PDFs</span>
+            </div>
+            <div style="height: 1px; background: rgba(255,255,255,0.06); margin: 6px 12px;"></div>
+            <div style="padding: 9px 16px; color: #e0e0e0; font-size: 13px; display: flex; align-items: center; gap: 12px; border-radius: 6px; margin: 0 4px; cursor: pointer;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8899aa" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+              <span>Stamp Library</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.12); margin: 0 4px;"></div>
+
+        <span style="background: #F47B20; color: white; padding: 5px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; white-space: nowrap;">Export PDF</span>
+        <span style="color: #ccc; font-size: 13px;">Email</span>
+        <span style="color: #ccc; font-size: 13px;">Print</span>
+        <span style="color: #ccc; font-size: 13px;">Report</span>
+        <span style="color: #ccc; font-size: 13px;">New</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 32px;">
+  <h3>Dropdown grouping</h3>
+  <p>Items are grouped with dividers by function:</p>
+  <ul style="color: #aab; font-size: 14px; line-height: 1.8;">
+    <li><strong>Lists</strong> — Annotation List, Markups List (viewing what's on the page)</li>
+    <li><strong>Presets & Compare</strong> — Tool Presets, Compare PDFs (workflow tools)</li>
+    <li><strong>Library</strong> — Stamp Library (asset management)</li>
+  </ul>
+</div>
+
+<div class="options" style="margin-top: 24px;">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter" style="background: #2d8a4e;">Y</div>
+    <div class="content">
+      <h3>Looks good, proceed with this direction</h3>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter" style="background: #c0392b;">R</div>
+    <div class="content">
+      <h3>Needs changes (tell me in terminal)</h3>
+    </div>
+  </div>
+</div>

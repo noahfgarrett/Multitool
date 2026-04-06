@@ -1,11 +1,19 @@
 import { create } from 'zustand'
 import type { ToolId, Toast } from '@/types/index.ts'
+import type { ThemeId } from '@/utils/theme.ts'
+import { loadTheme, saveTheme, applyThemeClass } from '@/utils/theme.ts'
 
 interface AppState {
   // Navigation
   activeTool: ToolId | null
   sidebarExpanded: boolean
   sidebarCategories: Record<string, boolean>
+
+  // Theme
+  theme: ThemeId
+
+  // Settings modal
+  settingsOpen: boolean
 
   // Toasts
   toasts: Toast[]
@@ -28,11 +36,17 @@ interface AppState {
   toggleSidebar: () => void
   setSidebarExpanded: (expanded: boolean) => void
   toggleCategory: (category: string) => void
+  setTheme: (theme: ThemeId) => void
+  openSettings: () => void
+  closeSettings: () => void
   addToast: (toast: Omit<Toast, 'id'>) => void
   removeToast: (id: string) => void
   setActiveView: (view: 'feedback' | null) => void
   setShowProfileModal: (show: boolean) => void
 }
+
+const initialTheme = loadTheme()
+applyThemeClass(initialTheme)
 
 export const useAppStore = create<AppState>((set) => ({
   activeTool: null,
@@ -44,6 +58,8 @@ export const useAppStore = create<AppState>((set) => ({
     creators: true,
     utilities: true,
   },
+  theme: initialTheme,
+  settingsOpen: false,
   toasts: [],
   activeView: null,
   showProfileModal: false,
@@ -68,6 +84,15 @@ export const useAppStore = create<AppState>((set) => ({
         [category]: !s.sidebarCategories[category],
       },
     })),
+
+  setTheme: (theme) => {
+    saveTheme(theme)
+    applyThemeClass(theme)
+    set({ theme })
+  },
+
+  openSettings: () => set({ settingsOpen: true }),
+  closeSettings: () => set({ settingsOpen: false }),
 
   addToast: (toast) => {
     const id = crypto.randomUUID()
