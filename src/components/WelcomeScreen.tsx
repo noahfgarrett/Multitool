@@ -109,13 +109,17 @@ export function WelcomeScreen() {
                         onMouseEnter={(e) => {
                           e.currentTarget.style.borderColor = 'rgba(244,123,32,0.3)'
                           e.currentTarget.style.backgroundColor = 'rgba(244,123,32,0.06)'
+                          const icon = e.currentTarget.querySelector('[data-icon]') as HTMLElement
+                          if (icon) { icon.style.color = '#F47B20'; icon.style.backgroundColor = 'rgba(244,123,32,0.1)' }
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.borderColor = 'var(--border-subtle)'
                           e.currentTarget.style.backgroundColor = 'var(--bg-surface)'
+                          const icon = e.currentTarget.querySelector('[data-icon]') as HTMLElement
+                          if (icon) { icon.style.color = 'var(--text-disabled)'; icon.style.backgroundColor = 'var(--bg-elevated)' }
                         }}
                       >
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center group-hover:text-lotus-orange group-hover:bg-lotus-orange/10 transition-colors" style={{ background: 'var(--bg-elevated)', color: 'var(--text-disabled)' }}>
+                        <div data-icon className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors" style={{ background: 'var(--bg-elevated)', color: 'var(--text-disabled)' }}>
                           {ToolIcon && <ToolIcon size={18} />}
                         </div>
                         <div>

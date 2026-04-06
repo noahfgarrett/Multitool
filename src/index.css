@@ -371,25 +371,6 @@ body.theme-light .glass-sidebar {
   border-right: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-/* Light theme: blue hover accents instead of orange */
-body.theme-light .hover\:bg-\[\#F47B20\]\/\[0\.06\]:hover {
-  background-color: rgba(0, 119, 182, 0.08) !important;
-}
-body.theme-light .hover\:border-\[\#F47B20\]\/30:hover {
-  border-color: rgba(0, 119, 182, 0.3) !important;
-}
-body.theme-light .hover\:text-\[\#F47B20\]:hover {
-  color: #0077B6 !important;
-}
-body.theme-light .hover\:bg-\[\#F47B20\]\/\[0\.06\]:hover {
-  background-color: rgba(0, 119, 182, 0.08) !important;
-}
-body.theme-light .group:hover .group-hover\:text-lotus-orange {
-  color: #0077B6;
-}
-body.theme-light .group:hover .group-hover\:bg-lotus-orange\/10 {
-  background-color: rgba(0, 119, 182, 0.1);
-}
 
 /* ── Shimmer animation for "Got an Idea?" button ─── */
 
