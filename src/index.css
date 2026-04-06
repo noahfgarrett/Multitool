@@ -395,7 +395,7 @@ body.theme-light .glass-elevated {
     rgba(244, 123, 32, 0.1) 100%
   );
   background-size: 200% 100%;
-  animation: shimmer 2.5s ease-in-out 4, glow-pulse 2s ease-in-out 4;
+  animation: shimmer 5s ease-in-out infinite, glow-pulse 3s ease-in-out infinite;
 }
 
 /* ============================================================

@@ -75,16 +75,19 @@ export default function FeedbackForm() {
   // Initialize type from payload if present
   const [type, setType] = useState<FeedbackType>(feedbackPayload?.preselectedType ?? null)
 
-  // Clear payload after reading it (one-shot)
+  // Clear payload after reading it (one-shot) + auto-fill tool for ideas
   useEffect(() => {
     if (feedbackPayload) {
       if (feedbackPayload.preselectedType) {
         setType(feedbackPayload.preselectedType)
+        if (feedbackPayload.preselectedType === 'enhancement') {
+          setTool('New Tool Idea')
+        }
       }
       clearFeedbackPayload()
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  const [tool, setTool] = useState('')
+  const [tool, setTool] = useState(feedbackPayload?.preselectedType === 'enhancement' ? 'New Tool Idea' : '')
   const [subject, setSubject] = useState('')
   const [priority, setPriority] = useState<Priority>('medium')
   const [description, setDescription] = useState('')
