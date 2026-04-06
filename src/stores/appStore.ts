@@ -22,6 +22,10 @@ interface AppState {
   activeView: 'feedback' | null
   showProfileModal: boolean
 
+  // Feedback payload (for pre-selecting feedback type)
+  feedbackPayload: { preselectedType?: 'bug' | 'enhancement' } | null
+  clearFeedbackPayload: () => void
+
   // Changelog
   showChangelog: boolean
   setShowChangelog: (show: boolean) => void
@@ -41,7 +45,7 @@ interface AppState {
   closeSettings: () => void
   addToast: (toast: Omit<Toast, 'id'>) => void
   removeToast: (id: string) => void
-  setActiveView: (view: 'feedback' | null) => void
+  setActiveView: (view: 'feedback' | null, payload?: { preselectedType?: 'bug' | 'enhancement' }) => void
   setShowProfileModal: (show: boolean) => void
 }
 
@@ -63,13 +67,15 @@ export const useAppStore = create<AppState>((set) => ({
   toasts: [],
   activeView: null,
   showProfileModal: false,
+  feedbackPayload: null,
+  clearFeedbackPayload: () => set({ feedbackPayload: null }),
   showChangelog: false,
   focusMode: false,
   setFocusMode: (focus) => set({ focusMode: focus }),
 
   setActiveTool: (tool) => set({ activeTool: tool, activeView: null }),
   goHome: () => set({ activeTool: null, activeView: null }),
-  setActiveView: (view) => set({ activeView: view, activeTool: null }),
+  setActiveView: (view, payload) => set({ activeView: view, activeTool: null, feedbackPayload: payload ?? null }),
   setShowProfileModal: (show) => set({ showProfileModal: show }),
   setShowChangelog: (show) => set({ showChangelog: show }),
 
