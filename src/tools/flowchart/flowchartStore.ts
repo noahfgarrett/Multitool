@@ -292,13 +292,6 @@ export function useFlowchartStore() {
     setViewport(DEFAULT_VIEWPORT)
   }, [])
 
-  // ── Clear ───────────────────────────────────────────────
-
-  const clearDiagram = useCallback(() => {
-    loadDiagram({ nodes: [], edges: [] })
-    removeBackgroundImage()
-  }, [loadDiagram, removeBackgroundImage])
-
   // ── Viewport helpers ────────────────────────────────────
 
   const zoomTo = useCallback((newZoom: number, center?: Point) => {
@@ -426,6 +419,13 @@ export function useFlowchartStore() {
       return null
     })
   }, [])
+
+  // ── Clear ───────────────────────────────────────────────
+
+  const clearDiagram = useCallback(() => {
+    loadDiagram({ nodes: [], edges: [] })
+    removeBackgroundImage()
+  }, [loadDiagram, removeBackgroundImage])
 
   // ── Snap helper ─────────────────────────────────────────
 
