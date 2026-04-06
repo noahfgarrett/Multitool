@@ -8,6 +8,7 @@ export interface Point {
 // ── Shape types ─────────────────────────────────────────────
 
 export type ShapeType =
+  // ── Basic / Flowchart / Misc (original) ────────
   | 'rectangle'
   | 'rounded-rectangle'
   | 'diamond'
@@ -21,6 +22,59 @@ export type ShapeType =
   | 'cloud'
   | 'callout'
   | 'star'
+  // ── P&ID: Vessels & Tanks ──────────────────────
+  | 'pid-horizontal-vessel'
+  | 'pid-vertical-vessel'
+  | 'pid-open-tank'
+  | 'pid-closed-tank'
+  | 'pid-column'
+  | 'pid-reactor'
+  | 'pid-drum'
+  // ── P&ID: Rotating Equipment ───────────────────
+  | 'pid-centrifugal-pump'
+  | 'pid-pd-pump'
+  | 'pid-compressor'
+  | 'pid-fan'
+  | 'pid-turbine'
+  | 'pid-motor'
+  // ── P&ID: Heat Transfer ────────────────────────
+  | 'pid-shell-tube-hx'
+  | 'pid-plate-hx'
+  | 'pid-air-cooler'
+  | 'pid-condenser'
+  | 'pid-boiler'
+  | 'pid-furnace'
+  // ── P&ID: Valves ───────────────────────────────
+  | 'pid-gate-valve'
+  | 'pid-globe-valve'
+  | 'pid-ball-valve'
+  | 'pid-butterfly-valve'
+  | 'pid-check-valve'
+  | 'pid-control-valve'
+  | 'pid-relief-valve'
+  | 'pid-solenoid-valve'
+  | 'pid-3way-valve'
+  | 'pid-plug-valve'
+  // ── P&ID: Instruments ──────────────────────────
+  | 'pid-indicator'
+  | 'pid-transmitter'
+  | 'pid-controller'
+  | 'pid-recorder'
+  | 'pid-sensor'
+  | 'pid-flow-element'
+  | 'pid-level-gauge'
+  // ── P&ID: Piping ──────────────────────────────
+  | 'pid-reducer'
+  | 'pid-tee'
+  | 'pid-elbow'
+  | 'pid-cap'
+  | 'pid-flange'
+  | 'pid-strainer'
+  // ── P&ID: Miscellaneous ───────────────────────
+  | 'pid-spray-nozzle'
+  | 'pid-mixer'
+  | 'pid-cyclone'
+  | 'pid-conveyor'
 
 export type PortPosition = 'top' | 'right' | 'bottom' | 'left'
 
