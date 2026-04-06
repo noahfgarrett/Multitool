@@ -4,6 +4,7 @@ import type { OrgNode, LayoutNode, LayoutDirection } from './types.ts'
 import {
   NODE_WIDTH, NODE_HEIGHT, H_SPACING, V_SPACING,
   AVATAR_SIZE, CONNECTOR_RADIUS, MIN_ZOOM, MAX_ZOOM,
+  SECTION_TITLE_HEIGHT, SECTION_GAP,
 } from './types.ts'
 import { loadImage } from '@/utils/imageProcessing.ts'
 
@@ -51,7 +52,7 @@ interface DragState {
 interface ContextMenuState {
   x: number // screen coords
   y: number
-  nodeId: string
+  nodeId: string | null  // null = canvas right-click (no node)
 }
 
 // ── Component ───────────────────────────────────────────────
@@ -59,7 +60,7 @@ interface ContextMenuState {
 export function Canvas({ store }: { store: OrgChartStore }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const layoutRef = useRef<LayoutNode | null>(null)
+  const layoutRef = useRef<LayoutNode[]>([])
   const flatLayoutRef = useRef<LayoutNode[]>([])
 
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null)
@@ -69,6 +70,8 @@ export function Canvas({ store }: { store: OrgChartStore }) {
   const guidesRef = useRef<AlignGuide[]>([])
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [reparentTarget, setReparentTarget] = useState<string | null>(null)
+  const [editingTitleId, setEditingTitleId] = useState<string | null>(null)
+  const [editingTitleValue, setEditingTitleValue] = useState('')
 
   // ── Space key for pan mode ────────────────────────────────
   const spaceHeldRef = useRef(false)
@@ -390,6 +393,19 @@ export function Canvas({ store }: { store: OrgChartStore }) {
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     const pt = screenToCanvas(e.clientX, e.clientY)
+
+    // Check if double-click is on a section title
+    const roots = flatLayoutRef.current.filter(n => !n.reportsTo && n.sectionTitle)
+    for (const root of roots) {
+      const titleX = root.x + root.width / 2
+      const titleY = root.y - SECTION_TITLE_HEIGHT / 2
+      if (Math.abs(pt.x - titleX) < 120 && Math.abs(pt.y - titleY) < 20) {
+        setEditingTitleId(root.id)
+        setEditingTitleValue(root.sectionTitle)
+        return
+      }
+    }
+
     const hit = hitTestNode(pt)
     if (hit) {
       store.selectNode(hit.id)
@@ -404,14 +420,17 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     if (hit) {
       store.selectNode(hit.id)
       setContextMenu({ x: e.clientX, y: e.clientY, nodeId: hit.id })
+    } else {
+      // Right-click on empty canvas
+      setContextMenu({ x: e.clientX, y: e.clientY, nodeId: null })
     }
   }, [screenToCanvas, hitTestNode, store])
 
   // ── Fit to content ──────────────────────────────────────
 
   const fitToContent = useCallback(() => {
-    const tree = layoutRef.current
-    if (!tree || !containerRef.current) return
+    const trees = layoutRef.current
+    if (trees.length === 0 || !containerRef.current) return
     const flat = flatLayoutRef.current
     if (flat.length === 0) return
 
@@ -461,13 +480,15 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     canvas.style.height = ch + 'px'
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    // Build layout tree
-    const tree = buildLayoutTree(store.nodes, store.layoutDirection)
-    layoutRef.current = tree
-    flatLayoutRef.current = tree ? flattenTree(tree) : []
+    // Build layout trees (multi-root)
+    const trees = buildLayoutTrees(store.nodes, store.layoutDirection)
+    layoutRef.current = trees
+    const allFlat: LayoutNode[] = []
+    for (const tree of trees) allFlat.push(...flattenTree(tree))
+    flatLayoutRef.current = allFlat
 
     // Apply manual offsets to layout positions
-    for (const ln of flatLayoutRef.current) {
+    for (const ln of allFlat) {
       ln.x += ln.offsetX
       ln.y += ln.offsetY
     }
@@ -475,7 +496,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     // Clear
     ctx.clearRect(0, 0, cw, ch)
 
-    if (!tree) return
+    if (trees.length === 0) return
 
     // Apply viewport
     ctx.save()
@@ -484,11 +505,59 @@ export function Canvas({ store }: { store: OrgChartStore }) {
 
     const imageCache = imageCacheRef.current
 
-    // Draw connectors
-    drawConnectors(ctx, tree)
+    // Draw connectors for each tree
+    for (const tree of trees) {
+      drawConnectors(ctx, tree)
+    }
+
+    // Draw section titles and dividers
+    const rootNodes = allFlat.filter(n => !n.reportsTo)
+    rootNodes.forEach((root, idx) => {
+      if (root.sectionTitle) {
+        ctx.save()
+        ctx.font = 'bold 18px "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif'
+        ctx.fillStyle = 'rgba(255,255,255,0.8)'
+        ctx.textAlign = 'center'
+        const titleX = root.x + root.width / 2
+        const titleY = root.y - SECTION_TITLE_HEIGHT / 2 + 4
+        ctx.fillText(root.sectionTitle, titleX, titleY)
+        ctx.restore()
+      }
+
+      // Draw vertical dashed divider between sections (not after last)
+      if (idx < rootNodes.length - 1) {
+        // Find rightmost x of current section
+        const sectionNodes = getSectionNodes(root, allFlat)
+        let maxRight = root.x + root.width
+        for (const sn of sectionNodes) {
+          maxRight = Math.max(maxRight, sn.x + sn.width)
+        }
+        const nextRoot = rootNodes[idx + 1]
+        const dividerX = (maxRight + nextRoot.x) / 2
+
+        ctx.save()
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)'
+        ctx.lineWidth = 1
+        ctx.setLineDash([6, 4])
+        ctx.beginPath()
+
+        // Find vertical extent of all nodes
+        let minY = Infinity, maxY = -Infinity
+        for (const n of allFlat) {
+          minY = Math.min(minY, n.y - SECTION_TITLE_HEIGHT)
+          maxY = Math.max(maxY, n.y + n.height + 40)
+        }
+
+        ctx.moveTo(dividerX, minY)
+        ctx.lineTo(dividerX, maxY)
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.restore()
+      }
+    })
 
     // Draw nodes
-    const flat = flatLayoutRef.current
+    const flat = allFlat
     for (const node of flat) {
       const isSelected = store.selectedNodeIds.has(node.id)
       const isHovered = node.id === hoveredNodeId
@@ -603,15 +672,68 @@ export function Canvas({ store }: { store: OrgChartStore }) {
             className="fixed z-50 min-w-[160px] bg-dark-surface border border-white/[0.1] rounded-lg shadow-xl py-1 overflow-hidden"
             style={{ left: contextMenu.x, top: contextMenu.y }}
           >
-            <ContextMenuItem label="Add Report" onClick={() => { store.addNode(contextMenu.nodeId); setContextMenu(null) }} />
-            <ContextMenuItem label="Select" onClick={() => { store.selectNode(contextMenu.nodeId); setContextMenu(null) }} />
-            <div className="h-px bg-white/[0.06] mx-1 my-0.5" />
-            {store.nodes.find(n => n.id === contextMenu.nodeId)?.reportsTo && (
-              <ContextMenuItem label="Delete" danger onClick={() => { store.removeNode(contextMenu.nodeId); setContextMenu(null) }} />
+            {contextMenu.nodeId ? (
+              <>
+                <ContextMenuItem label="Add Report" onClick={() => { store.addNode(contextMenu.nodeId!); setContextMenu(null) }} />
+                <ContextMenuItem label="Select" onClick={() => { store.selectNode(contextMenu.nodeId); setContextMenu(null) }} />
+                <div className="h-px bg-white/[0.06] mx-1 my-0.5" />
+                {(() => {
+                  const node = store.nodes.find(n => n.id === contextMenu.nodeId)
+                  const roots = store.nodes.filter(n => !n.reportsTo)
+                  const canDelete = node && (node.reportsTo || roots.length > 1)
+                  return canDelete ? (
+                    <ContextMenuItem label="Delete" danger onClick={() => { store.removeNode(contextMenu.nodeId!); setContextMenu(null) }} />
+                  ) : null
+                })()}
+              </>
+            ) : (
+              <>
+                <ContextMenuItem label="Add New Section" onClick={() => { store.addSection(); setContextMenu(null) }} />
+              </>
             )}
           </div>
         </>
       )}
+
+      {/* Inline section title editor */}
+      {editingTitleId && (() => {
+        const root = flatLayoutRef.current.find(n => n.id === editingTitleId)
+        if (!root) return null
+        const { panX, panY, zoom } = store.viewport
+        const titleX = (root.x + root.width / 2) * zoom + panX
+        const titleY = (root.y - SECTION_TITLE_HEIGHT / 2 - 6) * zoom + panY
+        return (
+          <input
+            autoFocus
+            value={editingTitleValue}
+            onChange={e => setEditingTitleValue(e.target.value)}
+            onBlur={() => {
+              if (editingTitleValue.trim()) {
+                store.updateSectionTitle(editingTitleId, editingTitleValue.trim())
+              }
+              setEditingTitleId(null)
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                if (editingTitleValue.trim()) {
+                  store.updateSectionTitle(editingTitleId, editingTitleValue.trim())
+                }
+                setEditingTitleId(null)
+              } else if (e.key === 'Escape') {
+                setEditingTitleId(null)
+              }
+            }}
+            className="absolute z-50 bg-dark-surface border border-[#F47B20]/40 rounded px-2 py-1 text-sm text-white font-bold text-center focus:outline-none focus:border-[#F47B20]"
+            style={{
+              left: titleX - 100,
+              top: titleY - 12,
+              width: 200,
+              transform: `scale(${zoom})`,
+              transformOrigin: 'center center',
+            }}
+          />
+        )
+      })()}
 
       {/* Fit-to-content ref exposed */}
       <FitToContentBridge fitRef={fitToContentRef} />
@@ -650,9 +772,9 @@ function ContextMenuItem({
 
 // ── Tree layout ─────────────────────────────────────────────
 
-function buildLayoutTree(nodes: OrgNode[], direction: LayoutDirection): LayoutNode | null {
-  const root = nodes.find(n => !n.reportsTo)
-  if (!root) return null
+function buildLayoutTrees(nodes: OrgNode[], direction: LayoutDirection): LayoutNode[] {
+  const roots = nodes.filter(n => !n.reportsTo)
+  if (roots.length === 0) return []
 
   const childMap = new Map<string, OrgNode[]>()
   for (const n of nodes) {
@@ -668,15 +790,48 @@ function buildLayoutTree(nodes: OrgNode[], direction: LayoutDirection): LayoutNo
     return { ...node, x: 0, y: 0, width: NODE_WIDTH, height: NODE_HEIGHT, children }
   }
 
-  const tree = buildSubtree(root)
+  const trees: LayoutNode[] = []
+  let xOffset = 0
 
-  if (direction === 'top-down') {
-    layoutTopDown(tree, 0)
-  } else {
-    layoutLeftRight(tree, 0)
+  for (const root of roots) {
+    const tree = buildSubtree(root)
+    let treeWidth: number
+
+    if (direction === 'top-down') {
+      treeWidth = layoutTopDown(tree, 0)
+    } else {
+      treeWidth = layoutLeftRight(tree, 0)
+    }
+
+    // Shift tree by accumulated horizontal offset
+    const yShift = root.sectionTitle ? SECTION_TITLE_HEIGHT : 0
+    if (direction === 'top-down') {
+      shiftX(tree, xOffset)
+      if (yShift > 0) shiftY(tree, yShift)
+      xOffset += treeWidth + SECTION_GAP
+    } else {
+      // For left-right, offset on Y axis to stack sections vertically
+      shiftY(tree, xOffset)
+      if (yShift > 0) shiftY(tree, yShift)
+      xOffset += getTreeHeight(tree) + SECTION_GAP
+    }
+
+    trees.push(tree)
   }
 
-  return tree
+  return trees
+}
+
+function getTreeHeight(node: LayoutNode): number {
+  let minY = node.y
+  let maxY = node.y + node.height
+  for (const child of node.children) {
+    const childH = getTreeHeight(child)
+    const childMinY = child.y
+    minY = Math.min(minY, childMinY)
+    maxY = Math.max(maxY, childMinY + childH)
+  }
+  return maxY - minY
 }
 
 function layoutTopDown(node: LayoutNode, depth: number): number {
@@ -755,6 +910,22 @@ function flattenTree(node: LayoutNode): LayoutNode[] {
     result.push(...flattenTree(child))
   }
   return result
+}
+
+/** Get all nodes belonging to a section (root + descendants) */
+function getSectionNodes(root: LayoutNode, allFlat: LayoutNode[]): LayoutNode[] {
+  const ids = new Set<string>([root.id])
+  let found = true
+  while (found) {
+    found = false
+    for (const n of allFlat) {
+      if (!ids.has(n.id) && ids.has(n.reportsTo)) {
+        ids.add(n.id)
+        found = true
+      }
+    }
+  }
+  return allFlat.filter(n => ids.has(n.id))
 }
 
 // ── Drawing functions ───────────────────────────────────────
