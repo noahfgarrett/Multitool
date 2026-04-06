@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
-import type { ToolType, Point, Annotation, PageAnnotations } from './types.ts'
+import type { ToolType, Point, Annotation, PageAnnotations, Measurement, PolyMeasurement } from './types.ts'
 import { DRAW_TYPES, TEXT_TYPES, genId } from './types.ts'
 import type { SelectTextToolbar, ContextMenuState } from './usePdfAnnotateState.ts'
+import type { Toast } from '@/types/common.ts'
 
 // ── Parameter interface ──────────────────────────────────
 
@@ -55,8 +56,8 @@ export interface KeyboardShortcutsParams {
   setSelectedAnnId: (v: string | null) => void
   setSelectedMeasureId: (v: string | null) => void
   setSelectedArrowIdx: (v: number | null) => void
-  setMeasurements: (fn: (prev: Record<number, unknown[]>) => Record<number, unknown[]>) => void
-  setPolyMeasurements: (fn: (prev: Record<number, unknown[]>) => Record<number, unknown[]>) => void
+  setMeasurements: (fn: (prev: Record<number, Measurement[]>) => Record<number, Measurement[]>) => void
+  setPolyMeasurements: (fn: (prev: Record<number, PolyMeasurement[]>) => Record<number, PolyMeasurement[]>) => void
   setAnnotations: (v: PageAnnotations) => void
   setActiveTool: (v: ToolType) => void
   setActiveDraw: (v: ToolType) => void
@@ -77,7 +78,7 @@ export interface KeyboardShortcutsParams {
   fitToWindow: () => void
   navigateToPage: (page: number | ((p: number) => number)) => void
   zoomAtCenter: (newZoom: number) => void
-  addToast: (toast: { type: string; message: string }) => void
+  addToast: (toast: Omit<Toast, 'id'>) => void
 }
 
 // ── Hook ──────────────────────────────────────────────────
@@ -198,17 +199,17 @@ export function useKeyboardShortcuts(params: KeyboardShortcutsParams): void {
         }
         if (selectedMeasureId) {
           e.preventDefault()
-          setMeasurements((prev: Record<number, unknown[]>) => {
+          setMeasurements(prev => {
             const updated = { ...prev }
             for (const [page, list] of Object.entries(updated)) {
-              updated[Number(page)] = list.filter((m: unknown) => (m as { id: string }).id !== selectedMeasureId)
+              updated[Number(page)] = list.filter(m => m.id !== selectedMeasureId)
             }
             return updated
           })
-          setPolyMeasurements((prev: Record<number, unknown[]>) => {
+          setPolyMeasurements(prev => {
             const updated = { ...prev }
             for (const [page, list] of Object.entries(updated)) {
-              updated[Number(page)] = list.filter((m: unknown) => (m as { id: string }).id !== selectedMeasureId)
+              updated[Number(page)] = list.filter(m => m.id !== selectedMeasureId)
             }
             return updated
           })
@@ -219,7 +220,7 @@ export function useKeyboardShortcuts(params: KeyboardShortcutsParams): void {
           e.preventDefault()
           const ann = (annotations[activePageRef.current] || []).find(a => a.id === selectedAnnId)
           if (ann && ann.arrows && selectedArrowIdx < ann.arrows.length) {
-            const newArrows = ann.arrows.filter((_: Point, i: number) => i !== selectedArrowIdx)
+            const newArrows = ann.arrows.filter((_, i) => i !== selectedArrowIdx)
             updateAnnotation(selectedAnnId, { arrows: newArrows })
             setSelectedArrowIdx(null)
           }

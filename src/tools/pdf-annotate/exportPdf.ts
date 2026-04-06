@@ -2,7 +2,8 @@ import { PDFDocument, rgb, degrees, StandardFonts } from 'pdf-lib'
 import { getPDFBytes } from '@/utils/pdf.ts'
 import { downloadBlob } from '@/utils/download.ts'
 import type { PDFFile } from '@/types'
-import type { Point, Annotation, PageAnnotations, Measurement, CalibrationState } from './types.ts'
+import type { Toast } from '@/types/common.ts'
+import type { Point, PageAnnotations, Measurement, CalibrationState } from './types.ts'
 import { resolvePdfFont, saveWithPicker, toPdfCoords, parseHexColor } from './types.ts'
 import { wrapText, nearestPointOnRect } from './geometry.ts'
 import type { CropRegion } from './usePdfAnnotateState.ts'
@@ -18,7 +19,7 @@ export interface ExportPdfParams {
   cropRegions: Record<number, CropRegion>
   setIsExporting: (v: boolean) => void
   setExportError: (v: string | null) => void
-  addToast: (toast: { type: string; message: string }) => void
+  addToast: (toast: Omit<Toast, 'id'>) => void
 }
 
 // ── Export function ──────────────────────────────────────
