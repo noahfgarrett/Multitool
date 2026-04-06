@@ -5,6 +5,7 @@ import { ToolContainer } from '@/components/layout/ToolContainer.tsx'
 import { WelcomeScreen } from '@/components/WelcomeScreen.tsx'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary.tsx'
 import { UpdateModal } from '@/components/common/UpdateModal.tsx'
+import { SettingsModal } from '@/components/common/SettingsModal.tsx'
 import { checkForUpdate } from '@/utils/updateChecker.ts'
 import type { UpdateInfo } from '@/utils/updateChecker.ts'
 import type { ToolId } from '@/types/index.ts'
@@ -72,6 +73,7 @@ export default function App() {
           info={updateInfo}
         />
       )}
+      <SettingsModal />
     </AppShell>
   )
 }

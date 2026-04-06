@@ -34,10 +34,10 @@ export function UpdateModal({ open, onClose, info }: UpdateModalProps) {
       <div className="space-y-4">
         {/* Version badges */}
         <div className="flex items-center gap-3">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-white/10 text-white/60">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium" style={{ background: 'color-mix(in srgb, var(--bg-surface) 50%, transparent)', color: 'var(--text-muted)' }}>
             v{__APP_VERSION__}
           </span>
-          <span className="text-white/30">&rarr;</span>
+          <span style={{ color: 'var(--text-disabled)' }}>&rarr;</span>
           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#F47B20]/20 text-[#F47B20]">
             v{info.version}
           </span>
@@ -46,16 +46,17 @@ export function UpdateModal({ open, onClose, info }: UpdateModalProps) {
         {/* Release notes */}
         {renderedNotes && (
           <div
-            className="release-notes max-h-60 overflow-y-auto overscroll-contain rounded-lg bg-white/[0.03] border border-white/[0.06] p-4 text-sm text-white/70"
+            className="release-notes max-h-60 overflow-y-auto overscroll-contain rounded-lg p-4 text-sm"
+            style={{ background: 'color-mix(in srgb, var(--bg-surface) 30%, transparent)', border: '1px solid var(--border-subtle)', color: 'var(--text-secondary)' }}
             dangerouslySetInnerHTML={{ __html: renderedNotes }}
           />
         )}
 
         {/* Update instructions */}
-        <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 text-xs text-white/50 space-y-1.5">
-          <p className="text-white/70 font-medium">After downloading:</p>
-          <p><span className="text-white/60 font-medium">Option A:</span> Delete your current LotusWorksToolkit.html, then move the new file to the same location. This keeps your existing bookmarks working.</p>
-          <p><span className="text-white/60 font-medium">Option B:</span> Open the downloaded file and update your bookmark to point to the new copy.</p>
+        <div className="rounded-lg p-3 text-xs space-y-1.5" style={{ background: 'color-mix(in srgb, var(--bg-surface) 30%, transparent)', border: '1px solid var(--border-subtle)', color: 'var(--text-muted)' }}>
+          <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>After downloading:</p>
+          <p><span className="font-medium" style={{ color: 'var(--text-muted)' }}>Option A:</span> Delete your current LotusWorksToolkit.html, then move the new file to the same location. This keeps your existing bookmarks working.</p>
+          <p><span className="font-medium" style={{ color: 'var(--text-muted)' }}>Option B:</span> Open the downloaded file and update your bookmark to point to the new copy.</p>
         </div>
 
         {/* Actions */}

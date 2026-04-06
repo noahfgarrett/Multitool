@@ -28,7 +28,7 @@ export function WelcomeScreen() {
           <h1 className="text-4xl font-display font-bold text-[#F47B20] mb-3">
             LotusWorks Toolkit
           </h1>
-          <p className="text-lg text-white/50 max-w-lg mx-auto">
+          <p className="text-lg max-w-lg mx-auto" style={{ color: 'var(--text-muted)' }}>
             Your all-in-one productivity suite. Select a tool to get started.
           </p>
         </div>
@@ -42,7 +42,7 @@ export function WelcomeScreen() {
               <div key={cat.id}>
                 <div className="flex items-center gap-2 mb-3">
                   {CatIcon && <CatIcon size={16} className="text-lotus-orange" />}
-                  <h2 className="text-sm font-semibold uppercase tracking-wider text-white/60">
+                  <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                     {cat.label}
                   </h2>
                 </div>
@@ -56,18 +56,19 @@ export function WelcomeScreen() {
                         onClick={() => setActiveTool(tool.id as ToolId)}
                         className="
                           group flex flex-col items-start gap-2 p-4 rounded-xl
-                          bg-white/[0.03] border border-white/[0.06]
-                          hover:bg-white/[0.06] hover:border-lotus-orange/30
-                          transition-all duration-200
-                          text-left
+                          border transition-all duration-200 text-left
                         "
+                        style={{
+                          background: 'color-mix(in srgb, var(--bg-surface) 30%, transparent)',
+                          borderColor: 'var(--border-subtle)',
+                        }}
                       >
-                        <div className="w-9 h-9 rounded-lg bg-white/[0.06] flex items-center justify-center text-white/40 group-hover:text-lotus-orange group-hover:bg-lotus-orange/10 transition-colors">
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center group-hover:text-lotus-orange group-hover:bg-lotus-orange/10 transition-colors" style={{ background: 'color-mix(in srgb, var(--bg-surface) 50%, transparent)', color: 'var(--text-disabled)' }}>
                           {ToolIcon && <ToolIcon size={18} />}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-white">{tool.label}</p>
-                          <p className="text-xs text-white/40 mt-0.5 line-clamp-2">{tool.description}</p>
+                          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{tool.label}</p>
+                          <p className="text-xs mt-0.5 line-clamp-2" style={{ color: 'var(--text-disabled)' }}>{tool.description}</p>
                         </div>
                       </button>
                     )

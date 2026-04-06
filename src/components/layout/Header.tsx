@@ -13,20 +13,20 @@ export function Header() {
   const hasHelp = toolDef && toolHelp[toolDef.id]
 
   return (
-    <header className="h-14 flex items-center px-6 border-b border-white/[0.06] bg-black/10">
+    <header className="h-14 flex items-center px-6 border-b" style={{ borderColor: 'var(--border-subtle)', background: 'color-mix(in srgb, var(--bg-primary) 90%, transparent)' }}>
       {toolDef ? (
         <div className="flex-1 min-w-0">
-          <h1 className="text-base font-display font-semibold text-white">
+          <h1 className="text-base font-display font-semibold" style={{ color: 'var(--text-primary)' }}>
             {toolDef.label}
           </h1>
-          <p className="text-xs text-white/50 -mt-0.5">{toolDef.description}</p>
+          <p className="text-xs -mt-0.5" style={{ color: 'var(--text-muted)' }}>{toolDef.description}</p>
         </div>
       ) : (
         <div className="flex-1 min-w-0">
-          <h1 className="text-base font-display font-semibold text-white">
+          <h1 className="text-base font-display font-semibold" style={{ color: 'var(--text-primary)' }}>
             Welcome
           </h1>
-          <p className="text-xs text-white/50 -mt-0.5">Select a tool from the sidebar</p>
+          <p className="text-xs -mt-0.5" style={{ color: 'var(--text-muted)' }}>Select a tool from the sidebar</p>
         </div>
       )}
 
@@ -34,7 +34,8 @@ export function Header() {
         <>
           <button
             onClick={() => setHelpOpen(true)}
-            className="w-7 h-7 flex items-center justify-center rounded-full text-white/30 hover:text-white/60 hover:bg-white/[0.06] transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/[0.06] transition-colors"
+            style={{ color: 'var(--text-disabled)' }}
             title="Help & instructions"
             aria-label="Help & instructions"
           >

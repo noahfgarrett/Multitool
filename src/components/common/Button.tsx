@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from 'react'
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
 type ButtonSize = 'sm' | 'md' | 'lg'
@@ -19,18 +19,27 @@ const variants: Record<ButtonVariant, string> = {
     hover:shadow-xl hover:shadow-[#F47B20]/30
   `,
   secondary: `
-    bg-dark-surface text-white
-    border border-white/[0.12]
-    hover:bg-dark-hover hover:border-white/20
+    border
   `,
   ghost: `
-    text-white/60
-    hover:text-white hover:bg-white/[0.08]
+    hover:bg-white/[0.08]
   `,
   danger: `
     bg-red-500/15 text-red-400 border border-red-500/30
     hover:bg-red-500/25
   `,
+}
+
+/** Inline styles for theme-aware variants */
+const variantStyles: Partial<Record<ButtonVariant, CSSProperties>> = {
+  secondary: {
+    background: 'var(--bg-surface)',
+    color: 'var(--text-primary)',
+    borderColor: 'var(--border-default)',
+  },
+  ghost: {
+    color: 'var(--text-muted)',
+  },
 }
 
 const sizes: Record<ButtonSize, string> = {
@@ -59,6 +68,7 @@ export const Button = memo(function Button({
         ${sizes[size]}
         ${className}
       `}
+      style={variantStyles[variant]}
       disabled={disabled}
       {...props}
     >
