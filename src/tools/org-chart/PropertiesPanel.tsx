@@ -84,6 +84,8 @@ export function PropertiesPanel({ store }: { store: OrgChartStore }) {
   const multiSelectCount = selectedNodeIds.size
 
   const isRoot = !selectedNode.reportsTo
+  const roots = nodes.filter(n => !n.reportsTo)
+  const canDeleteRoot = isRoot && roots.length > 1
 
   const update = (updates: Partial<OrgNode>) => {
     updateNode(selectedNode.id, updates)
@@ -257,6 +259,19 @@ export function PropertiesPanel({ store }: { store: OrgChartStore }) {
           />
         </PropSection>
 
+        {/* Section Title (only for root nodes) */}
+        {isRoot && (
+          <PropSection label="Section Title">
+            <input
+              type="text"
+              value={selectedNode.sectionTitle}
+              onChange={e => update({ sectionTitle: e.target.value })}
+              placeholder="e.g. Engineering"
+              className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white placeholder:text-white/20 focus:outline-none focus:border-[#F47B20]/40"
+            />
+          </PropSection>
+        )}
+
         {/* Reports To */}
         {!isRoot && (
           <PropSection label="Reports To">
@@ -284,13 +299,13 @@ export function PropertiesPanel({ store }: { store: OrgChartStore }) {
             Add Direct Report
           </button>
 
-          {!isRoot && (
+          {(!isRoot || canDeleteRoot) && (
             <button
               onClick={() => removeNode(selectedNode.id)}
               className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400/70 hover:text-red-400 bg-red-500/[0.04] hover:bg-red-500/[0.08] rounded-lg transition-colors"
             >
               <Trash2 size={13} />
-              Delete Person
+              {isRoot ? 'Delete Section' : 'Delete Person'}
             </button>
           )}
         </div>
