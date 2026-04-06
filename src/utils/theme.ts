@@ -38,7 +38,7 @@ export const THEMES: ThemeDefinition[] = [
   },
 ]
 
-const THEME_STORAGE_KEY = 'lotusworks-theme'
+const THEME_STORAGE_KEY = 'lwt-theme'
 
 export function loadTheme(): ThemeId {
   try {
