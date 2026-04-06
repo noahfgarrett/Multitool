@@ -8,12 +8,13 @@ import type { UpdateInfo } from '@/utils/updateChecker.ts'
 interface UpdateModalProps {
   open: boolean
   onClose: () => void
-  info: UpdateInfo
+  info: UpdateInfo | null
+  defaultTab?: string
 }
 
 export function UpdateModal({ open, onClose, info }: UpdateModalProps) {
   const renderedNotes = useMemo(() => {
-    if (!info.releaseNotes) return ''
+    if (!info?.releaseNotes) return ''
     let html = marked.parse(info.releaseNotes, { async: false }) as string
     // Inject inline styles so bullets render regardless of which CSS version the user has
     html = html
@@ -21,10 +22,10 @@ export function UpdateModal({ open, onClose, info }: UpdateModalProps) {
       .replace(/<ol>/g, '<ol style="list-style-type:decimal;padding-left:1.25rem">')
       .replace(/<li>/g, '<li style="margin:0.25rem 0">')
     return html
-  }, [info.releaseNotes])
+  }, [info?.releaseNotes])
 
   function handleDownload() {
-    if (info.downloadUrl) {
+    if (info?.downloadUrl) {
       window.open(info.downloadUrl, '_blank', 'noopener')
     }
   }
@@ -39,7 +40,7 @@ export function UpdateModal({ open, onClose, info }: UpdateModalProps) {
           </span>
           <span style={{ color: 'var(--text-disabled)' }}>&rarr;</span>
           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#F47B20]/20 text-[#F47B20]">
-            v{info.version}
+            v{info?.version}
           </span>
         </div>
 
@@ -64,8 +65,8 @@ export function UpdateModal({ open, onClose, info }: UpdateModalProps) {
           <Button variant="ghost" size="sm" onClick={onClose} icon={<X size={14} />}>
             Skip this version
           </Button>
-          <Button variant="primary" size="sm" onClick={handleDownload} disabled={!info.downloadUrl} icon={<Download size={14} />}>
-            Download v{info.version}
+          <Button variant="primary" size="sm" onClick={handleDownload} disabled={!info?.downloadUrl} icon={<Download size={14} />}>
+            Download v{info?.version}
           </Button>
         </div>
       </div>

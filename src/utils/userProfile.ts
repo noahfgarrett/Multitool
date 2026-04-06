@@ -1,19 +1,23 @@
 export interface UserProfile {
   name: string
+  email: string
+  initials: string
+  /** Job title (Agent A addition) */
   jobTitle: string
+  /** Company name (Agent A addition) */
   company: string
-  /** Base64 data URL (JPEG, max 128x128) */
+  /** Base64 data URL (JPEG, max 128x128) for profile photo (Agent A addition) */
   photo: string
 }
 
 const PROFILE_STORAGE_KEY = 'lotusworks-user-profile'
 
-export function loadUserProfile(): UserProfile | null {
+export function getUserProfile(): UserProfile | null {
   try {
     const stored = localStorage.getItem(PROFILE_STORAGE_KEY)
     if (stored) {
       const parsed: unknown = JSON.parse(stored)
-      if (isUserProfile(parsed)) return parsed
+      if (isUserProfile(parsed)) return normalizeProfile(parsed as unknown as Record<string, unknown>)
     }
   } catch {
     // localStorage unavailable or corrupt
@@ -29,15 +33,37 @@ export function saveUserProfile(profile: UserProfile): void {
   }
 }
 
+/** Alias for getUserProfile (used by SettingsModal / Agent A code). */
+export const loadUserProfile = getUserProfile
+
+export function hasUserProfile(): boolean {
+  return getUserProfile() !== null
+}
+
+export function generateInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return ''
+  if (parts.length === 1) return parts[0][0].toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
 function isUserProfile(value: unknown): value is UserProfile {
   if (typeof value !== 'object' || value === null) return false
   const obj = value as Record<string, unknown>
-  return (
-    typeof obj.name === 'string' &&
-    typeof obj.jobTitle === 'string' &&
-    typeof obj.company === 'string' &&
-    typeof obj.photo === 'string'
-  )
+  // At minimum, must have a name string. Other fields get defaults if missing.
+  return typeof obj.name === 'string'
+}
+
+/** Normalize a stored profile that may be missing fields added across versions. */
+function normalizeProfile(raw: Record<string, unknown>): UserProfile {
+  return {
+    name: (raw.name as string) || '',
+    email: (raw.email as string) || '',
+    initials: (raw.initials as string) || generateInitials((raw.name as string) || ''),
+    jobTitle: (raw.jobTitle as string) || '',
+    company: (raw.company as string) || '',
+    photo: (raw.photo as string) || '',
+  }
 }
 
 /**

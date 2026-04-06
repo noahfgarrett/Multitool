@@ -54,6 +54,9 @@ export function UserProfileModal({ isOpen, onClose, initialProfile }: UserProfil
       name: trimmedName,
       email: email.trim(),
       initials: initials || generateInitials(trimmedName),
+      jobTitle: initialProfile?.jobTitle ?? '',
+      company: initialProfile?.company ?? '',
+      photo: initialProfile?.photo ?? '',
     }
     onClose(profile)
   }, [name, email, initials, onClose])

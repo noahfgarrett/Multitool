@@ -5,6 +5,7 @@ import type { ShapeType, Point, NodeStyle } from './types.ts'
 export type ShapeCategory =
   | 'basic'
   | 'flowchart'
+  | 'containers'
   | 'misc'
   | 'pid-vessels'
   | 'pid-rotating'

@@ -115,7 +115,7 @@ function ProfileTab() {
   }, [addToast])
 
   const handleSave = useCallback(() => {
-    const profile: UserProfile = { name: name.trim(), jobTitle: jobTitle.trim(), company: company.trim(), photo }
+    const profile: UserProfile = { name: name.trim(), email: existing?.email ?? '', initials: existing?.initials ?? '', jobTitle: jobTitle.trim(), company: company.trim(), photo }
     saveUserProfile(profile)
     setSaved(true)
     addToast({ type: 'success', message: 'Profile saved' })
