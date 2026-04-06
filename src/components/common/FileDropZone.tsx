@@ -19,6 +19,7 @@ export const FileDropZone = memo(function FileDropZone({
   className = '',
 }: FileDropZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const handleFiles = useCallback(
@@ -56,25 +57,31 @@ export const FileDropZone = memo(function FileDropZone({
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       onClick={() => inputRef.current?.click()}
       className={`
         relative flex flex-col items-center justify-center
         border-2 border-dashed rounded-xl py-12 px-6
-        cursor-pointer transition-all duration-200
-        ${isDragOver
-          ? 'border-[#F47B20] bg-[#F47B20]/10'
-          : 'hover:bg-[#F47B20]/[0.04]'
-        }
+        cursor-pointer transition-all duration-300
         ${className}
       `}
-      style={isDragOver ? undefined : { borderColor: 'var(--border-default)', background: 'var(--bg-surface)' }}
+      style={{
+        borderColor: isDragOver || isHovered ? '#F47B20' : 'var(--border-default)',
+        background: isDragOver ? 'rgba(244,123,32,0.1)' : isHovered ? 'rgba(244,123,32,0.04)' : 'var(--bg-surface)',
+        boxShadow: isDragOver
+          ? '0 0 20px rgba(244,123,32,0.3), inset 0 0 20px rgba(244,123,32,0.05)'
+          : isHovered
+            ? '0 0 12px rgba(244,123,32,0.15), inset 0 0 12px rgba(244,123,32,0.03)'
+            : 'none',
+      }}
     >
       <div
-        className={`
-          w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors
-          ${isDragOver ? 'bg-[#F47B20]/20 text-[#F47B20]' : ''}
-        `}
-        style={isDragOver ? undefined : { background: 'var(--bg-elevated)', color: 'var(--text-disabled)' }}
+        className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors duration-300"
+        style={{
+          background: isDragOver || isHovered ? 'rgba(244,123,32,0.15)' : 'var(--bg-elevated)',
+          color: isDragOver || isHovered ? '#F47B20' : 'var(--text-disabled)',
+        }}
       >
         <Upload size={22} />
       </div>
