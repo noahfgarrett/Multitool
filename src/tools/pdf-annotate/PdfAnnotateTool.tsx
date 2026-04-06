@@ -1,16 +1,18 @@
-import { useState, useCallback, useRef, useEffect, useMemo, memo } from 'react'
+import { useState, useCallback, useRef, useEffect, memo } from 'react'
 import { FileDropZone } from '@/components/common/FileDropZone.tsx'
 import { Button } from '@/components/common/Button.tsx'
 import { Modal } from '@/components/common/Modal.tsx'
 import { ColorPicker } from '@/components/common/ColorPicker.tsx'
-import { useAppStore } from '@/stores/appStore.ts'
+// useAppStore used in usePdfAnnotateState
+import { usePdfAnnotateState } from './usePdfAnnotateState.ts'
+import type { ToolPreset } from './usePdfAnnotateState.ts'
 import { loadPDFFile, renderPageToCanvas, generateThumbnail, removePDFFromCache, getPDFBytes, extractPositionedText, getAllPageDimensions, validatePageRange } from '@/utils/pdf.ts'
 import Tesseract from 'tesseract.js'
 import { downloadBlob } from '@/utils/download.ts'
 import { saveSession, loadSession, clearSession, computeFileHash } from './storage.ts'
 import type { PdfAnnotateSession } from './storage.ts'
 import { formatFileSize } from '@/utils/fileReader.ts'
-import type { PDFFile } from '@/types'
+// PDFFile type used in usePdfAnnotateState
 import { PDFDocument, rgb, degrees, StandardFonts } from 'pdf-lib'
 import {
   Download, RotateCcw, RotateCw, Undo2, Redo2,
@@ -62,8 +64,7 @@ import MarkupsList from './MarkupsList.tsx'
 import { CompareMode } from './CompareMode.tsx'
 import { StampLibrary } from './StampLibrary.tsx'
 import { recognizeShape } from './shapeRecognizer.ts'
-import { getUserProfile } from '@/utils/userProfile.ts'
-import type { UserProfile } from '@/utils/userProfile.ts'
+// getUserProfile and UserProfile are used in usePdfAnnotateState
 import FloatingToolbar from './FloatingToolbar.tsx'
 
 // ── Thumbnail sidebar item ──────────────────────────────
@@ -247,324 +248,147 @@ const LayerRow = memo(function LayerRow({ layer, isActive, annotationCount, onSe
 // ── Component ──────────────────────────────────────────
 
 export default function PdfAnnotateTool() {
-  const addToast = useAppStore(s => s.addToast)
-  const focusMode = useAppStore(s => s.focusMode)
-  const setFocusMode = useAppStore(s => s.setFocusMode)
+  const S = usePdfAnnotateState()
+  const {
+    addToast, focusMode, setFocusMode,
+    pdfFile, setPdfFile, currentPage, setCurrentPage,
+    activeTool, setActiveTool, color, setColor,
+    strokeWidth, setStrokeWidth, opacity, setOpacity,
+    fontSize, setFontSize, zoom, setZoom,
+    annotations, setAnnotations,
+    layers, setLayers, activeLayerId, setActiveLayerId,
+    layersPanelOpen, setLayersPanelOpen,
+    isExporting, setIsExporting,
+    loadError, setLoadError, exportError, setExportError,
+    fontFamily, setFontFamily, bold, setBold,
+    italic, setItalic, underline, setUnderline,
+    strikethrough, setStrikethrough, textBgColor, setTextBgColor,
+    lineSpacing, setLineSpacing, textAlign, setTextAlign,
+    superscript, setSuperscript, subscript, setSubscript,
+    listType, setListType, canvasCursor, setCanvasCursor,
+    selectTextToolbar, setSelectTextToolbar,
+    clipboardRef, hoveredAnnId, setHoveredAnnId, hoveredAnnIdRef,
+    contextMenu, setContextMenu,
+    annListOpen, setAnnListOpen,
+    findQuery, setFindQuery, findOpen, setFindOpen,
+    findMatches, setFindMatches, findIdx, setFindIdx,
+    findCacheTick, setFindCacheTick,
+    findCaseSensitive, setFindCaseSensitive,
+    ocrScanning, setOcrScanning, ocrPagesRef, ocrAbortRef,
+    ocrRegionStartRef, ocrRegionPreviewRef,
+    ocrRegionResult, setOcrRegionResult,
+    ocrRegionScanning, setOcrRegionScanning,
+    stampDropdownOpen, setStampDropdownOpen,
+    activeStampPreset, setActiveStampPreset,
+    cropRegions, setCropRegions,
+    pageInputActive, setPageInputActive, copiedStyleRef,
+    shapesDropdownOpen, setShapesDropdownOpen,
+    activeDraw, setActiveDraw,
+    textDropdownOpen, setTextDropdownOpen,
+    activeText, setActiveText,
+    toolPresets, setToolPresets, presetsOpen, setPresetsOpen,
+    bookmarks, setBookmarks, bookmarksOpen, setBookmarksOpen,
+    markupsListOpen, setMarkupsListOpen,
+    compareOpen, setCompareOpen,
+    stampLibraryOpen, setStampLibraryOpen,
+    moreMenuOpen, setMoreMenuOpen, moreMenuRef,
+    toolbarExpanded, setToolbarExpanded, moreToolsOpen, setMoreToolsOpen,
+    isTouchDevice, drawerOpen, setDrawerOpen,
+    drawerPinned, setDrawerPinned,
+    drawerShapesOpen, setDrawerShapesOpen,
+    drawerTextOpen, setDrawerTextOpen,
+    drawerMeasureOpen, setDrawerMeasureOpen,
+    drawerStampOpen, setDrawerStampOpen,
+    drawerMoreToolsOpen, setDrawerMoreToolsOpen,
+    exportWatermark, setExportWatermark,
+    exportWatermarkOpacity, setExportWatermarkOpacity,
+    zoomDropdownOpen, setZoomDropdownOpen,
+    straightLineMode, setStraightLineMode,
+    fillColor, setFillColor, cornerRadius, setCornerRadius,
+    dashPattern, setDashPattern, arrowStart, setArrowStart,
+    eraserRadius, setEraserRadius, eraserMode, setEraserMode,
+    eraserModsRef, canvasSnapshotRef,
+    pageRotations, setPageRotations,
+    selectedAnnId, setSelectedAnnId,
+    editingTextId, setEditingTextId,
+    editingTextValue, setEditingTextValue,
+    textareaRef, blurTimeoutRef, lastCommittedTextRef,
+    editingTextIdRef, textOverlayTick, setTextOverlayTick,
+    escapeCommittedRef, preHighlightRef, dblClickRef,
+    textDragRef, generalDragRef,
+    calloutArrowDragRef, selectedArrowIdx, setSelectedArrowIdx,
+    cloudPreviewRef, cloudLastClickRef,
+    measurements, setMeasurements,
+    calibration, setCalibration,
+    calibrateModalOpen, setCalibrateModalOpen,
+    calibrateMeasureId, setCalibrateMeasureId,
+    calibrateValue, setCalibrateValue,
+    calibrateUnit, setCalibrateUnit,
+    measureStartRef, measurePreviewRef,
+    selectedMeasureId, setSelectedMeasureId,
+    measureMode, setMeasureMode,
+    measureDropdownOpen, setMeasureDropdownOpen,
+    measureDropdownRef,
+    polyMeasurements, setPolyMeasurements,
+    polyPointsRef, polyPreviewRef,
+    countGroups, setCountGroups,
+    activeCountGroup, setActiveCountGroup,
+    countGroupModalOpen, setCountGroupModalOpen,
+    countGroupLabel, setCountGroupLabel,
+    countGroupColor, setCountGroupColor,
+    edgeSnappingEnabled, setEdgeSnappingEnabled,
+    precisionSnapMode, setPrecisionSnapMode,
+    isPrinting, setIsPrinting,
+    commentThreads, setCommentThreads,
+    stickyNotes, setStickyNotes,
+    activeStickyColor, setActiveStickyColor,
+    chatBubbleTarget, setChatBubbleTarget,
+    commentsPanelOpen, setCommentsPanelOpen,
+    userProfileRef,
+    exportModalOpen, setExportModalOpen,
+    emailModalOpen, setEmailModalOpen,
+    sidebarOpen, setSidebarOpen,
+    thumbnails, setThumbnails,
+    selectedThumbPage, setSelectedThumbPage,
+    loadingThumbs,
+    pageRefsMap, pageDimsMap, renderedPagesRef,
+    activePageRef, maxCanvasWidthRef, observerRef,
+    scrollRef, innerRef, zoomRef, focusModeRef, currentPageRef,
+    panRef, spaceHeldRef,
+    shapesDropdownRef, textDropdownRef, zoomDropdownRef,
+    stampDropdownRef, contextMenuRef,
+    hoverPosRef, eraserCursorDivRef, tooltipDivRef,
+    cropDrawRef, pageRenderScaleRef, findInputRef,
+    isDrawingRef, currentPtsRef, currentPressureRef,
+    pendingImageRef, imageStampCacheRef,
+    pdfFileRef, fileHashRef, pageRotationsRef,
+    dimsReady, setDimsReady,
+    pendingScrollRef, restoringSessionRef, initialFitDoneRef,
+    textItemsCacheRef, textHighlightStartRef,
+    textHighlightPreviewRectsRef,
+    selectTextStartRef, selectTextRectsRef,
+    activeHighlight, setActiveHighlight,
+    historyRef, historyIdxRef, forceRender,
+    canUndo, canRedo, isDrawTool, isTextTool, currentRotation,
+    findCommittedQuery, setFindCommittedQuery,
+    activeTouchIdsRef, touchPositionsRef, prevPinchDistRef,
+    annPageMap, totalAnnotationCount,
+  } = S
 
-  // State
-  const [pdfFile, setPdfFile] = useState<PDFFile | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [activeTool, setActiveTool] = useState<ToolType>('select')
-  const [color, setColor] = useState('#F47B20')
-  const [strokeWidth, setStrokeWidth] = useState(2)
-  const [opacity, setOpacity] = useState(100)
-  const [fontSize, setFontSize] = useState(16)
-  const [zoom, setZoom] = useState(1.0)
-  const [annotations, setAnnotations] = useState<PageAnnotations>({})
-  const [layers, setLayers] = useState<AnnotationLayer[]>([
-    { id: 'default', name: 'Default', visible: true, color: '#6B7280' },
-  ])
-  const [activeLayerId, setActiveLayerId] = useState('default')
-  const [layersPanelOpen, setLayersPanelOpen] = useState(false)
-  const [isExporting, setIsExporting] = useState(false)
-  const [loadError, setLoadError] = useState<string | null>(null)
-  const [exportError, setExportError] = useState<string | null>(null)
-  // pdfReady removed — each page renders independently via IntersectionObserver
-
-  const [fontFamily, setFontFamily] = useState('Arial')
-  const [bold, setBold] = useState(false)
-  const [italic, setItalic] = useState(false)
-  const [underline, setUnderline] = useState(false)
-  const [strikethrough, setStrikethrough] = useState(false)
-  const [textBgColor, setTextBgColor] = useState<string | null>(null)
-  const [lineSpacing, setLineSpacing] = useState(1.3)
-  const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right' | 'justify'>('left')
-  const [superscript, setSuperscript] = useState(false)
-  const [subscript, setSubscript] = useState(false)
-  const [listType, setListType] = useState<'none' | 'bullet' | 'numbered'>('none')
-  const [canvasCursor, setCanvasCursor] = useState<string | null>(null)
-  const [selectTextToolbar, setSelectTextToolbar] = useState<{
-    rects: { x: number; y: number; w: number; h: number }[]
-    items: { text: string; x: number; y: number; width: number; height: number; page: number }[]
-    docPos: { x: number; y: number }
-  } | null>(null)
-  const clipboardRef = useRef<Annotation | null>(null)
-  const [hoveredAnnId, setHoveredAnnId] = useState<string | null>(null)
-  // Ref mirrors hoveredAnnId for use inside pointermove — avoids re-render when value is unchanged
-  const hoveredAnnIdRef = useRef<string | null>(null)
-
-  // Feature: sticky tool, hover tooltip, context menu, annotation list, find, stamp, crop, page input
-  // Tools always stay active until user manually switches
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; annId: string; pageNum: number } | null>(null)
-  const [annListOpen, setAnnListOpen] = useState(false)
-  const [findQuery, setFindQuery] = useState('')
-  const [findOpen, setFindOpen] = useState(false)
-  const [findMatches, setFindMatches] = useState<{ pageNum: number; item: { text: string; x: number; y: number; width: number; height: number; page: number }; matchX: number; matchW: number }[]>([])
-  const [findIdx, setFindIdx] = useState(0)
-  const [findCacheTick, setFindCacheTick] = useState(0)
-  const [findCaseSensitive, setFindCaseSensitive] = useState(false)
-  const [ocrScanning, setOcrScanning] = useState(false)
-  const ocrPagesRef = useRef<Set<string>>(new Set()) // tracks pages that needed OCR (cache keys)
-  const ocrAbortRef = useRef<AbortController | null>(null)
-  // OCR Region scan tool
-  const ocrRegionStartRef = useRef<Point | null>(null)
-  const ocrRegionPreviewRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null)
-  const [ocrRegionResult, setOcrRegionResult] = useState<{ text: string; pageNum: number; rect: { x: number; y: number; w: number; h: number } } | null>(null)
-  const [ocrRegionScanning, setOcrRegionScanning] = useState(false)
-  const [stampDropdownOpen, setStampDropdownOpen] = useState(false)
-  const [activeStampPreset, setActiveStampPreset] = useState(STAMP_PRESETS[0])
-  const [cropRegions, setCropRegions] = useState<Record<number, { x: number; y: number; w: number; h: number }>>({})
-  const [pageInputActive, setPageInputActive] = useState(false)
-  const copiedStyleRef = useRef<{ color: string; strokeWidth: number; opacity: number; fontFamily?: string; fontSize?: number; bold?: boolean; italic?: boolean } | null>(null)
-
-  // Shapes dropdown
-  const [shapesDropdownOpen, setShapesDropdownOpen] = useState(false)
-  const [activeDraw, setActiveDraw] = useState<ToolType>('pencil')
-
-  // Text tools dropdown
-  const [textDropdownOpen, setTextDropdownOpen] = useState(false)
-  const [activeText, setActiveText] = useState<ToolType>('text')
-
-  // Tool presets (save/load/apply/delete are defined later after fillColor/dashPattern state)
-  interface ToolPreset { id: string; name: string; toolType: ToolType; color: string; strokeWidth: number; opacity: number; fontSize: number; fillColor: string | null; dashPattern: 'solid' | 'dashed' | 'dotted' }
-  const [toolPresets, setToolPresets] = useState<ToolPreset[]>(() => {
-    try { return JSON.parse(localStorage.getItem('lwt-tool-presets') || '[]') } catch { return [] }
-  })
-  const [presetsOpen, setPresetsOpen] = useState(false)
-
-  // Bookmark navigation
-  const [bookmarks, setBookmarks] = useState<{ title: string; pageNum: number; children: { title: string; pageNum: number }[] }[]>([])
-  const [bookmarksOpen, setBookmarksOpen] = useState(false)
-
-  // Markups list
-  const [markupsListOpen, setMarkupsListOpen] = useState(false)
-
-  // Compare mode
-  const [compareOpen, setCompareOpen] = useState(false)
-
-  // Custom stamp library
-  const [stampLibraryOpen, setStampLibraryOpen] = useState(false)
-
-  // More menu dropdown
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
-  const moreMenuRef = useRef<HTMLDivElement>(null)
-
-  // Right sidebar collapse state
-  const [toolbarExpanded, setToolbarExpanded] = useState<boolean>(() => {
-    const saved = localStorage.getItem('pdfAnnotate.toolbarExpanded')
-    return saved !== null ? saved === 'true' : true
-  })
-  const [moreToolsOpen, setMoreToolsOpen] = useState(false)
-
-  // Slide-out drawer for tablet focus mode
-  const isTouchDevice = typeof window !== 'undefined' && matchMedia('(any-pointer: coarse)').matches
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  const [drawerPinned, setDrawerPinned] = useState(() => {
-    return localStorage.getItem('pdfAnnotate.drawerPinned') === 'true'
-  })
-  // Drawer-specific dropdown open states (separate from sidebar to avoid conflicts)
-  const [drawerShapesOpen, setDrawerShapesOpen] = useState(false)
-  const [drawerTextOpen, setDrawerTextOpen] = useState(false)
-  const [drawerMeasureOpen, setDrawerMeasureOpen] = useState(false)
-  const [drawerStampOpen, setDrawerStampOpen] = useState(false)
-  const [drawerMoreToolsOpen, setDrawerMoreToolsOpen] = useState(false)
-
-  // Watermark on export
-  const [exportWatermark, setExportWatermark] = useState('')
-  const [exportWatermarkOpacity, setExportWatermarkOpacity] = useState(15)
-
-  // Zoom presets dropdown
-  const [zoomDropdownOpen, setZoomDropdownOpen] = useState(false)
-
-  // Straight-line mode
-  const [straightLineMode, setStraightLineMode] = useState(false)
-  const [fillColor, setFillColor] = useState<string | null>(null)
-  const [cornerRadius, setCornerRadius] = useState(0)
-  const [dashPattern, setDashPattern] = useState<'solid' | 'dashed' | 'dotted'>('solid')
-  const [arrowStart, setArrowStart] = useState(false)
-
-  // Tool preset callbacks (after fillColor/dashPattern are declared)
+  // Tool preset callbacks
   const saveToolPreset = useCallback((name: string) => {
     const preset: ToolPreset = { id: crypto.randomUUID(), name, toolType: activeTool, color, strokeWidth, opacity, fontSize, fillColor, dashPattern }
     setToolPresets(prev => { const next = [...prev, preset]; localStorage.setItem('lwt-tool-presets', JSON.stringify(next)); return next })
-  }, [activeTool, color, strokeWidth, opacity, fontSize, fillColor, dashPattern])
+  }, [activeTool, color, strokeWidth, opacity, fontSize, fillColor, dashPattern, setToolPresets])
 
   const applyToolPreset = useCallback((preset: ToolPreset) => {
     setActiveTool(preset.toolType); setColor(preset.color); setStrokeWidth(preset.strokeWidth)
     setOpacity(preset.opacity); setFontSize(preset.fontSize); setFillColor(preset.fillColor); setDashPattern(preset.dashPattern)
-  }, [])
+  }, [setActiveTool, setColor, setStrokeWidth, setOpacity, setFontSize, setFillColor, setDashPattern])
 
   const deleteToolPreset = useCallback((id: string) => {
     setToolPresets(prev => { const next = prev.filter(p => p.id !== id); localStorage.setItem('lwt-tool-presets', JSON.stringify(next)); return next })
-  }, [])
-
-  // Eraser
-  const [eraserRadius, setEraserRadius] = useState(15)
-  const [eraserMode, setEraserMode] = useState<'partial' | 'object'>('partial')
-  const eraserModsRef = useRef<{ removed: Set<string>; added: Annotation[] }>({ removed: new Set(), added: [] })
-  const canvasSnapshotRef = useRef<ImageData | null>(null)
-
-  // Rotation
-  const [pageRotations, setPageRotations] = useState<Record<number, number>>({})
-
-  // Text tool — PowerPoint style
-  const [selectedAnnId, setSelectedAnnId] = useState<string | null>(null)
-  const [editingTextId, setEditingTextId] = useState<string | null>(null)
-  const [editingTextValue, setEditingTextValue] = useState('')
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastCommittedTextRef = useRef<{ id: string; text: string } | null>(null)
-  const editingTextIdRef = useRef<string | null>(null)
-  const [textOverlayTick, setTextOverlayTick] = useState(0)
-  // Tracks whether the textarea was committed via Escape key so the blur handler
-  // doesn't run commitTextEditing a second time (which would add a duplicate history step)
-  const escapeCommittedRef = useRef(false)
-  // Save/restore color & stroke when switching to/from highlighter
-  const preHighlightRef = useRef<{ color: string; strokeWidth: number } | null>(null)
-  // Manual double-click detection: pointerdown events have e.detail=0 in Chromium
-  // (unlike mousedown), so we must track click timestamps ourselves.
-  const dblClickRef = useRef<{ time: number; pt: Point }>({ time: 0, pt: { x: 0, y: 0 } })
-  const textDragRef = useRef<{
-    annId: string
-    mode: 'move' | HandleId
-    startPt: Point
-    origPoints: Point[]
-    origWidth: number
-    origHeight: number
-    origArrows?: Point[]
-  } | null>(null)
-  const generalDragRef = useRef<{
-    annId: string; startPt: Point; origPoints: Point[]
-  } | null>(null)
-
-  // Callout arrow drag
-  const calloutArrowDragRef = useRef<{ tipPt: Point; arrowIdx?: number } | null>(null)
-  const [selectedArrowIdx, setSelectedArrowIdx] = useState<number | null>(null)
-
-  // Cloud polygon placement
-  const cloudPreviewRef = useRef<Point | null>(null)
-  const cloudLastClickRef = useRef<{ time: number; pt: Point }>({ time: 0, pt: { x: 0, y: 0 } })
-
-  // Measurement tool
-  const [measurements, setMeasurements] = useState<Record<number, Measurement[]>>({})
-  const [calibration, setCalibration] = useState<CalibrationState>({ pixelsPerUnit: null, unit: 'in' })
-  const [calibrateModalOpen, setCalibrateModalOpen] = useState(false)
-  const [calibrateMeasureId, setCalibrateMeasureId] = useState<string | null>(null)
-  const [calibrateValue, setCalibrateValue] = useState('')
-  const [calibrateUnit, setCalibrateUnit] = useState('in')
-  const measureStartRef = useRef<Point | null>(null)
-  const measurePreviewRef = useRef<Point | null>(null)
-  const [selectedMeasureId, setSelectedMeasureId] = useState<string | null>(null)
-
-  // Expanded measurement mode
-  const [measureMode, setMeasureMode] = useState<MeasureMode>('distance')
-  const [measureDropdownOpen, setMeasureDropdownOpen] = useState(false)
-  const measureDropdownRef = useRef<HTMLDivElement>(null)
-  const [polyMeasurements, setPolyMeasurements] = useState<Record<number, PolyMeasurement[]>>({})
-  const polyPointsRef = useRef<Point[]>([])
-  const polyPreviewRef = useRef<Point | null>(null)
-  const [countGroups, setCountGroups] = useState<Record<number, CountGroup[]>>({})
-  const [activeCountGroup, setActiveCountGroup] = useState<string | null>(null)
-  const [countGroupModalOpen, setCountGroupModalOpen] = useState(false)
-  const [countGroupLabel, setCountGroupLabel] = useState('')
-  const [countGroupColor, setCountGroupColor] = useState('#EF4444')
-  const [edgeSnappingEnabled, setEdgeSnappingEnabled] = useState(true)
-  const [precisionSnapMode, setPrecisionSnapMode] = useState(false)
-  const [isPrinting, setIsPrinting] = useState(false)
-
-  // Comment & review system
-  const [commentThreads, setCommentThreads] = useState<CommentThread[]>([])
-  const [stickyNotes, setStickyNotes] = useState<Record<number, StickyNote[]>>({})
-  const [activeStickyColor, setActiveStickyColor] = useState(STICKY_NOTE_COLORS[0])
-  const [chatBubbleTarget, setChatBubbleTarget] = useState<{ annotationId: string; position: { x: number; y: number } } | null>(null)
-  const [commentsPanelOpen, setCommentsPanelOpen] = useState(false)
-  const userProfileRef = useRef<UserProfile | null>(getUserProfile())
-
-  // Export & email
-  const [exportModalOpen, setExportModalOpen] = useState(false)
-  const [emailModalOpen, setEmailModalOpen] = useState(false)
-
-  // Sidebar
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [thumbnails, setThumbnails] = useState<Record<number, string>>({})
-  const [selectedThumbPage, setSelectedThumbPage] = useState<number | null>(null)
-  const loadingThumbs = useRef(new Set<number>())
-
-  // Refs
-  const pageRefsMap = useRef<Map<number, PageRefs>>(new Map())
-  const pageDimsMap = useRef<Map<number, { width: number; height: number }>>(new Map())
-  const renderedPagesRef = useRef<Set<number>>(new Set())
-  const activePageRef = useRef(1)
-  const maxCanvasWidthRef = useRef(0)
-  const observerRef = useRef<IntersectionObserver | null>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const innerRef = useRef<HTMLDivElement>(null)
-  const zoomRef = useRef(zoom)
-  const focusModeRef = useRef(focusMode)
-  focusModeRef.current = focusMode
-  const currentPageRef = useRef(currentPage)
-  currentPageRef.current = currentPage
-  const panRef = useRef<{ startX: number; startY: number; scrollLeft: number; scrollTop: number } | null>(null)
-  const spaceHeldRef = useRef(false)
-  const shapesDropdownRef = useRef<HTMLDivElement>(null)
-  const textDropdownRef = useRef<HTMLDivElement>(null)
-  const zoomDropdownRef = useRef<HTMLDivElement>(null)
-  const stampDropdownRef = useRef<HTMLDivElement>(null)
-  const contextMenuRef = useRef<HTMLDivElement>(null)
-  const hoverPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
-  const eraserCursorDivRef = useRef<HTMLDivElement>(null)
-  const tooltipDivRef = useRef<HTMLDivElement>(null)
-  const cropDrawRef = useRef<{ startPt: Point } | null>(null)
-  // Per-page render scale tracking for zoom-aware rendering
-  const pageRenderScaleRef = useRef<Map<number, number>>(new Map())
-  const findInputRef = useRef<HTMLInputElement>(null)
-  const isDrawingRef = useRef(false)
-  const currentPtsRef = useRef<Point[]>([])
-  const currentPressureRef = useRef<number[]>([])  // parallel array for pen pressure
-  const pendingImageRef = useRef<string | null>(null)  // data URL for image stamp placement
-  const imageStampCacheRef = useRef<Map<string, HTMLImageElement>>(new Map())  // cache loaded images
-  const pdfFileRef = useRef(pdfFile)
-  pdfFileRef.current = pdfFile
-  const fileHashRef = useRef<string | null>(null)
-  const pageRotationsRef = useRef(pageRotations)
-  pageRotationsRef.current = pageRotations
-  const [dimsReady, setDimsReady] = useState(0)
-  useEffect(() => { zoomRef.current = zoom }, [zoom])
-
-  // Persist right sidebar collapse state
-  useEffect(() => {
-    localStorage.setItem('pdfAnnotate.toolbarExpanded', String(toolbarExpanded))
-  }, [toolbarExpanded])
-
-  // Persist drawer pin state
-  useEffect(() => {
-    localStorage.setItem('pdfAnnotate.drawerPinned', String(drawerPinned))
-  }, [drawerPinned])
-
-  // Session restore
-  const pendingScrollRef = useRef<{ scrollTop: number; scrollLeft: number } | null>(null)
-  const restoringSessionRef = useRef(false)
-  const initialFitDoneRef = useRef(false)
-
-  // Text highlight
-  const textItemsCacheRef = useRef<Record<string, { text: string; x: number; y: number; width: number; height: number; page: number }[]>>({})
-  const textHighlightStartRef = useRef<Point | null>(null)
-  const textHighlightPreviewRectsRef = useRef<{ x: number; y: number; w: number; h: number }[]>([])
-  const selectTextStartRef = useRef<Point | null>(null)
-  const selectTextRectsRef = useRef<{ x: number; y: number; w: number; h: number }[]>([])
-  const [activeHighlight, setActiveHighlight] = useState<'highlighter' | 'textHighlight' | 'textStrikethrough'>('highlighter')
-
-  // History
-  const historyRef = useRef<PageAnnotations[]>([{}])
-  const historyIdxRef = useRef(0)
-  const [, forceRender] = useState(0)
-
-  const canUndo = historyIdxRef.current > 0
-  const canRedo = historyIdxRef.current < historyRef.current.length - 1
-
-  const isDrawTool = DRAW_TYPES.has(activeTool)
-  const isTextTool = TEXT_TYPES.has(activeTool)
-  const currentRotation = pageRotations[currentPage] || 0
+  }, [setToolPresets])
 
   // ── Coordinate conversion (page-aware) ──────────────
 
@@ -620,16 +444,6 @@ export default function PdfAnnotateTool() {
       if (hitTest(pt, pageAnns[i], th)) return pageAnns[i]
     }
     return undefined
-  }, [annotations])
-
-  /** Find which page an annotation lives on (for overlays). */
-  // O(1) annotation→page lookup (js-index-maps) — rebuilt only when annotations change
-  const annPageMap = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const [pageStr, pageAnns] of Object.entries(annotations)) {
-      for (const ann of pageAnns) map.set(ann.id, Number(pageStr))
-    }
-    return map
   }, [annotations])
 
   const findAnnotationPage = useCallback((id: string): number | null =>
@@ -1722,7 +1536,6 @@ export default function PdfAnnotateTool() {
 
   // Find & Highlight: search text items when committed query or cache changes
   // Uses a committed query (set on Enter) to avoid running search on every keystroke.
-  const [findCommittedQuery, setFindCommittedQuery] = useState('')
   const executeFind = useCallback(() => {
     const raw = findQuery.trim()
     setFindCommittedQuery(raw)
@@ -2485,12 +2298,6 @@ export default function PdfAnnotateTool() {
   }, [selectTextToolbar, redrawAll])
 
   // ── Pointer handlers ─────────────────────────────────
-
-  // Track active pointer IDs for multi-touch detection
-  const activeTouchIdsRef = useRef(new Set<number>())
-  // Track touch positions for pinch-to-zoom (pointer ID → {x, y})
-  const touchPositionsRef = useRef(new Map<number, { x: number; y: number }>())
-  const prevPinchDistRef = useRef<number | null>(null)
 
   const handlePointerDown = useCallback((e: React.PointerEvent, pageNum: number) => {
     if (e.button !== 0) return
@@ -4717,13 +4524,6 @@ export default function PdfAnnotateTool() {
     setExportModalOpen(false)
     setEmailModalOpen(false)
   }, [])
-
-  // ── Pre-render derived values (must be before any early return) ──
-
-  // Memoize total annotation count so badge doesn't recompute on every render
-  const totalAnnotationCount = useMemo(() =>
-    Object.values(annotations).reduce((s, a) => s + a.length, 0)
-  , [annotations])
 
   // ── Render ───────────────────────────────────────────
 
