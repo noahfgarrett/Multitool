@@ -2,6 +2,7 @@ import type { OrgNode, OrgChartState } from './types.ts'
 import {
   NODE_WIDTH, NODE_HEIGHT, H_SPACING, V_SPACING,
   AVATAR_SIZE, CONNECTOR_RADIUS,
+  SECTION_TITLE_HEIGHT, SECTION_GAP,
 } from './types.ts'
 import { downloadBlob, downloadText } from '@/utils/download.ts'
 import { loadImage } from '@/utils/imageProcessing.ts'
@@ -33,8 +34,8 @@ function calcBounds(flat: LayoutNode[]) {
 // ── Build layout tree ───────────────────────────────────────
 
 function buildLayout(nodes: OrgNode[]): LayoutNode[] {
-  const root = nodes.find(n => !n.reportsTo)
-  if (!root) return []
+  const roots = nodes.filter(n => !n.reportsTo)
+  if (roots.length === 0) return []
 
   const childMap = new Map<string, OrgNode[]>()
   for (const n of nodes) {
@@ -50,17 +51,33 @@ function buildLayout(nodes: OrgNode[]): LayoutNode[] {
     return { ...node, x: 0, y: 0, width: NODE_WIDTH, height: NODE_HEIGHT, children }
   }
 
-  const tree = buildSubtree(root)
-  layoutTopDown(tree, 0)
-  const flat = flattenTree(tree)
+  const allFlat: LayoutNode[] = []
+  let xOffset = 0
+
+  for (const root of roots) {
+    const tree = buildSubtree(root)
+    const treeWidth = layoutTopDown(tree, 0)
+    const yShift = root.sectionTitle ? SECTION_TITLE_HEIGHT : 0
+    shiftX(tree, xOffset)
+    if (yShift > 0) shiftY(tree, yShift)
+
+    const flat = flattenTree(tree)
+    allFlat.push(...flat)
+    xOffset += treeWidth + SECTION_GAP
+  }
 
   // Apply manual offsets from OrgNode
-  for (const ln of flat) {
+  for (const ln of allFlat) {
     ln.x += ln.offsetX
     ln.y += ln.offsetY
   }
 
-  return flat
+  return allFlat
+}
+
+function shiftY(node: LayoutNode, dy: number) {
+  node.y += dy
+  for (const child of node.children) shiftY(child, dy)
 }
 
 function layoutTopDown(node: LayoutNode, depth: number): number {
@@ -121,7 +138,12 @@ async function preloadImages(nodes: OrgNode[]): Promise<Map<string, HTMLImageEle
 async function renderToCanvas(nodes: OrgNode[]): Promise<HTMLCanvasElement> {
   const flat = buildLayout(nodes)
   const imageCache = await preloadImages(nodes)
-  const { minX, minY, maxX, maxY } = calcBounds(flat)
+  const roots = flat.filter(n => !n.reportsTo)
+
+  // Expand bounds to include section titles
+  const { minX, minY: rawMinY, maxX, maxY } = calcBounds(flat)
+  const hasTitles = roots.some(r => r.sectionTitle)
+  const minY = hasTitles ? rawMinY - SECTION_TITLE_HEIGHT : rawMinY
   const w = maxX - minX
   const h = maxY - minY
   const scale = 2
@@ -138,25 +160,54 @@ async function renderToCanvas(nodes: OrgNode[]): Promise<HTMLCanvasElement> {
   ctx.fillStyle = '#0a0a14'
   ctx.fillRect(minX, minY, w, h)
 
-  // Build tree for connector drawing
-  const root = nodes.find(n => !n.reportsTo)
-  if (root) {
-    const childMap = new Map<string, LayoutNode[]>()
-    for (const n of flat) {
-      if (n.reportsTo) {
-        const arr = childMap.get(n.reportsTo) ?? []
-        arr.push(n)
-        childMap.set(n.reportsTo, arr)
-      }
-    }
-    // Draw connectors
-    for (const parent of flat) {
-      const children = childMap.get(parent.id) ?? []
-      for (const child of children) {
-        drawConnector(ctx, parent, child)
-      }
+  // Draw connectors
+  const childMap = new Map<string, LayoutNode[]>()
+  for (const n of flat) {
+    if (n.reportsTo) {
+      const arr = childMap.get(n.reportsTo) ?? []
+      arr.push(n)
+      childMap.set(n.reportsTo, arr)
     }
   }
+  for (const parent of flat) {
+    const children = childMap.get(parent.id) ?? []
+    for (const child of children) {
+      drawConnector(ctx, parent, child)
+    }
+  }
+
+  // Draw section titles and dividers
+  roots.forEach((root, idx) => {
+    if (root.sectionTitle) {
+      ctx.save()
+      ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, sans-serif'
+      ctx.fillStyle = 'rgba(255,255,255,0.8)'
+      ctx.textAlign = 'center'
+      const titleX = root.x + root.width / 2
+      const titleY = root.y - SECTION_TITLE_HEIGHT / 2 + 4
+      ctx.fillText(root.sectionTitle, titleX, titleY)
+      ctx.restore()
+    }
+
+    if (idx < roots.length - 1) {
+      const sectionNodes = getSectionNodesFlat(root, flat)
+      let maxRight = root.x + root.width
+      for (const sn of sectionNodes) maxRight = Math.max(maxRight, sn.x + sn.width)
+      const nextRoot = roots[idx + 1]
+      const dividerX = (maxRight + nextRoot.x) / 2
+
+      ctx.save()
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)'
+      ctx.lineWidth = 1
+      ctx.setLineDash([6, 4])
+      ctx.beginPath()
+      ctx.moveTo(dividerX, minY)
+      ctx.lineTo(dividerX, maxY)
+      ctx.stroke()
+      ctx.setLineDash([])
+      ctx.restore()
+    }
+  })
 
   // Draw nodes
   for (const node of flat) {
@@ -167,6 +218,21 @@ async function renderToCanvas(nodes: OrgNode[]): Promise<HTMLCanvasElement> {
   }
 
   return canvas
+}
+
+function getSectionNodesFlat(root: LayoutNode, allFlat: LayoutNode[]): LayoutNode[] {
+  const ids = new Set<string>([root.id])
+  let found = true
+  while (found) {
+    found = false
+    for (const n of allFlat) {
+      if (!ids.has(n.id) && ids.has(n.reportsTo)) {
+        ids.add(n.id)
+        found = true
+      }
+    }
+  }
+  return allFlat.filter(n => ids.has(n.id))
 }
 
 // ── Drawing helpers ─────────────────────────────────────────
@@ -365,7 +431,10 @@ export async function copyPNGToClipboard(nodes: OrgNode[]): Promise<void> {
 
 export async function exportSVG(nodes: OrgNode[], filename = 'org-chart.svg'): Promise<void> {
   const flat = buildLayout(nodes)
-  const { minX, minY, maxX, maxY } = calcBounds(flat)
+  const roots = flat.filter(n => !n.reportsTo)
+  const { minX, minY: rawMinY, maxX, maxY } = calcBounds(flat)
+  const hasTitles = roots.some(r => r.sectionTitle)
+  const minY = hasTitles ? rawMinY - SECTION_TITLE_HEIGHT : rawMinY
   const w = maxX - minX
   const h = maxY - minY
 
@@ -404,6 +473,24 @@ export async function exportSVG(nodes: OrgNode[], filename = 'org-chart.svg'): P
       parts.push(`<path d="M${px},${py} L${px},${midY} L${cx},${midY} L${cx},${cy}" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/>`)
     }
   }
+
+  // Section titles and dividers
+  roots.forEach((root, idx) => {
+    if (root.sectionTitle) {
+      const titleX = root.x + root.width / 2
+      const titleY = root.y - SECTION_TITLE_HEIGHT / 2 + 4
+      parts.push(`<text x="${titleX}" y="${titleY}" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="18" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${escapeXml(root.sectionTitle)}</text>`)
+    }
+
+    if (idx < roots.length - 1) {
+      const sectionNodes = getSectionNodesFlat(root, flat)
+      let maxRight = root.x + root.width
+      for (const sn of sectionNodes) maxRight = Math.max(maxRight, sn.x + sn.width)
+      const nextRoot = roots[idx + 1]
+      const dividerX = (maxRight + nextRoot.x) / 2
+      parts.push(`<line x1="${dividerX}" y1="${minY}" x2="${dividerX}" y2="${maxY}" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="6,4"/>`)
+    }
+  })
 
   // Nodes
   for (const node of flat) {
@@ -466,6 +553,11 @@ export function importJSON(json: string): OrgChartState {
     if (!node || typeof node !== 'object' || !('id' in node) || !('name' in node)) {
       throw new Error('Invalid org chart JSON: nodes must have id and name fields')
     }
+    // Backward compatibility: default sectionTitle if missing
+    const n = node as Record<string, unknown>
+    if (!('sectionTitle' in n)) {
+      n.sectionTitle = ''
+    }
   }
 
   return obj as unknown as OrgChartState
@@ -476,11 +568,24 @@ export function importJSON(json: string): OrgChartState {
 export function exportCSV(nodes: OrgNode[], filename = 'org-chart.csv'): void {
   const nameMap = new Map(nodes.map(n => [n.id, n.name]))
 
-  const header = ['Name', 'Title', 'Department', 'Reports To', 'Email', 'Phone', 'Location']
+  // Build a map from node id to its root's sectionTitle
+  const sectionMap = new Map<string, string>()
+  for (const n of nodes) {
+    let current = n
+    while (current.reportsTo) {
+      const parent = nodes.find(p => p.id === current.reportsTo)
+      if (!parent) break
+      current = parent
+    }
+    sectionMap.set(n.id, current.sectionTitle || '')
+  }
+
+  const header = ['Name', 'Title', 'Department', 'Section', 'Reports To', 'Email', 'Phone', 'Location']
   const rows = nodes.map(n => [
     csvEscape(n.name),
     csvEscape(n.title),
     csvEscape(n.department),
+    csvEscape(sectionMap.get(n.id) ?? ''),
     csvEscape(n.reportsTo ? (nameMap.get(n.reportsTo) ?? '') : ''),
     csvEscape(n.email),
     csvEscape(n.phone),
