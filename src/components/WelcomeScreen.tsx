@@ -6,7 +6,7 @@ import {
   Combine, Scissors, PenTool, Stamp, ScanText,
   Maximize2, Eraser, Archive, ArrowRightLeft,
   ClipboardList, Network, LayoutDashboard, GitBranch,
-  QrCode, Table,
+  QrCode, Table, Lightbulb,
 } from 'lucide-react'
 
 const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
@@ -19,12 +19,31 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; className?: s
 
 export function WelcomeScreen() {
   const setActiveTool = useAppStore((s) => s.setActiveTool)
+  const setActiveView = useAppStore((s) => s.setActiveView)
 
   return (
     <div className="h-full overflow-auto p-8">
       <div className="max-w-4xl mx-auto">
         {/* Hero */}
-        <div className="text-center mb-12 pt-8">
+        <div className="text-center mb-12 pt-8 relative">
+          {/* "Got an Idea?" button — top right */}
+          <button
+            onClick={() => setActiveView('feedback', { preselectedType: 'enhancement' })}
+            className="
+              btn-idea-shimmer
+              absolute top-8 right-0
+              flex items-center gap-2
+              px-4 py-2 rounded-full
+              border border-[#F47B20]/40
+              text-[#F47B20] text-sm font-medium
+              hover:bg-[#F47B20]/15 hover:border-[#F47B20]/60
+              transition-colors duration-200
+            "
+          >
+            <Lightbulb size={16} />
+            Got an Idea?
+          </button>
+
           <h1 className="text-4xl font-display font-bold text-[#F47B20] mb-3">
             LotusWorks Toolkit
           </h1>
