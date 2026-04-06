@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAppStore } from '@/stores/appStore.ts'
 import { getUserProfile, hasUserProfile } from '@/utils/userProfile.ts'
 import { categories } from '@/tools/registry.ts'
@@ -67,10 +67,23 @@ function buildSubject(type: FeedbackType, tool: string, subject: string): string
 export default function FeedbackForm() {
   const addToast = useAppStore((s) => s.addToast)
   const setShowProfileModal = useAppStore((s) => s.setShowProfileModal)
+  const feedbackPayload = useAppStore((s) => s.feedbackPayload)
+  const clearFeedbackPayload = useAppStore((s) => s.clearFeedbackPayload)
   const profile = getUserProfile()
   const hasProfile = hasUserProfile()
 
-  const [type, setType] = useState<FeedbackType>(null)
+  // Initialize type from payload if present
+  const [type, setType] = useState<FeedbackType>(feedbackPayload?.preselectedType ?? null)
+
+  // Clear payload after reading it (one-shot)
+  useEffect(() => {
+    if (feedbackPayload) {
+      if (feedbackPayload.preselectedType) {
+        setType(feedbackPayload.preselectedType)
+      }
+      clearFeedbackPayload()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const [tool, setTool] = useState('')
   const [subject, setSubject] = useState('')
   const [priority, setPriority] = useState<Priority>('medium')
