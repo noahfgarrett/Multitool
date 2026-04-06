@@ -63,21 +63,23 @@ export const FileDropZone = memo(function FileDropZone({
         cursor-pointer transition-all duration-200
         ${isDragOver
           ? 'border-[#F47B20] bg-[#F47B20]/10'
-          : 'border-white/[0.12] bg-white/[0.02] hover:border-white/[0.2] hover:bg-white/[0.04]'
+          : 'hover:bg-[#F47B20]/[0.04]'
         }
         ${className}
       `}
+      style={isDragOver ? undefined : { borderColor: 'var(--border-default)', background: 'var(--bg-surface)' }}
     >
       <div
         className={`
           w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors
-          ${isDragOver ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'bg-white/[0.06] text-white/30'}
+          ${isDragOver ? 'bg-[#F47B20]/20 text-[#F47B20]' : ''}
         `}
+        style={isDragOver ? undefined : { background: 'var(--bg-elevated)', color: 'var(--text-disabled)' }}
       >
         <Upload size={22} />
       </div>
-      <p className="text-sm font-medium text-white mb-1">{label}</p>
-      <p className="text-xs text-white/40">{description}</p>
+      <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>{label}</p>
+      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{description}</p>
       <input
         ref={inputRef}
         type="file"

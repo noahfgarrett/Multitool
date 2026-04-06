@@ -32,13 +32,14 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
               <span className="text-red-400 text-lg">!</span>
             </div>
-            <h3 className="text-sm font-semibold text-white mb-1">Something went wrong</h3>
-            <p className="text-xs text-white/40 max-w-sm mb-4">
+            <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Something went wrong</h3>
+            <p className="text-xs max-w-sm mb-4" style={{ color: 'var(--text-muted)' }}>
               {this.state.error?.message ?? 'An unexpected error occurred'}
             </p>
             <button
               onClick={() => this.setState({ hasError: false, error: null })}
-              className="px-4 py-2 text-xs font-medium bg-white/[0.08] border border-white/[0.12] rounded-lg text-white hover:bg-white/[0.12] transition-colors"
+              className="px-4 py-2 text-xs font-medium rounded-lg hover:brightness-110 transition-colors"
+              style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
             >
               Try Again
             </button>

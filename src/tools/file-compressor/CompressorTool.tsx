@@ -148,7 +148,7 @@ export default function CompressorTool() {
     <div className="h-full flex flex-col gap-4">
       {/* Toolbar */}
       <div className="flex items-center gap-3 flex-shrink-0">
-        <span className="text-sm text-white/60">
+        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
           {files.length} file{files.length !== 1 ? 's' : ''}
         </span>
         <div className="flex-1" />
@@ -220,8 +220,8 @@ export default function CompressorTool() {
       {/* Summary */}
       {allDone && (
         <div className="p-3 rounded-lg bg-[#F47B20]/5 border border-[#F47B20]/20 flex items-center gap-4">
-          <div className="text-xs text-white/60">
-            <span className="text-white">{formatFileSize(totalOriginal)}</span> → <span className="text-white">{formatFileSize(totalCompressed)}</span>
+          <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+            <span style={{ color: 'var(--text-primary)' }}>{formatFileSize(totalOriginal)}</span> → <span style={{ color: 'var(--text-primary)' }}>{formatFileSize(totalCompressed)}</span>
           </div>
           <span className="text-xs text-emerald-400 font-medium">{savings}% smaller</span>
         </div>
@@ -232,18 +232,19 @@ export default function CompressorTool() {
         {files.map((entry) => (
           <div
             key={entry.id}
-            className="flex items-center gap-3 p-3 rounded-lg border border-white/[0.06] bg-white/[0.03]"
+            className="flex items-center gap-3 p-3 rounded-lg"
+            style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}
           >
             {entry.fileType === 'pdf' ? (
               <FileText size={16} className="text-red-400/60 flex-shrink-0" />
             ) : entry.fileType === 'svg' ? (
               <FileCode size={16} className="text-blue-400/60 flex-shrink-0" />
             ) : (
-              <ImageIcon size={16} className="text-white/30 flex-shrink-0" />
+              <ImageIcon size={16} className="flex-shrink-0" style={{ color: 'var(--text-disabled)' }} />
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-white truncate">{entry.file.name}</p>
-              <p className="text-xs text-white/40">
+              <p className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{entry.file.name}</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 {formatFileSize(entry.originalSize)}
                 {entry.compressedSize !== undefined && (
                   <> → <span className="text-emerald-400">{formatFileSize(entry.compressedSize)}</span></>
@@ -264,7 +265,8 @@ export default function CompressorTool() {
             <button
               onClick={() => removeFile(entry.id)}
               aria-label={`Remove ${entry.file.name}`}
-              className="p-1.5 rounded-md text-white/20 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+              className="p-1.5 rounded-md hover:text-red-400 hover:bg-red-400/10 transition-colors"
+              style={{ color: 'var(--text-disabled)' }}
             >
               <Trash2 size={14} />
             </button>

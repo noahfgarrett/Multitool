@@ -13,15 +13,16 @@ export const Slider = memo(function Slider({
   suffix = '',
   value,
   className = '',
+  style,
   ...props
 }: SliderProps) {
   return (
     <div className={`space-y-1.5 ${className}`}>
       {(label || showValue) && (
         <div className="flex items-center justify-between">
-          {label && <span className="text-xs font-medium text-white/70">{label}</span>}
+          {label && <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{label}</span>}
           {showValue && (
-            <span className="text-xs text-white/40">
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
               {value}{suffix}
             </span>
           )}
@@ -31,7 +32,7 @@ export const Slider = memo(function Slider({
         type="range"
         value={value}
         className="
-          w-full h-1.5 bg-white/[0.08] rounded-full appearance-none cursor-pointer
+          w-full h-1.5 rounded-full appearance-none cursor-pointer
           [&::-webkit-slider-thumb]:appearance-none
           [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5
           [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#F47B20]
@@ -40,6 +41,7 @@ export const Slider = memo(function Slider({
           [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:duration-150
           [&::-webkit-slider-thumb]:hover:scale-110
         "
+        style={{ background: 'var(--bg-elevated)', ...style }}
         {...props}
       />
     </div>

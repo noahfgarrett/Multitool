@@ -40,13 +40,13 @@ export const ColorPicker = memo(function ColorPicker({
   return (
     <div className="space-y-2">
       {label && (
-        <span className="text-xs font-medium text-white/70">{label}</span>
+        <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{label}</span>
       )}
       <div className="flex items-center gap-2">
         {/* Current color + native picker */}
         <label
-          className="w-8 h-8 rounded-lg border border-white/[0.12] cursor-pointer flex-shrink-0 overflow-hidden"
-          style={{ backgroundColor: value }}
+          className="w-8 h-8 rounded-lg cursor-pointer flex-shrink-0 overflow-hidden"
+          style={{ border: '1px solid var(--border-default)', backgroundColor: value }}
           title="Custom color"
         >
           <input
@@ -64,10 +64,10 @@ export const ColorPicker = memo(function ColorPicker({
               key={color}
               onClick={() => onChange(color)}
               className={`
-                w-5 h-5 rounded-md border transition-all duration-150
-                ${value === color ? 'border-white/50 scale-110' : 'border-white/[0.08] hover:border-white/20'}
+                w-5 h-5 rounded-md transition-all duration-150
+                ${value === color ? 'scale-110' : ''}
               `}
-              style={{ backgroundColor: color }}
+              style={{ backgroundColor: color, border: value === color ? '1px solid var(--text-muted)' : '1px solid var(--border-subtle)' }}
               title={color}
             />
           ))}
@@ -77,7 +77,8 @@ export const ColorPicker = memo(function ColorPicker({
         {hasEyeDropper && (
           <button
             onClick={pickEyeDropper}
-            className="flex items-center justify-center w-5 h-5 rounded text-white/30 hover:text-white/70 transition-colors"
+            className="flex items-center justify-center w-5 h-5 rounded transition-colors"
+            style={{ color: 'var(--text-disabled)' }}
             title="Pick color from screen"
           >
             <Pipette size={13} />
@@ -87,7 +88,8 @@ export const ColorPicker = memo(function ColorPicker({
         {/* Hex input toggle */}
         <button
           onClick={() => setShowHex(!showHex)}
-          className="text-[10px] text-white/30 hover:text-white/60 ml-auto"
+          className="text-[10px] ml-auto transition-colors"
+          style={{ color: 'var(--text-disabled)' }}
         >
           {showHex ? value : '#'}
         </button>
@@ -101,7 +103,8 @@ export const ColorPicker = memo(function ColorPicker({
             const v = e.target.value
             if (HEX_PATTERN.test(v)) onChange(v)
           }}
-          className="w-full px-2 py-1 text-xs bg-dark-surface border border-white/[0.1] rounded-md text-white focus:outline-none focus:border-[#F47B20]/40"
+          className="w-full px-2 py-1 text-xs rounded-md focus:outline-none focus:border-[#F47B20]/40"
+          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
           placeholder="#000000"
         />
       )}

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, type CSSProperties } from 'react'
 import { FileDropZone } from '@/components/common/FileDropZone.tsx'
 import { Button } from '@/components/common/Button.tsx'
 import { Slider } from '@/components/common/Slider.tsx'
@@ -26,14 +26,14 @@ const ACCEPT = [
 
 // ── Category → icon mapping ─────────────────────────────────────
 
-function CategoryIcon({ category, className }: { category: FileCategory | null; className?: string }) {
+function CategoryIcon({ category, className, style }: { category: FileCategory | null; className?: string; style?: CSSProperties }) {
   switch (category) {
-    case 'image':       return <ImageIcon size={14} className={className} />
+    case 'image':       return <ImageIcon size={14} className={className} style={style} />
     case 'pdf':         return <FileText size={14} className={`${className} text-red-400/60`} />
     case 'spreadsheet': return <Table2 size={14} className={`${className} text-emerald-400/60`} />
-    case 'text':        return <FileType size={14} className={className} />
+    case 'text':        return <FileType size={14} className={className} style={style} />
     case 'document':    return <FileText size={14} className={`${className} text-blue-400/60`} />
-    default:            return <FileIcon size={14} className={className} />
+    default:            return <FileIcon size={14} className={className} style={style} />
   }
 }
 
@@ -235,7 +235,7 @@ export default function ConverterTool() {
     <div className="h-full flex flex-col gap-4">
       {/* Toolbar */}
       <div className="flex items-center gap-3 flex-shrink-0">
-        <span className="text-xs text-white/50">
+        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
           {entries.length} file{entries.length !== 1 ? 's' : ''}
           {doneCount > 0 && <span className="text-[#F47B20]"> · {doneCount} converted</span>}
         </span>
@@ -275,17 +275,17 @@ export default function ConverterTool() {
       {bulkProgress && (
         <div className="flex-shrink-0 space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-white/70">
+            <span style={{ color: 'var(--text-secondary)' }}>
               Converting {bulkProgress.current + 1} of {bulkProgress.total} files...
             </span>
             {(() => {
               const elapsed = Math.floor((Date.now() - bulkProgress.startTime) / 1000)
               return elapsed >= 3 ? (
-                <span className="text-white/30">{elapsed}s elapsed</span>
+                <span style={{ color: 'var(--text-disabled)' }}>{elapsed}s elapsed</span>
               ) : null
             })()}
           </div>
-          <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
+          <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--bg-elevated)' }}>
             <div
               className="h-full rounded-full bg-[#F47B20] transition-all duration-300 ease-out"
               style={{ width: `${((bulkProgress.current + 1) / bulkProgress.total) * 100}%` }}
@@ -304,17 +304,18 @@ export default function ConverterTool() {
                 ? 'border-[#F47B20]/20 bg-[#F47B20]/[0.04]'
                 : entry.status === 'error'
                   ? 'border-red-500/20 bg-red-500/[0.04]'
-                  : 'border-white/[0.06] bg-white/[0.03]'
+                  : ''
             }`}
+            style={entry.status !== 'done' && entry.status !== 'error' ? { borderColor: 'var(--border-subtle)', background: 'var(--bg-surface)' } : undefined}
           >
             {/* File header */}
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-white/[0.06] flex items-center justify-center flex-shrink-0">
-                <CategoryIcon category={entry.category} className="text-white/40" />
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--bg-elevated)' }}>
+                <CategoryIcon category={entry.category} className="" style={{ color: 'var(--text-muted)' }} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-white truncate">{entry.file.name}</p>
-                <p className="text-[10px] text-white/30">
+                <p className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>{entry.file.name}</p>
+                <p className="text-[10px]" style={{ color: 'var(--text-disabled)' }}>
                   {entry.typeLabel} · {formatFileSize(entry.file.size)}
                 </p>
               </div>
@@ -337,7 +338,8 @@ export default function ConverterTool() {
 
               <button
                 onClick={() => removeEntry(entry.id)}
-                className="p-1 text-white/20 hover:text-red-400 transition-colors flex-shrink-0"
+                className="p-1 hover:text-red-400 transition-colors flex-shrink-0"
+                style={{ color: 'var(--text-disabled)' }}
                 aria-label={`Remove ${entry.file.name}`}
               >
                 <X size={14} />
@@ -348,7 +350,7 @@ export default function ConverterTool() {
             {entry.formats.length > 0 ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] text-white/30 uppercase tracking-wider mr-1">Convert to:</span>
+                  <span className="text-[10px] uppercase tracking-wider mr-1" style={{ color: 'var(--text-disabled)' }}>Convert to:</span>
                   {entry.formats.map((fmt) => {
                     const isSelected = entry.selectedFormat?.ext === fmt.ext
                     const isDone = entry.status === 'done' && isSelected
@@ -369,9 +371,10 @@ export default function ConverterTool() {
                             ? 'bg-[#F47B20] text-white'
                             : isSelected
                               ? 'bg-[#F47B20]/20 text-[#F47B20] border border-[#F47B20]/30'
-                              : 'bg-white/[0.06] text-white/50 hover:text-white hover:bg-white/[0.1] border border-transparent'
+                              : 'border border-transparent hover:bg-[#F47B20]/[0.06]'
                           }
                         `}
+                        style={!isDone && !isSelected ? { background: 'var(--bg-elevated)', color: 'var(--text-muted)' } : undefined}
                       >
                         {isDone && <Check size={10} className="inline mr-1 -mt-0.5" />}
                         {fmt.label}
@@ -392,7 +395,7 @@ export default function ConverterTool() {
                 )}
               </div>
             ) : (
-              <p className="text-[10px] text-white/25">
+              <p className="text-[10px]" style={{ color: 'var(--text-disabled)' }}>
                 Unsupported file type — no conversions available
               </p>
             )}
@@ -459,7 +462,7 @@ function ConversionOptionsPanel({
 
       {showPdfScale && (
         <div className="space-y-1">
-          <span className="text-[10px] font-medium text-white/50">Render Scale</span>
+          <span className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>Render Scale</span>
           <div className="flex gap-1">
             {PDF_SCALES.map((s) => {
               const isActive = (options.pdfScale ?? 2.0) === s.value
@@ -470,8 +473,9 @@ function ConversionOptionsPanel({
                   className={`px-2 py-1 text-[10px] rounded transition-colors ${
                     isActive
                       ? 'bg-[#F47B20]/20 text-[#F47B20] font-medium'
-                      : 'bg-white/[0.06] text-white/40 hover:text-white/60'
+                      : 'hover:brightness-110'
                   }`}
+                  style={!isActive ? { background: 'var(--bg-elevated)', color: 'var(--text-muted)' } : undefined}
                 >
                   {s.label}
                 </button>

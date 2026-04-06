@@ -21,13 +21,13 @@ export const ProgressBar = memo(function ProgressBar({
     <div className={`space-y-1.5 ${className}`}>
       {(label || showPercent) && (
         <div className="flex items-center justify-between">
-          {label && <span className="text-xs text-white/60">{label}</span>}
+          {label && <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{label}</span>}
           {showPercent && (
-            <span className="text-xs text-white/40">{Math.round(percent)}%</span>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{Math.round(percent)}%</span>
           )}
         </div>
       )}
-      <div className="h-1.5 bg-white/[0.08] rounded-full overflow-hidden">
+      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg-elevated)' }}>
         <div
           className="h-full bg-[#F47B20] rounded-full transition-all duration-300 ease-out"
           style={{ width: `${percent}%` }}

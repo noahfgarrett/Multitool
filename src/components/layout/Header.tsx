@@ -43,7 +43,7 @@ export function Header() {
         <>
           <button
             onClick={() => setHelpOpen(true)}
-            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/[0.06] transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#F47B20]/[0.06] transition-colors"
             style={{ color: 'var(--text-disabled)' }}
             title="Help & instructions"
             aria-label="Help & instructions"
@@ -62,7 +62,7 @@ export function Header() {
       {profile && (
         <button
           onClick={() => openSettings()}
-          className="flex items-center gap-2 ml-auto pl-3 rounded-full hover:bg-white/[0.06] transition-colors py-1 pr-3"
+          className="flex items-center gap-2 ml-auto pl-3 rounded-full hover:bg-[#F47B20]/[0.06] transition-colors py-1 pr-3"
           title="Edit profile"
         >
           <span className="text-xs font-medium truncate max-w-[120px]" style={{ color: 'var(--text-secondary)' }}>
