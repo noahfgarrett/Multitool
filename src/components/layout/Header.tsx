@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useAppStore } from '@/stores/appStore.ts'
 import { tools } from '@/tools/registry.ts'
 import { toolHelp } from '@/data/toolHelp.ts'
+import { getUserProfile } from '@/utils/userProfile.ts'
 import { HelpModal } from '@/components/common/HelpModal.tsx'
-import { HelpCircle } from 'lucide-react'
+import { HelpCircle, User } from 'lucide-react'
 
 export function Header() {
   const activeTool = useAppStore((s) => s.activeTool)
@@ -11,6 +12,8 @@ export function Header() {
   const toolDef = activeTool ? tools.find((t) => t.id === activeTool) : null
   const [helpOpen, setHelpOpen] = useState(false)
 
+  const openSettings = useAppStore((s) => s.openSettings)
+  const profile = getUserProfile()
   const hasHelp = toolDef && toolHelp[toolDef.id]
 
   return (
@@ -53,6 +56,28 @@ export function Header() {
             onClose={() => setHelpOpen(false)}
           />
         </>
+      )}
+
+      {/* Profile shortcut — top right */}
+      {profile && (
+        <button
+          onClick={() => openSettings()}
+          className="flex items-center gap-2 ml-auto pl-3 rounded-full hover:bg-white/[0.06] transition-colors py-1 pr-3"
+          title="Edit profile"
+        >
+          <span className="text-xs font-medium truncate max-w-[120px]" style={{ color: 'var(--text-secondary)' }}>
+            {profile.name}
+          </span>
+          <div className="w-7 h-7 rounded-full border border-[#F47B20]/30 flex items-center justify-center overflow-hidden flex-shrink-0" style={{ background: 'color-mix(in srgb, var(--bg-elevated) 80%, transparent)' }}>
+            {profile.photo ? (
+              <img src={profile.photo} alt="" className="w-full h-full object-cover" />
+            ) : profile.initials ? (
+              <span className="text-[10px] font-bold text-[#F47B20]">{profile.initials}</span>
+            ) : (
+              <User size={14} className="text-[#F47B20]/50" />
+            )}
+          </div>
+        </button>
       )}
     </header>
   )

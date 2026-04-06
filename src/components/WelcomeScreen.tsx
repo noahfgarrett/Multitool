@@ -1,12 +1,13 @@
 import { useAppStore } from '@/stores/appStore.ts'
 import { categories } from '@/tools/registry.ts'
+import { getUserProfile } from '@/utils/userProfile.ts'
 import type { ToolId } from '@/types/index.ts'
 import {
   FileText, Image, FolderCog, Sparkles, Wrench,
   Combine, Scissors, PenTool, Stamp, ScanText,
   Maximize2, Eraser, Archive, ArrowRightLeft,
   ClipboardList, Network, LayoutDashboard, GitBranch,
-  QrCode, Table, Lightbulb,
+  QrCode, Table, Lightbulb, User,
 } from 'lucide-react'
 
 const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
@@ -20,6 +21,8 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; className?: s
 export function WelcomeScreen() {
   const setActiveTool = useAppStore((s) => s.setActiveTool)
   const setActiveView = useAppStore((s) => s.setActiveView)
+  const profile = getUserProfile()
+  const firstName = profile?.name?.split(/\s+/)[0] || ''
 
   return (
     <div className="h-full overflow-auto p-8">
@@ -44,11 +47,32 @@ export function WelcomeScreen() {
             Got an Idea?
           </button>
 
-          <h1 className="text-4xl font-display font-bold text-[#F47B20] mb-3">
-            LotusWorks Toolkit
-          </h1>
+          {/* Profile avatar */}
+          {profile && (
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 rounded-full border-2 border-[#F47B20]/30 flex items-center justify-center overflow-hidden" style={{ background: 'color-mix(in srgb, var(--bg-elevated) 80%, transparent)' }}>
+                {profile.photo ? (
+                  <img src={profile.photo} alt="" className="w-full h-full object-cover" />
+                ) : profile.initials ? (
+                  <span className="text-xl font-bold text-[#F47B20]">{profile.initials}</span>
+                ) : (
+                  <User size={28} className="text-[#F47B20]/50" />
+                )}
+              </div>
+            </div>
+          )}
+
+          {firstName ? (
+            <h1 className="text-4xl font-display font-bold mb-3" style={{ color: 'var(--text-primary)' }}>
+              Welcome back, <span className="text-[#F47B20]">{firstName}</span>
+            </h1>
+          ) : (
+            <h1 className="text-4xl font-display font-bold text-[#F47B20] mb-3">
+              LotusWorks Toolkit
+            </h1>
+          )}
           <p className="text-lg max-w-lg mx-auto" style={{ color: 'var(--text-muted)' }}>
-            Your all-in-one productivity suite. Select a tool to get started.
+            {firstName ? 'Select a tool to get started.' : 'Your all-in-one productivity suite. Select a tool to get started.'}
           </p>
         </div>
 
