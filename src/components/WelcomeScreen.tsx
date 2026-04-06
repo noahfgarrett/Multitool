@@ -104,22 +104,22 @@ export function WelcomeScreen() {
                         "
                         style={{
                           borderColor: 'var(--border-subtle)',
-                          backgroundColor: 'var(--bg-surface)',
+                          backgroundColor: 'color-mix(in srgb, var(--bg-surface) 40%, transparent)',
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.borderColor = 'rgba(244,123,32,0.3)'
-                          e.currentTarget.style.backgroundColor = 'rgba(244,123,32,0.06)'
+                          e.currentTarget.style.backgroundColor = 'rgba(244,123,32,0.08)'
                           const icon = e.currentTarget.querySelector('[data-icon]') as HTMLElement
                           if (icon) { icon.style.color = '#F47B20'; icon.style.backgroundColor = 'rgba(244,123,32,0.1)' }
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.borderColor = 'var(--border-subtle)'
-                          e.currentTarget.style.backgroundColor = 'var(--bg-surface)'
+                          e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--bg-surface) 40%, transparent)'
                           const icon = e.currentTarget.querySelector('[data-icon]') as HTMLElement
-                          if (icon) { icon.style.color = 'var(--text-disabled)'; icon.style.backgroundColor = 'var(--bg-elevated)' }
+                          if (icon) { icon.style.color = 'var(--text-disabled)'; icon.style.backgroundColor = 'color-mix(in srgb, var(--bg-elevated) 50%, transparent)' }
                         }}
                       >
-                        <div data-icon className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors" style={{ background: 'var(--bg-elevated)', color: 'var(--text-disabled)' }}>
+                        <div data-icon className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors" style={{ background: 'color-mix(in srgb, var(--bg-elevated) 50%, transparent)', color: 'var(--text-disabled)' }}>
                           {ToolIcon && <ToolIcon size={18} />}
                         </div>
                         <div>
