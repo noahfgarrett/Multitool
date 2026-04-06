@@ -71,98 +71,6 @@
     --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
   }
 
-  /* ─── Theme: Night Sky (default) ───────────────────────────── */
-  body.theme-night-sky {
-    --bg-primary: #00171F;
-    --bg-secondary: #003459;
-    --bg-elevated: #12121A;
-    --bg-surface: #1A1A24;
-    --text-primary: #FFFFFF;
-    --text-secondary: rgba(255, 255, 255, 0.75);
-    --text-muted: rgba(255, 255, 255, 0.50);
-    --text-disabled: rgba(255, 255, 255, 0.30);
-    --border-subtle: rgba(255, 255, 255, 0.06);
-    --border-default: rgba(255, 255, 255, 0.10);
-    --border-emphasis: rgba(255, 255, 255, 0.15);
-    --sidebar-bg: rgba(10, 10, 15, 0.85);
-    --scrollbar-thumb: rgba(255, 255, 255, 0.15);
-    --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
-  }
-
-  /* ─── Theme: Blueprint ─────────────────────────────────────── */
-  body.theme-blueprint {
-    --bg-primary: #0A1628;
-    --bg-secondary: #0F2240;
-    --bg-elevated: #0E1D38;
-    --bg-surface: #132848;
-    --dark-base: #0A1628;
-    --dark-elevated: #0E1D38;
-    --dark-surface: #132848;
-    --dark-hover: #1A3358;
-    --dark-active: #224068;
-    --text-primary: #C8D6E5;
-    --text-secondary: rgba(200, 214, 229, 0.75);
-    --text-muted: rgba(200, 214, 229, 0.50);
-    --text-disabled: rgba(200, 214, 229, 0.30);
-    --border-subtle: rgba(100, 150, 220, 0.10);
-    --border-default: rgba(100, 150, 220, 0.15);
-    --border-emphasis: rgba(100, 150, 220, 0.22);
-    --sidebar-bg: rgba(8, 18, 35, 0.92);
-    --scrollbar-thumb: rgba(100, 150, 220, 0.20);
-    --scrollbar-thumb-hover: rgba(100, 150, 220, 0.35);
-  }
-
-  /* ─── Theme: Clean Dark ────────────────────────────────────── */
-  body.theme-clean-dark {
-    --bg-primary: #111111;
-    --bg-secondary: #1A1A1A;
-    --bg-elevated: #1E1E1E;
-    --bg-surface: #252525;
-    --dark-base: #111111;
-    --dark-elevated: #1E1E1E;
-    --dark-surface: #252525;
-    --dark-hover: #2E2E2E;
-    --dark-active: #383838;
-    --text-primary: #E0E0E0;
-    --text-secondary: rgba(224, 224, 224, 0.75);
-    --text-muted: rgba(224, 224, 224, 0.50);
-    --text-disabled: rgba(224, 224, 224, 0.30);
-    --border-subtle: rgba(255, 255, 255, 0.06);
-    --border-default: rgba(255, 255, 255, 0.10);
-    --border-emphasis: rgba(255, 255, 255, 0.15);
-    --sidebar-bg: rgba(17, 17, 17, 0.95);
-    --scrollbar-thumb: rgba(255, 255, 255, 0.15);
-    --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
-  }
-
-  /* ─── Theme: Light ─────────────────────────────────────────── */
-  body.theme-light {
-    --bg-primary: #F5F5F5;
-    --bg-secondary: #EBEBEB;
-    --bg-elevated: #FFFFFF;
-    --bg-surface: #FAFAFA;
-    --dark-base: #F5F5F5;
-    --dark-elevated: #FFFFFF;
-    --dark-surface: #FAFAFA;
-    --dark-hover: #F0F0F0;
-    --dark-active: #E5E5E5;
-    --text-primary: #1A1A1A;
-    --text-secondary: rgba(26, 26, 26, 0.75);
-    --text-muted: rgba(26, 26, 26, 0.50);
-    --text-disabled: rgba(26, 26, 26, 0.30);
-    --border-subtle: rgba(0, 0, 0, 0.06);
-    --border-default: rgba(0, 0, 0, 0.10);
-    --border-emphasis: rgba(0, 0, 0, 0.15);
-    --sidebar-bg: rgba(255, 255, 255, 0.95);
-    --sidebar-border: rgba(0, 0, 0, 0.08);
-    --scrollbar-thumb: rgba(0, 0, 0, 0.15);
-    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
-    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.10);
-    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
-    --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.15);
-  }
-
   html, body, #root {
     height: 100%;
     margin: 0;
@@ -178,135 +86,6 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     transition: background 0.3s ease, color 0.3s ease;
-  }
-
-  /* Twinkling stars background — only for night-sky theme */
-  body.theme-night-sky::before,
-  body.theme-night-sky::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  body.theme-night-sky::before {
-    /* Layer 1: small faint stars */
-    box-shadow:
-      82vw 12vh 0px 0px rgba(255,255,255,0.58),
-      15vw 28vh 0px 0px rgba(255,255,255,0.49),
-      47vw 5vh 0px 0px rgba(255,255,255,0.62),
-      91vw 38vh 0px 0px rgba(255,255,255,0.43),
-      33vw 72vh 0px 0px rgba(255,255,255,0.23),
-      68vw 85vh 0px 0px rgba(255,255,255,0.15),
-      8vw 55vh 0px 0px rgba(255,255,255,0.33),
-      54vw 42vh 0px 0px rgba(255,255,255,0.40),
-      76vw 68vh 0px 0px rgba(255,255,255,0.25),
-      23vw 91vh 0px 0px rgba(255,255,255,0.11),
-      41vw 18vh 0px 0px rgba(255,255,255,0.54),
-      95vw 52vh 0px 0px rgba(255,255,255,0.34),
-      12vw 78vh 0px 0px rgba(255,255,255,0.19),
-      59vw 31vh 0px 0px rgba(255,255,255,0.47),
-      87vw 91vh 0px 0px rgba(255,255,255,0.11),
-      3vw 15vh 0px 0px rgba(255,255,255,0.56),
-      72vw 48vh 0px 0px rgba(255,255,255,0.37),
-      38vw 62vh 0px 0px rgba(255,255,255,0.28),
-      29vw 8vh 0px 0px rgba(255,255,255,0.60),
-      64vw 95vh 0px 0px rgba(255,255,255,0.09),
-      50vw 22vh 0px 0px rgba(255,255,255,0.52),
-      18vw 45vh 0px 0px rgba(255,255,255,0.38),
-      83vw 75vh 0px 0px rgba(255,255,255,0.21),
-      45vw 88vh 0px 0px rgba(255,255,255,0.13),
-      7vw 35vh 0px 0px rgba(255,255,255,0.44),
-      92vw 18vh 0px 0px rgba(255,255,255,0.54),
-      26vw 55vh 0px 0px rgba(255,255,255,0.33),
-      61vw 72vh 0px 0px rgba(255,255,255,0.23),
-      35vw 3vh 0px 0px rgba(255,255,255,0.63),
-      78vw 28vh 0px 0px rgba(255,255,255,0.49);
-    width: 1px;
-    height: 1px;
-    border-radius: 50%;
-    animation: twinkle1 4s ease-in-out infinite;
-  }
-
-  body.theme-night-sky::after {
-    /* Layer 2: offset twinkle timing for natural feel */
-    box-shadow:
-      25vw 17vh 0px 0.5px rgba(255,255,255,0.55),
-      71vw 63vh 0px 0px rgba(255,255,255,0.28),
-      43vw 82vh 0px 0.5px rgba(255,255,255,0.17),
-      88vw 7vh 0px 0px rgba(255,255,255,0.61),
-      56vw 55vh 0px 0.5px rgba(255,255,255,0.33),
-      14vw 38vh 0px 0px rgba(255,255,255,0.43),
-      67vw 22vh 0px 0.5px rgba(255,255,255,0.52),
-      31vw 47vh 0px 0px rgba(255,255,255,0.37),
-      79vw 85vh 0px 0.5px rgba(255,255,255,0.15),
-      9vw 68vh 0px 0px rgba(255,255,255,0.25),
-      52vw 12vh 0px 0.5px rgba(255,255,255,0.58),
-      96vw 42vh 0px 0px rgba(255,255,255,0.40),
-      20vw 95vh 0px 0.5px rgba(255,255,255,0.09),
-      74vw 32vh 0px 0px rgba(255,255,255,0.46),
-      40vw 58vh 0px 0.5px rgba(255,255,255,0.31),
-      5vw 82vh 0px 0px rgba(255,255,255,0.17),
-      63vw 3vh 0px 0.5px rgba(255,255,255,0.63),
-      85vw 48vh 0px 0px rgba(255,255,255,0.37),
-      48vw 75vh 0px 0.5px rgba(255,255,255,0.21),
-      16vw 25vh 0px 0px rgba(255,255,255,0.50);
-    width: 1px;
-    height: 1px;
-    border-radius: 50%;
-    animation: twinkle2 5s ease-in-out infinite;
-  }
-
-  @keyframes twinkle1 {
-    0%, 100% { opacity: 0.4; }
-    50% { opacity: 1; }
-  }
-
-  @keyframes twinkle2 {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
-
-  /* Blueprint grid overlay */
-  body.theme-blueprint::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
-    background:
-      repeating-linear-gradient(
-        0deg,
-        rgba(100, 150, 220, 0.04) 0px,
-        rgba(100, 150, 220, 0.04) 1px,
-        transparent 1px,
-        transparent 40px
-      ),
-      repeating-linear-gradient(
-        90deg,
-        rgba(100, 150, 220, 0.04) 0px,
-        rgba(100, 150, 220, 0.04) 1px,
-        transparent 1px,
-        transparent 40px
-      );
-  }
-
-  /* Shooting stars — faint streaks across the top */
-  .shooting-star {
-    position: absolute;
-    width: var(--length, 150px);
-    height: 1px;
-    background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.35) 100%);
-    transform-origin: right center;
-    animation: shoot var(--duration, 400ms) linear forwards;
-  }
-
-  @keyframes shoot {
-    0%   { transform: rotate(var(--angle, 10deg)) translateX(0); opacity: 0; }
-    10%  { opacity: 0.6; }
-    50%  { opacity: 0.4; }
-    100% { transform: rotate(var(--angle, 10deg)) translateX(var(--travel, 500px)); opacity: 0; }
   }
 
   /* Scrollbar styling */
@@ -328,6 +107,12 @@
     background: var(--scrollbar-thumb-hover);
   }
 
+  /* Selection */
+  ::selection {
+    background: rgba(244, 123, 32, 0.3);
+    color: white;
+  }
+
   /* Release notes markdown */
   .release-notes ul {
     list-style-type: disc;
@@ -346,53 +131,276 @@
   .release-notes a {
     color: #F47B20;
   }
+}
 
-  /* Selection */
-  ::selection {
-    background: rgba(244, 123, 32, 0.3);
-    color: white;
-  }
+/* ============================================================
+   Theme Definitions (outside @layer to prevent Tailwind purging)
+   ============================================================ */
 
-  /* Light theme: override text references from white/* to dark */
-  body.theme-light .glass-elevated {
-    box-shadow:
-      var(--shadow-lg),
-      inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  }
+/* ─── Theme: Night Sky (default) ───────────────────────────── */
+body.theme-night-sky {
+  --bg-primary: #00171F;
+  --bg-secondary: #003459;
+  --bg-elevated: #12121A;
+  --bg-surface: #1A1A24;
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255, 255, 255, 0.75);
+  --text-muted: rgba(255, 255, 255, 0.50);
+  --text-disabled: rgba(255, 255, 255, 0.30);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-emphasis: rgba(255, 255, 255, 0.15);
+  --sidebar-bg: rgba(10, 10, 15, 0.85);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
+}
 
-  /* ── Shimmer animation for "Got an Idea?" button ─── */
+/* ─── Theme: Blueprint ─────────────────────────────────────── */
+body.theme-blueprint {
+  --bg-primary: #0A1628;
+  --bg-secondary: #0F2240;
+  --bg-elevated: #0E1D38;
+  --bg-surface: #132848;
+  --dark-base: #0A1628;
+  --dark-elevated: #0E1D38;
+  --dark-surface: #132848;
+  --dark-hover: #1A3358;
+  --dark-active: #224068;
+  --text-primary: #C8D6E5;
+  --text-secondary: rgba(200, 214, 229, 0.75);
+  --text-muted: rgba(200, 214, 229, 0.50);
+  --text-disabled: rgba(200, 214, 229, 0.30);
+  --border-subtle: rgba(100, 150, 220, 0.10);
+  --border-default: rgba(100, 150, 220, 0.15);
+  --border-emphasis: rgba(100, 150, 220, 0.22);
+  --sidebar-bg: rgba(8, 18, 35, 0.92);
+  --scrollbar-thumb: rgba(100, 150, 220, 0.20);
+  --scrollbar-thumb-hover: rgba(100, 150, 220, 0.35);
+}
 
-  @keyframes shimmer {
-    0% {
-      background-position: -200% center;
-    }
-    100% {
-      background-position: 200% center;
-    }
-  }
+/* ─── Theme: Clean Dark ────────────────────────────────────── */
+body.theme-clean-dark {
+  --bg-primary: #111111;
+  --bg-secondary: #1A1A1A;
+  --bg-elevated: #1E1E1E;
+  --bg-surface: #252525;
+  --dark-base: #111111;
+  --dark-elevated: #1E1E1E;
+  --dark-surface: #252525;
+  --dark-hover: #2E2E2E;
+  --dark-active: #383838;
+  --text-primary: #E0E0E0;
+  --text-secondary: rgba(224, 224, 224, 0.75);
+  --text-muted: rgba(224, 224, 224, 0.50);
+  --text-disabled: rgba(224, 224, 224, 0.30);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-emphasis: rgba(255, 255, 255, 0.15);
+  --sidebar-bg: rgba(17, 17, 17, 0.95);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
+}
 
-  @keyframes glow-pulse {
-    0%, 100% {
-      box-shadow: 0 0 8px rgba(244, 123, 32, 0.3), 0 0 16px rgba(244, 123, 32, 0.1);
-    }
-    50% {
-      box-shadow: 0 0 16px rgba(244, 123, 32, 0.5), 0 0 32px rgba(244, 123, 32, 0.2);
-    }
-  }
+/* ─── Theme: Light ─────────────────────────────────────────── */
+body.theme-light {
+  --bg-primary: #F5F5F5;
+  --bg-secondary: #EBEBEB;
+  --bg-elevated: #FFFFFF;
+  --bg-surface: #FAFAFA;
+  --dark-base: #F5F5F5;
+  --dark-elevated: #FFFFFF;
+  --dark-surface: #FAFAFA;
+  --dark-hover: #F0F0F0;
+  --dark-active: #E5E5E5;
+  --text-primary: #1A1A1A;
+  --text-secondary: rgba(26, 26, 26, 0.75);
+  --text-muted: rgba(26, 26, 26, 0.50);
+  --text-disabled: rgba(26, 26, 26, 0.30);
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-default: rgba(0, 0, 0, 0.10);
+  --border-emphasis: rgba(0, 0, 0, 0.15);
+  --sidebar-bg: rgba(255, 255, 255, 0.95);
+  --sidebar-border: rgba(0, 0, 0, 0.08);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.10);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.15);
+}
 
-  .btn-idea-shimmer {
-    background: linear-gradient(
-      110deg,
-      rgba(244, 123, 32, 0.1) 0%,
-      rgba(244, 123, 32, 0.05) 40%,
-      rgba(244, 123, 32, 0.2) 50%,
-      rgba(244, 123, 32, 0.05) 60%,
-      rgba(244, 123, 32, 0.1) 100%
+/* Twinkling stars background — only for night-sky theme */
+body.theme-night-sky::before,
+body.theme-night-sky::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body.theme-night-sky::before {
+  /* Layer 1: small faint stars */
+  box-shadow:
+    82vw 12vh 0px 0px rgba(255,255,255,0.58),
+    15vw 28vh 0px 0px rgba(255,255,255,0.49),
+    47vw 5vh 0px 0px rgba(255,255,255,0.62),
+    91vw 38vh 0px 0px rgba(255,255,255,0.43),
+    33vw 72vh 0px 0px rgba(255,255,255,0.23),
+    68vw 85vh 0px 0px rgba(255,255,255,0.15),
+    8vw 55vh 0px 0px rgba(255,255,255,0.33),
+    54vw 42vh 0px 0px rgba(255,255,255,0.40),
+    76vw 68vh 0px 0px rgba(255,255,255,0.25),
+    23vw 91vh 0px 0px rgba(255,255,255,0.11),
+    41vw 18vh 0px 0px rgba(255,255,255,0.54),
+    95vw 52vh 0px 0px rgba(255,255,255,0.34),
+    12vw 78vh 0px 0px rgba(255,255,255,0.19),
+    59vw 31vh 0px 0px rgba(255,255,255,0.47),
+    87vw 91vh 0px 0px rgba(255,255,255,0.11),
+    3vw 15vh 0px 0px rgba(255,255,255,0.56),
+    72vw 48vh 0px 0px rgba(255,255,255,0.37),
+    38vw 62vh 0px 0px rgba(255,255,255,0.28),
+    29vw 8vh 0px 0px rgba(255,255,255,0.60),
+    64vw 95vh 0px 0px rgba(255,255,255,0.09),
+    50vw 22vh 0px 0px rgba(255,255,255,0.52),
+    18vw 45vh 0px 0px rgba(255,255,255,0.38),
+    83vw 75vh 0px 0px rgba(255,255,255,0.21),
+    45vw 88vh 0px 0px rgba(255,255,255,0.13),
+    7vw 35vh 0px 0px rgba(255,255,255,0.44),
+    92vw 18vh 0px 0px rgba(255,255,255,0.54),
+    26vw 55vh 0px 0px rgba(255,255,255,0.33),
+    61vw 72vh 0px 0px rgba(255,255,255,0.23),
+    35vw 3vh 0px 0px rgba(255,255,255,0.63),
+    78vw 28vh 0px 0px rgba(255,255,255,0.49);
+  width: 1px;
+  height: 1px;
+  border-radius: 50%;
+  animation: twinkle1 4s ease-in-out infinite;
+}
+
+body.theme-night-sky::after {
+  /* Layer 2: offset twinkle timing for natural feel */
+  box-shadow:
+    25vw 17vh 0px 0.5px rgba(255,255,255,0.55),
+    71vw 63vh 0px 0px rgba(255,255,255,0.28),
+    43vw 82vh 0px 0.5px rgba(255,255,255,0.17),
+    88vw 7vh 0px 0px rgba(255,255,255,0.61),
+    56vw 55vh 0px 0.5px rgba(255,255,255,0.33),
+    14vw 38vh 0px 0px rgba(255,255,255,0.43),
+    67vw 22vh 0px 0.5px rgba(255,255,255,0.52),
+    31vw 47vh 0px 0px rgba(255,255,255,0.37),
+    79vw 85vh 0px 0.5px rgba(255,255,255,0.15),
+    9vw 68vh 0px 0px rgba(255,255,255,0.25),
+    52vw 12vh 0px 0.5px rgba(255,255,255,0.58),
+    96vw 42vh 0px 0px rgba(255,255,255,0.40),
+    20vw 95vh 0px 0.5px rgba(255,255,255,0.09),
+    74vw 32vh 0px 0px rgba(255,255,255,0.46),
+    40vw 58vh 0px 0.5px rgba(255,255,255,0.31),
+    5vw 82vh 0px 0px rgba(255,255,255,0.17),
+    63vw 3vh 0px 0.5px rgba(255,255,255,0.63),
+    85vw 48vh 0px 0px rgba(255,255,255,0.37),
+    48vw 75vh 0px 0.5px rgba(255,255,255,0.21),
+    16vw 25vh 0px 0px rgba(255,255,255,0.50);
+  width: 1px;
+  height: 1px;
+  border-radius: 50%;
+  animation: twinkle2 5s ease-in-out infinite;
+}
+
+@keyframes twinkle1 {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@keyframes twinkle2 {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Blueprint grid overlay */
+body.theme-blueprint::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(100, 150, 220, 0.04) 0px,
+      rgba(100, 150, 220, 0.04) 1px,
+      transparent 1px,
+      transparent 40px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(100, 150, 220, 0.04) 0px,
+      rgba(100, 150, 220, 0.04) 1px,
+      transparent 1px,
+      transparent 40px
     );
-    background-size: 200% 100%;
-    animation: shimmer 2.5s ease-in-out 4, glow-pulse 2s ease-in-out 4;
+}
+
+/* Shooting stars — faint streaks across the top */
+.shooting-star {
+  position: absolute;
+  width: var(--length, 150px);
+  height: 1px;
+  background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.35) 100%);
+  transform-origin: right center;
+  animation: shoot var(--duration, 400ms) linear forwards;
+}
+
+@keyframes shoot {
+  0%   { transform: rotate(var(--angle, 10deg)) translateX(0); opacity: 0; }
+  10%  { opacity: 0.6; }
+  50%  { opacity: 0.4; }
+  100% { transform: rotate(var(--angle, 10deg)) translateX(var(--travel, 500px)); opacity: 0; }
+}
+
+/* Light theme: override glass-elevated for light backgrounds */
+body.theme-light .glass-elevated {
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* ── Shimmer animation for "Got an Idea?" button ─── */
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
   }
 }
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(244, 123, 32, 0.3), 0 0 16px rgba(244, 123, 32, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(244, 123, 32, 0.5), 0 0 32px rgba(244, 123, 32, 0.2);
+  }
+}
+
+.btn-idea-shimmer {
+  background: linear-gradient(
+    110deg,
+    rgba(244, 123, 32, 0.1) 0%,
+    rgba(244, 123, 32, 0.05) 40%,
+    rgba(244, 123, 32, 0.2) 50%,
+    rgba(244, 123, 32, 0.05) 60%,
+    rgba(244, 123, 32, 0.1) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.5s ease-in-out 4, glow-pulse 2s ease-in-out 4;
+}
+
+/* ============================================================
+   Component Styles
+   ============================================================ */
 
 @layer components {
   /* Glass morphism sidebar */
