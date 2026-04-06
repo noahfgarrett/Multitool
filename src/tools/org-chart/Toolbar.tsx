@@ -3,7 +3,7 @@ import type { LayoutDirection } from './types.ts'
 import {
   Undo2, Redo2, ZoomIn, ZoomOut, Maximize2,
   ArrowDown, ArrowRight, UserPlus, Trash2, Download, Upload,
-  LayoutGrid, RotateCcw,
+  LayoutGrid, RotateCcw, LayoutPanelLeft, History,
 } from 'lucide-react'
 
 // ── Component ───────────────────────────────────────────────
@@ -13,11 +13,15 @@ export function Toolbar({
   onExport,
   onImportJSON,
   onTemplates,
+  showVersions,
+  setShowVersions,
 }: {
   store: OrgChartStore
   onExport: () => void
   onImportJSON: () => void
   onTemplates: () => void
+  showVersions: boolean
+  setShowVersions: (v: boolean) => void
 }) {
   const {
     viewport, canUndo, canRedo, undo, redo,
@@ -27,11 +31,13 @@ export function Toolbar({
   } = store
 
   const selectedNode = selectedNodeId ? nodes.find(n => n.id === selectedNodeId) : null
+  const roots = nodes.filter(n => !n.reportsTo)
   const canDelete = selectedNodeIds.size > 0 && (
-    // Can delete if at least one selected node is not root
+    // Can delete if at least one selected node is deletable (non-root, or non-last root)
     [...selectedNodeIds].some(id => {
       const n = nodes.find(node => node.id === id)
-      return n && !!n.reportsTo
+      if (!n) return false
+      return n.reportsTo ? true : roots.length > 1
     })
   )
 
@@ -90,9 +96,10 @@ export function Toolbar({
 
       <ToolbarDivider />
 
-      {/* ── Add Person ───────────────────────── */}
+      {/* ── Add Person + Section ───────────────── */}
       <ToolbarGroup>
         <ToolbarButton icon={UserPlus} label="Add Person" onClick={handleAddPerson} />
+        <ToolbarButton icon={LayoutPanelLeft} label="Add Section" onClick={() => store.addSection()} />
       </ToolbarGroup>
 
       {/* ── Spacer ─────────────────────────────── */}
@@ -100,6 +107,18 @@ export function Toolbar({
 
       {/* ── Actions ────────────────────────────── */}
       <ToolbarGroup>
+        <button
+          onClick={() => setShowVersions(!showVersions)}
+          className={`px-2.5 py-1 text-[10px] font-medium rounded transition-colors flex items-center gap-1 ${
+            showVersions
+              ? 'text-[#F47B20] bg-[#F47B20]/15'
+              : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+          }`}
+          title="Version History"
+        >
+          <History size={12} />
+          Versions
+        </button>
         <button
           onClick={onTemplates}
           className="px-2.5 py-1 text-[10px] font-medium text-white/50 hover:text-white hover:bg-white/[0.06] rounded transition-colors flex items-center gap-1"
