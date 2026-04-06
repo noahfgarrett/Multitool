@@ -127,6 +127,123 @@ function annLabel(ann: Annotation): string {
   return ann.type.charAt(0).toUpperCase() + ann.type.slice(1)
 }
 
+// ── Layer row component ──────────────────────────────────
+
+const LAYER_COLOR_PRESETS = ['#6B7280', '#EF4444', '#F47B20', '#EAB308', '#22C55E', '#3B82F6', '#8B5CF6', '#EC4899', '#000000']
+
+const LayerRow = memo(function LayerRow({ layer, isActive, annotationCount, onSetActive, onToggleVisibility, onDelete, onRename, onColorChange }: {
+  layer: AnnotationLayer
+  isActive: boolean
+  annotationCount: number
+  onSetActive: () => void
+  onToggleVisibility: () => void
+  onDelete: () => void
+  onRename: (name: string) => void
+  onColorChange: (color: string) => void
+}) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(layer.name)
+  const [showColorPicker, setShowColorPicker] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const commitRename = () => {
+    const trimmed = editValue.trim()
+    if (trimmed && trimmed !== layer.name) {
+      onRename(trimmed)
+    } else {
+      setEditValue(layer.name)
+    }
+    setIsEditing(false)
+  }
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [isEditing])
+
+  return (
+    <div
+      className={`group flex items-center gap-2 px-3 py-1.5 text-xs cursor-pointer transition-colors ${
+        isActive ? 'bg-[#F47B20]/10 text-[#F47B20]' : 'text-white/60 hover:bg-white/[0.04]'
+      }`}
+      onClick={() => onSetActive()}
+    >
+      <button
+        onClick={(e) => { e.stopPropagation(); onToggleVisibility() }}
+        className="p-0.5 text-white/40 hover:text-white"
+        title={layer.visible ? 'Hide layer' : 'Show layer'}
+      >
+        {layer.visible ? <Eye size={12} /> : <EyeOff size={12} />}
+      </button>
+      {/* Color dot — clickable for color editing */}
+      <div className="relative flex-shrink-0">
+        <button
+          onClick={(e) => { e.stopPropagation(); setShowColorPicker(prev => !prev) }}
+          className="w-2.5 h-2.5 rounded-full border border-white/10 hover:scale-125 transition-transform"
+          style={{ backgroundColor: layer.color }}
+          title="Change layer color"
+        />
+        {showColorPicker && (
+          <div
+            className="absolute left-0 top-5 z-50 bg-[#001a24] border border-white/10 rounded-lg shadow-xl p-2 flex gap-1 flex-wrap w-[120px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {LAYER_COLOR_PRESETS.map(c => (
+              <button
+                key={c}
+                onClick={() => { onColorChange(c); setShowColorPicker(false) }}
+                className={`w-4 h-4 rounded-sm transition-all ${layer.color === c ? 'scale-110 ring-1 ring-white/40' : 'hover:scale-110'}`}
+                style={{ backgroundColor: c }}
+                title={c}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+      {/* Name — double-click to edit */}
+      {isEditing ? (
+        <input
+          ref={inputRef}
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={commitRename}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commitRename()
+            if (e.key === 'Escape') { setEditValue(layer.name); setIsEditing(false) }
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="flex-1 min-w-0 bg-white/[0.08] border border-white/[0.15] rounded px-1 py-0 text-xs text-white outline-none focus:border-[#F47B20]/50"
+        />
+      ) : (
+        <span
+          className="flex-1 truncate"
+          onDoubleClick={(e) => { e.stopPropagation(); setEditValue(layer.name); setIsEditing(true) }}
+          title="Double-click to rename"
+        >
+          {layer.name}
+          {annotationCount > 0 && (
+            <span className="text-white/30 ml-1">({annotationCount})</span>
+          )}
+        </span>
+      )}
+      {layer.id !== 'default' && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete() }}
+          className="p-0.5 text-white/20 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+          title="Delete layer"
+        >
+          <Trash2 size={10} />
+        </button>
+      )}
+      {isActive && !isEditing && (
+        <span className="text-[8px] text-[#F47B20]/50 font-bold">ACTIVE</span>
+      )}
+    </div>
+  )
+})
+
 // ── Component ──────────────────────────────────────────
 
 export default function PdfAnnotateTool() {
@@ -1333,6 +1450,10 @@ export default function PdfAnnotateTool() {
         if (session.edgeSnappingEnabled !== undefined) setEdgeSnappingEnabled(session.edgeSnappingEnabled as boolean)
         if (session.commentThreads) setCommentThreads(session.commentThreads as CommentThread[])
         if (session.stickyNotes) setStickyNotes(session.stickyNotes as Record<number, StickyNote[]>)
+        if (session.layers && Array.isArray(session.layers) && session.layers.length > 0) {
+          setLayers(session.layers as AnnotationLayer[])
+        }
+        if (session.activeLayerId) setActiveLayerId(session.activeLayerId)
         historyRef.current = [structuredClone(session.annotations as PageAnnotations)]
         historyIdxRef.current = 0
         pendingScrollRef.current = { scrollTop: session.scrollTop, scrollLeft: session.scrollLeft }
@@ -1365,6 +1486,7 @@ export default function PdfAnnotateTool() {
           eraserRadius, eraserMode, activeHighlight, activeDraw, activeText,
           polyMeasurements, countGroups, measureMode, activeCountGroup, edgeSnappingEnabled,
           commentThreads, stickyNotes,
+          layers, activeLayerId,
         } satisfies PdfAnnotateSession)
       }
     }
@@ -1376,7 +1498,7 @@ export default function PdfAnnotateTool() {
       superscript, subscript, listType,
       eraserRadius, eraserMode, activeHighlight, activeDraw, activeText,
       polyMeasurements, countGroups, measureMode, activeCountGroup, edgeSnappingEnabled,
-      commentThreads, stickyNotes])
+      commentThreads, stickyNotes, layers, activeLayerId])
 
   // ── Debounced session save ─────────────────────────
   useEffect(() => {
@@ -1395,6 +1517,7 @@ export default function PdfAnnotateTool() {
         eraserRadius, eraserMode, activeHighlight, activeDraw, activeText,
         polyMeasurements, countGroups, measureMode, activeCountGroup, edgeSnappingEnabled,
         commentThreads, stickyNotes,
+        layers, activeLayerId,
       } satisfies PdfAnnotateSession)
     }, 1500)
     return () => clearTimeout(timer)
@@ -1404,7 +1527,7 @@ export default function PdfAnnotateTool() {
       superscript, subscript, listType,
       eraserRadius, eraserMode, activeHighlight, activeDraw, activeText,
       polyMeasurements, countGroups, measureMode, activeCountGroup, edgeSnappingEnabled,
-      commentThreads, stickyNotes])
+      commentThreads, stickyNotes, layers, activeLayerId])
 
   // ── Thumbnail loading ────────────────────────────────
 
@@ -6826,6 +6949,30 @@ export default function PdfAnnotateTool() {
                 <span className="text-white/25 text-[10px]">{hint}</span>
               </button>
             ))}
+            {/* Move to Layer submenu — only show if 2+ layers */}
+            {layers.length >= 2 && (() => {
+              const currentLayerId = cmAnn.layerId || 'default'
+              const otherLayers = layers.filter(l => l.id !== currentLayerId)
+              if (otherLayers.length === 0) return null
+              return (
+                <>
+                  <div className="h-px bg-white/[0.08] my-1" />
+                  <div className="px-3 py-1 text-[10px] text-white/30 font-medium">Move to Layer</div>
+                  {otherLayers.map(targetLayer => (
+                    <button
+                      key={targetLayer.id}
+                      onClick={() => doAction(() => {
+                        updateAnnotation(annId, { layerId: targetLayer.id }, cmPageNum)
+                      })}
+                      className="w-full flex items-center gap-2 px-4 py-1.5 text-xs text-white/70 hover:text-white hover:bg-white/[0.06]"
+                    >
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: targetLayer.color }} />
+                      <span>{targetLayer.name}</span>
+                    </button>
+                  ))}
+                </>
+              )
+            })()}
             <div className="h-px bg-white/[0.08] my-1" />
             <button onClick={() => doAction(() => {
               const refs = pageRefsMap.current.get(cmPageNum)
@@ -6933,7 +7080,16 @@ export default function PdfAnnotateTool() {
 
       {/* ── Comments Panel ── */}
       {/* ── Layers Panel ── */}
-      {layersPanelOpen && (
+      {layersPanelOpen && (() => {
+        // Count annotations per layer (across all pages)
+        const layerCounts = new Map<string, number>()
+        for (const pageAnns of Object.values(annotations)) {
+          for (const ann of pageAnns) {
+            const lid = ann.layerId || 'default'
+            layerCounts.set(lid, (layerCounts.get(lid) ?? 0) + 1)
+          }
+        }
+        return (
         <div className="fixed top-20 right-14 w-56 bg-[#001a24] border border-white/[0.1] rounded-lg shadow-2xl z-50 overflow-hidden">
           <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
             <span className="text-xs font-semibold text-white/70">Layers</span>
@@ -6947,38 +7103,34 @@ export default function PdfAnnotateTool() {
           </div>
           <div className="max-h-[240px] overflow-y-auto">
             {layers.map(layer => (
-              <div key={layer.id}
-                className={`flex items-center gap-2 px-3 py-1.5 text-xs cursor-pointer transition-colors ${
-                  activeLayerId === layer.id ? 'bg-[#F47B20]/10 text-[#F47B20]' : 'text-white/60 hover:bg-white/[0.04]'
-                }`}
-                onClick={() => setActiveLayerId(layer.id)}
-              >
-                <button
-                  onClick={(e) => { e.stopPropagation(); setLayers(prev => prev.map(l => l.id === layer.id ? { ...l, visible: !l.visible } : l)) }}
-                  className="p-0.5 text-white/40 hover:text-white"
-                  title={layer.visible ? 'Hide layer' : 'Show layer'}
-                >
-                  {layer.visible ? <Eye size={12} /> : <EyeOff size={12} />}
-                </button>
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: layer.color }} />
-                <span className="flex-1 truncate">{layer.name}</span>
-                {layer.id !== 'default' && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setLayers(prev => prev.filter(l => l.id !== layer.id)) }}
-                    className="p-0.5 text-white/20 hover:text-red-400 opacity-0 group-hover:opacity-100"
-                    title="Delete layer"
-                  >
-                    <Trash2 size={10} />
-                  </button>
-                )}
-                {activeLayerId === layer.id && (
-                  <span className="text-[8px] text-[#F47B20]/50 font-bold">ACTIVE</span>
-                )}
-              </div>
+              <LayerRow
+                key={layer.id}
+                layer={layer}
+                isActive={activeLayerId === layer.id}
+                annotationCount={layerCounts.get(layer.id) ?? 0}
+                onSetActive={() => setActiveLayerId(layer.id)}
+                onToggleVisibility={() => setLayers(prev => prev.map(l => l.id === layer.id ? { ...l, visible: !l.visible } : l))}
+                onDelete={() => {
+                  // Reassign all annotations in this layer to 'default'
+                  const next: PageAnnotations = {}
+                  for (const [page, pageAnns] of Object.entries(annotations)) {
+                    next[Number(page)] = pageAnns.map(a =>
+                      a.layerId === layer.id ? { ...a, layerId: 'default' } : a
+                    )
+                  }
+                  setAnnotations(next)
+                  pushHistory(next)
+                  setLayers(prev => prev.filter(l => l.id !== layer.id))
+                  if (activeLayerId === layer.id) setActiveLayerId('default')
+                }}
+                onRename={(newName) => setLayers(prev => prev.map(l => l.id === layer.id ? { ...l, name: newName } : l))}
+                onColorChange={(newColor) => setLayers(prev => prev.map(l => l.id === layer.id ? { ...l, color: newColor } : l))}
+              />
             ))}
           </div>
         </div>
-      )}
+        )
+      })()}
 
       <CommentsPanel
         isOpen={commentsPanelOpen}
@@ -7053,11 +7205,16 @@ export default function PdfAnnotateTool() {
       {markupsListOpen && pdfFile && (
         <MarkupsList
           annotations={annotations}
+          layers={layers}
           commentThreads={commentThreads}
           selectedId={selectedAnnId}
           onSelectAnnotation={(id: string, page: number) => {
             navigateToPage(page)
             setSelectedAnnId(id)
+          }}
+          onDeleteAnnotation={(id: string, page: number) => {
+            removeAnnotation(id, page)
+            if (selectedAnnId === id) setSelectedAnnId(null)
           }}
           onExportCSV={() => {
             // Build CSV from all annotations

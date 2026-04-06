@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import {
-  ChevronDown, ChevronUp, Download, List, Filter,
+  ChevronDown, ChevronUp, Download, List, Filter, Trash2,
   Pencil, Highlighter, Square, Circle, ArrowUpRight, Minus, Type,
   Cloud, Pentagon, MessageSquare, ImagePlus, Stamp, StickyNote,
 } from 'lucide-react'
-import type { Annotation, CommentThread, CommentStatus } from './types.ts'
+import type { Annotation, AnnotationLayer, CommentThread, CommentStatus } from './types.ts'
 import { COMMENT_STATUS_COLORS } from './types.ts'
 
 // ── Icon mapping ────────────────────────────────────────
@@ -55,11 +55,13 @@ interface MarkupRow {
   page: number
   label: string
   color: string
+  layerId: string
+  layerName: string
   status: CommentStatus
   date: number
 }
 
-type SortField = 'index' | 'type' | 'page' | 'label' | 'color' | 'status' | 'date'
+type SortField = 'index' | 'type' | 'page' | 'label' | 'color' | 'layer' | 'status' | 'date'
 type SortDir = 'asc' | 'desc'
 
 const STATUS_LABELS: Record<CommentStatus, string> = {
@@ -76,9 +78,11 @@ const STATUS_FILTER_OPTIONS: CommentStatus[] = ['none', 'open', 'accepted', 'rej
 
 interface MarkupsListProps {
   annotations: Record<number, Annotation[]>
+  layers: AnnotationLayer[]
   commentThreads: CommentThread[]
   selectedId: string | null
   onSelectAnnotation: (id: string, page: number) => void
+  onDeleteAnnotation: (id: string, page: number) => void
   onExportCSV: () => void
 }
 
@@ -86,9 +90,11 @@ interface MarkupsListProps {
 
 export default function MarkupsList({
   annotations,
+  layers,
   commentThreads,
   selectedId,
   onSelectAnnotation,
+  onDeleteAnnotation,
   onExportCSV,
 }: MarkupsListProps): React.JSX.Element {
   const [isCollapsed, setIsCollapsed] = useState(true)
@@ -96,6 +102,7 @@ export default function MarkupsList({
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<CommentStatus | 'all'>('all')
+  const [layerFilter, setLayerFilter] = useState<string>('all')
 
   // Build thread lookup: annotationId -> CommentThread
   const threadMap = useMemo(() => {
@@ -105,6 +112,15 @@ export default function MarkupsList({
     }
     return map
   }, [commentThreads])
+
+  // Build layer lookup: layerId -> layer name
+  const layerNameMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const layer of layers) {
+      map.set(layer.id, layer.name)
+    }
+    return map
+  }, [layers])
 
   // Flatten annotations into rows
   const allRows = useMemo((): MarkupRow[] => {
@@ -119,6 +135,7 @@ export default function MarkupsList({
       if (!pageAnns) continue
       for (const ann of pageAnns) {
         const thread = threadMap.get(ann.id)
+        const lid = ann.layerId || 'default'
         rows.push({
           index: counter++,
           id: ann.id,
@@ -126,13 +143,15 @@ export default function MarkupsList({
           page,
           label: ann.text ?? '',
           color: ann.color,
+          layerId: lid,
+          layerName: layerNameMap.get(lid) ?? 'Default',
           status: thread?.status ?? 'none',
           date: Date.now() - (counter * 60000), // relative ordering fallback
         })
       }
     }
     return rows
-  }, [annotations, threadMap])
+  }, [annotations, threadMap, layerNameMap])
 
   // Unique annotation types for filter dropdown
   const uniqueTypes = useMemo((): string[] => {
@@ -152,8 +171,11 @@ export default function MarkupsList({
     if (statusFilter !== 'all') {
       rows = rows.filter(r => r.status === statusFilter)
     }
+    if (layerFilter !== 'all') {
+      rows = rows.filter(r => r.layerId === layerFilter)
+    }
     return rows
-  }, [allRows, typeFilter, statusFilter])
+  }, [allRows, typeFilter, statusFilter, layerFilter])
 
   // Apply sorting
   const sortedRows = useMemo((): MarkupRow[] => {
@@ -172,6 +194,8 @@ export default function MarkupsList({
           return a.label.localeCompare(b.label) * dir
         case 'color':
           return a.color.localeCompare(b.color) * dir
+        case 'layer':
+          return a.layerName.localeCompare(b.layerName) * dir
         case 'status':
           return a.status.localeCompare(b.status) * dir
         case 'date':
@@ -273,6 +297,20 @@ export default function MarkupsList({
               ))}
             </select>
 
+            {/* Layer filter */}
+            <select
+              value={layerFilter}
+              onChange={e => setLayerFilter(e.target.value)}
+              className="bg-white/[0.05] border border-white/[0.1] text-white/60 text-xs rounded px-2 py-1 outline-none focus:border-[#F47B20]/50"
+            >
+              <option value="all" className="bg-[#1a1a2e] text-white">All Layers</option>
+              {layers.map(l => (
+                <option key={l.id} value={l.id} className="bg-[#1a1a2e] text-white">
+                  {l.name}
+                </option>
+              ))}
+            </select>
+
             <span className="text-white/30 text-xs ml-auto">
               {sortedRows.length} of {totalCount}
             </span>
@@ -314,6 +352,12 @@ export default function MarkupsList({
                     Color{renderSortIndicator('color')}
                   </th>
                   <th
+                    onClick={() => handleSort('layer')}
+                    className="text-left text-white/50 font-medium px-3 py-1.5 cursor-pointer hover:text-white/80 select-none w-20"
+                  >
+                    Layer{renderSortIndicator('layer')}
+                  </th>
+                  <th
                     onClick={() => handleSort('status')}
                     className="text-left text-white/50 font-medium px-3 py-1.5 cursor-pointer hover:text-white/80 select-none w-20"
                   >
@@ -325,12 +369,13 @@ export default function MarkupsList({
                   >
                     Date{renderSortIndicator('date')}
                   </th>
+                  <th className="w-8" />  {/* Delete column */}
                 </tr>
               </thead>
               <tbody>
                 {sortedRows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center text-white/30 py-8">
+                    <td colSpan={9} className="text-center text-white/30 py-8">
                       No markups found
                     </td>
                   </tr>
@@ -343,7 +388,7 @@ export default function MarkupsList({
                       <tr
                         key={row.id}
                         onClick={() => onSelectAnnotation(row.id, row.page)}
-                        className={`border-b border-white/[0.03] cursor-pointer transition-colors ${
+                        className={`group border-b border-white/[0.03] cursor-pointer transition-colors ${
                           isSelected
                             ? 'bg-[#F47B20]/10'
                             : 'hover:bg-white/[0.04]'
@@ -367,6 +412,9 @@ export default function MarkupsList({
                             title={row.color}
                           />
                         </td>
+                        <td className="px-3 py-1.5 text-white/50 truncate max-w-[80px]" title={row.layerName}>
+                          {row.layerName}
+                        </td>
                         <td className="px-3 py-1.5">
                           {row.status !== 'none' ? (
                             <span className="flex items-center gap-1">
@@ -382,6 +430,15 @@ export default function MarkupsList({
                         </td>
                         <td className="px-3 py-1.5 text-white/40">
                           {formatDate(row.date)}
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onDeleteAnnotation(row.id, row.page) }}
+                            className="p-0.5 text-white/20 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                            title="Delete annotation"
+                          >
+                            <Trash2 size={12} />
+                          </button>
                         </td>
                       </tr>
                     )

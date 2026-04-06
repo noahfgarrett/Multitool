@@ -51,6 +51,9 @@ export interface PdfAnnotateSession {
   // Comment & review state
   commentThreads?: unknown[]
   stickyNotes?: Record<number, unknown[]>
+  // Layer state
+  layers?: unknown[]
+  activeLayerId?: string
 }
 
 export function saveSession(session: PdfAnnotateSession): void {
