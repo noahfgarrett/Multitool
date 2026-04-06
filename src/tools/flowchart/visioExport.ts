@@ -1,5 +1,5 @@
 import JSZip from 'jszip'
-import type { DiagramNode, DiagramEdge, PortPosition } from './types.ts'
+import type { DiagramNode, DiagramEdge } from './types.ts'
 import { getShapeDef, getPortPosition } from './shapes.ts'
 import { downloadBlob } from '@/utils/download.ts'
 
