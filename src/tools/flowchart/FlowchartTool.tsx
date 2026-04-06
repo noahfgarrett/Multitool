@@ -6,12 +6,13 @@ import { ShapeLibrary } from './ShapeLibrary.tsx'
 import { PropertiesPanel } from './PropertiesPanel.tsx'
 import { attachShortcuts } from './shortcuts.ts'
 import { exportPNG, exportSVG, exportJSON, importJSON, copyPNGToClipboard } from './export.ts'
+import { exportVSDX } from './visioExport.ts'
 import { importFromText, TEMPLATES } from './textImport.ts'
 import { Modal } from '@/components/common/Modal.tsx'
 import { Button } from '@/components/common/Button.tsx'
 import { useAppStore } from '@/stores/appStore.ts'
 import {
-  Upload, FileJson, Image as ImageIcon, FileCode, ChevronDown, Clipboard,
+  Upload, FileJson, Image as ImageIcon, FileCode, ChevronDown, Clipboard, FileBox,
 } from 'lucide-react'
 
 // ── Component ───────────────────────────────────────────────
@@ -69,6 +70,16 @@ export default function FlowchartTool() {
       addToast({ type: 'success', message: 'Copied to clipboard' })
     } catch (err) {
       addToast({ type: 'error', message: err instanceof Error ? err.message : 'Copy failed' })
+    }
+    setShowExport(false)
+  }, [store.nodes, store.edges, addToast])
+
+  const handleExportVSDX = useCallback(async () => {
+    try {
+      await exportVSDX(store.nodes, store.edges)
+      addToast({ type: 'success', message: 'Visio (.vsdx) exported successfully' })
+    } catch (err) {
+      addToast({ type: 'error', message: err instanceof Error ? err.message : 'Visio export failed' })
     }
     setShowExport(false)
   }, [store.nodes, store.edges, addToast])
@@ -188,6 +199,13 @@ export default function FlowchartTool() {
             label="Export as SVG"
             description="Scalable vector graphic"
             onClick={handleExportSVG}
+            disabled={store.nodes.length === 0}
+          />
+          <ExportButton
+            icon={FileBox}
+            label="Export as Visio (.vsdx)"
+            description="Microsoft Visio compatible format"
+            onClick={handleExportVSDX}
             disabled={store.nodes.length === 0}
           />
           <ExportButton
