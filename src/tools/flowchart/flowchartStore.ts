@@ -12,6 +12,27 @@ import { autoDetectPorts } from './connectors.ts'
 
 const MAX_HISTORY = 50
 
+// ── Background image state ─────────────────────────────────
+
+export interface BackgroundImage {
+  /** Object URL for the loaded image */
+  url: string
+  /** Natural width in pixels */
+  naturalWidth: number
+  /** Natural height in pixels */
+  naturalHeight: number
+  /** Position offset in diagram space */
+  x: number
+  y: number
+  /** Display width in diagram space */
+  width: number
+  height: number
+  /** Opacity 0..1 */
+  opacity: number
+  /** When locked, the image cannot be accidentally moved/resized */
+  isLocked: boolean
+}
+
 // ── Hook: useFlowchartStore ─────────────────────────────────
 
 export function useFlowchartStore() {
@@ -25,6 +46,7 @@ export function useFlowchartStore() {
   const [gridEnabled, setGridEnabled] = useState(true)
   const [snapEnabled, setSnapEnabled] = useState(true)
   const [gridSize, setGridSize] = useState(20)
+  const [backgroundImage, setBackgroundImage] = useState<BackgroundImage | null>(null)
 
   // ── Undo/redo (ref-based, same pattern as pdf-annotate) ──
   const historyRef = useRef<DiagramState[]>([{ nodes: [], edges: [] }])
@@ -274,7 +296,8 @@ export function useFlowchartStore() {
 
   const clearDiagram = useCallback(() => {
     loadDiagram({ nodes: [], edges: [] })
-  }, [loadDiagram])
+    removeBackgroundImage()
+  }, [loadDiagram, removeBackgroundImage])
 
   // ── Viewport helpers ────────────────────────────────────
 
@@ -362,6 +385,47 @@ export function useFlowchartStore() {
     setNodes(nextNodes)
     pushHistory(nextNodes, edges)
   }, [nodes, edges, selection, pushHistory])
+
+  // ── Background image ─────────────────────────────────────
+
+  const loadBackgroundImage = useCallback((file: File) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      // Scale to a reasonable default size in diagram space
+      const maxDim = 800
+      const scale = Math.min(1, maxDim / img.naturalWidth, maxDim / img.naturalHeight)
+      setBackgroundImage({
+        url,
+        naturalWidth: img.naturalWidth,
+        naturalHeight: img.naturalHeight,
+        x: 0,
+        y: 0,
+        width: img.naturalWidth * scale,
+        height: img.naturalHeight * scale,
+        opacity: 0.3,
+        isLocked: false,
+      })
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+    }
+    img.src = url
+  }, [])
+
+  const updateBackgroundImage = useCallback((updates: Partial<BackgroundImage>) => {
+    setBackgroundImage(prev => {
+      if (!prev) return prev
+      return { ...prev, ...updates }
+    })
+  }, [])
+
+  const removeBackgroundImage = useCallback(() => {
+    setBackgroundImage(prev => {
+      if (prev) URL.revokeObjectURL(prev.url)
+      return null
+    })
+  }, [])
 
   // ── Snap helper ─────────────────────────────────────────
 
@@ -451,6 +515,12 @@ export function useFlowchartStore() {
 
     // Grid/Snap
     snapToGrid,
+
+    // Background image
+    backgroundImage,
+    loadBackgroundImage,
+    updateBackgroundImage,
+    removeBackgroundImage,
   }
 }
 

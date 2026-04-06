@@ -5,6 +5,7 @@ import { SHAPE_DEFS } from './shapes.ts'
 import {
   MousePointer2, Hand, Undo2, Redo2, ZoomIn, ZoomOut, Maximize2,
   Square, Download, Trash2, Grid3X3, Magnet, Link2, ChevronDown, Search,
+  Image as ImageIcon, Lock, Unlock, X as XIcon,
 } from 'lucide-react'
 
 // ── Component ───────────────────────────────────────────────
@@ -25,9 +26,34 @@ export function Toolbar({
     deleteSelected, selection, clearDiagram,
     gridEnabled, setGridEnabled,
     snapEnabled, setSnapEnabled,
+    backgroundImage, loadBackgroundImage, updateBackgroundImage, removeBackgroundImage,
   } = store
 
   const hasSelection = selection.nodeIds.size > 0 || selection.edgeIds.size > 0
+  const bgInputRef = useRef<HTMLInputElement>(null)
+  const [showBgControls, setShowBgControls] = useState(false)
+  const bgControlsRef = useRef<HTMLDivElement>(null)
+
+  // Close bg controls on click outside
+  useEffect(() => {
+    if (!showBgControls) return
+    const handler = (e: MouseEvent) => {
+      if (bgControlsRef.current && !bgControlsRef.current.contains(e.target as Node)) {
+        setShowBgControls(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showBgControls])
+
+  const handleBgFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      loadBackgroundImage(file)
+      setShowBgControls(true)
+    }
+    e.target.value = ''
+  }
 
   // ── Shape dropdown state ──────────────────────────────
   const [shapeDropdownOpen, setShapeDropdownOpen] = useState(false)
@@ -207,6 +233,87 @@ export function Toolbar({
           onClick={() => setSnapEnabled(!snapEnabled)}
         />
       </ToolbarGroup>
+
+      <ToolbarDivider />
+
+      {/* ── Background image ──────────────────── */}
+      <div ref={bgControlsRef} className="relative">
+        <input
+          ref={bgInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/jpg,image/webp"
+          onChange={handleBgFileChange}
+          className="hidden"
+        />
+        <ToolbarButton
+          icon={ImageIcon}
+          label="Background Image"
+          active={!!backgroundImage}
+          onClick={() => {
+            if (backgroundImage) {
+              setShowBgControls(!showBgControls)
+            } else {
+              bgInputRef.current?.click()
+            }
+          }}
+        />
+
+        {showBgControls && backgroundImage && (
+          <div className="absolute top-full left-0 mt-1 z-50 w-[220px] bg-dark-surface border border-white/[0.1] rounded-lg shadow-xl p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-medium text-white/50">Background Image</span>
+              <button
+                onClick={() => { removeBackgroundImage(); setShowBgControls(false) }}
+                className="text-white/30 hover:text-red-400 transition-colors"
+                title="Remove background"
+              >
+                <XIcon size={12} />
+              </button>
+            </div>
+
+            {/* Opacity slider */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] text-white/40">Opacity</span>
+                <span className="text-[9px] text-white/30 tabular-nums">
+                  {Math.round(backgroundImage.opacity * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(backgroundImage.opacity * 100)}
+                onChange={e => updateBackgroundImage({ opacity: Number(e.target.value) / 100 })}
+                className="w-full h-1 bg-white/10 rounded appearance-none cursor-pointer accent-[#F47B20]"
+              />
+            </div>
+
+            {/* Lock toggle */}
+            <button
+              onClick={() => updateBackgroundImage({ isLocked: !backgroundImage.isLocked })}
+              className={`
+                w-full flex items-center gap-2 px-2 py-1.5 rounded text-[10px] transition-colors
+                ${backgroundImage.isLocked
+                  ? 'bg-[#F47B20]/10 text-[#F47B20]'
+                  : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                }
+              `}
+            >
+              {backgroundImage.isLocked ? <Lock size={11} /> : <Unlock size={11} />}
+              {backgroundImage.isLocked ? 'Locked' : 'Unlocked'}
+            </button>
+
+            {/* Replace */}
+            <button
+              onClick={() => bgInputRef.current?.click()}
+              className="w-full px-2 py-1.5 rounded text-[10px] text-white/50 hover:text-white hover:bg-white/[0.06] transition-colors text-left"
+            >
+              Replace image...
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* ── Spacer ─────────────────────────────── */}
       <div className="flex-1" />

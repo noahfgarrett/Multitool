@@ -85,6 +85,7 @@ export function Canvas({ store }: { store: FlowchartStore }) {
     moveWaypoint, commitWaypointMove, addWaypoint, removeWaypoint,
     updateEdge, copySelected, paste, duplicateSelected,
     bringToFront, sendToBack,
+    backgroundImage,
   } = store
 
   const nodeMap = useMemo(() => new Map(nodes.map(n => [n.id, n])), [nodes])
@@ -901,6 +902,22 @@ export function Canvas({ store }: { store: FlowchartStore }) {
     )
   }
 
+  const renderBackgroundImage = () => {
+    if (!backgroundImage) return null
+    return (
+      <image
+        href={backgroundImage.url}
+        x={backgroundImage.x}
+        y={backgroundImage.y}
+        width={backgroundImage.width}
+        height={backgroundImage.height}
+        opacity={backgroundImage.opacity}
+        preserveAspectRatio="none"
+        pointerEvents="none"
+      />
+    )
+  }
+
   const renderPlacePreview = () => {
     if (typeof toolMode !== 'object' || !('place' in toolMode) || !placeCursor) return null
     const def = getShapeDef(toolMode.place)
@@ -966,6 +983,9 @@ export function Canvas({ store }: { store: FlowchartStore }) {
           {/* Grid */}
           {renderGrid()}
           {renderGridRect()}
+
+          {/* Background image underlay (below everything except grid) */}
+          {renderBackgroundImage()}
 
           {/* Arrow markers */}
           <defs>
