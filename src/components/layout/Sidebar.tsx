@@ -67,10 +67,13 @@ export function Sidebar() {
           className={`
             w-full flex items-center gap-2.5 rounded-md transition-all duration-150 mb-1
             ${sidebarExpanded ? 'px-2.5 py-2' : 'px-0 py-2 justify-center'}
-            ${!activeTool ? 'bg-[#F47B20]/15 text-[#F47B20]' : ''}
+            ${!activeTool && !activeView
+              ? 'bg-[#F47B20]/15 text-[#F47B20]'
+              : 'hover:text-[#F47B20] hover:bg-[#F47B20]/[0.06]'
+            }
             relative
           `}
-          style={activeTool ? { color: 'var(--text-muted)' } : undefined}
+          style={activeTool || activeView ? { color: 'var(--text-muted)' } : undefined}
         >
           {!activeTool && (
             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#F47B20] rounded-r-full" />
@@ -124,7 +127,10 @@ export function Sidebar() {
                         className={`
                           w-full flex items-center gap-2.5 rounded-md transition-all duration-150
                           ${sidebarExpanded ? 'px-2.5 py-2' : 'px-0 py-2 justify-center'}
-                          ${isActive ? 'bg-[#F47B20]/15 text-[#F47B20]' : ''}
+                          ${isActive
+                            ? 'bg-[#F47B20]/15 text-[#F47B20]'
+                            : 'hover:text-[#F47B20] hover:bg-[#F47B20]/[0.06]'
+                          }
                           relative
                         `}
                         style={!isActive ? { color: 'var(--text-muted)' } : undefined}
