@@ -221,6 +221,39 @@
     background: rgba(244, 123, 32, 0.3);
     color: white;
   }
+
+  /* ── Shimmer animation for "Got an Idea?" button ─── */
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% center;
+    }
+    100% {
+      background-position: 200% center;
+    }
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% {
+      box-shadow: 0 0 8px rgba(244, 123, 32, 0.3), 0 0 16px rgba(244, 123, 32, 0.1);
+    }
+    50% {
+      box-shadow: 0 0 16px rgba(244, 123, 32, 0.5), 0 0 32px rgba(244, 123, 32, 0.2);
+    }
+  }
+
+  .btn-idea-shimmer {
+    background: linear-gradient(
+      110deg,
+      rgba(244, 123, 32, 0.1) 0%,
+      rgba(244, 123, 32, 0.05) 40%,
+      rgba(244, 123, 32, 0.2) 50%,
+      rgba(244, 123, 32, 0.05) 60%,
+      rgba(244, 123, 32, 0.1) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2.5s ease-in-out 4, glow-pulse 2s ease-in-out 4;
+  }
 }
 
 @layer components {
