@@ -101,4 +101,31 @@ export const TEMPLATES: OrgTemplate[] = [
       ],
     }),
   },
+  {
+    name: 'Multi-Department',
+    description: '3 independent departments with section headers',
+    nodeCount: 15,
+    build: () => ({
+      nodes: [
+        // Operations section
+        createNode({ id: 'ops-head', name: 'Operations Director', title: 'Director of Operations', reportsTo: '', department: 'Operations', nodeColor: DEPARTMENT_COLORS.Operations, sectionTitle: 'Operations' }),
+        createNode({ name: 'Site Manager', title: 'Site Manager', reportsTo: 'ops-head', department: 'Operations', nodeColor: DEPARTMENT_COLORS.Operations }),
+        createNode({ name: 'Safety Officer', title: 'Safety Officer', reportsTo: 'ops-head', department: 'Operations', nodeColor: DEPARTMENT_COLORS.Operations }),
+        createNode({ name: 'Logistics Lead', title: 'Logistics Lead', reportsTo: 'ops-head', department: 'Operations', nodeColor: DEPARTMENT_COLORS.Operations }),
+        createNode({ name: 'QA Inspector', title: 'QA Inspector', reportsTo: 'ops-head', department: 'Operations', nodeColor: DEPARTMENT_COLORS.Operations }),
+        // Engineering section
+        createNode({ id: 'eng-head', name: 'Engineering Director', title: 'Director of Engineering', reportsTo: '', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering, sectionTitle: 'Engineering' }),
+        createNode({ name: 'Lead Engineer', title: 'Lead Mechanical Engineer', reportsTo: 'eng-head', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
+        createNode({ name: 'Design Engineer', title: 'Design Engineer', reportsTo: 'eng-head', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
+        createNode({ name: 'CAD Technician', title: 'CAD Technician', reportsTo: 'eng-head', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
+        createNode({ name: 'Project Engineer', title: 'Project Engineer', reportsTo: 'eng-head', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
+        // Administration section
+        createNode({ id: 'admin-head', name: 'Admin Director', title: 'Director of Administration', reportsTo: '', department: 'HR', nodeColor: DEPARTMENT_COLORS.HR, sectionTitle: 'Administration' }),
+        createNode({ name: 'HR Manager', title: 'HR Manager', reportsTo: 'admin-head', department: 'HR', nodeColor: DEPARTMENT_COLORS.HR }),
+        createNode({ name: 'Office Manager', title: 'Office Manager', reportsTo: 'admin-head', department: 'HR', nodeColor: DEPARTMENT_COLORS.HR }),
+        createNode({ name: 'Accountant', title: 'Senior Accountant', reportsTo: 'admin-head', department: 'Finance', nodeColor: DEPARTMENT_COLORS.Finance }),
+        createNode({ name: 'IT Support', title: 'IT Support Specialist', reportsTo: 'admin-head', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
+      ],
+    }),
+  },
 ]

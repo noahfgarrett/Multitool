@@ -1,8 +1,20 @@
 import { useState, useRef, useCallback } from 'react'
-import type { OrgNode, OrgChartState, Viewport, LayoutDirection } from './types.ts'
-import { createNode, DEFAULT_VIEWPORT, MIN_ZOOM, MAX_ZOOM } from './types.ts'
+import type { OrgNode, OrgChartState, OrgChartVersion, Viewport, LayoutDirection } from './types.ts'
+import { createNode, DEFAULT_VIEWPORT, MIN_ZOOM, MAX_ZOOM, MAX_VERSIONS, genId } from './types.ts'
 
 const MAX_HISTORY = 50
+const VERSIONS_KEY = 'lwt-orgchart-versions'
+
+function loadVersions(): OrgChartVersion[] {
+  try {
+    const raw = localStorage.getItem(VERSIONS_KEY)
+    return raw ? JSON.parse(raw) as OrgChartVersion[] : []
+  } catch { return [] }
+}
+
+function persistVersions(versions: OrgChartVersion[]): void {
+  localStorage.setItem(VERSIONS_KEY, JSON.stringify(versions))
+}
 
 // ── Hook: useOrgChartStore ──────────────────────────────────
 
@@ -78,9 +90,11 @@ export function useOrgChartStore() {
   }, [nodes, pushHistory])
 
   const removeNode = useCallback((id: string) => {
-    // Don't allow removing the root node
+    // Don't allow removing the LAST root node
     const node = nodes.find(n => n.id === id)
-    if (!node || !node.reportsTo) return
+    if (!node) return
+    const roots = nodes.filter(n => !n.reportsTo)
+    if (!node.reportsTo && roots.length <= 1) return
 
     // Cascade delete: find all descendants
     const toRemove = new Set<string>([id])
@@ -106,10 +120,22 @@ export function useOrgChartStore() {
   }, [nodes, pushHistory])
 
   const removeSelectedNodes = useCallback(() => {
+    const roots = nodes.filter(n => !n.reportsTo)
     const toRemove = new Set<string>()
+    // Count how many roots are being removed
+    let rootsBeingRemoved = 0
     for (const id of selectedNodeIds) {
       const node = nodes.find(n => n.id === id)
-      if (node && node.reportsTo) toRemove.add(id) // skip root
+      if (!node) continue
+      if (!node.reportsTo) {
+        // Allow removing root only if at least 1 root remains
+        if (rootsBeingRemoved < roots.length - 1) {
+          toRemove.add(id)
+          rootsBeingRemoved++
+        }
+      } else {
+        toRemove.add(id)
+      }
     }
     // Cascade
     let found = true
@@ -257,6 +283,73 @@ export function useOrgChartStore() {
     loadDiagram({ nodes: [createNode({ id: 'root', name: 'CEO', title: 'Chief Executive Officer', reportsTo: '' })] })
   }, [loadDiagram])
 
+  // ── Section actions ──────────────────────────────────
+
+  const addSection = useCallback(() => {
+    const newRoot = createNode({
+      name: 'Department Head',
+      title: 'Head of Department',
+      reportsTo: '',
+      sectionTitle: 'New Section',
+    })
+    const nextNodes = [...nodes, newRoot]
+    setNodes(nextNodes)
+    pushHistory(nextNodes)
+    setSelectedNodeIds(new Set([newRoot.id]))
+  }, [nodes, pushHistory])
+
+  const updateSectionTitle = useCallback((rootId: string, title: string) => {
+    const nextNodes = nodes.map(n =>
+      n.id === rootId ? { ...n, sectionTitle: title } : n,
+    )
+    setNodes(nextNodes)
+    pushHistory(nextNodes)
+  }, [nodes, pushHistory])
+
+  // ── Version control ──────────────────────────────────
+
+  const getVersions = useCallback((): OrgChartVersion[] => loadVersions(), [])
+
+  const saveVersion = useCallback((name: string) => {
+    const versions = loadVersions()
+    if (versions.length >= MAX_VERSIONS) {
+      versions.pop() // remove oldest (last in array)
+    }
+    const version: OrgChartVersion = {
+      id: genId(),
+      name,
+      timestamp: Date.now(),
+      nodeCount: nodes.length,
+      snapshot: structuredClone(nodes),
+    }
+    versions.unshift(version) // newest first
+    persistVersions(versions)
+  }, [nodes])
+
+  const restoreVersion = useCallback((versionId: string) => {
+    const versions = loadVersions()
+    const version = versions.find(v => v.id === versionId)
+    if (!version) return
+    const restored = structuredClone(version.snapshot)
+    setNodes(restored)
+    pushHistory(restored)
+    setSelectedNodeIds(new Set())
+  }, [pushHistory])
+
+  const deleteVersion = useCallback((versionId: string) => {
+    const versions = loadVersions().filter(v => v.id !== versionId)
+    persistVersions(versions)
+  }, [])
+
+  const renameVersion = useCallback((versionId: string, newName: string) => {
+    const versions = loadVersions()
+    const version = versions.find(v => v.id === versionId)
+    if (version) {
+      version.name = newName
+      persistVersions(versions)
+    }
+  }, [])
+
   // ── Viewport helpers ──────────────────────────────────
 
   const zoomTo = useCallback((newZoom: number, center?: { x: number; y: number }) => {
@@ -316,6 +409,12 @@ export function useOrgChartStore() {
 
     // Diagram actions
     loadDiagram, clearDiagram,
+
+    // Section actions
+    addSection, updateSectionTitle,
+
+    // Version control
+    getVersions, saveVersion, restoreVersion, deleteVersion, renameVersion,
 
     // History
     undo, redo,
