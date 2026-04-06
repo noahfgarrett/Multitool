@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useOrgChartStore } from './orgChartStore.ts'
 import { Canvas } from './Canvas.tsx'
 import { Toolbar } from './Toolbar.tsx'
@@ -35,7 +35,16 @@ export default function OrgChartTool() {
   // ── Modal state ────────────────────────────────────────────
   const [showExport, setShowExport] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
+  const [showVersions, setShowVersions] = useState(false)
+  const [versionRefresh, setVersionRefresh] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Memoize versions list to re-read when panel opens or after mutations
+  const versions = useMemo(
+    () => showVersions ? store.getVersions() : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [showVersions, versionRefresh, store],
+  )
 
   // ── Export handlers ────────────────────────────────────────
   const handleExportPNG = useCallback(async () => {
@@ -130,12 +139,88 @@ export default function OrgChartTool() {
         onExport={() => setShowExport(true)}
         onImportJSON={() => fileInputRef.current?.click()}
         onTemplates={() => setShowTemplates(true)}
+        showVersions={showVersions}
+        setShowVersions={setShowVersions}
       />
 
-      {/* Main area: Canvas | PropertiesPanel */}
+      {/* Main area: Canvas | VersionsPanel | PropertiesPanel */}
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 relative">
           <Canvas store={store} />
+
+          {/* Versions panel */}
+          {showVersions && (
+            <div className="absolute right-0 top-0 w-72 max-h-[calc(100%-12px)] overflow-y-auto bg-dark-elevated border border-white/10 rounded-lg shadow-xl z-50 p-3 m-2">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-white">Version History</h3>
+                <button
+                  onClick={() => {
+                    const name = prompt('Version name:', `Version ${versions.length + 1}`)
+                    if (name) {
+                      store.saveVersion(name)
+                      setVersionRefresh(v => v + 1)
+                    }
+                  }}
+                  className="text-xs px-2 py-1 bg-[#F47B20] text-white rounded hover:bg-[#F47B20]/80 transition-colors"
+                >
+                  Save Current
+                </button>
+              </div>
+              {versions.length === 0 ? (
+                <p className="text-xs text-white/40 text-center py-4">No saved versions yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {versions.map(v => (
+                    <div key={v.id} className="p-2 rounded bg-white/[0.03] border border-white/[0.06] group">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-white truncate">{v.name}</span>
+                        <span className="text-[10px] text-white/30">{v.nodeCount} people</span>
+                      </div>
+                      <div className="text-[10px] text-white/30 mt-0.5">
+                        {new Date(v.timestamp).toLocaleDateString()} {new Date(v.timestamp).toLocaleTimeString()}
+                      </div>
+                      <div className="flex gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => {
+                            if (confirm('Restore this version? Current chart will be replaced.')) {
+                              store.restoreVersion(v.id)
+                              triggerFitToContent()
+                            }
+                          }}
+                          className="text-[10px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30 transition-colors"
+                        >
+                          Restore
+                        </button>
+                        <button
+                          onClick={() => {
+                            const newName = prompt('Rename version:', v.name)
+                            if (newName) {
+                              store.renameVersion(v.id, newName)
+                              setVersionRefresh(ver => ver + 1)
+                            }
+                          }}
+                          className="text-[10px] px-1.5 py-0.5 bg-white/5 text-white/50 rounded hover:bg-white/10 transition-colors"
+                        >
+                          Rename
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm('Delete this version?')) {
+                              store.deleteVersion(v.id)
+                              setVersionRefresh(ver => ver + 1)
+                            }
+                          }}
+                          className="text-[10px] px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Empty state overlay */}
           {store.nodes.length === 0 && (
