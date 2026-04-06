@@ -8,6 +8,7 @@ export interface Point {
 // ── Shape types ─────────────────────────────────────────────
 
 export type ShapeType =
+  // ── Basic / Flowchart / Misc (original) ────────
   | 'rectangle'
   | 'rounded-rectangle'
   | 'diamond'
@@ -21,24 +22,63 @@ export type ShapeType =
   | 'cloud'
   | 'callout'
   | 'star'
-  | 'swim-lane'
-  // Agent A: additional ISO 5807 shapes
-  | 'document-shape'
-  | 'predefined-process'
-  | 'manual-operation'
-  | 'manual-input'
-  | 'delay'
-  | 'on-page-ref'
-  | 'off-page-ref'
-  | 'stored-data'
+  // ── P&ID: Vessels & Tanks ──────────────────────
+  | 'pid-horizontal-vessel'
+  | 'pid-vertical-vessel'
+  | 'pid-open-tank'
+  | 'pid-closed-tank'
+  | 'pid-column'
+  | 'pid-reactor'
+  | 'pid-drum'
+  // ── P&ID: Rotating Equipment ───────────────────
+  | 'pid-centrifugal-pump'
+  | 'pid-pd-pump'
+  | 'pid-compressor'
+  | 'pid-fan'
+  | 'pid-turbine'
+  | 'pid-motor'
+  // ── P&ID: Heat Transfer ────────────────────────
+  | 'pid-shell-tube-hx'
+  | 'pid-plate-hx'
+  | 'pid-air-cooler'
+  | 'pid-condenser'
+  | 'pid-boiler'
+  | 'pid-furnace'
+  // ── P&ID: Valves ───────────────────────────────
+  | 'pid-gate-valve'
+  | 'pid-globe-valve'
+  | 'pid-ball-valve'
+  | 'pid-butterfly-valve'
+  | 'pid-check-valve'
+  | 'pid-control-valve'
+  | 'pid-relief-valve'
+  | 'pid-solenoid-valve'
+  | 'pid-3way-valve'
+  | 'pid-plug-valve'
+  // ── P&ID: Instruments ──────────────────────────
+  | 'pid-indicator'
+  | 'pid-transmitter'
+  | 'pid-controller'
+  | 'pid-recorder'
+  | 'pid-sensor'
+  | 'pid-flow-element'
+  | 'pid-level-gauge'
+  // ── P&ID: Piping ──────────────────────────────
+  | 'pid-reducer'
+  | 'pid-tee'
+  | 'pid-elbow'
+  | 'pid-cap'
+  | 'pid-flange'
+  | 'pid-strainer'
+  // ── P&ID: Miscellaneous ───────────────────────
+  | 'pid-spray-nozzle'
+  | 'pid-mixer'
+  | 'pid-cyclone'
+  | 'pid-conveyor'
 
 export type PortPosition = 'top' | 'right' | 'bottom' | 'left'
 
 // ── Node styling ────────────────────────────────────────────
-
-export type FontWeight = 'normal' | 'bold'
-export type FontStyle = 'normal' | 'italic'
-export type TextAlign = 'left' | 'center' | 'right'
 
 export interface NodeStyle {
   fill: string
@@ -46,9 +86,6 @@ export interface NodeStyle {
   strokeWidth: number
   fontSize: number
   fontColor: string
-  fontWeight: FontWeight
-  fontStyle: FontStyle
-  textAlign: TextAlign
 }
 
 export const DEFAULT_NODE_STYLE: NodeStyle = {
@@ -57,9 +94,6 @@ export const DEFAULT_NODE_STYLE: NodeStyle = {
   strokeWidth: 1.5,
   fontSize: 13,
   fontColor: '#ffffff',
-  fontWeight: 'normal',
-  fontStyle: 'normal',
-  textAlign: 'center',
 }
 
 // ── Edge styling ────────────────────────────────────────────
@@ -92,9 +126,6 @@ export interface DiagramNode {
   height: number
   style: NodeStyle
   zIndex: number
-  rotation: number       // degrees, default 0 (Agent A)
-  groupId: string | null // Agent C
-  layerId: string        // Agent C
 }
 
 // ── Diagram edge ────────────────────────────────────────────
@@ -109,23 +140,6 @@ export interface DiagramEdge {
   routeType: EdgeRouteType
   style: EdgeStyle
   waypoints: Point[]
-  labelPosition: number // 0-1 along edge path, default 0.5 (Agent A)
-}
-
-// ── Layer ────────────────────────────────────────────────────
-
-export interface DiagramLayer {
-  id: string
-  name: string
-  isVisible: boolean
-  isLocked: boolean
-}
-
-export const DEFAULT_LAYER: DiagramLayer = {
-  id: 'default',
-  name: 'Default',
-  isVisible: true,
-  isLocked: false,
 }
 
 // ── Diagram state (for undo/redo snapshots) ─────────────────
@@ -133,17 +147,6 @@ export const DEFAULT_LAYER: DiagramLayer = {
 export interface DiagramState {
   nodes: DiagramNode[]
   edges: DiagramEdge[]
-}
-
-// ── Diagram page (for multi-page support) ───────────────────
-
-export interface DiagramPage {
-  id: string
-  name: string
-  nodes: DiagramNode[]
-  edges: DiagramEdge[]
-  viewport: Viewport
-  layers: DiagramLayer[]
 }
 
 // ── Interaction modes ───────────────────────────────────────
@@ -181,16 +184,6 @@ export const DEFAULT_VIEWPORT: Viewport = {
 
 export const MIN_ZOOM = 0.15
 export const MAX_ZOOM = 4
-
-// ── PDF Export page sizes ──────────────────────────────────
-
-export type PdfPageSize = 'auto' | 'letter' | 'tabloid' | 'a4'
-
-export const PDF_PAGE_SIZES: Record<Exclude<PdfPageSize, 'auto'>, { width: number; height: number; label: string }> = {
-  letter:  { width: 612, height: 792, label: 'Letter (8.5 x 11)' },
-  tabloid: { width: 792, height: 1224, label: 'Tabloid (11 x 17)' },
-  a4:      { width: 595, height: 842, label: 'A4 (210 x 297mm)' },
-}
 
 // ── Utility ─────────────────────────────────────────────────
 
