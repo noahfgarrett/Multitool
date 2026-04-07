@@ -519,7 +519,7 @@
 
 ## Competitive Positioning Matrix
 
-| Dimension | Adobe Acrobat | JotForm | Typeform | Bluebeam | MS Word | Google Forms | DocuSign | GoCanvas | **LotusWorks** |
+| Dimension | Adobe Acrobat | JotForm | Typeform | Bluebeam | MS Word | Google Forms | DocuSign | GoCanvas | **Multitool** |
 |-----------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | Offline / No internet | - | - | - | Partial | Yes | - | - | Yes | **Yes** |
 | No account / install required | - | - | - | - | - | - | - | - | **Yes** |
@@ -623,7 +623,7 @@
 
 4. **Template quantity is your most visible gap.** Going from 5 to 20 construction-specific templates would dramatically improve first impressions and immediately serve the target audience.
 
-5. **Bluebeam is your closest competitor in approach** (WYSIWYG PDF forms for construction), but it costs $240-360/year and is Windows-centric. Position LotusWorks as the free, cross-platform, zero-install alternative.
+5. **Bluebeam is your closest competitor in approach** (WYSIWYG PDF forms for construction), but it costs $240-360/year and is Windows-centric. Position Multitool as the free, cross-platform, zero-install alternative.
 
 6. **DocuSign and Procore dominate the signature/contract workflow** space in construction but are not form builders. They are complementary, not competitive. Consider JSON export compatibility with these ecosystems long-term.
 

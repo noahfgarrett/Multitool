@@ -36,7 +36,7 @@ test.describe('VVP: Profile Features & Sidebar Avatar', () => {
     // Inject profile so the profile modal doesn't block
     await page.addInitScript(() => {
       localStorage.setItem('mt-user-profile', JSON.stringify({
-        name: 'Jane Doe', email: 'jane@lotusworks.com', initials: 'JD',
+        name: 'Jane Doe', email: 'jane@multitool.com', initials: 'JD',
         jobTitle: 'Senior Estimator', company: 'Multitool', photo: '',
       }))
     })
@@ -113,7 +113,7 @@ test.describe('VVP: Profile Features & Sidebar Avatar', () => {
     // Set up profile with all fields populated
     await page.addInitScript(() => {
       localStorage.setItem('mt-user-profile', JSON.stringify({
-        name: 'Noah Garrett', email: 'noah@lotusworks.com', initials: 'NG',
+        name: 'Noah Garrett', email: 'noah@multitool.com', initials: 'NG',
         jobTitle: 'Lead Engineer', company: 'Multitool', photo: '',
       }))
     })
@@ -202,7 +202,7 @@ test.describe('VVP: Profile Features & Sidebar Avatar', () => {
     // Initials should auto-generate
     await expect(page.locator('#profile-initials')).toHaveValue('SC')
 
-    await page.locator('#profile-email').fill('sarah@lotusworks.com')
+    await page.locator('#profile-email').fill('sarah@multitool.com')
 
     // Click "Get Started" to save
     const getStartedBtn = page.locator('button').filter({ hasText: 'Get Started' })

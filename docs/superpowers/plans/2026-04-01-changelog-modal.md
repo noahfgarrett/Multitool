@@ -66,7 +66,7 @@ git commit -m "refactor: extract isNewer to shared semver utility"
 Fetch all existing release notes from GitHub and populate the file. Run this to get the raw data:
 
 ```bash
-gh api repos/noahfgarrett/LotusWorksToolkit/releases --paginate --jq '.[] | {tag: .tag_name, date: .created_at[0:10], body}' > /tmp/releases.json
+gh api repos/noahfgarrett/Multitool/releases --paginate --jq '.[] | {tag: .tag_name, date: .created_at[0:10], body}' > /tmp/releases.json
 ```
 
 Then create the file with every release entry. The structure:
@@ -292,7 +292,7 @@ return (
           {/* Update instructions */}
           <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 text-xs text-white/50 space-y-1.5">
             <p className="text-white/70 font-medium">After downloading:</p>
-            <p><span className="text-white/60 font-medium">Option A:</span> Delete your current LotusWorksToolkit.html, then move the new file to the same location.</p>
+            <p><span className="text-white/60 font-medium">Option A:</span> Delete your current Multitool.html, then move the new file to the same location.</p>
             <p><span className="text-white/60 font-medium">Option B:</span> Open the downloaded file and update your bookmark to point to the new copy.</p>
           </div>
 
@@ -465,7 +465,7 @@ Replace the version paragraph (around line 176) with a clickable button that has
     className="relative text-[10px] text-white/30 hover:text-white/50 text-center mt-2 w-full transition-colors"
     title="View changelog"
   >
-    LotusWorks Toolkit v{__APP_VERSION__}
+    Multitool v{__APP_VERSION__}
     {localStorage.getItem('lastSeenVersion') !== __APP_VERSION__ && (
       <span className="absolute -top-0.5 -right-1 w-1.5 h-1.5 rounded-full bg-[#F47B20] animate-pulse" />
     )}

@@ -48,7 +48,7 @@ setTheme: (theme) => {
 
 - [ ] **Step 2: Verify build compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 
 - [ ] **Step 3: Commit**
 
@@ -361,7 +361,7 @@ After the Initials field:
     type="text"
     value={company}
     onChange={e => setCompany(e.target.value)}
-    placeholder="e.g. LotusWorks"
+    placeholder="e.g. Multitool"
     className="w-full px-3 py-2 bg-white/[0.06] border border-white/10 rounded-lg text-sm text-white placeholder-white/30 focus:outline-none focus:border-[#F47B20]/50"
   />
 </div>
@@ -521,7 +521,7 @@ export function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
       {/* About tab */}
       {tab === 'about' && (
         <div className="text-center py-4 space-y-3">
-          <h2 className="text-xl font-display font-bold text-[#F47B20]">LotusWorks Toolkit</h2>
+          <h2 className="text-xl font-display font-bold text-[#F47B20]">Multitool</h2>
           <div className="inline-block px-3 py-1 bg-white/[0.06] rounded-full text-xs text-white/60">
             v{__APP_VERSION__}
           </div>
@@ -548,7 +548,7 @@ export function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: (
 
 - [ ] **Step 2: Verify build compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 
 - [ ] **Step 3: Commit**
 
@@ -695,7 +695,7 @@ git commit -m "feat: show profile picture and job title in comments, feedback, a
 - [ ] **Step 1: Run full build**
 
 ```bash
-cd /Users/noahgarrett/codebase/lotusworkstoolkit && npm run build
+cd /Users/noahgarrett/codebase/multitool && npm run build
 ```
 
 - [ ] **Step 2: Start dev server and verify**

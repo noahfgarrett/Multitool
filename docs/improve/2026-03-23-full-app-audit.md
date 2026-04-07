@@ -1,4 +1,4 @@
-# Full App Improvement Audit: LotusWorksToolkit
+# Full App Improvement Audit: Multitool
 **Date:** 2026-03-23
 **Scope:** Full app audit — all 15 tools + new tool ideas + cross-cutting UX
 **Competitors analyzed:** Bluebeam Revu, PlanSwift, Adobe Acrobat Pro, Foxit PDF Editor, Smallpdf, iLovePDF, PDF24, Canva, Procore, Fieldwire

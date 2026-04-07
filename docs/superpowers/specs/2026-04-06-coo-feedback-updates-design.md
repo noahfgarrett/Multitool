@@ -305,7 +305,7 @@ type ShapeType = /* existing */ | 'pid-centrifugal-pump' | 'pid-gate-valve' | /*
 | Initials | string | Auto | Auto-generated from name, manual override, max 3 chars |
 | Profile Picture | string (base64) | No | Upload image, auto-crop circle, compress 128px JPEG 0.85 |
 | Job Title | string | No | e.g. "Senior Estimator", "Project Engineer" |
-| Company | string | No | e.g. "LotusWorks" |
+| Company | string | No | e.g. "Multitool" |
 
 ### Profile Picture Handling
 - Upload: Accept `image/*`, read as data URL
@@ -363,7 +363,7 @@ interface UserProfile {
 ## Feature 6: About Section (Settings → About Tab)
 
 ### Content
-- **App title**: "LotusWorks Toolkit" with orange branding
+- **App title**: "Multitool" with orange branding
 - **Version**: v{__APP_VERSION__}
 - **Created by**: Noah Garrett
 - **Description**: "Professional-grade local toolbox for construction professionals. 100% offline, zero server calls."
@@ -372,7 +372,7 @@ interface UserProfile {
 
 ### Layout
 - Clean, centered layout within the About tab
-- LotusWorks orange accent on the title
+- Multitool orange accent on the title
 - Version number styled as a subtle badge
 - Minimal — informational only, no interactive elements beyond the changelog link
 

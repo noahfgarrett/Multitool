@@ -396,7 +396,7 @@ const observer = new IntersectionObserver((entries) => {
 
 ---
 
-## Summary: Priority Recommendations for LotusWorksToolkit v2
+## Summary: Priority Recommendations for Multitool v2
 
 ### High Impact, Implement First
 

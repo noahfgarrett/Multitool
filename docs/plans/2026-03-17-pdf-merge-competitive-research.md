@@ -261,7 +261,7 @@
 
 ---
 
-## Key Takeaways for LotusWorksToolkit
+## Key Takeaways for Multitool
 
 1. **Biggest gap in the market:** A web-based tool that combines Smallpdf's drag-and-drop simplicity with construction-aware intelligence (auto sheet numbering, discipline sorting, revision awareness).
 

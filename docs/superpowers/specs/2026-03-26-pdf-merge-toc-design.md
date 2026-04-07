@@ -317,7 +317,7 @@ Page numbers in the TOC refer to the **final document page numbers** (TOC page =
 
 ## Visual Design
 
-- Follows the existing dark theme and LotusWorks design language
+- Follows the existing dark theme and Multitool design language
 - All icons from lucide-react
 - Modal uses the `Modal` component with new `'3xl'` width option
 - Orange accent (`#F47B20`) for active states, selected entries, primary buttons

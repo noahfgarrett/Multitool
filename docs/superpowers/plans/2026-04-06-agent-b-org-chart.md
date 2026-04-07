@@ -74,7 +74,7 @@ export function createNode(overrides: Partial<OrgNode> = {}): OrgNode {
 
 - [ ] **Step 2: Verify build compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 
 - [ ] **Step 3: Commit**
 
@@ -151,7 +151,7 @@ for (const root of roots) {
 
 - [ ] **Step 4: Verify build compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 
 - [ ] **Step 5: Commit**
 
@@ -235,7 +235,7 @@ In the right-click handler for empty canvas area, add a menu item:
 
 - [ ] **Step 4: Verify build compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 
 - [ ] **Step 5: Commit**
 
@@ -359,7 +359,7 @@ renameVersion: (versionId: string, newName: string) => {
 
 - [ ] **Step 2: Verify build compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 
 - [ ] **Step 3: Commit**
 
@@ -461,7 +461,7 @@ Pass `showVersions` and `setShowVersions` to Toolbar.
 
 - [ ] **Step 2: Verify build compiles and test manually**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 
 - [ ] **Step 3: Commit**
 
@@ -540,7 +540,7 @@ git commit -m "feat(org-chart): include section titles in all export formats"
 
 - [ ] **Step 2: Verify build compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 
 - [ ] **Step 3: Commit**
 
@@ -556,7 +556,7 @@ git commit -m "feat(org-chart): add Multi-Department template with 3 sections"
 - [ ] **Step 1: Run full build**
 
 ```bash
-cd /Users/noahgarrett/codebase/lotusworkstoolkit && npm run build
+cd /Users/noahgarrett/codebase/multitool && npm run build
 ```
 
 - [ ] **Step 2: Start dev server and manually verify**

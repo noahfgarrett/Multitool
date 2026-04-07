@@ -101,7 +101,7 @@ Compare versions using the same `isNewer` semver logic from `updateChecker.ts`.
 ### 5. Sidebar Version Link — Clickable with "What's New" Dot
 
 **Make version text clickable:**
-- The existing `LotusWorks Toolkit v3.0.0` text in the sidebar footer becomes a clickable link
+- The existing `Multitool v3.0.0` text in the sidebar footer becomes a clickable link
 - Click opens the UpdateModal with the Changelog tab active and no update info (just changelog browsing)
 
 **"What's New" orange dot:**

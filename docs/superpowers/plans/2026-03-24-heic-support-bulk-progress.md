@@ -18,13 +18,13 @@
 - [ ] **Step 1: Install the heic2any package**
 
 ```bash
-cd /Users/noahgarrett/codebase/lotusworkstoolkit && npm install heic2any
+cd /Users/noahgarrett/codebase/multitool && npm install heic2any
 ```
 
 - [ ] **Step 2: Verify installation**
 
 ```bash
-ls /Users/noahgarrett/codebase/lotusworkstoolkit/node_modules/heic2any/dist/heic2any.d.ts
+ls /Users/noahgarrett/codebase/multitool/node_modules/heic2any/dist/heic2any.d.ts
 ```
 
 Expected: File exists (confirms package installed with types).
@@ -100,7 +100,7 @@ if (category === 'image') {
 - [ ] **Step 4: Run build to verify compilation**
 
 ```bash
-cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit
+cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit
 ```
 
 Expected: No errors.
@@ -138,7 +138,7 @@ Note: `image/*` may not match HEIC on all browsers, so the explicit extensions e
 - [ ] **Step 2: Run build to verify**
 
 ```bash
-cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit
+cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit
 ```
 
 - [ ] **Step 3: Commit**
@@ -265,7 +265,7 @@ In the toolbar, wrap the Convert All button so it's hidden while `bulkProgress` 
 - [ ] **Step 6: Run build to verify**
 
 ```bash
-cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit
+cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit
 ```
 
 - [ ] **Step 7: Commit**
@@ -309,7 +309,7 @@ git commit -m "docs: add HEIC/HEIF to file converter help text"
 - [ ] **Step 1: Start dev server**
 
 ```bash
-cd /Users/noahgarrett/codebase/lotusworkstoolkit && npm run dev
+cd /Users/noahgarrett/codebase/multitool && npm run dev
 ```
 
 - [ ] **Step 2: Test HEIC conversion**
@@ -339,7 +339,7 @@ Drop 20+ image files, select an output format for all, click "Convert All":
 - [ ] **Step 5: Final build check**
 
 ```bash
-cd /Users/noahgarrett/codebase/lotusworkstoolkit && npm run build
+cd /Users/noahgarrett/codebase/multitool && npm run build
 ```
 
 Expected: Build succeeds with no errors.

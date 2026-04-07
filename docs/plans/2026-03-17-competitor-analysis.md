@@ -1,12 +1,12 @@
 # Competitor Analysis: PDF Annotation Tools for Construction
 **Date:** 2026-03-17
-**LotusWorksToolkit version:** v2.4.0
+**Multitool version:** v2.4.0
 
 ---
 
 ## Executive Summary
 
-Research across 6 major competitors reveals **32 feature gaps** where LotusWorksToolkit could add significant value. The highest-impact gaps cluster into 5 themes:
+Research across 6 major competitors reveals **32 feature gaps** where Multitool could add significant value. The highest-impact gaps cluster into 5 themes:
 
 1. **Document Comparison & Overlay** -- Every desktop competitor has this; we have none
 2. **Batch Processing & Automation** -- Bluebeam, Adobe, and PDF-XChange all offer multi-file batch operations

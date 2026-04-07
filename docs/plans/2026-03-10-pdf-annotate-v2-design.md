@@ -171,7 +171,7 @@ Replaces the current simple export button. Opens a modal/drawer with two clearly
 - No annotation data embedded — clean deliverable
 - Safety measures:
   1. Warning banner when selected: "All annotations will be permanently flattened. Comments, statuses, and edit history will not be recoverable."
-  2. Confirmation dialog on Export click: "Are you sure? This cannot be undone. The exported PDF will not be editable in LotusWorks." with a red "Export Final" button and Cancel
+  2. Confirmation dialog on Export click: "Are you sure? This cannot be undone. The exported PDF will not be editable in Multitool." with a red "Export Final" button and Cancel
 - Visual distinction: red/orange toggle vs blue for Review mode — no ambiguity
 
 ### Metadata Embedding

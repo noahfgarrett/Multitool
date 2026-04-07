@@ -48,7 +48,7 @@ Also reduce header height from `h-14` (56px) to `h-10` (40px) when a tool is act
 
 - [ ] **Step 2: Verify build compiles**
 
-Run: `cd ~/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd ~/codebase/multitool && npx tsc --noEmit`
 Expected: 0 errors
 
 - [ ] **Step 3: Visual verification**
@@ -204,7 +204,7 @@ Remove the old individual icon buttons for these 5 features. Keep the `{/* Bookm
 
 - [ ] **Step 4: Verify build compiles**
 
-Run: `cd ~/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd ~/codebase/multitool && npx tsc --noEmit`
 Expected: 0 errors
 
 - [ ] **Step 5: Visual verification**
@@ -397,7 +397,7 @@ Note: Shapes and Text are dropdowns. When expanded, clicking them should open th
 
 - [ ] **Step 6: Verify build compiles**
 
-Run: `cd ~/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd ~/codebase/multitool && npx tsc --noEmit`
 Expected: 0 errors
 
 - [ ] **Step 7: Visual verification**
@@ -455,7 +455,7 @@ Adapt the variable names to match the actual code — read the existing bottom b
 
 - [ ] **Step 2: Verify build compiles**
 
-Run: `cd ~/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd ~/codebase/multitool && npx tsc --noEmit`
 Expected: 0 errors
 
 - [ ] **Step 3: Visual verification**
@@ -481,14 +481,14 @@ git commit -m "feat: remove duplicate page nav from bottom bar — top toolbar i
 
 - [ ] **Step 1: Run full type check**
 
-Run: `cd ~/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd ~/codebase/multitool && npx tsc --noEmit`
 Expected: 0 errors
 
 - [ ] **Step 2: Run existing PDF Annotate e2e tests**
 
 Run a subset to verify nothing is broken:
 ```bash
-cd ~/codebase/lotusworkstoolkit && npx playwright test e2e/documents/pdf-annotate/01-file-handling.spec.ts --workers=1 --reporter=line
+cd ~/codebase/multitool && npx playwright test e2e/documents/pdf-annotate/01-file-handling.spec.ts --workers=1 --reporter=line
 ```
 Expected: All tests pass. If selectors broke due to DOM changes, fix them.
 

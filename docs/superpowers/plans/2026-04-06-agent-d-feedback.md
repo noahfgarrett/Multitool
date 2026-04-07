@@ -44,7 +44,7 @@ setActiveView: (view, payload) => set({
 
 - [ ] **Step 2: Verify build compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 
 - [ ] **Step 3: Commit**
 
@@ -148,7 +148,7 @@ export function WelcomeScreen() {
           </button>
 
           <h1 className="text-4xl font-display font-bold text-[#F47B20] mb-3">
-            LotusWorks Toolkit
+            Multitool
           </h1>
           <p className="text-lg text-white/50 max-w-lg mx-auto">
             Your all-in-one productivity suite. Select a tool to get started.
@@ -160,7 +160,7 @@ export function WelcomeScreen() {
 
 - [ ] **Step 2: Verify build compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 
 - [ ] **Step 3: Commit**
 
@@ -205,7 +205,7 @@ Add `useEffect` import if not already present.
 
 - [ ] **Step 2: Verify build compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 
 - [ ] **Step 3: Commit**
 
@@ -221,7 +221,7 @@ git commit -m "feat: read feedbackPayload to pre-select Enhancement Idea type"
 - [ ] **Step 1: Run full build**
 
 ```bash
-cd /Users/noahgarrett/codebase/lotusworkstoolkit && npm run build
+cd /Users/noahgarrett/codebase/multitool && npm run build
 ```
 
 - [ ] **Step 2: Start dev server and verify**

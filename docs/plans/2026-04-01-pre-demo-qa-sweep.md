@@ -1,7 +1,7 @@
 # Pre-Demo QA Sweep — 2026-04-01
 
 ## Goal
-Systematically QA all 15 tools in LotusWorksToolkit before the 2026-04-02 presentation. Find and fix bugs, ensure every tab works smoothly.
+Systematically QA all 15 tools in Multitool before the 2026-04-02 presentation. Find and fix bugs, ensure every tab works smoothly.
 
 ## Architecture
 - **Orchestrator** — manages batches, merges fixes, resolves conflicts, presents consolidated report

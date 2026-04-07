@@ -71,7 +71,7 @@ Populated dynamically from `registry.ts` tool list, grouped by category using `<
 
 A read-only display below the description showing who the email will be sent as:
 
-- Initials circle (LotusWorks orange background) + name + email, pulled from `getUserProfile()`
+- Initials circle (Multitool orange background) + name + email, pulled from `getUserProfile()`
 - Label: "From your profile"
 - **Edge case**: If no profile exists (`!hasUserProfile()`), show a prompt: "Set up your profile to send feedback" as a clickable link. Clicking it calls `useAppStore.getState().setShowProfileModal(true)` — this requires adding a `showProfileModal: boolean` + `setShowProfileModal` action to `appStore.ts`, and lifting the profile modal trigger out of `App.tsx` local state into the store so `FeedbackForm` can access it.
 
@@ -106,7 +106,7 @@ I expected all annotations to be preserved in the export.
 
 ---
 
-Sent from LotusWorks Toolkit v2.7.3
+Sent from Multitool v2.7.3
 ```
 
 The subject line format (`[Type] Tool — Subject`) enables quick inbox scanning and filtering. The "From" address is determined by the user's email client — it cannot be set via `mailto:` or `ms-outlook://`. The user's identity is captured in the body under "SUBMITTED BY."
@@ -117,7 +117,7 @@ The subject line format (`[Type] Tool — Subject`) enables quick inbox scanning
 
 - Located in the Sidebar footer section, directly above the version text
 - Separated from tool categories by a `border-top` divider (matches existing `border-white/[0.06]` style)
-- Icon: `MessageSquarePlus` from lucide-react, LotusWorks orange color
+- Icon: `MessageSquarePlus` from lucide-react, Multitool orange color
 - Label: "Report Bug / Idea"
 - **Important**: The current sidebar footer is wrapped in `{sidebarExpanded && ...}`, hiding it when collapsed. The feedback button must render in both states — place it outside that conditional, or restructure the footer to always render the button (icon-only when collapsed, icon + label when expanded).
 
@@ -133,7 +133,7 @@ Calls `setActiveView('feedback')` on the Zustand store, which also clears `activ
 
 ## Visual Design
 
-- Follows the existing dark theme and LotusWorks design language
+- Follows the existing dark theme and Multitool design language
 - All icons from `lucide-react` — no Unicode emoji
 - Form uses existing shared components where available (`Button`, label styles)
 - Orange accent color (`#F47B20`) for primary actions

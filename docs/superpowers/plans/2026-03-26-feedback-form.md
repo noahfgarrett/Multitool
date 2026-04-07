@@ -64,7 +64,7 @@ Update `goHome` (line 36) to also clear `activeView`:
 
 - [ ] **Step 3: Verify TypeScript compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 Expected: No errors
 
 - [ ] **Step 4: Commit**
@@ -120,7 +120,7 @@ Replace the conditional block (lines 17-31) with a three-way branch:
 
 - [ ] **Step 3: Verify TypeScript compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 Expected: No errors
 
 - [ ] **Step 4: Commit**
@@ -205,7 +205,7 @@ Replace the entire footer block (lines 149-156) with a footer that always render
         </button>
         {sidebarExpanded && (
           <p className="text-[10px] text-white/30 text-center mt-2">
-            LotusWorks Toolkit v{__APP_VERSION__}
+            Multitool v{__APP_VERSION__}
           </p>
         )}
       </div>
@@ -213,7 +213,7 @@ Replace the entire footer block (lines 149-156) with a footer that always render
 
 - [ ] **Step 4: Verify TypeScript compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 Expected: No errors
 
 - [ ] **Step 5: Commit**
@@ -298,7 +298,7 @@ function buildEmailBody(
     '',
     '---',
     '',
-    `Sent from LotusWorks Toolkit v${version}`,
+    `Sent from Multitool v${version}`,
   ].join('\n')
 }
 
@@ -564,7 +564,7 @@ export default function FeedbackForm() {
 
 - [ ] **Step 3: Verify TypeScript compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 Expected: No errors
 
 - [ ] **Step 4: Commit**
@@ -660,7 +660,7 @@ Remove `useState` from the import if `showProfileModal` was the only useState us
 
 - [ ] **Step 7: Verify TypeScript compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 Expected: No errors
 
 - [ ] **Step 8: Commit**
@@ -678,12 +678,12 @@ git commit -m "feat: wire up feedback view routing and store-driven profile moda
 
 - [ ] **Step 1: Full TypeScript check**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 Expected: Zero errors
 
 - [ ] **Step 2: Start dev server and test manually**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx vite --port 5173 --host 127.0.0.1`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx vite --port 5173 --host 127.0.0.1`
 
 Test checklist via Playwright MCP browser at `http://localhost:5173`:
 1. Sidebar shows "Report Bug / Idea" button at bottom with MessageSquarePlus icon
@@ -703,8 +703,8 @@ Test checklist via Playwright MCP browser at `http://localhost:5173`:
 
 - [ ] **Step 3: Production build**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npm run build`
-Expected: Build succeeds, `dist/LotusWorksToolkit.html` produced
+Run: `cd /Users/noahgarrett/codebase/multitool && npm run build`
+Expected: Build succeeds, `dist/Multitool.html` produced
 
 - [ ] **Step 4: Final commit if any fixes needed**
 

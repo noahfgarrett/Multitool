@@ -92,7 +92,7 @@ export interface BackgroundImage {
 
 - [ ] **Step 3: Verify build compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 
 - [ ] **Step 4: Commit**
 
@@ -228,7 +228,7 @@ Implement ALL ~46 shapes following these patterns. Use ISA-5.1 standard geometry
 
 - [ ] **Step 3: Verify build compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 
 - [ ] **Step 4: Commit**
 
@@ -355,7 +355,7 @@ const CATEGORIES: { key: string; label: string }[] = [
 
 - [ ] **Step 4: Verify build compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 
 - [ ] **Step 5: Commit**
 
@@ -589,7 +589,7 @@ export async function exportVSDX(nodes: DiagramNode[], edges: DiagramEdge[]): Pr
   zip.file('visio/document.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <VisioDocument xmlns="http://schemas.microsoft.com/office/visio/2012/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <DocumentProperties>
-    <Creator>LotusWorks Toolkit</Creator>
+    <Creator>Multitool</Creator>
   </DocumentProperties>
 </VisioDocument>`)
 
@@ -684,7 +684,7 @@ Add "Visio (.vsdx)" as an option in the export format selector.
 
 - [ ] **Step 4: Verify build compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 
 - [ ] **Step 5: Commit**
 
@@ -700,7 +700,7 @@ git commit -m "feat(flowchart): Visio .vsdx export and background image toggle i
 - [ ] **Step 1: Run full build**
 
 ```bash
-cd /Users/noahgarrett/codebase/lotusworkstoolkit && npm run build
+cd /Users/noahgarrett/codebase/multitool && npm run build
 ```
 
 - [ ] **Step 2: Start dev server and verify**

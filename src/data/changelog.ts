@@ -24,8 +24,7 @@ export const CHANGELOG: ChangelogEntry[] = [
 - **Flowchart — P&ID symbol library** — 46 ISA-5.1 / ISO 14617 shapes across 7 categories with search, recents, and Visio .vsdx export
 - **"Got an Idea?" button** — Submit feature requests and bug reports right from the welcome screen
 - **PDF Annotate — layers & markups overhaul** — Layer management, markup list with filtering, inline delete, and layer assignment
-- **PDF Annotate — code refactor** — Extracted state, keyboard shortcuts, and export logic into dedicated modules for faster future development
-- **Changelog improvements** — Dates now show without timestamps for a cleaner look`,
+- **PDF Annotate — code refactor** — Extracted state, keyboard shortcuts, and export logic into dedicated modules for faster future development`,
   },
   {
     version: '3.1.5',

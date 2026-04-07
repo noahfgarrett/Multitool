@@ -203,7 +203,7 @@ export function entriesToNestedBookmarks(
 
 - [ ] **Step 3: Verify TypeScript compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 Expected: No errors
 
 - [ ] **Step 4: Commit**
@@ -386,7 +386,7 @@ import { PDFDocument, PDFDict, PDFName, PDFHexString, PDFArray, PDFNumber, PDFRe
 
 - [ ] **Step 4: Verify TypeScript compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 Expected: No errors (may need Task 3 stub first — if so, create a minimal export in tocUtils.ts)
 
 - [ ] **Step 5: Commit**
@@ -448,7 +448,7 @@ Key implementation details:
 
 - [ ] **Step 2: Verify TypeScript compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 Expected: No errors
 
 - [ ] **Step 3: Commit**
@@ -525,7 +525,7 @@ interface TocEditorModalProps {
 
 - [ ] **Step 2: Verify TypeScript compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 Expected: No errors
 
 - [ ] **Step 3: Commit**
@@ -689,7 +689,7 @@ This prevents stale closures where merge uses outdated TOC data.
 
 - [ ] **Step 6: Verify TypeScript compiles**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 Expected: No errors
 
 - [ ] **Step 7: Commit**
@@ -707,12 +707,12 @@ git commit -m "feat: integrate TOC toggle, editor modal, and merge data into PDF
 
 - [ ] **Step 1: Full TypeScript check**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx tsc --noEmit`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx tsc --noEmit`
 Expected: Zero errors
 
 - [ ] **Step 2: Start dev server and test**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npx vite --port 5173 --host 127.0.0.1`
+Run: `cd /Users/noahgarrett/codebase/multitool && npx vite --port 5173 --host 127.0.0.1`
 
 Test checklist at `http://localhost:5173` via Playwright MCP browser:
 1. Open PDF Merge, add 3+ PDF files
@@ -733,7 +733,7 @@ Test checklist at `http://localhost:5173` via Playwright MCP browser:
 
 - [ ] **Step 3: Production build**
 
-Run: `cd /Users/noahgarrett/codebase/lotusworkstoolkit && npm run build`
+Run: `cd /Users/noahgarrett/codebase/multitool && npm run build`
 Expected: Build succeeds
 
 - [ ] **Step 4: Final commit if any fixes needed**
