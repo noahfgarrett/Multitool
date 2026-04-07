@@ -398,6 +398,7 @@ export function usePdfAnnotateState() {
   const activeTouchIdsRef = useRef(new Set<number>())
   const touchPositionsRef = useRef(new Map<number, { x: number; y: number }>())
   const prevPinchDistRef = useRef<number | null>(null)
+  const prevPinchMidRef = useRef<{ x: number; y: number } | null>(null)
 
   // Active canvas drawing pipeline (iPad perf overhaul)
   const pointBufferRef = useRef<{ x: number; y: number; pressure: number }[]>([])
@@ -576,7 +577,7 @@ export function usePdfAnnotateState() {
     // Find
     findCommittedQuery, setFindCommittedQuery,
     // Touch
-    activeTouchIdsRef, touchPositionsRef, prevPinchDistRef,
+    activeTouchIdsRef, touchPositionsRef, prevPinchDistRef, prevPinchMidRef,
     // Active canvas pipeline
     pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     // Memos

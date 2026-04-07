@@ -3,7 +3,7 @@ import { FileDropZone } from '@/components/common/FileDropZone.tsx'
 import { Button } from '@/components/common/Button.tsx'
 import { Modal } from '@/components/common/Modal.tsx'
 import { ColorPicker } from '@/components/common/ColorPicker.tsx'
-// useAppStore used in usePdfAnnotateState
+import { useAppStore } from '@/stores/appStore.ts'
 import { usePdfAnnotateState } from './usePdfAnnotateState.ts'
 import type { ToolPreset } from './usePdfAnnotateState.ts'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts.ts'
@@ -373,10 +373,12 @@ export default function PdfAnnotateTool() {
     historyRef, historyIdxRef, forceRender,
     canUndo, canRedo, isDrawTool, isTextTool, currentRotation,
     findCommittedQuery, setFindCommittedQuery,
-    activeTouchIdsRef, touchPositionsRef, prevPinchDistRef,
+    activeTouchIdsRef, touchPositionsRef, prevPinchDistRef, prevPinchMidRef,
     pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     annPageMap, totalAnnotationCount,
   } = S
+
+  const pencilOnlyMode = useAppStore((s) => s.pencilOnlyMode)
 
   // Tool preset callbacks
   const saveToolPreset = useCallback((name: string) => {
@@ -1715,6 +1717,24 @@ export default function PdfAnnotateTool() {
     })
   }, [])
 
+  /** Zoom anchored at an arbitrary viewport point (e.g. pinch midpoint) */
+  const zoomAtPoint = useCallback((newZoom: number, clientX: number, clientY: number) => {
+    const el = scrollRef.current
+    if (!el) { setZoom(newZoom); return }
+    const oldZoom = zoomRef.current
+    if (newZoom === oldZoom) return
+    const rect = el.getBoundingClientRect()
+    const vpX = clientX - rect.left
+    const vpY = clientY - rect.top
+    const contentX = (el.scrollLeft + vpX) / oldZoom
+    const contentY = (el.scrollTop + vpY) / oldZoom
+    setZoom(newZoom)
+    requestAnimationFrame(() => {
+      el.scrollLeft = contentX * newZoom - vpX
+      el.scrollTop = contentY * newZoom - vpY
+    })
+  }, [])
+
   // ── Keyboard shortcuts (extracted to useKeyboardShortcuts) ──
   useKeyboardShortcuts({
     editingTextId, annotations, selectedAnnId, selectedMeasureId,
@@ -2045,6 +2065,26 @@ export default function PdfAnnotateTool() {
     return () => el.removeEventListener('scroll', handler)
   }, [selectTextToolbar, redrawAll])
 
+  // ── Prevent Safari native pinch-zoom / gesture interference ──
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const preventGesture = (ev: Event): void => { ev.preventDefault() }
+    const preventMultiTouch = (ev: Event): void => {
+      if ((ev as TouchEvent).touches?.length >= 2) ev.preventDefault()
+    }
+    el.addEventListener('gesturestart', preventGesture, { passive: false })
+    el.addEventListener('gesturechange', preventGesture, { passive: false })
+    el.addEventListener('gestureend', preventGesture, { passive: false })
+    el.addEventListener('touchmove', preventMultiTouch, { passive: false })
+    return () => {
+      el.removeEventListener('gesturestart', preventGesture)
+      el.removeEventListener('gesturechange', preventGesture)
+      el.removeEventListener('gestureend', preventGesture)
+      el.removeEventListener('touchmove', preventMultiTouch)
+    }
+  }, [])
+
   // ── Pointer handlers ─────────────────────────────────
 
   const handlePointerDown = useCallback((e: React.PointerEvent, pageNum: number) => {
@@ -2054,18 +2094,34 @@ export default function PdfAnnotateTool() {
     if (e.pointerType === 'touch') {
       activeTouchIdsRef.current.add(e.pointerId)
       touchPositionsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-      // 2+ simultaneous touches = pan/zoom, not draw
-      if (activeTouchIdsRef.current.size >= 2) {
-        // Initialize pinch distance from current touch positions
-        if (activeTouchIdsRef.current.size === 2) {
-          const positions = Array.from(touchPositionsRef.current.values())
-          if (positions.length >= 2) {
-            prevPinchDistRef.current = Math.hypot(
-              positions[1].x - positions[0].x,
-              positions[1].y - positions[0].y,
-            )
+
+      // Initialize pinch state when 2 touches are active
+      if (activeTouchIdsRef.current.size === 2) {
+        const positions = Array.from(touchPositionsRef.current.values())
+        if (positions.length >= 2) {
+          prevPinchDistRef.current = Math.hypot(
+            positions[1].x - positions[0].x,
+            positions[1].y - positions[0].y,
+          )
+          prevPinchMidRef.current = {
+            x: (positions[0].x + positions[1].x) / 2,
+            y: (positions[0].y + positions[1].y) / 2,
           }
         }
+      }
+
+      // pencilOnlyMode: ALL touch = pan/zoom, never draw
+      if (pencilOnlyMode) {
+        const el = scrollRef.current
+        if (el) {
+          panRef.current = { startX: e.clientX, startY: e.clientY, scrollLeft: el.scrollLeft, scrollTop: el.scrollTop }
+          setCanvasCursor('grabbing')
+        }
+        return
+      }
+
+      // Normal mode: 2+ simultaneous touches = pan/zoom, not draw
+      if (activeTouchIdsRef.current.size >= 2) {
         const el = scrollRef.current
         if (el) {
           panRef.current = { startX: e.clientX, startY: e.clientY, scrollLeft: el.scrollLeft, scrollTop: el.scrollTop }
@@ -2740,7 +2796,7 @@ export default function PdfAnnotateTool() {
   }, [getPointForPage, activeTool, annotations, editingTextId, selectedAnnId, selectTextToolbar,
       commitTextEditing, commitAnnotation, getAnnotation, findTextAnnotationAt, findCalloutAt, findAnnotationAt, redrawPage, scheduleRender,
       eraserRadius, eraserMode, zoom, color, strokeWidth, fontSize, opacity, fontFamily, bold, italic, underline, textAlign,
-      activeStampPreset])
+      activeStampPreset, pencilOnlyMode])
 
   const handlePointerMove = useCallback((e: React.PointerEvent, pageNum: number) => {
     // Track cursor position for hover tooltip — update DOM directly to avoid re-renders on every move
@@ -2749,26 +2805,52 @@ export default function PdfAnnotateTool() {
       tooltipDivRef.current.style.left = `${e.clientX + 14}px`
       tooltipDivRef.current.style.top = `${e.clientY - 28}px`
     }
-    // Pinch-to-zoom: detect 2-finger pinch on touch devices
+    // Touch handling: pinch-to-zoom + two-finger pan + pencilOnlyMode single-finger pan
     if (e.pointerType === 'touch') {
       touchPositionsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+
+      // Two-finger pinch-to-zoom + pan
       if (activeTouchIdsRef.current.size === 2 && touchPositionsRef.current.size >= 2) {
         const positions = Array.from(touchPositionsRef.current.values())
         const dist = Math.hypot(positions[1].x - positions[0].x, positions[1].y - positions[0].y)
-        if (prevPinchDistRef.current !== null) {
-          const delta = dist - prevPinchDistRef.current
-          // Only zoom if the pinch delta exceeds a small threshold to avoid jitter
-          if (Math.abs(delta) > 3) {
-            const currentZoom = zoomRef.current
-            const step = delta > 0 ? 0.05 : -0.05
-            const newZoom = Math.round(Math.min(4.0, Math.max(0.25, currentZoom + step)) * 100) / 100
-            if (newZoom !== currentZoom) {
-              zoomAtCenter(newZoom)
-            }
-            prevPinchDistRef.current = dist
+        const currentMid = {
+          x: (positions[0].x + positions[1].x) / 2,
+          y: (positions[0].y + positions[1].y) / 2,
+        }
+
+        if (prevPinchDistRef.current !== null && prevPinchMidRef.current !== null) {
+          // Smooth proportional zoom
+          const zoomRatio = dist / prevPinchDistRef.current
+          const currentZoom = zoomRef.current
+          const newZoom = Math.round(Math.min(4.0, Math.max(0.25, currentZoom * zoomRatio)) * 100) / 100
+          if (newZoom !== currentZoom) {
+            zoomAtPoint(newZoom, currentMid.x, currentMid.y)
           }
+
+          // Simultaneous two-finger pan
+          const el = scrollRef.current
+          if (el) {
+            const dx = currentMid.x - prevPinchMidRef.current.x
+            const dy = currentMid.y - prevPinchMidRef.current.y
+            el.scrollLeft -= dx
+            el.scrollTop -= dy
+          }
+
+          prevPinchDistRef.current = dist
+          prevPinchMidRef.current = currentMid
         } else {
           prevPinchDistRef.current = dist
+          prevPinchMidRef.current = currentMid
+        }
+        return
+      }
+
+      // pencilOnlyMode: single-finger pan
+      if (pencilOnlyMode && activeTouchIdsRef.current.size === 1 && panRef.current) {
+        const el = scrollRef.current
+        if (el) {
+          el.scrollLeft = panRef.current.scrollLeft - (e.clientX - panRef.current.startX)
+          el.scrollTop = panRef.current.scrollTop - (e.clientY - panRef.current.startY)
         }
         return
       }
@@ -3187,7 +3269,7 @@ export default function PdfAnnotateTool() {
       currentPtsRef.current = [start, endPt]
       scheduleRender()
     }
-  }, [getPointForPage, activeTool, annotations, redrawPage, eraserRadius, eraserMode, zoom, straightLineMode, selectedAnnId, findAnnotationAt, zoomAtCenter, scheduleRender])
+  }, [getPointForPage, activeTool, annotations, redrawPage, eraserRadius, eraserMode, zoom, straightLineMode, selectedAnnId, findAnnotationAt, zoomAtCenter, zoomAtPoint, pencilOnlyMode, scheduleRender])
 
   const handlePointerUp = useCallback((e?: React.PointerEvent) => {
     // Clean up touch tracking
@@ -3197,6 +3279,12 @@ export default function PdfAnnotateTool() {
       // Reset pinch state when fewer than 2 touches remain
       if (activeTouchIdsRef.current.size < 2) {
         prevPinchDistRef.current = null
+        prevPinchMidRef.current = null
+      }
+      // Reset single-finger pan for pencilOnlyMode
+      if (pencilOnlyMode && activeTouchIdsRef.current.size === 0) {
+        panRef.current = null
+        setCanvasCursor('default')
       }
     }
     if (!isDrawingRef.current) return
@@ -3544,7 +3632,7 @@ export default function PdfAnnotateTool() {
       setSelectedAnnId(ann.id)
     }
   }, [activeTool, color, strokeWidth, opacity, fontSize, fillColor, cornerRadius, dashPattern, arrowStart, commitAnnotation,
-      pushHistory, redrawPage, annotations, getAnnotation, updateAnnotation, selectedAnnId, addToast, getActiveCtx])
+      pushHistory, redrawPage, annotations, getAnnotation, updateAnnotation, selectedAnnId, addToast, getActiveCtx, pencilOnlyMode])
 
   // ── Comment & Sticky Note Management ─────────────────
 

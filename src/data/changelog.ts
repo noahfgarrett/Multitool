@@ -12,6 +12,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.0.3',
+    date: 'PLACEHOLDER',
+    type: 'feature',
+    stats: { features: 2, tools: 1 },
+    notes: `### iPad Experience
+- **Stylus Only Drawing** — New setting that locks drawing to Apple Pencil only. Finger gestures are reserved for panning and zooming, just like GoodNotes and Notability
+- **Smooth pinch-to-zoom** — Zooming now scales proportionally to your finger distance and anchors to where you're pinching, eliminating the jittery step-based zoom`,
+  },
+  {
     version: '4.0.2',
     date: '2026-04-07T18:10:07Z',
     type: 'feature',

@@ -10,7 +10,7 @@ import {
   compressProfilePhoto,
 } from '@/utils/userProfile.ts'
 import type { UserProfile } from '@/utils/userProfile.ts'
-import { Check, Upload, User, Palette, Info } from 'lucide-react'
+import { Check, Upload, User, Palette, Info, Tablet } from 'lucide-react'
 
 const SETTINGS_TABS = [
   { id: 'themes', label: 'Themes' },
@@ -215,6 +215,55 @@ function ProfileTab() {
       >
         {saved ? 'Saved!' : 'Save Profile'}
       </button>
+
+      {/* Stylus / touch device settings — only visible on touch devices */}
+      <StylusSettings />
+    </div>
+  )
+}
+
+/* ── Stylus Settings (touch devices only) ──────────────── */
+
+const IS_TOUCH_DEVICE = typeof window !== 'undefined' && matchMedia('(any-pointer: coarse)').matches
+
+function StylusSettings() {
+  const pencilOnlyMode = useAppStore((s) => s.pencilOnlyMode)
+  const setPencilOnlyMode = useAppStore((s) => s.setPencilOnlyMode)
+
+  if (!IS_TOUCH_DEVICE) return null
+
+  return (
+    <div className="pt-5 mt-5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+      <div className="flex items-center gap-2 mb-3">
+        <Tablet size={16} className="text-[#14B8A6]" />
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Tablet Input</h3>
+      </div>
+
+      <label className="flex items-center justify-between gap-3 cursor-pointer">
+        <div className="flex-1">
+          <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Stylus Only Drawing</p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-disabled)' }}>
+            When enabled, only a stylus (Apple Pencil) can interact with tools. Touch gestures are reserved for panning and zooming.
+          </p>
+        </div>
+        <button
+          role="switch"
+          aria-checked={pencilOnlyMode}
+          onClick={() => setPencilOnlyMode(!pencilOnlyMode)}
+          className={`
+            relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200
+            ${pencilOnlyMode ? 'bg-[#14B8A6]' : ''}
+          `}
+          style={!pencilOnlyMode ? { background: 'color-mix(in srgb, var(--text-disabled) 40%, transparent)' } : undefined}
+        >
+          <span
+            className={`
+              absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200
+              ${pencilOnlyMode ? 'translate-x-5' : 'translate-x-0'}
+            `}
+          />
+        </button>
+      </label>
     </div>
   )
 }

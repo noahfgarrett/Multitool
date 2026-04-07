@@ -34,6 +34,10 @@ interface AppState {
   profileVersion: number
   bumpProfileVersion: () => void
 
+  // Pencil-only mode (finger pans, only stylus draws)
+  pencilOnlyMode: boolean
+  setPencilOnlyMode: (mode: boolean) => void
+
   // Focus mode
   focusMode: boolean
   setFocusMode: (focus: boolean) => void
@@ -56,6 +60,12 @@ interface AppState {
 const initialTheme = loadTheme()
 applyThemeClass(initialTheme)
 
+const initialPencilOnly = typeof window !== 'undefined'
+  ? localStorage.getItem('mt-pencil-only') === '0' ? false
+    : localStorage.getItem('mt-pencil-only') === '1' ? true
+    : matchMedia('(any-pointer: coarse)').matches  // default: on for touch devices
+  : false
+
 export const useAppStore = create<AppState>((set) => ({
   activeTool: null,
   sidebarExpanded: typeof window !== 'undefined' ? window.innerWidth >= 1024 : true,
@@ -76,6 +86,11 @@ export const useAppStore = create<AppState>((set) => ({
   showChangelog: false,
   profileVersion: 0,
   bumpProfileVersion: () => set((s) => ({ profileVersion: s.profileVersion + 1 })),
+  pencilOnlyMode: initialPencilOnly,
+  setPencilOnlyMode: (mode) => {
+    localStorage.setItem('mt-pencil-only', mode ? '1' : '0')
+    set({ pencilOnlyMode: mode })
+  },
   focusMode: false,
   setFocusMode: (focus) => set({ focusMode: focus }),
 
