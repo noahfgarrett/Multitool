@@ -1,7 +1,7 @@
 import type { EmailRecipient, EmailGroup } from './types.ts'
 
-const RECIPIENTS_KEY = 'lwt-email-recipients'
-const GROUPS_KEY = 'lwt-email-groups'
+const RECIPIENTS_KEY = 'mt-email-recipients'
+const GROUPS_KEY = 'mt-email-groups'
 
 /** Load saved email recipients from localStorage */
 export function getRecipients(): EmailRecipient[] {

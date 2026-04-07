@@ -237,7 +237,7 @@ export default function ConverterTool() {
       <div className="flex items-center gap-3 flex-shrink-0">
         <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
           {entries.length} file{entries.length !== 1 ? 's' : ''}
-          {doneCount > 0 && <span className="text-[#F47B20]"> · {doneCount} converted</span>}
+          {doneCount > 0 && <span className="text-[#14B8A6]"> · {doneCount} converted</span>}
         </span>
         <div className="flex-1" />
 
@@ -287,7 +287,7 @@ export default function ConverterTool() {
           </div>
           <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--bg-elevated)' }}>
             <div
-              className="h-full rounded-full bg-[#F47B20] transition-all duration-300 ease-out"
+              className="h-full rounded-full bg-[#14B8A6] transition-all duration-300 ease-out"
               style={{ width: `${((bulkProgress.current + 1) / bulkProgress.total) * 100}%` }}
             />
           </div>
@@ -301,7 +301,7 @@ export default function ConverterTool() {
             key={entry.id}
             className={`p-4 rounded-xl border transition-colors ${
               entry.status === 'done'
-                ? 'border-[#F47B20]/20 bg-[#F47B20]/[0.04]'
+                ? 'border-[#14B8A6]/20 bg-[#14B8A6]/[0.04]'
                 : entry.status === 'error'
                   ? 'border-red-500/20 bg-red-500/[0.04]'
                   : ''
@@ -321,7 +321,7 @@ export default function ConverterTool() {
               </div>
 
               {entry.status === 'converting' && (
-                <div className="w-4 h-4 border-2 border-[#F47B20] border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                <div className="w-4 h-4 border-2 border-[#14B8A6] border-t-transparent rounded-full animate-spin flex-shrink-0" />
               )}
               {entry.status === 'done' && (entry.result || entry.results) && (
                 <Button
@@ -368,10 +368,10 @@ export default function ConverterTool() {
                         className={`
                           px-3 py-1.5 rounded-lg text-xs font-medium transition-all
                           ${isDone
-                            ? 'bg-[#F47B20] text-white'
+                            ? 'bg-[#14B8A6] text-white'
                             : isSelected
-                              ? 'bg-[#F47B20]/20 text-[#F47B20] border border-[#F47B20]/30'
-                              : 'border border-transparent hover:bg-[#F47B20]/[0.06]'
+                              ? 'bg-[#14B8A6]/20 text-[#14B8A6] border border-[#14B8A6]/30'
+                              : 'border border-transparent hover:bg-[#14B8A6]/[0.06]'
                           }
                         `}
                         style={!isDone && !isSelected ? { background: 'var(--bg-elevated)', color: 'var(--text-muted)' } : undefined}
@@ -472,7 +472,7 @@ function ConversionOptionsPanel({
                   onClick={() => updateEntry(entry.id, { options: { ...options, pdfScale: s.value } })}
                   className={`px-2 py-1 text-[10px] rounded transition-colors ${
                     isActive
-                      ? 'bg-[#F47B20]/20 text-[#F47B20] font-medium'
+                      ? 'bg-[#14B8A6]/20 text-[#14B8A6] font-medium'
                       : 'hover:brightness-110'
                   }`}
                   style={!isActive ? { background: 'var(--bg-elevated)', color: 'var(--text-muted)' } : undefined}

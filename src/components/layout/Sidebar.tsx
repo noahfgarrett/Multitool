@@ -47,9 +47,14 @@ export function Sidebar() {
       {/* Logo / collapse toggle */}
       <div className="flex items-center h-14 px-3 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
         {sidebarExpanded && (
-          <span className="text-sm font-display font-semibold text-[#F47B20] tracking-wide truncate flex-1">
-            LotusWorks Toolkit
-          </span>
+          <div className="flex flex-col justify-center flex-1 truncate" style={{ paddingTop: '4px' }}>
+            <span className="text-[40px] font-logo text-[#14B8A6] leading-none truncate">
+              Multitool
+            </span>
+            <span className="text-[9px] tracking-widest uppercase truncate" style={{ color: 'var(--text-disabled)', marginTop: '-2px' }}>
+              Visualize Build LLC
+            </span>
+          </div>
         )}
         <button
           onClick={toggleSidebar}
@@ -71,15 +76,15 @@ export function Sidebar() {
             w-full flex items-center gap-2.5 rounded-md transition-all duration-150 mb-1
             ${sidebarExpanded ? 'px-2.5 py-2' : 'px-0 py-2 justify-center'}
             ${!activeTool && !activeView
-              ? 'bg-[#F47B20]/15 text-[#F47B20]'
-              : 'hover:text-[#F47B20] hover:bg-[#F47B20]/[0.06]'
+              ? 'bg-[#14B8A6]/15 text-[#14B8A6]'
+              : 'hover:text-[#14B8A6] hover:bg-[#14B8A6]/[0.06]'
             }
             relative
           `}
           style={activeTool || activeView ? { color: 'var(--text-muted)' } : undefined}
         >
           {!activeTool && (
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#F47B20] rounded-r-full" />
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#14B8A6] rounded-r-full" />
           )}
           <Home size={16} />
           {sidebarExpanded && (
@@ -102,7 +107,7 @@ export function Sidebar() {
                 }`}
                 style={{ color: 'var(--text-muted)' }}
               >
-                {getIcon(cat.icon, 14, 'text-[#F47B20]')}
+                {getIcon(cat.icon, 14, 'text-[#14B8A6]')}
                 {sidebarExpanded && (
                   <>
                     <span className="text-[11px] font-semibold uppercase tracking-wider flex-1 text-left">
@@ -131,8 +136,8 @@ export function Sidebar() {
                           w-full flex items-center gap-2.5 rounded-md transition-all duration-150
                           ${sidebarExpanded ? 'px-2.5 py-2' : 'px-0 py-2 justify-center'}
                           ${isActive
-                            ? 'bg-[#F47B20]/15 text-[#F47B20]'
-                            : 'hover:text-[#F47B20] hover:bg-[#F47B20]/[0.06]'
+                            ? 'bg-[#14B8A6]/15 text-[#14B8A6]'
+                            : 'hover:text-[#14B8A6] hover:bg-[#14B8A6]/[0.06]'
                           }
                           relative
                         `}
@@ -140,7 +145,7 @@ export function Sidebar() {
                       >
                         {/* Active indicator bar */}
                         {isActive && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#F47B20] rounded-r-full" />
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#14B8A6] rounded-r-full" />
                         )}
                         {getIcon(tool.icon, 16)}
                         {sidebarExpanded && (
@@ -166,14 +171,14 @@ export function Sidebar() {
             w-full flex items-center gap-2.5 rounded-md transition-all duration-150
             ${sidebarExpanded ? 'px-2.5 py-2' : 'px-0 py-2 justify-center'}
             ${activeView === 'feedback'
-              ? 'bg-[#F47B20]/15 text-[#F47B20]'
-              : 'text-[#F47B20]/70 hover:text-[#F47B20] hover:bg-[#F47B20]/[0.06]'
+              ? 'bg-[#14B8A6]/15 text-[#14B8A6]'
+              : 'text-[#14B8A6]/70 hover:text-[#14B8A6] hover:bg-[#14B8A6]/[0.06]'
             }
             relative
           `}
         >
           {activeView === 'feedback' && (
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#F47B20] rounded-r-full" />
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#14B8A6] rounded-r-full" />
           )}
           <MessageSquarePlus size={16} />
           {sidebarExpanded && (
@@ -188,7 +193,7 @@ export function Sidebar() {
           className={`
             w-full flex items-center gap-2.5 rounded-md transition-all duration-150
             ${sidebarExpanded ? 'px-2.5 py-2' : 'px-0 py-2 justify-center'}
-            hover:bg-[#F47B20]/[0.06]
+            hover:bg-[#14B8A6]/[0.06]
           `}
           style={{ color: 'var(--text-muted)' }}
         >
@@ -213,9 +218,9 @@ export function Sidebar() {
             style={{ color: 'var(--text-disabled)' }}
             title="View changelog"
           >
-            LotusWorks Toolkit v{__APP_VERSION__}
+            Multitool v{__APP_VERSION__}
             {localStorage.getItem('lastSeenVersion') !== __APP_VERSION__ && (
-              <span className="absolute -top-0.5 -right-1 w-1.5 h-1.5 rounded-full bg-[#F47B20] animate-pulse" />
+              <span className="absolute -top-0.5 -right-1 w-1.5 h-1.5 rounded-full bg-[#14B8A6] animate-pulse" />
             )}
           </button>
         )}

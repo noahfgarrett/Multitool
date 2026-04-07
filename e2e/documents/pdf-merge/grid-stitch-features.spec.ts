@@ -200,7 +200,7 @@ test.describe('Overlap Blending Toggle', () => {
       has: page.locator('svg'),
     })
     await expect(blendButton).toHaveClass(/text-white\/30/)
-    await expect(blendButton).not.toHaveClass(/text-\[#F47B20\]/)
+    await expect(blendButton).not.toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('clicking Blend toggles it to active with orange styling', async ({ page }) => {
@@ -209,8 +209,8 @@ test.describe('Overlap Blending Toggle', () => {
     })
     await blendButton.click()
 
-    await expect(blendButton).toHaveClass(/text-\[#F47B20\]/)
-    await expect(blendButton).toHaveClass(/bg-\[#F47B20\]\/20/)
+    await expect(blendButton).toHaveClass(/text-\[#14B8A6\]/)
+    await expect(blendButton).toHaveClass(/bg-\[#14B8A6\]\/20/)
   })
 
   test('clicking Blend twice returns to inactive state', async ({ page }) => {
@@ -218,11 +218,11 @@ test.describe('Overlap Blending Toggle', () => {
       has: page.locator('svg'),
     })
     await blendButton.click()
-    await expect(blendButton).toHaveClass(/text-\[#F47B20\]/)
+    await expect(blendButton).toHaveClass(/text-\[#14B8A6\]/)
 
     await blendButton.click()
     await expect(blendButton).toHaveClass(/text-white\/30/)
-    await expect(blendButton).not.toHaveClass(/text-\[#F47B20\]/)
+    await expect(blendButton).not.toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('Blend button has correct tooltip when inactive', async ({ page }) => {

@@ -1283,7 +1283,7 @@ export default function GridStitchMode() {
         <button
           onClick={toggleLabelMode}
           className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
-            labelMode === 'grid-axis' ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'bg-white/[0.04] text-white/40 hover:text-white/60'
+            labelMode === 'grid-axis' ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'bg-white/[0.04] text-white/40 hover:text-white/60'
           }`}
           title={labelMode === 'default' ? 'Switch to grid-axis labels (A1 at bottom-left)' : 'Switch to default labels (A1 at top-left)'}
         >
@@ -1436,7 +1436,7 @@ export default function GridStitchMode() {
         <button
           onClick={() => setExportGridlines(prev => !prev)}
           className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
-            exportGridlines ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'bg-white/[0.04] text-white/30 hover:text-white/50'
+            exportGridlines ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'bg-white/[0.04] text-white/30 hover:text-white/50'
           }`}
           title={exportGridlines ? 'Gridlines will appear in export' : 'Gridlines hidden in export'}
         >
@@ -1446,7 +1446,7 @@ export default function GridStitchMode() {
         <button
           onClick={() => setExportLabels(prev => !prev)}
           className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
-            exportLabels ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'bg-white/[0.04] text-white/30 hover:text-white/50'
+            exportLabels ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'bg-white/[0.04] text-white/30 hover:text-white/50'
           }`}
           title={exportLabels ? 'Labels will appear in export' : 'Labels hidden in export'}
         >
@@ -1456,7 +1456,7 @@ export default function GridStitchMode() {
         <button
           onClick={() => setCompression(prev => !prev)}
           className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
-            compression ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'bg-white/[0.04] text-white/30 hover:text-white/50'
+            compression ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'bg-white/[0.04] text-white/30 hover:text-white/50'
           }`}
           title={compression ? 'Compression on — images re-encoded as JPEG' : 'Compression off — full quality'}
         >
@@ -1465,7 +1465,7 @@ export default function GridStitchMode() {
         <button
           onClick={() => setOverlapBlending(prev => !prev)}
           className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
-            overlapBlending ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'bg-white/[0.04] text-white/30 hover:text-white/50'
+            overlapBlending ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'bg-white/[0.04] text-white/30 hover:text-white/50'
           }`}
           title={overlapBlending ? 'Overlap blending on — seams blend with gradient' : 'Overlap blending off — hard clip at cell edges'}
         >
@@ -1588,7 +1588,7 @@ export default function GridStitchMode() {
           >
             {/* Focus toolbar */}
             <div className="flex items-center gap-3 px-4 py-3 bg-[#00171F] border-b border-white/[0.08] flex-shrink-0">
-              <span className="text-sm font-semibold text-[#F47B20]">{focusCell.label}</span>
+              <span className="text-sm font-semibold text-[#14B8A6]">{focusCell.label}</span>
               <span className="text-xs text-white/40 truncate max-w-[200px]">{focusCell.file.name}</span>
 
               <div className="flex-1" />
@@ -1631,7 +1631,7 @@ export default function GridStitchMode() {
 
               <button
                 onClick={() => setFocusCellId(null)}
-                className="px-3 py-1.5 rounded-md bg-[#F47B20] text-white text-sm font-medium hover:bg-[#E06D15] transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-md bg-[#14B8A6] text-white text-sm font-medium hover:bg-[#0D9488] transition-colors flex items-center gap-1.5"
               >
                 <Check size={14} />
                 Done

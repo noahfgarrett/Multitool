@@ -114,7 +114,7 @@ test.describe('Active Tool States', () => {
   test('Select is active by default (orange styling)', async ({ page }) => {
     await uploadPDFAndWait(page)
     const btn = page.locator('button[title="Select (S)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('clicking Pencil activates it with orange styling', async ({ page }) => {
@@ -122,45 +122,45 @@ test.describe('Active Tool States', () => {
     await selectTool(page, 'Pencil (P)')
     // The draw dropdown button should now show Pencil and be active
     const btn = page.locator('button[title="Pencil (P)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('activating Pencil deactivates Select', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Pencil (P)')
     const selectBtn = page.locator('button[title="Select (S)"]')
-    await expect(selectBtn).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(selectBtn).not.toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('clicking Eraser activates it', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Eraser (E)')
     const btn = page.locator('button[title="Eraser (E)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('clicking Measure activates it', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Measure (M)')
     const btn = page.locator('button[title="Measure (M)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('clicking Highlight activates it', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Highlight (H)')
     const btn = page.locator('button[title="Highlight (H)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('switching between tools updates active state correctly', async ({ page }) => {
     await uploadPDFAndWait(page)
     // Pencil
     await selectTool(page, 'Pencil (P)')
-    await expect(page.locator('button[title="Pencil (P)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Pencil (P)"]')).toHaveClass(/bg-\[#14B8A6\]/)
     // Rectangle — the dropdown button title changes to the active draw tool
     await selectTool(page, 'Rectangle (R)')
-    await expect(page.locator('button[title="Rectangle (R)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Rectangle (R)"]')).toHaveClass(/bg-\[#14B8A6\]/)
     // Pencil button no longer exists in the toolbar (replaced by Rectangle in dropdown)
     await expect(page.locator('button[title="Pencil (P)"]')).toHaveCount(0)
   })
@@ -499,10 +499,10 @@ test.describe('Zoom Controls', () => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    // Preset options should be visible
-    await expect(page.getByText('100%')).toBeVisible()
-    await expect(page.getByText('200%')).toBeVisible()
+    // Preset options should be visible — use exact match to avoid matching the zoom button itself
+    await expect(page.getByText('200%', { exact: true })).toBeVisible()
     await expect(page.getByText('Fit Page')).toBeVisible()
+    await expect(page.getByText('75%', { exact: true })).toBeVisible()
   })
 
   test('selecting zoom preset changes zoom', async ({ page }) => {
@@ -578,31 +578,33 @@ test.describe('Shapes Dropdown', () => {
     // Click the shapes dropdown to open it
     await page.locator('button[title="Pencil (P)"]').click()
     await page.waitForTimeout(200)
-    await expect(page.locator('button:has-text("Pencil (P)")')).toBeVisible()
-    await expect(page.locator('button:has-text("Line (L)")')).toBeVisible()
-    await expect(page.locator('button:has-text("Arrow (A)")')).toBeVisible()
-    await expect(page.locator('button:has-text("Rectangle (R)")')).toBeVisible()
-    await expect(page.locator('button:has-text("Circle (C)")')).toBeVisible()
-    await expect(page.locator('button:has-text("Cloud (K)")')).toBeVisible()
+    // Verify dropdown items are visible (use .last() to target dropdown items, not the toolbar button)
+    await expect(page.locator('button:has-text("Line (L)")').last()).toBeVisible()
+    await expect(page.locator('button:has-text("Arrow (A)")').last()).toBeVisible()
+    await expect(page.locator('button:has-text("Rectangle (R)")').last()).toBeVisible()
+    await expect(page.locator('button:has-text("Circle (C)")').last()).toBeVisible()
+    await expect(page.locator('button:has-text("Cloud (K)")').last()).toBeVisible()
   })
 
   test('selecting tool from dropdown changes active draw tool', async ({ page }) => {
     await uploadPDFAndWait(page)
-    // Open shapes dropdown
-    await page.locator('button[title="Pencil (P)"]').click()
+    // Ensure no input is focused so keyboard shortcuts work
+    await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+    await page.waitForTimeout(100)
+    // Use keyboard shortcut to switch to Rectangle tool
+    await selectTool(page, 'Rectangle (R)')
     await page.waitForTimeout(200)
-    // Select Rectangle from dropdown
-    await page.locator('button:has-text("Rectangle (R)")').last().click()
-    await page.waitForTimeout(200)
-    // The dropdown button should now show Rectangle
-    await expect(page.locator('button[title="Rectangle (R)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    // The sidebar draw button should now show Rectangle with active styling
+    await expect(page.locator('button[title="Rectangle (R)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('text tools dropdown lists Text and Callout', async ({ page }) => {
     await uploadPDFAndWait(page)
+    // Click the text tools dropdown to open it
     await page.locator('button[title="Text (T)"]').click()
     await page.waitForTimeout(200)
-    await expect(page.locator('button:has-text("Text (T)")')).toBeVisible()
-    await expect(page.locator('button:has-text("Callout (O)")')).toBeVisible()
+    // Verify dropdown items (use .last() to target dropdown items)
+    await expect(page.locator('button:has-text("Text (T)")').last()).toBeVisible()
+    await expect(page.locator('button:has-text("Callout (O)")').last()).toBeVisible()
   })
 })

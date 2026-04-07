@@ -247,7 +247,7 @@ test.describe('Chaos — Rapid Tool Switching', () => {
     }
     // After the sequence, measure tool should be active (last one pressed)
     const measureBtn = page.locator('button[title="Measure (M)"]')
-    await expect(measureBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(measureBtn).toHaveClass(/bg-\[#14B8A6\]/)
     // Canvas should still be responsive
     await expect(page.locator('canvas').first()).toBeVisible()
   })
@@ -293,7 +293,7 @@ test.describe('Chaos — Rapid Tool Switching', () => {
     await expect(page.locator('textarea')).toBeHidden()
     // Pencil should be active
     const pencilBtn = page.locator('button[title="Pencil (P)"]')
-    await expect(pencilBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(pencilBtn).toHaveClass(/bg-\[#14B8A6\]/)
     // Text annotation should be committed
     expect(await getAnnotationCount(page)).toBe(1)
   })
@@ -948,16 +948,12 @@ test.describe('Chaos — Zoom & Visual', () => {
       await page.waitForTimeout(250)
     }
     await page.waitForTimeout(300)
-    // Scroll canvas top into view and blur so keyboard shortcuts work
-    await page.evaluate(() => {
-      const container = document.querySelector('[data-page="1"]') || document.querySelector('canvas')
-      if (container) container.scrollIntoView({ behavior: 'instant', block: 'start' })
-      const el = document.activeElement as HTMLElement | null
-      if (el) el.blur()
-    })
+
+    // Use fit-to-window to bring canvas into viewable area, draw, then verify
+    await page.locator('button[title*="Fit to window"]').click()
     await page.waitForTimeout(300)
 
-    // Draw rectangle at elevated zoom
+    // Draw rectangle
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     await page.waitForTimeout(300)
     expect(await getAnnotationCount(page)).toBe(1)

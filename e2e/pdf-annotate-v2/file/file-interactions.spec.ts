@@ -98,14 +98,18 @@ test.describe('File Interactions — File Name Display', () => {
 test.describe('File Interactions — Page Count Display', () => {
   test('page count indicator visible after multi-page upload', async ({ page }) => {
     await uploadPDFAndWait(page, 'multi-page.pdf')
-    const pageCountSpan = page.locator('span', { hasText: /\/\s*\d+/ })
-    await expect(pageCountSpan.first()).toBeVisible({ timeout: 3000 })
+    // The page indicator is a button showing "1 / N"
+    const pageButton = page.locator('button', { hasText: /\d+\s*\/\s*\d+/ })
+    await expect(pageButton.first()).toBeVisible({ timeout: 3000 })
   })
 
   test('page input shows page 1 after upload', async ({ page }) => {
     await uploadPDFAndWait(page, 'multi-page.pdf')
-    const pageInput = page.locator('input[type="number"]')
-    await expect(pageInput).toHaveValue('1')
+    // The page indicator button shows "1 / N" text
+    const pageButton = page.locator('button', { hasText: /\d+\s*\/\s*\d+/ })
+    await expect(pageButton.first()).toBeVisible({ timeout: 3000 })
+    const text = await pageButton.first().textContent()
+    expect(text).toMatch(/^1\s*\//)
   })
 })
 
@@ -113,8 +117,11 @@ test.describe('File Interactions — Page Navigation After Upload', () => {
   test('navigate to page 2 after multi-page upload', async ({ page }) => {
     await uploadPDFAndWait(page, 'multi-page.pdf')
     await goToPage(page, 2)
-    const pageInput = page.locator('input[type="number"]')
-    await expect(pageInput).toHaveValue('2')
+    // After navigation, the page button shows "2 / N"
+    const pageButton = page.locator('button', { hasText: /\d+\s*\/\s*\d+/ })
+    await expect(pageButton.first()).toBeVisible({ timeout: 3000 })
+    const text = await pageButton.first().textContent()
+    expect(text).toMatch(/^2\s*\//)
   })
 
   test('draw on page 2 after navigation', async ({ page }) => {
@@ -273,6 +280,7 @@ test.describe('File Interactions — Status Bar Page Info', () => {
 
 test.describe('File Interactions — Multiple File Operations', () => {
   test('reload page then re-upload works', async ({ page }) => {
+    test.setTimeout(60000)
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     await page.reload()

@@ -15,7 +15,7 @@ export const TEMPLATES: OrgTemplate[] = [
     nodeCount: 1,
     build: () => ({
       nodes: [
-        createNode({ id: 'root', name: 'CEO', title: 'Chief Executive Officer', reportsTo: '', department: 'Executive', nodeColor: '#F47B20' }),
+        createNode({ id: 'root', name: 'CEO', title: 'Chief Executive Officer', reportsTo: '', department: 'Executive', nodeColor: '#14B8A6' }),
       ],
     }),
   },
@@ -25,7 +25,7 @@ export const TEMPLATES: OrgTemplate[] = [
     nodeCount: 10,
     build: () => ({
       nodes: [
-        createNode({ id: 't-ceo', name: 'Alex Chen', title: 'CEO & Co-Founder', reportsTo: '', department: 'Executive', nodeColor: '#F47B20' }),
+        createNode({ id: 't-ceo', name: 'Alex Chen', title: 'CEO & Co-Founder', reportsTo: '', department: 'Executive', nodeColor: '#14B8A6' }),
 
         createNode({ id: 't-vpe', name: 'Sarah Kim', title: 'VP of Engineering', reportsTo: 't-ceo', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
         createNode({ id: 't-vpm', name: 'Mike Patel', title: 'VP of Marketing', reportsTo: 't-ceo', department: 'Marketing', nodeColor: DEPARTMENT_COLORS.Marketing }),
@@ -48,7 +48,7 @@ export const TEMPLATES: OrgTemplate[] = [
     nodeCount: 18,
     build: () => ({
       nodes: [
-        createNode({ id: 'c-ceo', name: 'James Wilson', title: 'Chief Executive Officer', reportsTo: '', department: 'Executive', nodeColor: '#F47B20' }),
+        createNode({ id: 'c-ceo', name: 'James Wilson', title: 'Chief Executive Officer', reportsTo: '', department: 'Executive', nodeColor: '#14B8A6' }),
 
         createNode({ id: 'c-cto', name: 'Lisa Zhang', title: 'Chief Technology Officer', reportsTo: 'c-ceo', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
         createNode({ id: 'c-cmo', name: 'David Brown', title: 'Chief Marketing Officer', reportsTo: 'c-ceo', department: 'Marketing', nodeColor: DEPARTMENT_COLORS.Marketing }),

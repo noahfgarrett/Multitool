@@ -512,7 +512,7 @@ export function DataTable({
               onChange={(e) => setGlobalFilter(e.target.value)}
               className="w-full pl-9 pr-8 py-1.5 text-sm bg-white/[0.04] border border-dark-border rounded-lg
                 text-dark-text-primary placeholder:text-dark-text-muted/50
-                focus:outline-none focus:border-[#F47B20]/50"
+                focus:outline-none focus:border-[#14B8A6]/50"
             />
             {globalFilter && (
               <button
@@ -530,14 +530,14 @@ export function DataTable({
               onClick={() => setShowFilterBuilder(!showFilterBuilder)}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 hasAdvancedFilter
-                  ? 'bg-[#F47B20]/20 text-[#F47B20]'
+                  ? 'bg-[#14B8A6]/20 text-[#14B8A6]'
                   : 'bg-white/[0.06] text-dark-text-muted hover:bg-white/[0.1]'
               }`}
             >
               <Filter size={14} />
               Filter
               {hasAdvancedFilter && (
-                <span className="ml-0.5 px-1.5 py-0.5 bg-[#F47B20]/30 rounded text-xs">
+                <span className="ml-0.5 px-1.5 py-0.5 bg-[#14B8A6]/30 rounded text-xs">
                   {advancedFilter.children.length}
                 </span>
               )}

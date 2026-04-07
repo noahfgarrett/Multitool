@@ -1,7 +1,7 @@
 import type { FormDocument } from './types.ts'
 
-const KEY_PREFIX = 'lwt-form-'
-const INDEX_KEY = 'lwt-form-index'
+const KEY_PREFIX = 'mt-form-'
+const INDEX_KEY = 'mt-form-index'
 
 // ── Index entry (stored separately for fast listing) ─────────
 

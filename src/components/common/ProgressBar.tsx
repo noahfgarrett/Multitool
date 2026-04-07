@@ -29,7 +29,7 @@ export const ProgressBar = memo(function ProgressBar({
       )}
       <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg-elevated)' }}>
         <div
-          className="h-full bg-[#F47B20] rounded-full transition-all duration-300 ease-out"
+          className="h-full bg-[#14B8A6] rounded-full transition-all duration-300 ease-out"
           style={{ width: `${percent}%` }}
         />
       </div>

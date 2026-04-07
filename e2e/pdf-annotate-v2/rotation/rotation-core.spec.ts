@@ -183,7 +183,7 @@ test.describe('Annotation Rotation Core', () => {
     expect(await getAnnotationCount(page)).toBe(1)
     // Verify type in session data
     const session = await page.evaluate(() => {
-      const raw = sessionStorage.getItem('lwt-pdf-annotate-session')
+      const raw = sessionStorage.getItem('mt-pdf-annotate-session')
       return raw ? JSON.parse(raw) : null
     })
     const anns = session?.annotations?.[1] || session?.annotations?.['1'] || []

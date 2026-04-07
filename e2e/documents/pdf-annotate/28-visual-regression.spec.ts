@@ -77,7 +77,7 @@ test.describe('Visual — Toolbar States', () => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Select (S)')
     const selectBtn = page.locator('button[title="Select (S)"]')
-    await expect(selectBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(selectBtn).toHaveClass(/bg-\[#14B8A6\]/)
     const screenshot = await selectBtn.screenshot()
     expect(screenshot).toMatchSnapshot('toolbar-select-active.png', { maxDiffPixelRatio: 0.05 })
   })
@@ -103,7 +103,7 @@ test.describe('Visual — Toolbar States', () => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Highlight (H)')
     const highlightBtn = page.locator('button[title="Highlight (H)"]')
-    await expect(highlightBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(highlightBtn).toHaveClass(/bg-\[#14B8A6\]/)
     const screenshot = await highlightBtn.screenshot()
     expect(screenshot).toMatchSnapshot('toolbar-highlight-active.png', { maxDiffPixelRatio: 0.05 })
   })
@@ -302,14 +302,15 @@ test.describe('Visual — Rotation', () => {
 test.describe('Visual — Page Navigation', () => {
   test('page navigation controls for multi-page PDF', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const statusBar = page.locator('.grid-cols-3')
+    // Status bar is the bottom compact bar with border-t
+    const statusBar = page.locator('.border-t.border-white\\/\\[0\\.06\\].flex-shrink-0').last()
     const screenshot = await statusBar.screenshot()
     expect(screenshot).toMatchSnapshot('page-nav-controls.png', { maxDiffPixelRatio: 0.05 })
   })
 
   test('single page PDF status bar', async ({ page }) => {
     await uploadPDFAndWait(page, 'single-page.pdf')
-    const statusBar = page.locator('.grid-cols-3')
+    const statusBar = page.locator('.border-t.border-white\\/\\[0\\.06\\].flex-shrink-0').last()
     const screenshot = await statusBar.screenshot()
     expect(screenshot).toMatchSnapshot('single-page-status-bar.png', { maxDiffPixelRatio: 0.05 })
   })

@@ -123,13 +123,13 @@ test.describe('Flowchart Toolbar & Layout', () => {
     await sketchButton.click()
 
     // Should have active styling (orange background class)
-    await expect(sketchButton).toHaveClass(/F47B20/)
+    await expect(sketchButton).toHaveClass(/14B8A6/)
 
     // Click again to deactivate
     await sketchButton.click()
 
     // Should no longer have active styling
-    await expect(sketchButton).not.toHaveClass(/F47B20\/20/)
+    await expect(sketchButton).not.toHaveClass(/14B8A6\/20/)
   })
 
   // ── 6. Print Button ───────────────────────────────────────

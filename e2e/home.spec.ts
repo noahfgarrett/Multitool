@@ -4,11 +4,11 @@ test.describe('Home / Welcome Screen', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     // Wait for the welcome screen to render
-    await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
   })
 
-  test('hero title "LotusWorks Toolkit" renders', async ({ page }) => {
-    const hero = page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' }).first()
+  test('hero title "Multitool" renders', async ({ page }) => {
+    const hero = page.locator('h1').filter({ hasText: 'Multitool' }).first()
     await expect(hero).toBeVisible()
     await expect(hero).toHaveClass(/text-4xl/)
     // Verify the subtitle also renders
@@ -66,7 +66,7 @@ test.describe('Home / Welcome Screen', () => {
     await expect(header).toHaveText('QR Code')
 
     // The welcome screen hero should no longer be visible
-    await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' }).first()).not.toBeVisible()
+    await expect(page.locator('h1').filter({ hasText: 'Multitool' }).first()).not.toBeVisible()
 
     // The QR code tool should have its input tabs visible
     await expect(page.locator('button').filter({ hasText: 'Text' }).first()).toBeVisible()

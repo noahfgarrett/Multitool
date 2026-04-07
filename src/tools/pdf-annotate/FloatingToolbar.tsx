@@ -54,7 +54,7 @@ export interface FloatingToolbarProps {
 const COLOR_PRESETS = [
   { name: 'Black', value: '#000000' },
   { name: 'Red', value: '#EF4444' },
-  { name: 'Orange', value: '#F47B20' },
+  { name: 'Orange', value: '#14B8A6' },
   { name: 'Yellow', value: '#EAB308' },
   { name: 'Green', value: '#22C55E' },
   { name: 'Blue', value: '#3B82F6' },
@@ -86,7 +86,7 @@ function ToolbarButton({
       onClick={onClick}
       className={`flex items-center justify-center w-6 h-6 rounded transition-colors ${
         active
-          ? 'bg-[#F47B20]/20 text-[#F47B20]'
+          ? 'bg-[#14B8A6]/20 text-[#14B8A6]'
           : 'text-white/40 hover:text-white/70'
       }`}
     >
@@ -216,7 +216,7 @@ export default function FloatingToolbar(props: FloatingToolbarProps) {
                     }}
                     className={`w-5 h-5 rounded-full border transition-transform hover:scale-110 ${
                       color === preset.value
-                        ? 'border-[#F47B20] ring-1 ring-[#F47B20]'
+                        ? 'border-[#14B8A6] ring-1 ring-[#14B8A6]'
                         : 'border-white/20'
                     }`}
                     style={{ backgroundColor: preset.value }}

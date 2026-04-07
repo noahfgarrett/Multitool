@@ -13,6 +13,7 @@ import {
   waitForSessionSave,
   getSessionData,
   clearSessionData,
+  goToPage,
 } from '../../helpers/pdf-annotate'
 import { navigateToTool } from '../../helpers/navigation'
 
@@ -173,10 +174,7 @@ test.describe('Session QA — Tool Settings Persistence', () => {
 
   test('navigating to page 2 updates session currentPage', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
-    await page.waitForTimeout(500)
+    await goToPage(page, 2)
     await waitForSessionSave(page)
     const data = await getSessionData(page)
     expect(data.currentPage).toBe(2)

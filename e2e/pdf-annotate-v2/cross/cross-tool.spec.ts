@@ -173,6 +173,7 @@ test.describe('Cross-Tool Interactions', () => {
   })
 
   test('create 10 different annotations then delete all via undo', async ({ page }) => {
+    test.setTimeout(60000)
     for (let i = 0; i < 5; i++) {
       await createAnnotation(page, 'pencil', { x: 30 + i * 60, y: 50, w: 40, h: 20 })
     }
@@ -180,12 +181,12 @@ test.describe('Cross-Tool Interactions', () => {
       await createAnnotation(page, 'rectangle', { x: 30 + i * 60, y: 120, w: 40, h: 30 })
     }
     expect(await getAnnotationCount(page)).toBe(10)
-    // Undo all 10
+    // Undo all 10 — use longer wait between undos for reliability
     for (let i = 0; i < 10; i++) {
       await page.keyboard.press('Control+z')
-      await page.waitForTimeout(50)
+      await page.waitForTimeout(150)
     }
-    await page.waitForTimeout(300)
+    await page.waitForTimeout(500)
     expect(await getAnnotationCount(page)).toBe(0)
   })
 

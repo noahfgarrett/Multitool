@@ -85,16 +85,16 @@ test.describe('PDF Watermark Tool', () => {
 
     // "Center" should be selected by default (has the active bg class)
     const centerButton = page.locator('button').filter({ hasText: 'Center' })
-    await expect(centerButton).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(centerButton).toHaveClass(/bg-\[#14B8A6\]/)
 
     // Click "Top Left" to change
     const topLeftButton = page.locator('button').filter({ hasText: 'Top Left' })
     await topLeftButton.click()
 
     // "Top Left" should now be highlighted
-    await expect(topLeftButton).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(topLeftButton).toHaveClass(/bg-\[#14B8A6\]/)
     // "Center" should no longer be highlighted
-    await expect(centerButton).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(centerButton).not.toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('preview canvas is rendered', async ({ page }) => {

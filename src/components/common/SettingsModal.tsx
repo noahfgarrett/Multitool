@@ -42,7 +42,7 @@ function ThemesTab() {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 mb-4">
-        <Palette size={16} className="text-[#F47B20]" />
+        <Palette size={16} className="text-[#14B8A6]" />
         <h3 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Choose a theme</h3>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -55,7 +55,7 @@ function ThemesTab() {
               className={`
                 relative flex flex-col items-start gap-2 p-4 rounded-xl
                 border transition-all duration-200 text-left
-                ${isActive ? 'border-[#F47B20] bg-[#F47B20]/10' : ''}
+                ${isActive ? 'border-[#14B8A6] bg-[#14B8A6]/10' : ''}
               `}
               style={!isActive ? { borderColor: 'var(--border-default)', background: 'color-mix(in srgb, var(--bg-surface) 30%, transparent)' } : undefined}
             >
@@ -74,7 +74,7 @@ function ThemesTab() {
                   <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{theme.label}</p>
                 </div>
                 {isActive && (
-                  <div className="w-5 h-5 rounded-full bg-[#F47B20] flex items-center justify-center flex-shrink-0">
+                  <div className="w-5 h-5 rounded-full bg-[#14B8A6] flex items-center justify-center flex-shrink-0">
                     <Check size={12} className="text-white" />
                   </div>
                 )}
@@ -125,14 +125,14 @@ function ProfileTab() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2 mb-1">
-        <User size={16} className="text-[#F47B20]" />
+        <User size={16} className="text-[#14B8A6]" />
         <h3 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Your Profile</h3>
       </div>
 
       {/* Photo */}
       <div className="flex items-center gap-4">
         <div
-          className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer hover:border-[#F47B20]/50 transition-colors"
+          className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer hover:border-[#14B8A6]/50 transition-colors"
           style={{ background: 'color-mix(in srgb, var(--bg-surface) 50%, transparent)', border: '1px solid var(--border-default)' }}
           onClick={() => fileInputRef.current?.click()}
           title="Upload photo"
@@ -146,7 +146,7 @@ function ProfileTab() {
         <div>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 text-xs text-[#F47B20] hover:text-[#FFAB40] transition-colors"
+            className="flex items-center gap-1.5 text-xs text-[#14B8A6] hover:text-[#2DD4BF] transition-colors"
           >
             <Upload size={12} />
             {photo ? 'Change photo' : 'Upload photo'}
@@ -171,7 +171,7 @@ function ProfileTab() {
             value={name}
             onChange={(e) => { setName(e.target.value); setSaved(false) }}
             placeholder="Your name"
-            className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-[#F47B20]/50 transition-colors"
+            className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-[#14B8A6]/50 transition-colors"
             style={{ background: 'color-mix(in srgb, var(--bg-surface) 60%, transparent)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
           />
         </label>
@@ -182,7 +182,7 @@ function ProfileTab() {
             value={jobTitle}
             onChange={(e) => { setJobTitle(e.target.value); setSaved(false) }}
             placeholder="e.g. Senior Estimator"
-            className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-[#F47B20]/50 transition-colors"
+            className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-[#14B8A6]/50 transition-colors"
             style={{ background: 'color-mix(in srgb, var(--bg-surface) 60%, transparent)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
           />
         </label>
@@ -192,8 +192,8 @@ function ProfileTab() {
             type="text"
             value={company}
             onChange={(e) => { setCompany(e.target.value); setSaved(false) }}
-            placeholder="e.g. LotusWorks"
-            className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-[#F47B20]/50 transition-colors"
+            placeholder="e.g. Visualize Build"
+            className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-[#14B8A6]/50 transition-colors"
             style={{ background: 'color-mix(in srgb, var(--bg-surface) 60%, transparent)', border: '1px solid var(--border-default)', color: 'var(--text-primary)' }}
           />
         </label>
@@ -206,7 +206,7 @@ function ProfileTab() {
           w-full py-2.5 rounded-lg text-sm font-semibold transition-all duration-200
           ${saved
             ? 'bg-green-600 text-white'
-            : 'bg-[#F47B20] text-white hover:bg-[#FFAB40]'
+            : 'bg-[#14B8A6] text-white hover:bg-[#2DD4BF]'
           }
         `}
       >
@@ -222,14 +222,14 @@ function AboutTab() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2 mb-1">
-        <Info size={16} className="text-[#F47B20]" />
+        <Info size={16} className="text-[#14B8A6]" />
         <h3 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>About</h3>
       </div>
 
       <div className="rounded-xl p-5 space-y-4" style={{ background: 'color-mix(in srgb, var(--bg-surface) 30%, transparent)', border: '1px solid var(--border-subtle)' }}>
         {/* Title + version */}
         <div className="text-center">
-          <h4 className="text-lg font-display font-bold text-[#F47B20]">LotusWorks Toolkit</h4>
+          <h4 className="text-lg font-display font-bold text-[#14B8A6]">Multitool</h4>
           <p className="text-xs mt-1" style={{ color: 'var(--text-disabled)' }}>Version {__APP_VERSION__}</p>
         </div>
 
@@ -244,6 +244,9 @@ function AboutTab() {
         <div className="pt-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
           <p className="text-xs text-center" style={{ color: 'var(--text-disabled)' }}>
             Created by <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>Noah Garrett</span>
+          </p>
+          <p className="text-xs text-center mt-1" style={{ color: 'var(--text-disabled)' }}>
+            by <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>Visualize Build LLC</span>
           </p>
         </div>
 

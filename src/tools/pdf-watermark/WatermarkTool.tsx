@@ -518,7 +518,7 @@ export default function WatermarkTool() {
               onClick={() => setWatermarkType('text')}
               className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded-md transition-colors ${
                 watermarkType === 'text'
-                  ? 'bg-[#F47B20] text-white'
+                  ? 'bg-[#14B8A6] text-white'
                   : 'bg-white/[0.06] text-white/50 hover:text-white'
               }`}
             >
@@ -528,7 +528,7 @@ export default function WatermarkTool() {
               onClick={() => setWatermarkType('image')}
               className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded-md transition-colors ${
                 watermarkType === 'image'
-                  ? 'bg-[#F47B20] text-white'
+                  ? 'bg-[#14B8A6] text-white'
                   : 'bg-white/[0.06] text-white/50 hover:text-white'
               }`}
             >
@@ -546,7 +546,7 @@ export default function WatermarkTool() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Watermark text"
-              className="w-full px-3 py-2 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white focus:outline-none focus:border-[#F47B20]/40"
+              className="w-full px-3 py-2 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white focus:outline-none focus:border-[#14B8A6]/40"
             />
           </div>
         )}
@@ -595,7 +595,7 @@ export default function WatermarkTool() {
             {watermarkImage && (
               <button
                 onClick={() => imageInputRef.current?.click()}
-                className="text-[10px] text-[#F47B20] hover:text-[#F47B20]/80 transition-colors"
+                className="text-[10px] text-[#14B8A6] hover:text-[#14B8A6]/80 transition-colors"
               >
                 Change image
               </button>
@@ -670,7 +670,7 @@ export default function WatermarkTool() {
                 onChange={(e) => {
                   if (/^#[0-9a-fA-F]{0,6}$/.test(e.target.value)) setColor(e.target.value)
                 }}
-                className="flex-1 px-2 py-1 text-xs bg-dark-surface border border-white/[0.1] rounded-md text-white focus:outline-none focus:border-[#F47B20]/40"
+                className="flex-1 px-2 py-1 text-xs bg-dark-surface border border-white/[0.1] rounded-md text-white focus:outline-none focus:border-[#14B8A6]/40"
               />
             </div>
           </div>
@@ -686,7 +686,7 @@ export default function WatermarkTool() {
                 onClick={() => handlePositionChange(p.id)}
                 className={`px-2 py-1.5 text-[10px] rounded-md transition-colors ${
                   position === p.id
-                    ? 'bg-[#F47B20] text-white'
+                    ? 'bg-[#14B8A6] text-white'
                     : 'bg-white/[0.06] text-white/50 hover:text-white'
                 }`}
               >

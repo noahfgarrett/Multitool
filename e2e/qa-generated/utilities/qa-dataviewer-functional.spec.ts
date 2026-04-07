@@ -9,7 +9,7 @@ test.use({ baseURL: BASE_URL })
 /** Navigate to Data Viewer tool */
 async function goToDataViewer(page: import('@playwright/test').Page) {
   await page.goto('/')
-  await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' })).toBeVisible({ timeout: 10000 })
+  await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
   const sidebar = page.locator('aside nav')
   await sidebar.locator('button').filter({ hasText: 'Data Viewer' }).click()
   await waitForToolLoad(page)

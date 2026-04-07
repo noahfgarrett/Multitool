@@ -150,7 +150,7 @@ export function ChartElementEditor({
                 onClick={() => onColorChange(color)}
                 className={`w-10 h-10 rounded-lg border-2 transition-all hover:scale-110 ${
                   color === element.currentColor
-                    ? 'border-[#F47B20] ring-2 ring-[#F47B20]/30'
+                    ? 'border-[#14B8A6] ring-2 ring-[#14B8A6]/30'
                     : 'border-transparent hover:border-dark-border'
                 }`}
                 style={{ backgroundColor: color }}
@@ -181,7 +181,7 @@ export function ChartElementEditor({
             />
             <button
               onClick={() => onColorChange(customColor)}
-              className="px-3 py-2 bg-[#F47B20] hover:bg-[#e06a10] text-white rounded text-sm font-medium transition-colors"
+              className="px-3 py-2 bg-[#14B8A6] hover:bg-[#e06a10] text-white rounded text-sm font-medium transition-colors"
             >
               Apply
             </button>
@@ -224,7 +224,7 @@ export function DrillDownToast({ info, onApply, onDismiss }: DrillDownToastProps
       <div className="flex gap-2">
         <button
           onClick={onApply}
-          className="px-3 py-1.5 bg-[#F47B20] hover:bg-[#e06a10] text-white rounded text-sm font-medium transition-colors"
+          className="px-3 py-1.5 bg-[#14B8A6] hover:bg-[#e06a10] text-white rounded text-sm font-medium transition-colors"
         >
           Apply
         </button>

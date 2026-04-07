@@ -214,7 +214,7 @@ export default function DashboardTool() {
         {/* Header */}
         <div className="flex items-center justify-between px-1 pb-4 flex-shrink-0">
           <div className="flex items-center gap-2">
-            <BarChart3 size={18} className="text-[#F47B20]" />
+            <BarChart3 size={18} className="text-[#14B8A6]" />
             <h2 className="text-sm font-semibold text-dark-text-primary">Dashboards</h2>
           </div>
           <div className="flex items-center gap-2">
@@ -244,7 +244,7 @@ export default function DashboardTool() {
                 if (!hasData) setModalView('importData')
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg
-                bg-[#F47B20] hover:bg-[#F47B20]/90 text-white transition-colors"
+                bg-[#14B8A6] hover:bg-[#14B8A6]/90 text-white transition-colors"
             >
               <Plus size={14} />
               New Dashboard
@@ -274,7 +274,7 @@ export default function DashboardTool() {
                 if (!hasData) setModalView('importData')
               }}
               className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg
-                bg-[#F47B20] hover:bg-[#F47B20]/90 text-white transition-colors"
+                bg-[#14B8A6] hover:bg-[#14B8A6]/90 text-white transition-colors"
             >
               <Plus size={14} />
               Create Dashboard
@@ -293,8 +293,8 @@ export default function DashboardTool() {
                       hover:bg-white/[0.05] hover:border-white/[0.12] transition-all group"
                   >
                     <div className="flex items-start justify-between mb-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#F47B20]/10 flex items-center justify-center">
-                        <BarChart3 size={16} className="text-[#F47B20]" />
+                      <div className="w-8 h-8 rounded-lg bg-[#14B8A6]/10 flex items-center justify-center">
+                        <BarChart3 size={16} className="text-[#14B8A6]" />
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
@@ -339,8 +339,8 @@ export default function DashboardTool() {
                   if (!hasData) setModalView('importData')
                 }}
                 className="flex flex-col items-center justify-center p-4 rounded-xl
-                  border-2 border-dashed border-dark-border hover:border-[#F47B20]/40
-                  text-dark-text-muted hover:text-[#F47B20] transition-all min-h-[120px]"
+                  border-2 border-dashed border-dark-border hover:border-[#14B8A6]/40
+                  text-dark-text-muted hover:text-[#14B8A6] transition-all min-h-[120px]"
               >
                 <Plus size={20} className="mb-1" />
                 <span className="text-xs">New Dashboard</span>
@@ -470,7 +470,7 @@ export default function DashboardTool() {
           <div className="h-[80vh] flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border">
               <div className="flex items-center gap-2">
-                <FolderOpen size={16} className="text-[#F47B20]" />
+                <FolderOpen size={16} className="text-[#14B8A6]" />
                 <span className="text-sm font-medium text-dark-text-primary">{activeDs.name}</span>
                 <span className="text-xs text-dark-text-muted">
                   {activeDs.rowCount.toLocaleString()} rows &middot; {activeDs.columns.length} columns
@@ -515,7 +515,7 @@ export default function DashboardTool() {
       {!isLoaded && (
         <div className="absolute inset-0 bg-dark-base/80 flex items-center justify-center z-50">
           <div className="flex items-center gap-3">
-            <div className="w-5 h-5 border-2 border-[#F47B20] border-t-transparent rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-[#14B8A6] border-t-transparent rounded-full animate-spin" />
             <span className="text-sm text-dark-text-muted">Loading...</span>
           </div>
         </div>
@@ -625,7 +625,7 @@ function DataSourceBanner({
         <button
           onClick={onImportData}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg
-            bg-[#F47B20]/20 hover:bg-[#F47B20]/30 text-[#F47B20] transition-colors"
+            bg-[#14B8A6]/20 hover:bg-[#14B8A6]/30 text-[#14B8A6] transition-colors"
         >
           <FileUp size={12} />
           Import Data

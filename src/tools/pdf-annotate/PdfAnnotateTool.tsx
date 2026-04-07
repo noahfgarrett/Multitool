@@ -102,8 +102,8 @@ const ThumbnailItem = memo(function ThumbnailItem({ pageNum, thumbnail, isCurren
       onClick={() => onClick(pageNum)}
       onDoubleClick={() => onDoubleClick(pageNum)}
       className={`cursor-pointer rounded-md overflow-hidden border-2 transition-colors ${
-        isCurrent ? 'border-[#F47B20]' :
-        isSelected ? 'border-[#F47B20]/50' :
+        isCurrent ? 'border-[#14B8A6]' :
+        isSelected ? 'border-[#14B8A6]/50' :
         'border-transparent hover:border-white/20'
       }`}
     >
@@ -116,7 +116,7 @@ const ThumbnailItem = memo(function ThumbnailItem({ pageNum, thumbnail, isCurren
       )}
       <div className="text-center text-[10px] text-white/40 py-0.5">
         {pageNum}
-        {hasAnnotations && <span className="text-[8px] text-[#F47B20] ml-0.5">●</span>}
+        {hasAnnotations && <span className="text-[8px] text-[#14B8A6] ml-0.5">●</span>}
       </div>
     </div>
   )
@@ -132,7 +132,7 @@ function annLabel(ann: Annotation): string {
 
 // ── Layer row component ──────────────────────────────────
 
-const LAYER_COLOR_PRESETS = ['#6B7280', '#EF4444', '#F47B20', '#EAB308', '#22C55E', '#3B82F6', '#8B5CF6', '#EC4899', '#000000']
+const LAYER_COLOR_PRESETS = ['#6B7280', '#EF4444', '#14B8A6', '#EAB308', '#22C55E', '#3B82F6', '#8B5CF6', '#EC4899', '#000000']
 
 const LayerRow = memo(function LayerRow({ layer, isActive, annotationCount, onSetActive, onToggleVisibility, onDelete, onRename, onColorChange }: {
   layer: AnnotationLayer
@@ -169,7 +169,7 @@ const LayerRow = memo(function LayerRow({ layer, isActive, annotationCount, onSe
   return (
     <div
       className={`group flex items-center gap-2 px-3 py-1.5 text-xs cursor-pointer transition-colors ${
-        isActive ? 'bg-[#F47B20]/10 text-[#F47B20]' : 'text-white/60 hover:bg-white/[0.04]'
+        isActive ? 'bg-[#14B8A6]/10 text-[#14B8A6]' : 'text-white/60 hover:bg-white/[0.04]'
       }`}
       onClick={() => onSetActive()}
     >
@@ -217,7 +217,7 @@ const LayerRow = memo(function LayerRow({ layer, isActive, annotationCount, onSe
             if (e.key === 'Escape') { setEditValue(layer.name); setIsEditing(false) }
           }}
           onClick={(e) => e.stopPropagation()}
-          className="flex-1 min-w-0 bg-white/[0.08] border border-white/[0.15] rounded px-1 py-0 text-xs text-white outline-none focus:border-[#F47B20]/50"
+          className="flex-1 min-w-0 bg-white/[0.08] border border-white/[0.15] rounded px-1 py-0 text-xs text-white outline-none focus:border-[#14B8A6]/50"
         />
       ) : (
         <span
@@ -241,7 +241,7 @@ const LayerRow = memo(function LayerRow({ layer, isActive, annotationCount, onSe
         </button>
       )}
       {isActive && !isEditing && (
-        <span className="text-[8px] text-[#F47B20]/50 font-bold">ACTIVE</span>
+        <span className="text-[8px] text-[#14B8A6]/50 font-bold">ACTIVE</span>
       )}
     </div>
   )
@@ -380,7 +380,7 @@ export default function PdfAnnotateTool() {
   // Tool preset callbacks
   const saveToolPreset = useCallback((name: string) => {
     const preset: ToolPreset = { id: crypto.randomUUID(), name, toolType: activeTool, color, strokeWidth, opacity, fontSize, fillColor, dashPattern }
-    setToolPresets(prev => { const next = [...prev, preset]; localStorage.setItem('lwt-tool-presets', JSON.stringify(next)); return next })
+    setToolPresets(prev => { const next = [...prev, preset]; localStorage.setItem('mt-tool-presets', JSON.stringify(next)); return next })
   }, [activeTool, color, strokeWidth, opacity, fontSize, fillColor, dashPattern, setToolPresets])
 
   const applyToolPreset = useCallback((preset: ToolPreset) => {
@@ -389,7 +389,7 @@ export default function PdfAnnotateTool() {
   }, [setActiveTool, setColor, setStrokeWidth, setOpacity, setFontSize, setFillColor, setDashPattern])
 
   const deleteToolPreset = useCallback((id: string) => {
-    setToolPresets(prev => { const next = prev.filter(p => p.id !== id); localStorage.setItem('lwt-tool-presets', JSON.stringify(next)); return next })
+    setToolPresets(prev => { const next = prev.filter(p => p.id !== id); localStorage.setItem('mt-tool-presets', JSON.stringify(next)); return next })
   }, [setToolPresets])
 
   // ── Coordinate conversion (page-aware) ──────────────
@@ -1744,9 +1744,9 @@ export default function PdfAnnotateTool() {
         preHighlightRef.current = null
       }
       // Text/callout: default to black if color is the app default
-      if ((activeTool === 'text' || activeTool === 'callout') && color === '#F47B20') setColor('#000000')
+      if ((activeTool === 'text' || activeTool === 'callout') && color === '#14B8A6') setColor('#000000')
       // Text strikethrough: default to red
-      if (activeTool === 'textStrikethrough' && (color === '#F47B20' || color === '#FFFF00')) setColor('#FF0000')
+      if (activeTool === 'textStrikethrough' && (color === '#14B8A6' || color === '#FFFF00')) setColor('#FF0000')
     }
     if (editingTextId && activeTool !== 'text' && activeTool !== 'callout') {
       // Commit any open text edit when switching away from text tools
@@ -3743,7 +3743,7 @@ export default function PdfAnnotateTool() {
           <>
             <button onClick={() => setSidebarOpen(o => !o)} title="Page thumbnails" aria-label="Toggle page thumbnails"
               className={`p-1 rounded-lg transition-colors ${
-                sidebarOpen ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+                sidebarOpen ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
               }`}>
               <PanelLeft size={14} />
             </button>
@@ -3766,7 +3766,7 @@ export default function PdfAnnotateTool() {
               {ZOOM_PRESETS.map(z => (
                 <button key={z} onClick={() => { zoomAtCenter(z); setZoomDropdownOpen(false) }}
                   className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
-                    Math.abs(zoom - z) < 0.01 ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
+                    Math.abs(zoom - z) < 0.01 ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
                   }`}>
                   {Math.round(z * 100)}%
                 </button>
@@ -3799,7 +3799,7 @@ export default function PdfAnnotateTool() {
           }}
           title={focusMode ? 'Exit focus mode (Shift+F)' : 'Focus mode (Shift+F)'}
           className={`p-1 rounded-lg transition-colors ${
-            focusMode ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+            focusMode ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
           }`}
         >
           {focusMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
@@ -3831,7 +3831,7 @@ export default function PdfAnnotateTool() {
 
         {/* Find button — stays visible with label */}
         <button onClick={() => { setFindOpen(o => !o); setTimeout(() => findInputRef.current?.focus(), 50) }} title="Find text (Ctrl+F)"
-          className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs transition-colors ${findOpen ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30' : 'text-white/50 hover:text-white/80 hover:bg-white/[0.06]'}`}>
+          className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs transition-colors ${findOpen ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30' : 'text-white/50 hover:text-white/80 hover:bg-white/[0.06]'}`}>
           <Search size={14} />
           <span>Find</span>
         </button>
@@ -3854,7 +3854,7 @@ export default function PdfAnnotateTool() {
                 <List size={15} className="text-white/40 shrink-0" />
                 <span>Annotation List</span>
                 {totalAnnotationCount > 0 && (
-                  <span className="ml-auto min-w-[18px] h-[18px] bg-[#F47B20] rounded-full text-[9px] text-white font-bold flex items-center justify-center px-1">
+                  <span className="ml-auto min-w-[18px] h-[18px] bg-[#14B8A6] rounded-full text-[9px] text-white font-bold flex items-center justify-center px-1">
                     {totalAnnotationCount > 99 ? '99+' : totalAnnotationCount}
                   </span>
                 )}
@@ -3978,13 +3978,13 @@ export default function PdfAnnotateTool() {
             <span className="text-xs text-red-400/70 flex-shrink-0">No matches</span>
           )}
           {ocrScanning && (
-            <span className="text-xs text-[#F47B20]/70 flex-shrink-0 animate-pulse">OCR scanning...</span>
+            <span className="text-xs text-[#14B8A6]/70 flex-shrink-0 animate-pulse">OCR scanning...</span>
           )}
           <button
             onClick={() => setFindCaseSensitive(v => !v)}
             title="Case sensitive (Alt+C)"
             className={`px-1 py-0.5 rounded text-[10px] font-medium flex-shrink-0 transition-colors ${
-              findCaseSensitive ? 'bg-[#F47B20]/20 text-[#F47B20] border border-[#F47B20]/30' : 'text-white/30 hover:text-white/50 border border-white/[0.08]'
+              findCaseSensitive ? 'bg-[#14B8A6]/20 text-[#14B8A6] border border-[#14B8A6]/30' : 'text-white/30 hover:text-white/50 border border-white/[0.08]'
             }`}
           >Aa</button>
           <button onClick={() => setFindIdx(i => (i - 1 + Math.max(1, findMatches.length)) % Math.max(1, findMatches.length))} disabled={findMatches.length === 0}
@@ -4027,7 +4027,7 @@ export default function PdfAnnotateTool() {
               }}
               className="w-16 h-1 bg-white/[0.08] rounded-full appearance-none cursor-pointer
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3
-                [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#F47B20] [&::-webkit-slider-thumb]:cursor-pointer" />
+                [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#14B8A6] [&::-webkit-slider-thumb]:cursor-pointer" />
             <span className="text-[10px] text-white/40 w-4">{strokeWidth}</span>
           </div>
         )}
@@ -4044,7 +4044,7 @@ export default function PdfAnnotateTool() {
               }}
               className="w-14 h-1 bg-white/[0.08] rounded-full appearance-none cursor-pointer
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3
-                [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#F47B20] [&::-webkit-slider-thumb]:cursor-pointer" />
+                [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#14B8A6] [&::-webkit-slider-thumb]:cursor-pointer" />
             <span className="text-[10px] text-white/40 w-6">{opacity}%</span>
           </div>
         )}
@@ -4086,7 +4086,7 @@ export default function PdfAnnotateTool() {
               }}
               className="w-12 h-1 bg-white/[0.08] rounded-full appearance-none cursor-pointer
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3
-                [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#F47B20] [&::-webkit-slider-thumb]:cursor-pointer" />
+                [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#14B8A6] [&::-webkit-slider-thumb]:cursor-pointer" />
             <span className="text-[10px] text-white/40 w-4">{cornerRadius}</span>
           </div>
         )}
@@ -4101,7 +4101,7 @@ export default function PdfAnnotateTool() {
                 if (selectedAnnId) updateAnnotation(selectedAnnId, { dashPattern: dp === 'solid' ? undefined : dp })
               }}
                 className={`px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors ${
-                  dashPattern === dp ? 'bg-[#F47B20]/20 text-[#F47B20] border border-[#F47B20]/30' : 'text-white/30 hover:text-white/50 border border-white/[0.08]'
+                  dashPattern === dp ? 'bg-[#14B8A6]/20 text-[#14B8A6] border border-[#14B8A6]/30' : 'text-white/30 hover:text-white/50 border border-white/[0.08]'
                 }`}>
                 {dp === 'solid' ? '━' : dp === 'dashed' ? '╌' : '┈'}
               </button>
@@ -4117,7 +4117,7 @@ export default function PdfAnnotateTool() {
           }}
             title={arrowStart ? 'Double-headed arrow' : 'Single arrow'}
             className={`px-1.5 py-0.5 rounded text-[9px] font-medium transition-colors ${
-              arrowStart ? 'bg-[#F47B20]/20 text-[#F47B20] border border-[#F47B20]/30' : 'text-white/30 hover:text-white/50 border border-white/[0.08]'
+              arrowStart ? 'bg-[#14B8A6]/20 text-[#14B8A6] border border-[#14B8A6]/30' : 'text-white/30 hover:text-white/50 border border-white/[0.08]'
             }`}>
             {arrowStart ? '↔' : '→'}
           </button>
@@ -4129,7 +4129,7 @@ export default function PdfAnnotateTool() {
             title={straightLineMode ? 'Straight line mode' : 'Freehand mode'}
             className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
               straightLineMode
-                ? 'bg-[#F47B20]/20 text-[#F47B20] border border-[#F47B20]/30'
+                ? 'bg-[#14B8A6]/20 text-[#14B8A6] border border-[#14B8A6]/30'
                 : 'text-white/40 hover:text-white/60 border border-white/[0.08]'
             }`}>
             {straightLineMode ? 'Straight' : 'Free'}
@@ -4191,7 +4191,7 @@ export default function PdfAnnotateTool() {
                   }
                 }} title={label}
                   className={`p-1 rounded transition-colors ${
-                    val ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/40 hover:text-white/70'
+                    val ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'text-white/40 hover:text-white/70'
                   }`}>
                   <Icon size={13} />
                 </button>
@@ -4213,7 +4213,7 @@ export default function PdfAnnotateTool() {
                   }
                 }} title={label}
                   className={`p-1 rounded transition-colors ${
-                    textAlign === align ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/40 hover:text-white/70'
+                    textAlign === align ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'text-white/40 hover:text-white/70'
                   }`}>
                   <Icon size={13} />
                 </button>
@@ -4229,7 +4229,7 @@ export default function PdfAnnotateTool() {
               }
             }} title="Text background highlight"
               className={`p-1 rounded transition-colors ${
-                textBgColor ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/40 hover:text-white/70'
+                textBgColor ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'text-white/40 hover:text-white/70'
               }`}>
               <Paintbrush size={13} />
             </button>
@@ -4259,7 +4259,7 @@ export default function PdfAnnotateTool() {
                 }
               }} title="Superscript"
                 className={`p-1 rounded transition-colors ${
-                  superscript ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/40 hover:text-white/70'
+                  superscript ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'text-white/40 hover:text-white/70'
                 }`}>
                 <Superscript size={13} />
               </button>
@@ -4274,7 +4274,7 @@ export default function PdfAnnotateTool() {
                 }
               }} title="Subscript"
                 className={`p-1 rounded transition-colors ${
-                  subscript ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/40 hover:text-white/70'
+                  subscript ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'text-white/40 hover:text-white/70'
                 }`}>
                 <Subscript size={13} />
               </button>
@@ -4290,7 +4290,7 @@ export default function PdfAnnotateTool() {
                 }
               }} title="Bullet list"
                 className={`p-1 rounded transition-colors ${
-                  listType === 'bullet' ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/40 hover:text-white/70'
+                  listType === 'bullet' ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'text-white/40 hover:text-white/70'
                 }`}>
                 <List size={13} />
               </button>
@@ -4304,7 +4304,7 @@ export default function PdfAnnotateTool() {
                 }
               }} title="Numbered list"
                 className={`p-1 rounded transition-colors ${
-                  listType === 'numbered' ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/40 hover:text-white/70'
+                  listType === 'numbered' ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'text-white/40 hover:text-white/70'
                 }`}>
                 <ListOrdered size={13} />
               </button>
@@ -4318,11 +4318,11 @@ export default function PdfAnnotateTool() {
             <div className="flex items-center bg-white/[0.06] rounded-md p-0.5">
               <button onClick={() => setEraserMode('partial')} title="Partial erase"
                 className={`px-1.5 py-0.5 rounded text-[10px] transition-colors ${
-                  eraserMode === 'partial' ? 'bg-[#F47B20] text-white' : 'text-white/50 hover:text-white'
+                  eraserMode === 'partial' ? 'bg-[#14B8A6] text-white' : 'text-white/50 hover:text-white'
                 }`}>Partial</button>
               <button onClick={() => setEraserMode('object')} title="Object erase"
                 className={`px-1.5 py-0.5 rounded text-[10px] transition-colors ${
-                  eraserMode === 'object' ? 'bg-[#F47B20] text-white' : 'text-white/50 hover:text-white'
+                  eraserMode === 'object' ? 'bg-[#14B8A6] text-white' : 'text-white/50 hover:text-white'
                 }`}>Object</button>
             </div>
             <div className="flex items-center gap-1">
@@ -4331,7 +4331,7 @@ export default function PdfAnnotateTool() {
                 onChange={e => setEraserRadius(Number(e.target.value))}
                 className="w-16 h-1 bg-white/[0.08] rounded-full appearance-none cursor-pointer
                   [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3
-                  [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#F47B20] [&::-webkit-slider-thumb]:cursor-pointer" />
+                  [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#14B8A6] [&::-webkit-slider-thumb]:cursor-pointer" />
               <span className="text-[10px] text-white/40 w-5">{eraserRadius}</span>
             </div>
           </>
@@ -4546,7 +4546,7 @@ export default function PdfAnnotateTool() {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setDrawerPinned(p => !p)}
-                    className={`p-1 rounded transition-colors ${drawerPinned ? 'text-[#F47B20]' : 'text-white/30 hover:text-white/60'}`}
+                    className={`p-1 rounded transition-colors ${drawerPinned ? 'text-[#14B8A6]' : 'text-white/30 hover:text-white/60'}`}
                     title={drawerPinned ? 'Unpin drawer' : 'Pin drawer open'}
                   >
                     <Pin size={12} />
@@ -4567,7 +4567,7 @@ export default function PdfAnnotateTool() {
               <button onClick={() => selectToolInDrawer(() => setActiveTool('select'))} title="Select (S)"
                 className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
                   activeTool === 'select'
-                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                    ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                     : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                 }`}>
                 <MousePointer2 size={15} />
@@ -4582,7 +4582,7 @@ export default function PdfAnnotateTool() {
                   title={activeDrawDef.label}
                   className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
                     isDrawTool
-                      ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                      ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                       : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                   }`}>
                   <ActiveDrawIcon size={15} />
@@ -4595,7 +4595,7 @@ export default function PdfAnnotateTool() {
                       <button key={s.type}
                         onClick={() => selectToolInDrawer(() => { setActiveTool(s.type); setActiveDraw(s.type); setDrawerShapesOpen(false) })}
                         className={`w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded transition-colors ${
-                          activeTool === s.type ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
+                          activeTool === s.type ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
                         }`}>
                         <s.icon size={14} />
                         {s.label}
@@ -4616,7 +4616,7 @@ export default function PdfAnnotateTool() {
                 title="Highlight (H)"
                 className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
                   activeTool === 'highlighter'
-                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                    ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                     : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                 }`}>
                 <Highlighter size={15} />
@@ -4635,7 +4635,7 @@ export default function PdfAnnotateTool() {
                 title="Strikethrough (Shift+X)"
                 className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
                   activeTool === 'textStrikethrough'
-                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                    ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                     : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                 }`}>
                 <Strikethrough size={15} />
@@ -4649,7 +4649,7 @@ export default function PdfAnnotateTool() {
                   title={activeTextDef.label}
                   className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
                     isTextTool
-                      ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                      ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                       : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                   }`}>
                   <ActiveTextIcon size={15} />
@@ -4662,7 +4662,7 @@ export default function PdfAnnotateTool() {
                       <button key={s.type}
                         onClick={() => selectToolInDrawer(() => { setActiveTool(s.type); setActiveText(s.type); setDrawerTextOpen(false) })}
                         className={`w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded transition-colors ${
-                          activeTool === s.type ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
+                          activeTool === s.type ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
                         }`}>
                         <s.icon size={14} />
                         {s.label}
@@ -4676,7 +4676,7 @@ export default function PdfAnnotateTool() {
               <button onClick={() => selectToolInDrawer(() => setActiveTool('eraser'))} title="Eraser (E)"
                 className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
                   activeTool === 'eraser'
-                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                    ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                     : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                 }`}>
                 <Eraser size={15} />
@@ -4689,7 +4689,7 @@ export default function PdfAnnotateTool() {
                 <button onClick={() => { if (activeTool === 'measure') { setDrawerMeasureOpen(o => !o) } else { setActiveTool('measure'); setDrawerMeasureOpen(false) } }} title="Measure (M)"
                   className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
                     activeTool === 'measure'
-                      ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                      ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                       : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                   }`}>
                   <Ruler size={15} />
@@ -4702,7 +4702,7 @@ export default function PdfAnnotateTool() {
                       <button key={mode}
                         onClick={() => { setMeasureMode(mode); setActiveTool('measure'); setDrawerMeasureOpen(false); if (!drawerPinned) setDrawerOpen(false) }}
                         className={`w-full text-left px-2 py-1.5 text-xs rounded transition-colors ${
-                          measureMode === mode ? 'text-[#F47B20] bg-[#F47B20]/10' : 'text-white/70 hover:text-white hover:bg-white/[0.06]'
+                          measureMode === mode ? 'text-[#14B8A6] bg-[#14B8A6]/10' : 'text-white/70 hover:text-white hover:bg-white/[0.06]'
                         }`}>
                         {label}
                       </button>
@@ -4711,13 +4711,13 @@ export default function PdfAnnotateTool() {
                     <label className="flex items-center gap-2 px-2 py-1.5 text-xs text-white/70 cursor-pointer hover:bg-white/[0.06] rounded">
                       <input type="checkbox" checked={edgeSnappingEnabled}
                         onChange={e => setEdgeSnappingEnabled(e.target.checked)}
-                        className="rounded border-white/20 bg-white/10 text-[#F47B20] focus:ring-[#F47B20]" />
+                        className="rounded border-white/20 bg-white/10 text-[#14B8A6] focus:ring-[#14B8A6]" />
                       Edge Snap
                     </label>
                     <label className="flex items-center gap-2 px-2 py-1.5 text-xs text-white/70 cursor-pointer hover:bg-white/[0.06] rounded">
                       <input type="checkbox" checked={precisionSnapMode}
                         onChange={e => setPrecisionSnapMode(e.target.checked)}
-                        className="rounded border-white/20 bg-white/10 text-[#F47B20] focus:ring-[#F47B20]" />
+                        className="rounded border-white/20 bg-white/10 text-[#14B8A6] focus:ring-[#14B8A6]" />
                       Precision Mode
                     </label>
                   </div>
@@ -4748,7 +4748,7 @@ export default function PdfAnnotateTool() {
                       title="Stamp"
                       className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
                         activeTool === 'stamp'
-                          ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                          ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                           : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                       }`}>
                       <Tag size={15} />
@@ -4761,7 +4761,7 @@ export default function PdfAnnotateTool() {
                           <button key={preset.label}
                             onClick={() => selectToolInDrawer(() => { setActiveStampPreset(preset); setDrawerStampOpen(false) })}
                             className={`w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded transition-colors ${
-                              activeStampPreset.label === preset.label ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
+                              activeStampPreset.label === preset.label ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
                             }`}>
                             <span className="font-bold text-[10px]" style={{ color: preset.color }}>{preset.label}</span>
                           </button>
@@ -4774,7 +4774,7 @@ export default function PdfAnnotateTool() {
                   <button onClick={() => selectToolInDrawer(() => setActiveTool('crop'))} title="Crop page"
                     className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
                       activeTool === 'crop'
-                        ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                        ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                         : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                     }`}>
                     <Crop size={15} />
@@ -4801,7 +4801,7 @@ export default function PdfAnnotateTool() {
                   })} title="Image Stamp (I)"
                     className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
                       activeTool === 'imageStamp'
-                        ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                        ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                         : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                     }`}>
                     <ImagePlus size={15} />
@@ -4813,7 +4813,7 @@ export default function PdfAnnotateTool() {
                   <button onClick={() => selectToolInDrawer(() => { setActiveTool('ocrRegion'); setOcrRegionResult(null) })} title="OCR Region Scan"
                     className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
                       activeTool === 'ocrRegion'
-                        ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                        ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                         : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                     }`}>
                     <ScanText size={15} />
@@ -4824,7 +4824,7 @@ export default function PdfAnnotateTool() {
                   <button onClick={() => selectToolInDrawer(() => setActiveTool('note'))} title="Sticky Note (N)"
                     className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
                       activeTool === 'note'
-                        ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                        ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                         : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                     }`}>
                     <StickyNoteIcon size={15} />
@@ -4843,7 +4843,7 @@ export default function PdfAnnotateTool() {
               <button onClick={() => selectToolInDrawer(() => setLayersPanelOpen(prev => !prev))} title="Layers"
                 className={`flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
                   layersPanelOpen
-                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                    ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                     : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                 }`}>
                 <Layers size={15} />
@@ -4854,13 +4854,13 @@ export default function PdfAnnotateTool() {
               <button onClick={() => selectToolInDrawer(() => setCommentsPanelOpen(prev => !prev))} title="Comments panel"
                 className={`relative flex items-center gap-2 px-2.5 py-2 w-full rounded-lg transition-colors ${
                   commentsPanelOpen
-                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                    ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                     : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                 }`}>
                 <MessageCircle size={15} />
                 <span className="text-xs truncate">Comments</span>
                 {commentThreads.length > 0 && (
-                  <span className="ml-auto min-w-[14px] h-[14px] flex items-center justify-center px-0.5 text-[8px] font-bold bg-[#F47B20] text-white rounded-full">
+                  <span className="ml-auto min-w-[14px] h-[14px] flex items-center justify-center px-0.5 text-[8px] font-bold bg-[#14B8A6] text-white rounded-full">
                     {commentThreads.length > 99 ? '99+' : commentThreads.length}
                   </span>
                 )}
@@ -4908,7 +4908,7 @@ export default function PdfAnnotateTool() {
                 toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
               } ${
                 activeTool === 'select'
-                  ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                  ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                   : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
               }`}>
               <MousePointer2 size={toolbarExpanded ? 15 : 16} />
@@ -4929,7 +4929,7 @@ export default function PdfAnnotateTool() {
                   toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
                 } ${
                   isDrawTool
-                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                    ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                     : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                 }`}>
                 <ActiveDrawIcon size={toolbarExpanded ? 15 : 16} />
@@ -4946,7 +4946,7 @@ export default function PdfAnnotateTool() {
                     <button key={s.type}
                       onClick={() => { setActiveTool(s.type); setActiveDraw(s.type); setShapesDropdownOpen(false) }}
                       className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
-                        activeTool === s.type ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
+                        activeTool === s.type ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
                       }`}>
                       <s.icon size={14} />
                       {s.label}
@@ -4969,7 +4969,7 @@ export default function PdfAnnotateTool() {
                 toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
               } ${
                 activeTool === 'highlighter'
-                  ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                  ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                   : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
               }`}>
               <Highlighter size={toolbarExpanded ? 15 : 16} />
@@ -4994,7 +4994,7 @@ export default function PdfAnnotateTool() {
                 toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
               } ${
                 activeTool === 'textStrikethrough'
-                  ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                  ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                   : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
               }`}>
               <Strikethrough size={toolbarExpanded ? 15 : 16} />
@@ -5012,7 +5012,7 @@ export default function PdfAnnotateTool() {
                   toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
                 } ${
                   isTextTool
-                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                    ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                     : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                 }`}>
                 <ActiveTextIcon size={toolbarExpanded ? 15 : 16} />
@@ -5029,7 +5029,7 @@ export default function PdfAnnotateTool() {
                     <button key={s.type}
                       onClick={() => { setActiveTool(s.type); setActiveText(s.type); setTextDropdownOpen(false) }}
                       className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
-                        activeTool === s.type ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
+                        activeTool === s.type ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
                       }`}>
                       <s.icon size={14} />
                       {s.label}
@@ -5045,7 +5045,7 @@ export default function PdfAnnotateTool() {
                 toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
               } ${
                 activeTool === 'eraser'
-                  ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                  ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                   : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
               }`}>
               <Eraser size={toolbarExpanded ? 15 : 16} />
@@ -5064,7 +5064,7 @@ export default function PdfAnnotateTool() {
                   toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
                 } ${
                   activeTool === 'measure'
-                    ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                    ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                     : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                 }`}>
                 <Ruler size={toolbarExpanded ? 15 : 16} />
@@ -5083,7 +5083,7 @@ export default function PdfAnnotateTool() {
                     <button key={mode}
                       onClick={() => { setMeasureMode(mode); setActiveTool('measure'); setMeasureDropdownOpen(false) }}
                       className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
-                        measureMode === mode ? 'text-[#F47B20] bg-[#F47B20]/10' : 'text-white/70 hover:text-white hover:bg-white/[0.06]'
+                        measureMode === mode ? 'text-[#14B8A6] bg-[#14B8A6]/10' : 'text-white/70 hover:text-white hover:bg-white/[0.06]'
                       }`}>
                       {label}
                     </button>
@@ -5092,13 +5092,13 @@ export default function PdfAnnotateTool() {
                   <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-white/70 cursor-pointer hover:bg-white/[0.06]">
                     <input type="checkbox" checked={edgeSnappingEnabled}
                       onChange={e => setEdgeSnappingEnabled(e.target.checked)}
-                      className="rounded border-white/20 bg-white/10 text-[#F47B20] focus:ring-[#F47B20]" />
+                      className="rounded border-white/20 bg-white/10 text-[#14B8A6] focus:ring-[#14B8A6]" />
                     Edge Snap
                   </label>
                   <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-white/70 cursor-pointer hover:bg-white/[0.06]">
                     <input type="checkbox" checked={precisionSnapMode}
                       onChange={e => setPrecisionSnapMode(e.target.checked)}
-                      className="rounded border-white/20 bg-white/10 text-[#F47B20] focus:ring-[#F47B20]" />
+                      className="rounded border-white/20 bg-white/10 text-[#14B8A6] focus:ring-[#14B8A6]" />
                     Precision Mode
                   </label>
                 </div>
@@ -5137,7 +5137,7 @@ export default function PdfAnnotateTool() {
                       toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
                     } ${
                       activeTool === 'stamp'
-                        ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                        ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                         : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                     }`}>
                     <Tag size={toolbarExpanded ? 15 : 16} />
@@ -5154,7 +5154,7 @@ export default function PdfAnnotateTool() {
                         <button key={preset.label}
                           onClick={() => { setActiveStampPreset(preset); setStampDropdownOpen(false) }}
                           className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
-                            activeStampPreset.label === preset.label ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
+                            activeStampPreset.label === preset.label ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
                           }`}>
                           <span className="font-bold text-[10px]" style={{ color: preset.color }}>{preset.label}</span>
                         </button>
@@ -5169,7 +5169,7 @@ export default function PdfAnnotateTool() {
                     toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
                   } ${
                     activeTool === 'crop'
-                      ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                      ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                       : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                   }`}>
                   <Crop size={toolbarExpanded ? 15 : 16} />
@@ -5202,7 +5202,7 @@ export default function PdfAnnotateTool() {
                     toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
                   } ${
                     activeTool === 'imageStamp'
-                      ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                      ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                       : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                   }`}>
                   <ImagePlus size={toolbarExpanded ? 15 : 16} />
@@ -5220,7 +5220,7 @@ export default function PdfAnnotateTool() {
                     toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
                   } ${
                     activeTool === 'ocrRegion'
-                      ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                      ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                       : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                   }`}>
                   <ScanText size={toolbarExpanded ? 15 : 16} />
@@ -5235,7 +5235,7 @@ export default function PdfAnnotateTool() {
                     toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
                   } ${
                     activeTool === 'note'
-                      ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                      ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                       : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                   }`}>
                   <StickyNoteIcon size={toolbarExpanded ? 15 : 16} />
@@ -5260,7 +5260,7 @@ export default function PdfAnnotateTool() {
                 toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
               } ${
                 layersPanelOpen
-                  ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                  ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                   : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
               }`}>
               <Layers size={toolbarExpanded ? 15 : 16} />
@@ -5275,7 +5275,7 @@ export default function PdfAnnotateTool() {
                 toolbarExpanded ? 'gap-2 px-2.5 py-2 w-full' : 'justify-center p-1.5'
               } ${
                 commentsPanelOpen
-                  ? 'bg-[#F47B20]/15 text-[#F47B20] ring-1 ring-inset ring-[#F47B20]/30'
+                  ? 'bg-[#14B8A6]/15 text-[#14B8A6] ring-1 ring-inset ring-[#14B8A6]/30'
                   : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
               }`}>
               <MessageCircle size={toolbarExpanded ? 15 : 16} />
@@ -5283,7 +5283,7 @@ export default function PdfAnnotateTool() {
                 <span className="text-xs truncate">Comments</span>
               )}
               {commentThreads.length > 0 && (
-                <span className={`${toolbarExpanded ? 'ml-auto' : 'absolute -top-1 -right-1'} min-w-[14px] h-[14px] flex items-center justify-center px-0.5 text-[8px] font-bold bg-[#F47B20] text-white rounded-full`}>
+                <span className={`${toolbarExpanded ? 'ml-auto' : 'absolute -top-1 -right-1'} min-w-[14px] h-[14px] flex items-center justify-center px-0.5 text-[8px] font-bold bg-[#14B8A6] text-white rounded-full`}>
                   {commentThreads.length > 99 ? '99+' : commentThreads.length}
                 </span>
               )}
@@ -5541,7 +5541,7 @@ export default function PdfAnnotateTool() {
           >
             {ocrRegionScanning ? (
               <div className="px-3 py-2 flex items-center gap-2">
-                <div className="w-3 h-3 border-2 border-[#F47B20] border-t-transparent rounded-full animate-spin" />
+                <div className="w-3 h-3 border-2 border-[#14B8A6] border-t-transparent rounded-full animate-spin" />
                 <span className="text-xs text-white/60">Scanning region...</span>
               </div>
             ) : ocrRegionResult ? (
@@ -5651,7 +5651,7 @@ export default function PdfAnnotateTool() {
                   }}
                   placeholder="e.g. 12"
                   className={`flex-1 px-3 py-2 text-sm bg-dark-surface border rounded-lg text-white placeholder:text-white/30 focus:outline-none ${
-                    showError ? 'border-red-500/50 focus:border-red-500' : 'border-white/[0.1] focus:border-[#F47B20]/50'
+                    showError ? 'border-red-500/50 focus:border-red-500' : 'border-white/[0.1] focus:border-[#14B8A6]/50'
                   }`}
                   autoFocus
                 />
@@ -5691,7 +5691,7 @@ export default function PdfAnnotateTool() {
                       setCalibrateModalOpen(false)
                     }
                   }}
-                  className="px-4 py-1.5 text-sm bg-[#F47B20] text-white rounded-lg hover:bg-[#F47B20]/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-4 py-1.5 text-sm bg-[#14B8A6] text-white rounded-lg hover:bg-[#14B8A6]/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Apply
                 </button>
@@ -5719,12 +5719,12 @@ export default function PdfAnnotateTool() {
               }
             }}
             placeholder="e.g. Doors, Outlets, Sprinklers"
-            className="px-3 py-2 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#F47B20]/50"
+            className="px-3 py-2 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#14B8A6]/50"
             autoFocus
           />
           <div className="flex items-center gap-2">
             <span className="text-xs text-white/60">Color:</span>
-            {['#EF4444', '#F47B20', '#EAB308', '#22C55E', '#3B82F6', '#8B5CF6', '#EC4899'].map(c => (
+            {['#EF4444', '#14B8A6', '#EAB308', '#22C55E', '#3B82F6', '#8B5CF6', '#EC4899'].map(c => (
               <button key={c} onClick={() => setCountGroupColor(c)}
                 className={`w-6 h-6 rounded-full border-2 transition-colors ${countGroupColor === c ? 'border-white' : 'border-transparent'}`}
                 style={{ backgroundColor: c }} />
@@ -5741,7 +5741,7 @@ export default function PdfAnnotateTool() {
                 setCountGroupLabel('')
                 setCountGroupModalOpen(false)
               }}
-              className="px-4 py-1.5 text-sm bg-[#F47B20] text-white rounded-lg hover:bg-[#F47B20]/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+              className="px-4 py-1.5 text-sm bg-[#14B8A6] text-white rounded-lg hover:bg-[#14B8A6]/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
               Create Group
             </button>
           </div>
@@ -5951,7 +5951,7 @@ export default function PdfAnnotateTool() {
                             setSelectedAnnId(ann.id)
                             setActiveTool('select')
                           }}
-                          className={`flex-1 text-left text-xs flex items-center gap-1.5 min-w-0 ${selectedAnnId === ann.id ? 'text-[#F47B20]' : 'text-white/60'}`}
+                          className={`flex-1 text-left text-xs flex items-center gap-1.5 min-w-0 ${selectedAnnId === ann.id ? 'text-[#14B8A6]' : 'text-white/60'}`}
                         >
                           <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: ann.color }} />
                           <span className="truncate">{annLabel(ann)}</span>
@@ -6202,7 +6202,7 @@ export default function PdfAnnotateTool() {
                 const name = prompt('Preset name:')
                 if (name?.trim()) saveToolPreset(name.trim())
               }}
-              className="w-full text-center text-[10px] text-[#F47B20]/60 hover:text-[#F47B20] py-1"
+              className="w-full text-center text-[10px] text-[#14B8A6]/60 hover:text-[#14B8A6] py-1"
             >
               + Save Current as Preset
             </button>

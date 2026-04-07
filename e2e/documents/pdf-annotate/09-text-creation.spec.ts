@@ -20,7 +20,7 @@ test.describe('Text Creation — Activation', () => {
     await page.keyboard.press('t')
     await page.waitForTimeout(100)
     const btn = page.locator('button[title="Text (T)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('clicking Text button activates tool', async ({ page }) => {
@@ -28,7 +28,7 @@ test.describe('Text Creation — Activation', () => {
     await page.locator('button[title="Text (T)"]').click()
     await page.waitForTimeout(100)
     const btn = page.locator('button[title="Text (T)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('text tool shows text cursor on canvas', async ({ page }) => {
@@ -43,7 +43,7 @@ test.describe('Text Creation — Activation', () => {
     await selectTool(page, 'Text (T)')
     await selectTool(page, 'Select (S)')
     const textBtn = page.locator('button[title="Text (T)"]')
-    await expect(textBtn).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(textBtn).not.toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('text tool shows formatting controls in toolbar', async ({ page }) => {

@@ -165,8 +165,8 @@ test.describe('Export QA — State Preservation After Export', () => {
     await goToPage(page, 2)
     await exportPDF(page)
     await page.waitForTimeout(500)
-    const pageInput = page.locator('input[type="number"]')
-    await expect(pageInput).toHaveValue('2')
+    // Page indicator button should still show page 2
+    await expect(page.locator('text=/^2 \\/ /')).toBeVisible()
   })
 
   test('toolbar remains functional after export', async ({ page }) => {

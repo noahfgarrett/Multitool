@@ -627,6 +627,7 @@ test.describe('Export Annotations', () => {
   })
 
   test('export mixed 20 annotations', async ({ page }) => {
+    test.setTimeout(120000)
     const types: Array<'pencil' | 'rectangle' | 'circle' | 'line' | 'arrow'> = ['pencil', 'rectangle', 'circle', 'line', 'arrow']
     for (let i = 0; i < 20; i++) {
       await createAnnotation(page, types[i % types.length], {

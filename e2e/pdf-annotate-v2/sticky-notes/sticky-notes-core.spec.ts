@@ -24,7 +24,7 @@ test.describe('Sticky Note Tool — Toolbar', () => {
     const btn = page.locator('button[title*="Sticky Note"]')
     await btn.click()
     await page.waitForTimeout(100)
-    await expect(btn).toHaveClass(/ring-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/ring-\[#14B8A6\]/)
   })
 })
 

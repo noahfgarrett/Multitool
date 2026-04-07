@@ -1261,7 +1261,7 @@ export default function TextExtractTool() {
       <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06] flex-shrink-0 flex-wrap">
         {/* File info */}
         <div className="flex items-center gap-1.5 mr-2">
-          <FileText size={14} className="text-[#F47B20]" />
+          <FileText size={14} className="text-[#14B8A6]" />
           <span className="text-xs text-white truncate max-w-[140px]">{pdfFile.name}</span>
           <span className="text-[10px] text-white/30">{pdfFile.pageCount}p</span>
         </div>
@@ -1273,7 +1273,7 @@ export default function TextExtractTool() {
           <button
             onClick={() => setExtractionMode('document')}
             className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] transition-colors ${
-              extractionMode === 'document' ? 'bg-[#F47B20] text-white' : 'text-white/50 hover:text-white'
+              extractionMode === 'document' ? 'bg-[#14B8A6] text-white' : 'text-white/50 hover:text-white'
             }`}
           >
             <AlignLeft size={10} /> Document
@@ -1281,7 +1281,7 @@ export default function TextExtractTool() {
           <button
             onClick={() => setExtractionMode('table')}
             className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] transition-colors ${
-              extractionMode === 'table' ? 'bg-[#F47B20] text-white' : 'text-white/50 hover:text-white'
+              extractionMode === 'table' ? 'bg-[#14B8A6] text-white' : 'text-white/50 hover:text-white'
             }`}
           >
             <Table2 size={10} /> Table
@@ -1517,7 +1517,7 @@ export default function TextExtractTool() {
 
         {/* Divider */}
         <div
-          className="w-1 flex-shrink-0 bg-white/[0.06] hover:bg-[#F47B20]/40 active:bg-[#F47B20]/60 cursor-col-resize transition-colors"
+          className="w-1 flex-shrink-0 bg-white/[0.06] hover:bg-[#14B8A6]/40 active:bg-[#14B8A6]/60 cursor-col-resize transition-colors"
           onPointerDown={handleDividerDown}
           onPointerMove={handleDividerMove}
           onPointerUp={handleDividerUp}

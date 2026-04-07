@@ -225,7 +225,7 @@ export default function JsonCsvViewerTool() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search all columns..."
-            className="w-full pl-9 pr-3 py-2 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-[#F47B20]/40"
+            className="w-full pl-9 pr-3 py-2 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-[#14B8A6]/40"
           />
         </div>
 
@@ -241,7 +241,7 @@ export default function JsonCsvViewerTool() {
               onClick={() => setViewMode('table')}
               className={`px-2.5 py-1.5 text-xs rounded-md transition-colors ${
                 viewMode === 'table'
-                  ? 'bg-[#F47B20] text-white'
+                  ? 'bg-[#14B8A6] text-white'
                   : 'bg-white/[0.06] text-white/50 hover:text-white'
               }`}
             >
@@ -251,7 +251,7 @@ export default function JsonCsvViewerTool() {
               onClick={() => setViewMode('tree')}
               className={`px-2.5 py-1.5 text-xs rounded-md transition-colors ${
                 viewMode === 'tree'
-                  ? 'bg-[#F47B20] text-white'
+                  ? 'bg-[#14B8A6] text-white'
                   : 'bg-white/[0.06] text-white/50 hover:text-white'
               }`}
             >
@@ -307,7 +307,7 @@ export default function JsonCsvViewerTool() {
                       <div className="flex items-center gap-1">
                         {col}
                         {sort.column === col ? (
-                          sort.direction === 'asc' ? <ArrowUp size={10} className="text-[#F47B20]" /> : <ArrowDown size={10} className="text-[#F47B20]" />
+                          sort.direction === 'asc' ? <ArrowUp size={10} className="text-[#14B8A6]" /> : <ArrowDown size={10} className="text-[#14B8A6]" />
                         ) : (
                           <ArrowUpDown size={10} className="opacity-30" />
                         )}
@@ -396,7 +396,7 @@ function JsonTreeNode({ value, keyName, depth = 0 }: { value: unknown; keyName?:
   if (value === null) {
     return (
       <div className="flex gap-1" style={{ paddingLeft: depth * 16 }}>
-        {keyName !== undefined && <span className="text-[#F47B20]">"{keyName}":</span>}
+        {keyName !== undefined && <span className="text-[#14B8A6]">"{keyName}":</span>}
         <span className="text-white/40 italic">null</span>
       </div>
     )
@@ -405,7 +405,7 @@ function JsonTreeNode({ value, keyName, depth = 0 }: { value: unknown; keyName?:
   if (typeof value === 'boolean') {
     return (
       <div className="flex gap-1" style={{ paddingLeft: depth * 16 }}>
-        {keyName !== undefined && <span className="text-[#F47B20]">"{keyName}":</span>}
+        {keyName !== undefined && <span className="text-[#14B8A6]">"{keyName}":</span>}
         <span className="text-purple-400">{String(value)}</span>
       </div>
     )
@@ -414,7 +414,7 @@ function JsonTreeNode({ value, keyName, depth = 0 }: { value: unknown; keyName?:
   if (typeof value === 'number') {
     return (
       <div className="flex gap-1" style={{ paddingLeft: depth * 16 }}>
-        {keyName !== undefined && <span className="text-[#F47B20]">"{keyName}":</span>}
+        {keyName !== undefined && <span className="text-[#14B8A6]">"{keyName}":</span>}
         <span className="text-blue-400">{value}</span>
       </div>
     )
@@ -423,7 +423,7 @@ function JsonTreeNode({ value, keyName, depth = 0 }: { value: unknown; keyName?:
   if (typeof value === 'string') {
     return (
       <div className="flex gap-1" style={{ paddingLeft: depth * 16 }}>
-        {keyName !== undefined && <span className="text-[#F47B20]">"{keyName}":</span>}
+        {keyName !== undefined && <span className="text-[#14B8A6]">"{keyName}":</span>}
         <span className="text-emerald-400">"{value}"</span>
       </div>
     )
@@ -438,7 +438,7 @@ function JsonTreeNode({ value, keyName, depth = 0 }: { value: unknown; keyName?:
           aria-label={expanded ? `Collapse array ${keyName ?? ''}` : `Expand array ${keyName ?? ''}`}
         >
           {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-          {keyName !== undefined && <span className="text-[#F47B20]">"{keyName}":</span>}
+          {keyName !== undefined && <span className="text-[#14B8A6]">"{keyName}":</span>}
           <span className="text-white/40">[{value.length}]</span>
         </button>
         {expanded && (
@@ -462,7 +462,7 @@ function JsonTreeNode({ value, keyName, depth = 0 }: { value: unknown; keyName?:
           aria-label={expanded ? `Collapse object ${keyName ?? ''}` : `Expand object ${keyName ?? ''}`}
         >
           {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-          {keyName !== undefined && <span className="text-[#F47B20]">"{keyName}":</span>}
+          {keyName !== undefined && <span className="text-[#14B8A6]">"{keyName}":</span>}
           <span className="text-white/40">{`{${entries.length}}`}</span>
         </button>
         {expanded && (

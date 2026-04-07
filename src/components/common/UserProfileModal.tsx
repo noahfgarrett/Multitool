@@ -96,11 +96,11 @@ export function UserProfileModal({ isOpen, onClose, initialProfile }: UserProfil
       <div className="space-y-4" onKeyDown={handleKeyDown}>
         {/* Avatar preview */}
         <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-full bg-[#F47B20]/20 border-2 border-[#F47B20]/40 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-full bg-[#14B8A6]/20 border-2 border-[#14B8A6]/40 flex items-center justify-center">
             {initials ? (
-              <span className="text-xl font-bold text-[#F47B20]">{initials}</span>
+              <span className="text-xl font-bold text-[#14B8A6]">{initials}</span>
             ) : (
-              <User size={28} className="text-[#F47B20]/60" />
+              <User size={28} className="text-[#14B8A6]/60" />
             )}
           </div>
         </div>
@@ -108,7 +108,7 @@ export function UserProfileModal({ isOpen, onClose, initialProfile }: UserProfil
         {/* Name field */}
         <div className="space-y-1.5">
           <label htmlFor="profile-name" className="block text-xs font-medium text-white/60">
-            Name <span className="text-[#F47B20]">*</span>
+            Name <span className="text-[#14B8A6]">*</span>
           </label>
           <input
             id="profile-name"
@@ -117,7 +117,7 @@ export function UserProfileModal({ isOpen, onClose, initialProfile }: UserProfil
             onChange={handleNameChange}
             placeholder="Your full name"
             autoFocus
-            className="w-full h-9 px-3 rounded-lg bg-white/[0.06] border border-white/[0.1] text-sm text-white placeholder-white/30 outline-none focus:border-[#F47B20]/50 focus:ring-1 focus:ring-[#F47B20]/30 transition-colors"
+            className="w-full h-9 px-3 rounded-lg bg-white/[0.06] border border-white/[0.1] text-sm text-white placeholder-white/30 outline-none focus:border-[#14B8A6]/50 focus:ring-1 focus:ring-[#14B8A6]/30 transition-colors"
           />
         </div>
 
@@ -132,7 +132,7 @@ export function UserProfileModal({ isOpen, onClose, initialProfile }: UserProfil
             value={email}
             onChange={handleEmailChange}
             placeholder="your.email@company.com"
-            className="w-full h-9 px-3 rounded-lg bg-white/[0.06] border border-white/[0.1] text-sm text-white placeholder-white/30 outline-none focus:border-[#F47B20]/50 focus:ring-1 focus:ring-[#F47B20]/30 transition-colors"
+            className="w-full h-9 px-3 rounded-lg bg-white/[0.06] border border-white/[0.1] text-sm text-white placeholder-white/30 outline-none focus:border-[#14B8A6]/50 focus:ring-1 focus:ring-[#14B8A6]/30 transition-colors"
           />
         </div>
 
@@ -148,7 +148,7 @@ export function UserProfileModal({ isOpen, onClose, initialProfile }: UserProfil
             onChange={handleInitialsChange}
             placeholder="Auto-generated from name"
             maxLength={3}
-            className="w-20 h-9 px-3 rounded-lg bg-white/[0.06] border border-white/[0.1] text-sm text-white text-center font-semibold tracking-wider placeholder-white/30 outline-none focus:border-[#F47B20]/50 focus:ring-1 focus:ring-[#F47B20]/30 transition-colors"
+            className="w-20 h-9 px-3 rounded-lg bg-white/[0.06] border border-white/[0.1] text-sm text-white text-center font-semibold tracking-wider placeholder-white/30 outline-none focus:border-[#14B8A6]/50 focus:ring-1 focus:ring-[#14B8A6]/30 transition-colors"
           />
           <p className="text-[11px] text-white/30">Auto-filled from your name. Edit to customize.</p>
         </div>

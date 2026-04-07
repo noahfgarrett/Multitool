@@ -43,7 +43,7 @@ export function Header() {
         <>
           <button
             onClick={() => setHelpOpen(true)}
-            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#F47B20]/[0.06] transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#14B8A6]/[0.06] transition-colors"
             style={{ color: 'var(--text-disabled)' }}
             title="Help & instructions"
             aria-label="Help & instructions"
@@ -62,19 +62,19 @@ export function Header() {
       {profile && (
         <button
           onClick={() => openSettings()}
-          className="flex items-center gap-2 ml-auto pl-3 rounded-full hover:bg-[#F47B20]/[0.06] transition-colors py-1 pr-3"
+          className="flex items-center gap-2 ml-auto pl-3 rounded-full hover:bg-[#14B8A6]/[0.06] transition-colors py-1 pr-3"
           title="Edit profile"
         >
           <span className="text-xs font-medium truncate max-w-[120px]" style={{ color: 'var(--text-secondary)' }}>
             {profile.name}
           </span>
-          <div className="w-7 h-7 rounded-full border border-[#F47B20]/30 flex items-center justify-center overflow-hidden flex-shrink-0" style={{ background: 'color-mix(in srgb, var(--bg-elevated) 80%, transparent)' }}>
+          <div className="w-7 h-7 rounded-full border border-[#14B8A6]/30 flex items-center justify-center overflow-hidden flex-shrink-0" style={{ background: 'color-mix(in srgb, var(--bg-elevated) 80%, transparent)' }}>
             {profile.photo ? (
               <img src={profile.photo} alt="" className="w-full h-full object-cover" />
             ) : profile.initials ? (
-              <span className="text-[10px] font-bold text-[#F47B20]">{profile.initials}</span>
+              <span className="text-[10px] font-bold text-[#14B8A6]">{profile.initials}</span>
             ) : (
-              <User size={14} className="text-[#F47B20]/50" />
+              <User size={14} className="text-[#14B8A6]/50" />
             )}
           </div>
         </button>

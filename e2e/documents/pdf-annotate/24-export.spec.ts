@@ -9,6 +9,10 @@ import {
   getAnnotationCount,
   createAnnotation,
   waitForSessionSave,
+  exportPDF,
+  resetWithConfirm,
+  resetWithDismiss,
+  goToPage,
 } from '../../helpers/pdf-annotate'
 
 test.beforeEach(async ({ page }) => {
@@ -53,34 +57,26 @@ test.describe('Export — Button Visibility', () => {
 test.describe('Export — Download Trigger', () => {
   test('clicking Export PDF triggers a download', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
   test('exported file has .pdf extension', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toMatch(/\.pdf$/i)
   })
 
   test('export with no annotations still produces a valid download', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
   test('export after single annotation produces download', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
@@ -89,9 +85,7 @@ test.describe('Export — Download Trigger', () => {
     await createAnnotation(page, 'rectangle', { x: 50, y: 50, w: 80, h: 50 })
     await createAnnotation(page, 'pencil', { x: 200, y: 50, w: 100, h: 60 })
     await createAnnotation(page, 'circle', { x: 350, y: 50, w: 80, h: 50 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 })
@@ -101,13 +95,7 @@ test.describe('Export — Loading State', () => {
     await uploadPDFAndWait(page, 'sample.pdf')
     // Add some annotations to slow down export slightly
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    // Check for the loading text (may be transient)
-    // The button text changes to "Exporting..." during processing
-    const exportingVisible = await page.locator('button').filter({ hasText: 'Exporting...' }).isVisible().catch(() => false)
-    // Whether or not we caught it, the download should complete
-    await downloadPromise
+    const download = await exportPDF(page)
     // After export, button should return to "Export PDF"
     await expect(page.locator('button').filter({ hasText: 'Export PDF' })).toBeVisible({ timeout: 5000 })
   })
@@ -115,13 +103,8 @@ test.describe('Export — Loading State', () => {
   test('Export button is disabled during export', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    const exportBtn = page.locator('button').filter({ hasText: /Export PDF|Exporting/ })
-    await exportBtn.click()
-    // The button should become disabled while exporting
-    // This is transient, so we just verify the export completes
-    await downloadPromise
-    // Button should be enabled again
+    const download = await exportPDF(page)
+    // Button should be enabled again after export
     await expect(page.locator('button').filter({ hasText: 'Export PDF' })).toBeEnabled({ timeout: 5000 })
   })
 })
@@ -130,54 +113,42 @@ test.describe('Export — With Different Annotation Types', () => {
   test('export with pencil annotation', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'pencil', { x: 100, y: 100, w: 150, h: 50 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
   test('export with line annotation', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'line', { x: 100, y: 100, w: 200, h: 0 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
   test('export with arrow annotation', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'arrow', { x: 100, y: 100, w: 150, h: 50 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
   test('export with circle annotation', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'circle', { x: 100, y: 100, w: 100, h: 100 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
   test('export with text annotation embeds text', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'text', { x: 100, y: 100, w: 200, h: 50 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
   test('export with callout annotation', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'callout', { x: 100, y: 100, w: 150, h: 80 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
@@ -186,9 +157,7 @@ test.describe('Export — With Different Annotation Types', () => {
     await createAnnotation(page, 'rectangle', { x: 50, y: 50, w: 80, h: 50 })
     await createAnnotation(page, 'text', { x: 50, y: 150, w: 200, h: 50 })
     await createAnnotation(page, 'pencil', { x: 300, y: 50, w: 100, h: 80 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 })
@@ -198,9 +167,7 @@ test.describe('Export — With Page Modifications', () => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await page.locator('button[title="Rotate CW"]').click()
     await page.waitForTimeout(300)
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
@@ -213,9 +180,7 @@ test.describe('Export — With Page Modifications', () => {
     await page.keyboard.press('Control+z')
     await page.waitForTimeout(300)
     expect(await getAnnotationCount(page)).toBe(1)
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
@@ -224,24 +189,17 @@ test.describe('Export — With Page Modifications', () => {
     // Draw on page 1
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     // Navigate to page 2 and draw
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
-    await page.waitForTimeout(500)
+    await goToPage(page, 2)
     await createAnnotation(page, 'circle', { x: 100, y: 100, w: 100, h: 80 })
     // Export from page 2
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
   test('export with single-page PDF works', async ({ page }) => {
     await uploadPDFAndWait(page, 'single-page.pdf')
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 })
@@ -251,15 +209,11 @@ test.describe('Export — Repeated Exports', () => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     // First export
-    const download1Promise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    await download1Promise
+    await exportPDF(page)
     // Wait for button to reset
     await expect(page.locator('button').filter({ hasText: 'Export PDF' })).toBeEnabled({ timeout: 5000 })
     // Second export
-    const download2Promise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download2 = await download2Promise
+    const download2 = await exportPDF(page)
     expect(download2.suggestedFilename()).toContain('.pdf')
   })
 
@@ -267,9 +221,7 @@ test.describe('Export — Repeated Exports', () => {
     await uploadPDFAndWait(page, 'sample.pdf')
     for (let i = 0; i < 3; i++) {
       await expect(page.locator('button').filter({ hasText: 'Export PDF' })).toBeEnabled({ timeout: 5000 })
-      const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-      await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-      const download = await downloadPromise
+      const download = await exportPDF(page)
       expect(download.suggestedFilename()).toContain('.pdf')
     }
   })
@@ -278,16 +230,12 @@ test.describe('Export — Repeated Exports', () => {
     await uploadPDFAndWait(page, 'sample.pdf')
     // Export with 1 annotation
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
-    const download1Promise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    await download1Promise
+    await exportPDF(page)
     // Add another annotation
     await createAnnotation(page, 'circle', { x: 280, y: 100, w: 100, h: 80 })
     // Export again
     await expect(page.locator('button').filter({ hasText: 'Export PDF' })).toBeEnabled({ timeout: 5000 })
-    const download2Promise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download2 = await download2Promise
+    const download2 = await exportPDF(page)
     expect(download2.suggestedFilename()).toContain('.pdf')
   })
 })
@@ -300,18 +248,13 @@ test.describe('Export — New Button', () => {
 
   test('New button returns to empty state when confirmed', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    await page.locator('button').filter({ hasText: 'New' }).click()
-    await expect(page.locator('h2', { hasText: 'Start Over?' })).toBeVisible()
-    await page.getByRole('button', { name: 'Discard All' }).click()
-    await page.waitForTimeout(500)
+    await resetWithConfirm(page)
     await expect(page.getByText('Drop a PDF file here')).toBeVisible()
   })
 
   test('New button does nothing when dialog is dismissed', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    await page.locator('button').filter({ hasText: 'New' }).click()
-    await expect(page.locator('h2', { hasText: 'Start Over?' })).toBeVisible()
-    await page.getByRole('button', { name: 'Cancel' }).click()
+    await resetWithDismiss(page)
     await page.waitForTimeout(200)
     // Canvas should still be visible (did not reset)
     await expect(page.locator('canvas').first()).toBeVisible()
@@ -321,10 +264,7 @@ test.describe('Export — New Button', () => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     expect(await getAnnotationCount(page)).toBe(1)
-    await page.locator('button').filter({ hasText: 'New' }).click()
-    await expect(page.locator('h2', { hasText: 'Start Over?' })).toBeVisible()
-    await page.getByRole('button', { name: 'Discard All' }).click()
-    await page.waitForTimeout(500)
+    await resetWithConfirm(page)
     await uploadPDFAndWait(page, 'sample.pdf')
     expect(await getAnnotationCount(page)).toBe(0)
   })
@@ -335,18 +275,14 @@ test.describe('Export — Error Handling', () => {
     await uploadPDFAndWait(page, 'sample.pdf')
     // The export error banner has a close (X) button
     // We cannot easily trigger an export error, so verify the export succeeds cleanly
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    await downloadPromise
+    await exportPDF(page)
     // No error banner should be visible
     await expect(page.locator('text=/Export failed/')).toBeHidden()
   })
 
   test('export button re-enables after successful export', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    await downloadPromise
+    await exportPDF(page)
     const exportBtn = page.locator('button').filter({ hasText: 'Export PDF' })
     await expect(exportBtn).toBeEnabled({ timeout: 5000 })
     await expect(exportBtn).toHaveText('Export PDF')
@@ -357,9 +293,7 @@ test.describe('Export — Error Handling', () => {
     await selectTool(page, 'Highlight (H)')
     await drawOnCanvas(page, [{ x: 100, y: 100 }, { x: 300, y: 100 }])
     await page.waitForTimeout(200)
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
@@ -368,23 +302,16 @@ test.describe('Export — Error Handling', () => {
     await page.locator('button[title="Rotate CW"]').click()
     await page.waitForTimeout(300)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
   test('export with annotations on multiple pages', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
-    await page.waitForTimeout(500)
+    await goToPage(page, 2)
     await createAnnotation(page, 'pencil', { x: 100, y: 100, w: 150, h: 50 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
@@ -393,9 +320,7 @@ test.describe('Export — Error Handling', () => {
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     await createAnnotation(page, 'circle', { x: 280, y: 100, w: 100, h: 80 })
     expect(await getAnnotationCount(page)).toBe(2)
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    await downloadPromise
+    await exportPDF(page)
     // State should not be modified by export
     await page.waitForTimeout(500)
     expect(await getAnnotationCount(page)).toBe(2)
@@ -406,24 +331,19 @@ test.describe('Export — Error Handling', () => {
     await page.locator('button[title="Zoom in"]').click()
     await page.locator('button[title="Zoom in"]').click()
     await page.waitForTimeout(300)
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    await downloadPromise
+    await exportPDF(page)
     // Canvas should still be at the zoomed level
     await expect(page.locator('canvas').first()).toBeVisible()
   })
 
   test('current page is not affected by export', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
+    await goToPage(page, 2)
+    await exportPDF(page)
     await page.waitForTimeout(500)
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    await downloadPromise
-    await page.waitForTimeout(500)
-    await expect(pageInput).toHaveValue('2')
+    // After export, page display should still show page 2
+    // The page input becomes a button "2 / N" after blur
+    await expect(page.locator('text=/^2 \\/ /')).toBeVisible()
   })
 
   test('export commits any open text editing', async ({ page }) => {
@@ -433,9 +353,7 @@ test.describe('Export — Error Handling', () => {
     await page.waitForTimeout(300)
     await page.keyboard.type('Export while editing')
     // Export while still editing
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
     // Text should have been committed
     await page.waitForTimeout(500)
@@ -449,18 +367,14 @@ test.describe('Export — Error Handling', () => {
     await page.locator('button[title="Rotate CW"]').click()
     await page.waitForTimeout(300)
     await createAnnotation(page, 'text', { x: 100, y: 100, w: 200, h: 50 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
   test('export download file size is greater than zero', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     const path = await download.path()
     expect(path).toBeTruthy()
   })
@@ -469,9 +383,7 @@ test.describe('Export — Error Handling', () => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'text', { x: 50, y: 50, w: 200, h: 50 })
     await createAnnotation(page, 'callout', { x: 50, y: 200, w: 150, h: 80 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
@@ -482,17 +394,13 @@ test.describe('Export — Error Handling', () => {
       await page.waitForTimeout(50)
     }
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
   test('toolbar remains functional after export', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    await downloadPromise
+    await exportPDF(page)
     await page.waitForTimeout(500)
     // Drawing tools should still work
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })

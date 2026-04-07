@@ -169,7 +169,7 @@ export function DataImporter({ store, fileHandle, onSuccess, onCancel }: DataImp
               <div className="flex-shrink-0">
                 {entry.status === 'idle' && <FileText size={18} className="text-dark-text-muted" />}
                 {entry.status === 'importing' && (
-                  <div className="w-[18px] h-[18px] border-2 border-[#F47B20] border-t-transparent rounded-full animate-spin" />
+                  <div className="w-[18px] h-[18px] border-2 border-[#14B8A6] border-t-transparent rounded-full animate-spin" />
                 )}
                 {entry.status === 'success' && <Check size={18} className="text-green-400" />}
                 {entry.status === 'error' && <AlertCircle size={18} className="text-red-400" />}
@@ -214,7 +214,7 @@ export function DataImporter({ store, fileHandle, onSuccess, onCancel }: DataImp
           <button
             onClick={importFiles}
             disabled={isProcessing}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-[#F47B20] hover:bg-[#F47B20]/90
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-[#14B8A6] hover:bg-[#14B8A6]/90
               text-white transition-colors disabled:opacity-50"
           >
             {isProcessing ? 'Importing...' : `Import ${files.filter((f) => f.status === 'idle').length} file(s)`}
@@ -223,7 +223,7 @@ export function DataImporter({ store, fileHandle, onSuccess, onCancel }: DataImp
         {allDone && onCancel && (
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-[#F47B20] hover:bg-[#F47B20]/90
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-[#14B8A6] hover:bg-[#14B8A6]/90
               text-white transition-colors"
           >
             Done

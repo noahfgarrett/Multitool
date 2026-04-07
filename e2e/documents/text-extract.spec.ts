@@ -75,15 +75,15 @@ test.describe('Text Extract Tool', () => {
 
     // Document mode should be selected by default (orange bg)
     const docButton = page.locator('button').filter({ hasText: 'Document' })
-    await expect(docButton).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(docButton).toHaveClass(/bg-\[#14B8A6\]/)
 
     // Click Table mode
     const tableButton = page.locator('button').filter({ hasText: 'Table' })
     await tableButton.click()
 
     // Table mode should now be highlighted
-    await expect(tableButton).toHaveClass(/bg-\[#F47B20\]/)
-    await expect(docButton).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(tableButton).toHaveClass(/bg-\[#14B8A6\]/)
+    await expect(docButton).not.toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('page navigation controls exist for multi-page PDFs', async ({ page }) => {

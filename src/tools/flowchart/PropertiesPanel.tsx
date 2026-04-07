@@ -93,7 +93,7 @@ function NodeProperties({
             type="text"
             value={node.label}
             onChange={e => updateNode(node.id, { label: e.target.value })}
-            className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#F47B20]/40"
+            className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#14B8A6]/40"
           />
         </PropSection>
       )}
@@ -168,7 +168,7 @@ function NodeProperties({
             className={`
               flex items-center justify-center w-8 h-7 rounded transition-colors
               ${node.style.fontWeight === 'bold'
-                ? 'bg-[#F47B20]/15 text-[#F47B20]'
+                ? 'bg-[#14B8A6]/15 text-[#14B8A6]'
                 : 'text-white/40 bg-white/[0.04] hover:bg-white/[0.08]'
               }
             `}
@@ -184,7 +184,7 @@ function NodeProperties({
             className={`
               flex items-center justify-center w-8 h-7 rounded transition-colors
               ${node.style.fontStyle === 'italic'
-                ? 'bg-[#F47B20]/15 text-[#F47B20]'
+                ? 'bg-[#14B8A6]/15 text-[#14B8A6]'
                 : 'text-white/40 bg-white/[0.04] hover:bg-white/[0.08]'
               }
             `}
@@ -213,7 +213,7 @@ function NodeProperties({
                 className={`
                   flex items-center justify-center w-8 h-7 rounded transition-colors
                   ${isActive
-                    ? 'bg-[#F47B20]/15 text-[#F47B20]'
+                    ? 'bg-[#14B8A6]/15 text-[#14B8A6]'
                     : 'text-white/40 bg-white/[0.04] hover:bg-white/[0.08]'
                   }
                 `}
@@ -236,7 +236,7 @@ function NodeProperties({
                 value={Math.round(node.width)}
                 min={40}
                 onChange={e => updateNode(node.id, { width: Math.max(40, Number(e.target.value)) })}
-                className="w-full px-1.5 py-1 text-[11px] bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#F47B20]/40 tabular-nums"
+                className="w-full px-1.5 py-1 text-[11px] bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#14B8A6]/40 tabular-nums"
               />
             </div>
             <div className="flex-1">
@@ -246,7 +246,7 @@ function NodeProperties({
                 value={Math.round(node.height)}
                 min={30}
                 onChange={e => updateNode(node.id, { height: Math.max(30, Number(e.target.value)) })}
-                className="w-full px-1.5 py-1 text-[11px] bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#F47B20]/40 tabular-nums"
+                className="w-full px-1.5 py-1 text-[11px] bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#14B8A6]/40 tabular-nums"
               />
             </div>
           </div>
@@ -300,7 +300,7 @@ function EdgeProperties({
           value={edge.label}
           onChange={e => updateEdge(edge.id, { label: e.target.value })}
           placeholder="Optional label"
-          className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white placeholder:text-white/20 focus:outline-none focus:border-[#F47B20]/40"
+          className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white placeholder:text-white/20 focus:outline-none focus:border-[#14B8A6]/40"
         />
       </PropSection>
 
@@ -317,7 +317,7 @@ function EdgeProperties({
                 className={`
                   flex items-center gap-1 px-2 py-1 text-[10px] rounded transition-colors
                   ${isActive
-                    ? 'bg-[#F47B20]/15 text-[#F47B20] font-medium'
+                    ? 'bg-[#14B8A6]/15 text-[#14B8A6] font-medium'
                     : 'text-white/40 bg-white/[0.04] hover:bg-white/[0.08]'
                   }
                 `}
@@ -372,7 +372,7 @@ function EdgeProperties({
                 className={`
                   px-2 py-1 text-[10px] rounded transition-colors
                   ${isActive
-                    ? 'bg-[#F47B20]/15 text-[#F47B20] font-medium'
+                    ? 'bg-[#14B8A6]/15 text-[#14B8A6] font-medium'
                     : 'text-white/40 bg-white/[0.04] hover:bg-white/[0.08]'
                   }
                 `}
@@ -393,7 +393,7 @@ function EdgeProperties({
             onChange={e => updateEdge(edge.id, {
               style: { ...edge.style, markerEnd: e.target.checked },
             })}
-            className="rounded border-white/20 bg-dark-surface text-[#F47B20] focus:ring-[#F47B20]/40"
+            className="rounded border-white/20 bg-dark-surface text-[#14B8A6] focus:ring-[#14B8A6]/40"
           />
           <span className="text-xs text-white/60">Show arrowhead</span>
         </label>

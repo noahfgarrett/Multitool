@@ -23,7 +23,7 @@ test.use({
     origins: [{
       origin: `http://127.0.0.1:${WORKTREE_PORT}`,
       localStorage: [{
-        name: 'lwt-user-profile',
+        name: 'mt-user-profile',
         value: JSON.stringify({ name: 'Test User', email: 'test@test.com', initials: 'TU' }),
       }],
     }],
@@ -33,7 +33,7 @@ test.use({
 /** Navigate to the File Compressor tool */
 async function goToCompressor(page: Page): Promise<void> {
   await page.goto('/')
-  await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' })).toBeVisible({ timeout: 10_000 })
+  await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10_000 })
   const sidebar = page.locator('aside nav')
   await sidebar.locator('button').filter({ hasText: 'File Compressor' }).click()
   await waitForToolLoad(page)

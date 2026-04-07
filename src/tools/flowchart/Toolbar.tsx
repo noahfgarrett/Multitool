@@ -124,7 +124,7 @@ export function Toolbar({
           className={`
             flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors
             ${activeShapeType
-              ? 'bg-[#F47B20]/20 text-[#F47B20]'
+              ? 'bg-[#14B8A6]/20 text-[#14B8A6]'
               : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
             }
           `}
@@ -171,7 +171,7 @@ export function Toolbar({
                     className={`
                       w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-colors
                       ${isActive
-                        ? 'bg-[#F47B20]/15 text-[#F47B20]'
+                        ? 'bg-[#14B8A6]/15 text-[#14B8A6]'
                         : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
                       }
                     `}
@@ -285,7 +285,7 @@ export function Toolbar({
                 max={100}
                 value={Math.round(backgroundImage.opacity * 100)}
                 onChange={e => updateBackgroundImage({ opacity: Number(e.target.value) / 100 })}
-                className="w-full h-1 bg-white/10 rounded appearance-none cursor-pointer accent-[#F47B20]"
+                className="w-full h-1 bg-white/10 rounded appearance-none cursor-pointer accent-[#14B8A6]"
               />
             </div>
 
@@ -295,7 +295,7 @@ export function Toolbar({
               className={`
                 w-full flex items-center gap-2 px-2 py-1.5 rounded text-[10px] transition-colors
                 ${backgroundImage.isLocked
-                  ? 'bg-[#F47B20]/10 text-[#F47B20]'
+                  ? 'bg-[#14B8A6]/10 text-[#14B8A6]'
                   : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
                 }
               `}
@@ -369,7 +369,7 @@ function ToolbarButton({
         p-1.5 rounded transition-colors
         ${disabled ? 'opacity-30 pointer-events-none' : ''}
         ${active
-          ? 'bg-[#F47B20]/20 text-[#F47B20]'
+          ? 'bg-[#14B8A6]/20 text-[#14B8A6]'
           : danger
             ? 'text-white/40 hover:text-red-400 hover:bg-red-500/10'
             : 'text-white/40 hover:text-white hover:bg-white/[0.06]'

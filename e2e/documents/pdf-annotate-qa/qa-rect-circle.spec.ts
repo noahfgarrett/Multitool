@@ -33,7 +33,7 @@ test.describe('Rectangle — Creation', () => {
   test('R key activates Rectangle tool', async ({ page }) => {
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    await expect(page.locator('button[title="Rectangle (R)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Rectangle (R)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('Rectangle shows shift-constraint hint', async ({ page }) => {
@@ -96,7 +96,7 @@ test.describe('Circle — Creation', () => {
   test('C key activates Circle tool', async ({ page }) => {
     await page.keyboard.press('c')
     await page.waitForTimeout(100)
-    await expect(page.locator('button[title="Circle (C)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Circle (C)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('Circle shows shift-constraint hint', async ({ page }) => {

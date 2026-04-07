@@ -725,7 +725,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
                 setEditingTitleId(null)
               }
             }}
-            className="absolute z-50 bg-dark-surface border border-[#F47B20]/40 rounded px-2 py-1 text-sm text-white font-bold text-center focus:outline-none focus:border-[#F47B20]"
+            className="absolute z-50 bg-dark-surface border border-[#14B8A6]/40 rounded px-2 py-1 text-sm text-white font-bold text-center focus:outline-none focus:border-[#14B8A6]"
             style={{
               left: titleX - 100,
               top: titleY - 12,
@@ -1112,7 +1112,7 @@ function drawAddButton(ctx: CanvasRenderingContext2D, node: LayoutNode) {
   ctx.lineTo(cx + s, cy)
   ctx.moveTo(cx, cy - s)
   ctx.lineTo(cx, cy + s)
-  ctx.strokeStyle = '#F47B20'
+  ctx.strokeStyle = '#14B8A6'
   ctx.lineWidth = 1.5
   ctx.stroke()
 }

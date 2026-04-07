@@ -87,7 +87,7 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
       <div className="p-3 space-y-4">
         {/* Type badge */}
         <div className="flex items-center gap-2">
-          <span className="text-[10px] uppercase text-[#F47B20] font-semibold">{el.type}</span>
+          <span className="text-[10px] uppercase text-[#14B8A6] font-semibold">{el.type}</span>
           <span className="text-[10px] text-white/20">Page {el.pageIndex + 1}</span>
         </div>
 
@@ -114,7 +114,7 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
               type="text"
               value={el.label}
               onChange={e => update({ label: e.target.value })}
-              className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#F47B20]/40"
+              className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#14B8A6]/40"
             />
           </PropSection>
         )}
@@ -126,7 +126,7 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
               type="text"
               value={el.placeholder ?? ''}
               onChange={e => update({ placeholder: e.target.value })}
-              className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white placeholder:text-white/20 focus:outline-none focus:border-[#F47B20]/40"
+              className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white placeholder:text-white/20 focus:outline-none focus:border-[#14B8A6]/40"
               placeholder="Placeholder text..."
             />
           </PropSection>
@@ -138,7 +138,7 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
             <span className="text-[10px] font-medium text-white/40 uppercase tracking-wider">Required</span>
             <button
               onClick={() => update({ required: !el.required })}
-              className={`w-8 h-[18px] rounded-full transition-colors relative ${el.required ? 'bg-[#F47B20]' : 'bg-white/[0.1]'}`}
+              className={`w-8 h-[18px] rounded-full transition-colors relative ${el.required ? 'bg-[#14B8A6]' : 'bg-white/[0.1]'}`}
             >
               <div className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.5 transition-all ${el.required ? 'left-4' : 'left-0.5'}`} />
             </button>
@@ -159,7 +159,7 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
                       newOpts[i] = e.target.value
                       update({ options: newOpts })
                     }}
-                    className="flex-1 px-2 py-1 text-xs bg-dark-surface border border-white/[0.06] rounded text-white/70 focus:outline-none focus:border-[#F47B20]/30"
+                    className="flex-1 px-2 py-1 text-xs bg-dark-surface border border-white/[0.06] rounded text-white/70 focus:outline-none focus:border-[#14B8A6]/30"
                   />
                   <button
                     onClick={() => {
@@ -174,7 +174,7 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
               ))}
               <button
                 onClick={() => update({ options: [...(el.options ?? []), `Option ${(el.options?.length ?? 0) + 1}`] })}
-                className="flex items-center gap-1 text-[10px] text-[#F47B20]/60 hover:text-[#F47B20]"
+                className="flex items-center gap-1 text-[10px] text-[#14B8A6]/60 hover:text-[#14B8A6]"
               >
                 <Plus size={10} /> Add option
               </button>
@@ -191,7 +191,7 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
                 <select
                   value={el.numberPrefix ?? ''}
                   onChange={e => update({ numberPrefix: e.target.value })}
-                  className="flex-1 px-2 py-1 text-xs bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#F47B20]/40"
+                  className="flex-1 px-2 py-1 text-xs bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#14B8A6]/40"
                 >
                   <option value="">None</option>
                   <option value="$">$ (Currency)</option>
@@ -213,7 +213,7 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
                   max={4}
                   value={el.numberDecimals ?? 0}
                   onChange={e => update({ numberDecimals: Number(e.target.value) })}
-                  className="flex-1 px-1.5 py-1 text-xs bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#F47B20]/40 w-0"
+                  className="flex-1 px-1.5 py-1 text-xs bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#14B8A6]/40 w-0"
                 />
               </div>
             </div>
@@ -239,7 +239,7 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
                     headers[i] = e.target.value
                     update({ tableHeaders: headers })
                   }}
-                  className="w-full px-2 py-1 text-xs bg-dark-surface border border-white/[0.06] rounded text-white/70 focus:outline-none focus:border-[#F47B20]/30"
+                  className="w-full px-2 py-1 text-xs bg-dark-surface border border-white/[0.06] rounded text-white/70 focus:outline-none focus:border-[#14B8A6]/30"
                   placeholder={`Column ${i + 1}`}
                 />
               ))}
@@ -255,7 +255,7 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
               value={el.formula ?? ''}
               onChange={e => update({ formula: e.target.value })}
               placeholder="=SUM({Field 1}, {Field 2})"
-              className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white font-mono focus:outline-none focus:border-[#F47B20]/40"
+              className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white font-mono focus:outline-none focus:border-[#14B8A6]/40"
             />
             <p className="text-[8px] text-white/20 mt-1">Use {'{'}label{'}'} to reference fields. Supports SUM, COUNT, AVG, +, -, *, /</p>
           </PropSection>
@@ -267,7 +267,7 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
             {el.visibleWhen ? (
               <div className="space-y-2 p-2 bg-white/[0.02] rounded-lg border border-white/[0.06]">
                 <div className="flex items-center justify-between">
-                  <span className="text-[9px] text-[#F47B20]">Show when...</span>
+                  <span className="text-[9px] text-[#14B8A6]">Show when...</span>
                   <button onClick={() => update({ visibleWhen: null })} className="text-white/20 hover:text-red-400">
                     <X size={10} />
                   </button>
@@ -301,14 +301,14 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
                     value={el.visibleWhen.value}
                     onChange={e => update({ visibleWhen: { ...el.visibleWhen!, value: e.target.value } })}
                     placeholder="Value..."
-                    className="w-full px-2 py-1 text-[10px] bg-dark-surface border border-white/[0.08] rounded text-white/60 focus:outline-none focus:border-[#F47B20]/30"
+                    className="w-full px-2 py-1 text-[10px] bg-dark-surface border border-white/[0.08] rounded text-white/60 focus:outline-none focus:border-[#14B8A6]/30"
                   />
                 )}
               </div>
             ) : (
               <button
                 onClick={() => update({ visibleWhen: { fieldId: '', operator: 'equals', value: '' } })}
-                className="flex items-center gap-1 text-[10px] text-white/30 hover:text-[#F47B20]/60"
+                className="flex items-center gap-1 text-[10px] text-white/30 hover:text-[#14B8A6]/60"
               >
                 <Eye size={10} /> Add condition...
               </button>
@@ -340,7 +340,7 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
             ) : (
               <button
                 onClick={() => imageInputRef.current?.click()}
-                className="w-full flex items-center justify-center gap-2 px-3 py-4 border-2 border-dashed border-white/[0.08] rounded-lg text-white/40 hover:border-[#F47B20]/30 hover:text-[#F47B20]/60 transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-3 py-4 border-2 border-dashed border-white/[0.08] rounded-lg text-white/40 hover:border-[#14B8A6]/30 hover:text-[#14B8A6]/60 transition-colors"
               >
                 <ImageIcon size={14} />
                 <span className="text-xs">Upload Image</span>
@@ -373,7 +373,7 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
                         update({ photos })
                       }}
                       placeholder="Add comment..."
-                      className="w-full px-1.5 py-1 text-[10px] bg-dark-surface border border-white/[0.06] rounded text-white/70 focus:outline-none focus:border-[#F47B20]/30"
+                      className="w-full px-1.5 py-1 text-[10px] bg-dark-surface border border-white/[0.06] rounded text-white/70 focus:outline-none focus:border-[#14B8A6]/30"
                     />
                     <button
                       onClick={() => {
@@ -409,7 +409,7 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
                   }
                   input.click()
                 }}
-                className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 border-2 border-dashed border-white/[0.08] rounded-lg text-white/40 hover:border-[#F47B20]/30 hover:text-[#F47B20]/60 transition-colors"
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 border-2 border-dashed border-white/[0.08] rounded-lg text-white/40 hover:border-[#14B8A6]/30 hover:text-[#14B8A6]/60 transition-colors"
               >
                 <Camera size={13} />
                 <span className="text-[10px]">Add Photos</span>
@@ -443,7 +443,7 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
                   onClick={() => update({ fontWeight: w })}
                   className={`flex-1 py-1 text-[10px] rounded transition-colors ${
                     el.fontWeight === w
-                      ? 'bg-[#F47B20]/20 text-[#F47B20] border border-[#F47B20]/30'
+                      ? 'bg-[#14B8A6]/20 text-[#14B8A6] border border-[#14B8A6]/30'
                       : 'bg-white/[0.04] text-white/40 border border-white/[0.06] hover:bg-white/[0.08]'
                   }`}
                 >
@@ -464,7 +464,7 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
                   onClick={() => update({ textAlign: a })}
                   className={`flex-1 py-1 text-[10px] rounded transition-colors ${
                     (el.textAlign ?? 'left') === a
-                      ? 'bg-[#F47B20]/20 text-[#F47B20] border border-[#F47B20]/30'
+                      ? 'bg-[#14B8A6]/20 text-[#14B8A6] border border-[#14B8A6]/30'
                       : 'bg-white/[0.04] text-white/40 border border-white/[0.06] hover:bg-white/[0.08]'
                   }`}
                 >
@@ -481,7 +481,7 @@ export function PropertiesPanel({ store }: { store: FormStore }) {
             <ColorPicker
               value={el.color ?? '#000000'}
               onChange={color => update({ color })}
-              presets={['#000000', '#333333', '#666666', '#EF4444', '#3B82F6', '#22C55E', '#F47B20', '#8B5CF6']}
+              presets={['#000000', '#333333', '#666666', '#EF4444', '#3B82F6', '#22C55E', '#14B8A6', '#8B5CF6']}
             />
           </PropSection>
         )}
@@ -527,7 +527,7 @@ function NumberInput({ label, value, onChange }: { label: string; value: number;
         type="number"
         value={value}
         onChange={e => onChange(Number(e.target.value))}
-        className="flex-1 px-1.5 py-1 text-xs bg-dark-surface border border-white/[0.1] rounded text-white tabular-nums focus:outline-none focus:border-[#F47B20]/40 w-0"
+        className="flex-1 px-1.5 py-1 text-xs bg-dark-surface border border-white/[0.1] rounded text-white tabular-nums focus:outline-none focus:border-[#14B8A6]/40 w-0"
       />
     </div>
   )

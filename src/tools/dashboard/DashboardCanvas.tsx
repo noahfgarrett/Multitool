@@ -223,7 +223,7 @@ export function DashboardCanvas({ store, dashboardId }: DashboardCanvasProps) {
               key={widget.id}
               className={`bg-dark-surface rounded-xl border shadow-sm overflow-hidden transition-all ${
                 selectedWidgetId === widget.id
-                  ? 'border-[#F47B20] ring-2 ring-[#F47B20]/30'
+                  ? 'border-[#14B8A6] ring-2 ring-[#14B8A6]/30'
                   : 'border-dark-border'
               } ${isEditMode ? 'cursor-move' : ''}`}
               onClick={() => isEditMode && selectWidget(widget.id)}

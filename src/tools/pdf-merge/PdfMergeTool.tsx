@@ -118,9 +118,9 @@ function SortablePageItem({
       className={`
         relative group rounded-lg border p-1.5 transition-shadow flex items-center justify-center
         ${isDragging ? 'opacity-30 z-10' : 'cursor-grab active:cursor-grabbing'}
-        ${isSelected && !isDragging ? 'border-[#F47B20] ring-2 ring-[#F47B20]/30' : ''}
+        ${isSelected && !isDragging ? 'border-[#14B8A6] ring-2 ring-[#14B8A6]/30' : ''}
         ${!isSelected && !isDragging && page.excluded ? 'opacity-30 border-white/[0.04]' : ''}
-        ${!isSelected && !isDragging && !page.excluded ? 'border-white/[0.08] hover:border-[#F47B20]/30' : ''}
+        ${!isSelected && !isDragging && !page.excluded ? 'border-white/[0.08] hover:border-[#14B8A6]/30' : ''}
       `}
       title={`Page ${page.pageNumber}${page.excluded ? ' (excluded)' : ''}${page.copiedFrom ? ` (copy of p${page.copiedFrom})` : ''} · Click to select · Right-click to toggle`}
     >
@@ -154,15 +154,15 @@ function SortablePageItem({
 
       {/* Current position badge (top-left) — always shown; orange when reordered or copied */}
       <div className={`absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-bold text-white ${
-        pageIdx + 1 !== page.pageNumber || page.copiedFrom ? 'bg-[#F47B20]/80' : 'bg-black/50'
+        pageIdx + 1 !== page.pageNumber || page.copiedFrom ? 'bg-[#14B8A6]/80' : 'bg-black/50'
       }`}>
         #{pageIdx + 1}
       </div>
 
       {/* "Copied!" flash overlay */}
       {isCopiedSource && (
-        <div className="absolute inset-0 rounded-lg flex items-center justify-center bg-[#F47B20]/20 animate-pulse pointer-events-none">
-          <span className="text-[#F47B20] text-xs font-bold bg-black/60 px-2 py-1 rounded">Copied!</span>
+        <div className="absolute inset-0 rounded-lg flex items-center justify-center bg-[#14B8A6]/20 animate-pulse pointer-events-none">
+          <span className="text-[#14B8A6] text-xs font-bold bg-black/60 px-2 py-1 rounded">Copied!</span>
         </div>
       )}
 
@@ -240,8 +240,8 @@ function PasswordModal({ fileName, onSubmit, onCancel }: {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onCancel}>
       <div className="bg-[#00171F] border border-white/[0.12] rounded-xl shadow-2xl p-6 w-96 max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-[#F47B20]/15 flex items-center justify-center">
-            <Lock size={20} className="text-[#F47B20]" />
+          <div className="w-10 h-10 rounded-lg bg-[#14B8A6]/15 flex items-center justify-center">
+            <Lock size={20} className="text-[#14B8A6]" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-white">Password Protected</h3>
@@ -254,7 +254,7 @@ function PasswordModal({ fileName, onSubmit, onCancel }: {
             value={pw}
             onChange={(e) => setPw(e.target.value)}
             placeholder="Enter PDF password"
-            className="w-full px-3 py-2 rounded-lg bg-white/[0.06] border border-white/[0.12] text-sm text-white placeholder-white/30 outline-none focus:border-[#F47B20]/50 mb-4"
+            className="w-full px-3 py-2 rounded-lg bg-white/[0.06] border border-white/[0.12] text-sm text-white placeholder-white/30 outline-none focus:border-[#14B8A6]/50 mb-4"
             autoFocus
           />
           <div className="flex justify-end gap-2">
@@ -268,7 +268,7 @@ function PasswordModal({ fileName, onSubmit, onCancel }: {
             <button
               type="submit"
               disabled={!pw}
-              className="px-4 py-1.5 rounded-lg text-sm font-medium bg-[#F47B20] text-white hover:bg-[#E06D15] disabled:opacity-40 disabled:pointer-events-none transition-colors"
+              className="px-4 py-1.5 rounded-lg text-sm font-medium bg-[#14B8A6] text-white hover:bg-[#0D9488] disabled:opacity-40 disabled:pointer-events-none transition-colors"
             >
               Unlock
             </button>
@@ -310,7 +310,7 @@ export default function PdfMergeTool() {
   const [showCopied, setShowCopied] = useState(false)
 
   // ── Persisted settings (localStorage) — must be before TOC state ──
-  const SETTINGS_KEY = 'lwt-merge-settings'
+  const SETTINGS_KEY = 'mt-merge-settings'
   function loadSettings(): { zoomCols: number; resIdx: number; tocNumbering: TocNumbering; tocCustomPrefix: string } {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY)
@@ -386,7 +386,7 @@ export default function PdfMergeTool() {
   }, [files])
 
   const memoryPct = Math.min((memoryMB / MAX_MEMORY_MB) * 100, 100)
-  const memoryColor = memoryPct < 50 ? '#22c55e' : memoryPct < 75 ? '#F47B20' : '#ef4444'
+  const memoryColor = memoryPct < 50 ? '#22c55e' : memoryPct < 75 ? '#14B8A6' : '#ef4444'
 
   /* ── Estimated output size ── */
 
@@ -887,7 +887,7 @@ export default function PdfMergeTool() {
         className={`
           px-4 py-1.5 text-sm font-medium rounded-md transition-all
           ${mode === 'merge'
-            ? 'bg-[#F47B20] text-white shadow-md shadow-[#F47B20]/20'
+            ? 'bg-[#14B8A6] text-white shadow-md shadow-[#14B8A6]/20'
             : 'bg-white/[0.04] text-white/50 hover:text-white/70 hover:bg-white/[0.08]'
           }
         `}
@@ -899,7 +899,7 @@ export default function PdfMergeTool() {
         className={`
           px-4 py-1.5 text-sm font-medium rounded-md transition-all
           ${mode === 'gridStitch'
-            ? 'bg-[#F47B20] text-white shadow-md shadow-[#F47B20]/20'
+            ? 'bg-[#14B8A6] text-white shadow-md shadow-[#14B8A6]/20'
             : 'bg-white/[0.04] text-white/50 hover:text-white/70 hover:bg-white/[0.08]'
           }
         `}
@@ -955,10 +955,10 @@ export default function PdfMergeTool() {
     >
       {/* File drop overlay */}
       {fileDragOver && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center rounded-lg border-2 border-dashed border-[#F47B20] bg-[#F47B20]/10 backdrop-blur-sm pointer-events-none">
+        <div className="absolute inset-0 z-50 flex items-center justify-center rounded-lg border-2 border-dashed border-[#14B8A6] bg-[#14B8A6]/10 backdrop-blur-sm pointer-events-none">
           <div className="text-center">
-            <Plus size={32} className="mx-auto text-[#F47B20] mb-2" />
-            <p className="text-sm font-medium text-[#F47B20]">Drop PDFs to add</p>
+            <Plus size={32} className="mx-auto text-[#14B8A6] mb-2" />
+            <p className="text-sm font-medium text-[#14B8A6]">Drop PDFs to add</p>
           </div>
         </div>
       )}
@@ -1021,7 +1021,7 @@ export default function PdfMergeTool() {
             step={1}
             value={resIdx}
             onChange={(e) => changeResolution(Number(e.target.value))}
-            className="w-14 h-1 accent-[#F47B20] cursor-pointer"
+            className="w-14 h-1 accent-[#14B8A6] cursor-pointer"
             title={`Thumbnail resolution: ${RES_LEVELS[resIdx].label} (${RES_LEVELS[resIdx].height}px)`}
           />
           <span className="text-[10px] text-white/30 min-w-[20px]">{RES_LEVELS[resIdx].label}</span>
@@ -1067,7 +1067,7 @@ export default function PdfMergeTool() {
             })
           }}
           className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors ${
-            showPreview ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'bg-white/[0.04] text-white/40 hover:text-white/60'
+            showPreview ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'bg-white/[0.04] text-white/40 hover:text-white/60'
           }`}
           title={showPreview ? 'Back to file list' : 'Preview merge order'}
         >
@@ -1086,7 +1086,7 @@ export default function PdfMergeTool() {
               }
             }}
             className={`flex items-center gap-1 py-1 rounded-md text-xs transition-colors ${
-              tocEnabled ? 'bg-[#F47B20]/20 text-[#F47B20] pl-2 pr-1' : 'bg-white/[0.04] text-white/40 hover:text-white/60 px-2'
+              tocEnabled ? 'bg-[#14B8A6]/20 text-[#14B8A6] pl-2 pr-1' : 'bg-white/[0.04] text-white/40 hover:text-white/60 px-2'
             }`}
             title="Table of Contents"
           >
@@ -1101,7 +1101,7 @@ export default function PdfMergeTool() {
                 setTocEntries([])
                 setTocCustomPrefix('')
               }}
-              className="ml-0.5 p-0.5 rounded text-[#F47B20]/50 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+              className="ml-0.5 p-0.5 rounded text-[#14B8A6]/50 hover:text-red-400 hover:bg-red-400/10 transition-colors"
               title="Remove Table of Contents"
             >
               <X size={10} />
@@ -1153,14 +1153,14 @@ export default function PdfMergeTool() {
             {tocEnabled && tocEntries.length > 0 && (() => {
               const tocPages = estimateTocPageCount(tocEntries.length)
               return Array.from({ length: tocPages }, (_, i) => (
-                <div key={`toc-page-${i}`} className="relative rounded-lg border border-[#F47B20]/20 bg-[#F47B20]/[0.04] p-1.5 flex items-center justify-center">
+                <div key={`toc-page-${i}`} className="relative rounded-lg border border-[#14B8A6]/20 bg-[#14B8A6]/[0.04] p-1.5 flex items-center justify-center">
                   <div className="w-full aspect-[8.5/11] rounded bg-white/[0.06] flex flex-col items-center justify-center gap-1">
-                    <ListOrdered size={16} className="text-[#F47B20]/60" />
-                    <span className="text-[9px] text-[#F47B20]/60 font-medium">
+                    <ListOrdered size={16} className="text-[#14B8A6]/60" />
+                    <span className="text-[9px] text-[#14B8A6]/60 font-medium">
                       {i === 0 ? 'TABLE OF CONTENTS' : 'TOC (continued)'}
                     </span>
                   </div>
-                  <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-[#F47B20]/80">#{i + 1}</div>
+                  <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-[#14B8A6]/80">#{i + 1}</div>
                 </div>
               ))
             })()}
@@ -1179,7 +1179,7 @@ export default function PdfMergeTool() {
                           ) : (
                             <div className="w-full aspect-[8.5/11] rounded bg-white/[0.04]" />
                           )}
-                          <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-[#F47B20]/80">#{pos}</div>
+                          <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-[#14B8A6]/80">#{pos}</div>
                           <div className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded text-[9px] text-white/60 bg-black/60 truncate max-w-[90%]">{file.name} p{page.pageNumber}</div>
                           {page.rotation !== 0 && <div className="absolute top-2 right-2 px-1 py-0.5 rounded text-[9px] font-bold bg-blue-500/70 text-white">{page.rotation}°</div>}
                         </div>
@@ -1191,7 +1191,7 @@ export default function PdfMergeTool() {
                     return (
                       <div key={`${file.id}-all-${i}`} className="relative rounded-lg border border-white/[0.06] bg-white/[0.03] p-1.5 flex items-center justify-center">
                         <div className="w-full aspect-[8.5/11] rounded bg-white/[0.04] flex items-center justify-center text-[10px] text-white/20">p{i + 1}</div>
-                        <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-[#F47B20]/80">#{pos}</div>
+                        <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-[#14B8A6]/80">#{pos}</div>
                         <div className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded text-[9px] text-white/60 bg-black/60 truncate max-w-[90%]">{file.name}</div>
                       </div>
                     )
@@ -1219,7 +1219,7 @@ export default function PdfMergeTool() {
                       <div
                         className={`
                           rounded-lg border transition-all
-                          ${isDragging ? 'border-[#F47B20]/40 bg-[#F47B20]/5 opacity-40' : 'border-white/[0.06] bg-white/[0.03]'}
+                          ${isDragging ? 'border-[#14B8A6]/40 bg-[#14B8A6]/5 opacity-40' : 'border-white/[0.06] bg-white/[0.03]'}
                           hover:border-white/[0.12]
                         `}
                       >
@@ -1236,14 +1236,14 @@ export default function PdfMergeTool() {
                           {/* Expand toggle */}
                           <button
                             onClick={() => toggleExpand(file.id)}
-                            className="p-1 rounded text-white/30 hover:text-[#F47B20] transition-colors"
+                            className="p-1 rounded text-white/30 hover:text-[#14B8A6] transition-colors"
                             title={file.expanded ? 'Collapse pages' : 'Expand pages'}
                           >
                             {file.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                           </button>
 
                           {/* Order number */}
-                          <div className="w-6 h-6 rounded-md bg-[#F47B20]/15 text-[#F47B20] text-xs font-semibold flex items-center justify-center flex-shrink-0">
+                          <div className="w-6 h-6 rounded-md bg-[#14B8A6]/15 text-[#14B8A6] text-xs font-semibold flex items-center justify-center flex-shrink-0">
                             {idx + 1}
                           </div>
 
@@ -1260,7 +1260,7 @@ export default function PdfMergeTool() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-white truncate">{file.name}</p>
                             <p className="text-xs text-white/40">
-                              <span className={pageInfo.hasExclusions ? 'text-[#F47B20]' : ''}>{pageInfo.text}</span>
+                              <span className={pageInfo.hasExclusions ? 'text-[#14B8A6]' : ''}>{pageInfo.text}</span>
                               {' · '}
                               {formatFileSize(file.size)}
                             </p>
@@ -1299,7 +1299,7 @@ export default function PdfMergeTool() {
                                   <input
                                     type="text"
                                     placeholder={`Pages: 1-${file.pageCount} (e.g. 1-5, 8, 12-15)`}
-                                    className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded px-2 py-0.5 text-[10px] text-white/70 placeholder-white/20 outline-none focus:border-[#F47B20]/30"
+                                    className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded px-2 py-0.5 text-[10px] text-white/70 placeholder-white/20 outline-none focus:border-[#14B8A6]/30"
                                     onKeyDown={(e) => {
                                       if (e.key !== 'Enter') return
                                       const input = e.currentTarget
@@ -1357,7 +1357,7 @@ export default function PdfMergeTool() {
                                     if (!dragPage) return null
                                     return (
                                       <div
-                                        className="rounded-lg border-2 border-[#F47B20] p-1.5 bg-[#00171F]/90 shadow-lg shadow-[#F47B20]/20"
+                                        className="rounded-lg border-2 border-[#14B8A6] p-1.5 bg-[#00171F]/90 shadow-lg shadow-[#14B8A6]/20"
                                         style={activeDragWidth ? { width: activeDragWidth } : undefined}
                                       >
                                         {dragPage.thumbnail ? (
@@ -1385,7 +1385,7 @@ export default function PdfMergeTool() {
               const dragFile = files.find((f) => f.id === fileDragId)
               if (!dragFile) return null
               return (
-                <div className="rounded-lg border-2 border-[#F47B20] bg-[#00171F]/90 shadow-lg shadow-[#F47B20]/20 p-3 flex items-center gap-3">
+                <div className="rounded-lg border-2 border-[#14B8A6] bg-[#00171F]/90 shadow-lg shadow-[#14B8A6]/20 p-3 flex items-center gap-3">
                   {dragFile.thumbnail && <img src={dragFile.thumbnail} className="h-10 w-auto rounded" />}
                   <span className="text-sm text-white truncate max-w-[200px]">{dragFile.name}</span>
                 </div>

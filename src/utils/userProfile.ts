@@ -10,7 +10,7 @@ export interface UserProfile {
   photo: string
 }
 
-const PROFILE_STORAGE_KEY = 'lwt-user-profile'
+const PROFILE_STORAGE_KEY = 'mt-user-profile'
 
 export function getUserProfile(): UserProfile | null {
   try {

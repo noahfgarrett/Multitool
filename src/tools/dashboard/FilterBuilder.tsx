@@ -95,7 +95,7 @@ function ConditionRow({ condition, columns, uniqueValues, onChange, onRemove }: 
         value={condition.column}
         onChange={(e) => onChange({ column: e.target.value })}
         className="px-2 py-1.5 text-sm bg-dark-surface border border-dark-border rounded-lg
-          text-dark-text-primary focus:outline-none focus:border-[#F47B20]/50"
+          text-dark-text-primary focus:outline-none focus:border-[#14B8A6]/50"
       >
         {columns.map((col) => (
           <option key={col.id} value={col.id}>
@@ -109,7 +109,7 @@ function ConditionRow({ condition, columns, uniqueValues, onChange, onRemove }: 
         value={condition.operator}
         onChange={(e) => onChange({ operator: e.target.value as FilterOperator })}
         className="px-2 py-1.5 text-sm bg-dark-surface border border-dark-border rounded-lg
-          text-dark-text-primary focus:outline-none focus:border-[#F47B20]/50"
+          text-dark-text-primary focus:outline-none focus:border-[#14B8A6]/50"
       >
         {operators.map((op) => (
           <option key={op} value={op}>
@@ -130,7 +130,7 @@ function ConditionRow({ condition, columns, uniqueValues, onChange, onRemove }: 
             }}
             placeholder="Value..."
             className="flex-1 min-w-[100px] px-2 py-1.5 text-sm bg-dark-surface border border-dark-border rounded-lg
-              text-dark-text-primary placeholder:text-dark-text-muted/50 focus:outline-none focus:border-[#F47B20]/50"
+              text-dark-text-primary placeholder:text-dark-text-muted/50 focus:outline-none focus:border-[#14B8A6]/50"
           />
 
           {/* Quick-pick from unique values (for string columns) */}
@@ -211,7 +211,7 @@ function FilterGroupRow({ group, columns, uniqueValues, onUpdate, onRemove }: Fi
         </button>
         <button
           onClick={toggleLogic}
-          className="px-2 py-0.5 text-xs font-semibold rounded bg-[#F47B20]/20 text-[#F47B20]"
+          className="px-2 py-0.5 text-xs font-semibold rounded bg-[#14B8A6]/20 text-[#14B8A6]"
         >
           {group.logic}
         </button>
@@ -347,7 +347,7 @@ export function FilterBuilder({ columns, rows, filter, onChange, onClose }: Filt
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-dark-border">
         <div className="flex items-center gap-2">
-          <Filter size={18} className="text-[#F47B20]" />
+          <Filter size={18} className="text-[#14B8A6]" />
           <h3 className="font-semibold text-dark-text-primary">Filter Data</h3>
         </div>
         {onClose && (
@@ -368,7 +368,7 @@ export function FilterBuilder({ columns, rows, filter, onChange, onClose }: Filt
                 onClick={() => setRootLogic('AND')}
                 className={`px-3 py-1 text-sm font-medium transition-colors ${
                   localFilter.logic === 'AND'
-                    ? 'bg-[#F47B20] text-white'
+                    ? 'bg-[#14B8A6] text-white'
                     : 'bg-dark-surface text-dark-text-muted hover:bg-white/[0.06]'
                 }`}
               >
@@ -378,7 +378,7 @@ export function FilterBuilder({ columns, rows, filter, onChange, onClose }: Filt
                 onClick={() => setRootLogic('OR')}
                 className={`px-3 py-1 text-sm font-medium transition-colors ${
                   localFilter.logic === 'OR'
-                    ? 'bg-[#F47B20] text-white'
+                    ? 'bg-[#14B8A6] text-white'
                     : 'bg-dark-surface text-dark-text-muted hover:bg-white/[0.06]'
                 }`}
               >
@@ -465,7 +465,7 @@ export function FilterBuilder({ columns, rows, filter, onChange, onClose }: Filt
           </button>
           <button
             onClick={applyFilter}
-            className="px-3 py-1.5 text-sm font-medium rounded-lg bg-[#F47B20] hover:bg-[#F47B20]/90
+            className="px-3 py-1.5 text-sm font-medium rounded-lg bg-[#14B8A6] hover:bg-[#14B8A6]/90
               text-white transition-colors"
           >
             Apply Filter

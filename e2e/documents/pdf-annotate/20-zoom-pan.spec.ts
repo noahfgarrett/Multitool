@@ -408,7 +408,7 @@ test.describe('Zoom — Session & Limits', () => {
     await page.waitForTimeout(200)
     // The 100% button should have the active/highlighted class
     const btn100 = page.locator('button:has-text("100%")').first()
-    await expect(btn100).toHaveClass(/text-\[#F47B20\]/)
+    await expect(btn100).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('multiple zoom-ins work sequentially', async ({ page }) => {

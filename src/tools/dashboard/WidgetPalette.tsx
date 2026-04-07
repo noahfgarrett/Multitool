@@ -186,11 +186,11 @@ export function WidgetPalette({ dashboardId, store, onClose }: WidgetPaletteProp
                       onClick={() => setSelectedWidget(widget)}
                       className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center text-center ${
                         isSelected
-                          ? 'border-[#F47B20] bg-[#F47B20]/10'
+                          ? 'border-[#14B8A6] bg-[#14B8A6]/10'
                           : 'border-dark-border hover:border-white/[0.12]'
                       }`}
                     >
-                      <div className={`mb-1 ${isSelected ? 'text-[#F47B20]' : 'text-dark-text-muted'}`}>
+                      <div className={`mb-1 ${isSelected ? 'text-[#14B8A6]' : 'text-dark-text-muted'}`}>
                         {widget.icon}
                       </div>
                       <span className="text-xs font-medium text-dark-text-secondary leading-tight">
@@ -222,7 +222,7 @@ export function WidgetPalette({ dashboardId, store, onClose }: WidgetPaletteProp
                               onChange={(e) => setTextContent(e.target.value)}
                               placeholder="Enter your text, title, or notes here..."
                               rows={4}
-                              className="w-full px-3 py-2 text-sm bg-dark-surface border border-dark-border rounded-lg text-dark-text-primary resize-none focus:outline-none focus:ring-1 focus:ring-[#F47B20]"
+                              className="w-full px-3 py-2 text-sm bg-dark-surface border border-dark-border rounded-lg text-dark-text-primary resize-none focus:outline-none focus:ring-1 focus:ring-[#14B8A6]"
                             />
                           </div>
                         )}
@@ -243,7 +243,7 @@ export function WidgetPalette({ dashboardId, store, onClose }: WidgetPaletteProp
                             <select
                               value={selectedDataSource}
                               onChange={(e) => { setSelectedDataSource(e.target.value); setXColumn(''); setYColumn('') }}
-                              className="w-full px-3 py-2 text-sm bg-dark-surface border border-dark-border rounded-lg text-dark-text-primary focus:outline-none focus:ring-1 focus:ring-[#F47B20]"
+                              className="w-full px-3 py-2 text-sm bg-dark-surface border border-dark-border rounded-lg text-dark-text-primary focus:outline-none focus:ring-1 focus:ring-[#14B8A6]"
                             >
                               <option value="">Select data source...</option>
                               {dataSourceList.map((ds) => (
@@ -265,7 +265,7 @@ export function WidgetPalette({ dashboardId, store, onClose }: WidgetPaletteProp
                                 <select
                                   value={xColumn}
                                   onChange={(e) => setXColumn(e.target.value)}
-                                  className="w-full px-3 py-2 text-sm bg-dark-surface border border-dark-border rounded-lg text-dark-text-primary focus:outline-none focus:ring-1 focus:ring-[#F47B20]"
+                                  className="w-full px-3 py-2 text-sm bg-dark-surface border border-dark-border rounded-lg text-dark-text-primary focus:outline-none focus:ring-1 focus:ring-[#14B8A6]"
                                 >
                                   <option value="">Select column...</option>
                                   {columns.map((col) => (
@@ -282,7 +282,7 @@ export function WidgetPalette({ dashboardId, store, onClose }: WidgetPaletteProp
                               <select
                                 value={yColumn}
                                 onChange={(e) => setYColumn(e.target.value)}
-                                className="w-full px-3 py-2 text-sm bg-dark-surface border border-dark-border rounded-lg text-dark-text-primary focus:outline-none focus:ring-1 focus:ring-[#F47B20]"
+                                className="w-full px-3 py-2 text-sm bg-dark-surface border border-dark-border rounded-lg text-dark-text-primary focus:outline-none focus:ring-1 focus:ring-[#14B8A6]"
                               >
                                 <option value="">Select column...</option>
                                 {columns.map((col) => (
@@ -297,8 +297,8 @@ export function WidgetPalette({ dashboardId, store, onClose }: WidgetPaletteProp
                                 type="button"
                                 onClick={() => setShowTableSelector(true)}
                                 className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm
-                                  text-[#F47B20] bg-[#F47B20]/[0.06] hover:bg-[#F47B20]/[0.12]
-                                  rounded-lg border border-[#F47B20]/20 transition-colors"
+                                  text-[#14B8A6] bg-[#14B8A6]/[0.06] hover:bg-[#14B8A6]/[0.12]
+                                  rounded-lg border border-[#14B8A6]/20 transition-colors"
                               >
                                 <Table size={16} />
                                 Select from Table View
@@ -345,7 +345,7 @@ export function WidgetPalette({ dashboardId, store, onClose }: WidgetPaletteProp
                           value={title}
                           onChange={(e) => setTitle(e.target.value)}
                           placeholder={`My ${selectedWidget.label}`}
-                          className="w-full px-3 py-2 text-sm bg-dark-surface border border-dark-border rounded-lg text-dark-text-primary focus:outline-none focus:ring-1 focus:ring-[#F47B20]"
+                          className="w-full px-3 py-2 text-sm bg-dark-surface border border-dark-border rounded-lg text-dark-text-primary focus:outline-none focus:ring-1 focus:ring-[#14B8A6]"
                         />
                       </div>
                     )}
@@ -360,7 +360,7 @@ export function WidgetPalette({ dashboardId, store, onClose }: WidgetPaletteProp
                               onClick={() => setAggregation(opt.value)}
                               className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all ${
                                 aggregation === opt.value
-                                  ? 'border-[#F47B20] bg-[#F47B20]/10 text-[#F47B20]'
+                                  ? 'border-[#14B8A6] bg-[#14B8A6]/10 text-[#14B8A6]'
                                   : 'border-dark-border text-dark-text-muted hover:border-white/[0.12]'
                               }`}
                             >
@@ -385,7 +385,7 @@ export function WidgetPalette({ dashboardId, store, onClose }: WidgetPaletteProp
           <button
             onClick={handleAddWidget}
             disabled={!canAdd}
-            className="px-4 py-2 text-sm font-medium bg-[#F47B20] hover:bg-[#e06a10] text-white rounded-lg transition-colors disabled:opacity-30 disabled:pointer-events-none"
+            className="px-4 py-2 text-sm font-medium bg-[#14B8A6] hover:bg-[#e06a10] text-white rounded-lg transition-colors disabled:opacity-30 disabled:pointer-events-none"
           >
             Add Widget
           </button>

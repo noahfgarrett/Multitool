@@ -5,8 +5,8 @@ test.beforeEach(async ({ page }) => {
   // Seed localStorage with user profile to prevent the "Set Up Your Profile" modal
   await ensureUserProfile(page)
   await page.addInitScript(() => {
-    if (!localStorage.getItem('lwt-user-profile')) {
-      localStorage.setItem('lwt-user-profile', JSON.stringify({
+    if (!localStorage.getItem('mt-user-profile')) {
+      localStorage.setItem('mt-user-profile', JSON.stringify({
         name: 'Test User', email: 'test@test.com', initials: 'TU',
         jobTitle: '', company: '', photo: '',
       }))

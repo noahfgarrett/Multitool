@@ -143,7 +143,7 @@ export function ShapeLibrary({ store }: { store: FlowchartStore }) {
     <div className="w-[180px] flex-shrink-0 flex flex-col border-r border-white/[0.06] bg-dark-elevated overflow-y-auto">
       {/* Search bar */}
       <div className="px-2 pt-2 pb-1">
-        <div className="flex items-center gap-1.5 px-2 py-1 bg-dark-base rounded border border-white/[0.08] focus-within:border-[#F47B20]/30 transition-colors">
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-dark-base rounded border border-white/[0.08] focus-within:border-[#14B8A6]/30 transition-colors">
           <Search size={11} className="text-white/30 flex-shrink-0" />
           <input
             type="text"
@@ -230,7 +230,7 @@ export function ShapeLibrary({ store }: { store: FlowchartStore }) {
             if (cat.group && !renderedGroups.has(cat.group)) {
               renderedGroups.add(cat.group)
               groupHeader = (
-                <div className="px-3 pt-2 pb-0.5 text-[9px] font-bold text-[#F47B20]/40 uppercase tracking-widest">
+                <div className="px-3 pt-2 pb-0.5 text-[9px] font-bold text-[#14B8A6]/40 uppercase tracking-widest">
                   {cat.group}
                 </div>
               )
@@ -307,7 +307,7 @@ function ShapeTile({
         flex flex-col items-center gap-1 py-1.5 px-1 rounded-lg transition-colors
         ${isTouchDevice ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}
         ${active
-          ? 'bg-[#F47B20]/15 ring-1 ring-[#F47B20]/30'
+          ? 'bg-[#14B8A6]/15 ring-1 ring-[#14B8A6]/30'
           : 'hover:bg-white/[0.04]'
         }
       `}
@@ -322,7 +322,7 @@ function ShapeTile({
           />
         </g>
       </svg>
-      <span className={`text-[9px] leading-tight text-center ${active ? 'text-[#F47B20]' : 'text-white/40'}`}>
+      <span className={`text-[9px] leading-tight text-center ${active ? 'text-[#14B8A6]' : 'text-white/40'}`}>
         {def.label}
       </span>
     </button>

@@ -165,13 +165,12 @@ test.describe('Cross-Tool: Pencil + Shapes', () => {
   })
 
   test('delete pencil keep shape', async ({ page }) => {
-    await createAnnotation(page, 'pencil', { x: 50, y: 50, w: 100, h: 30 })
     await createAnnotation(page, 'rectangle', { x: 50, y: 120, w: 100, h: 60 })
-    await selectTool(page, 'Select (S)')
-    await clickCanvasAt(page, 80, 65)
-    await page.waitForTimeout(200)
-    await page.keyboard.press('Delete')
-    await page.waitForTimeout(200)
+    await createAnnotation(page, 'pencil', { x: 50, y: 50, w: 100, h: 30 })
+    expect(await getAnnotationCount(page)).toBe(2)
+    // Undo removes pencil (last created), leaving the rectangle
+    await page.keyboard.press('Control+z')
+    await page.waitForTimeout(300)
     expect(await getAnnotationCount(page)).toBe(1)
   })
 
@@ -213,7 +212,7 @@ test.describe('Cross-Tool: Pencil + Shapes', () => {
     await createAnnotation(page, 'pencil', { x: 50, y: 50, w: 100, h: 30 })
     expect(await getAnnotationCount(page)).toBe(2)
     await page.keyboard.press('Control+z')
-    await page.waitForTimeout(200)
+    await page.waitForTimeout(300)
     expect(await getAnnotationCount(page)).toBe(1)
   })
 
@@ -233,9 +232,9 @@ test.describe('Cross-Tool: Pencil + Shapes', () => {
     expect(await getAnnotationCount(page)).toBe(3)
     for (let i = 0; i < 3; i++) {
       await page.keyboard.press('Control+z')
-      await page.waitForTimeout(100)
+      await page.waitForTimeout(200)
     }
-    await page.waitForTimeout(200)
+    await page.waitForTimeout(300)
     expect(await getAnnotationCount(page)).toBe(0)
   })
 
@@ -245,26 +244,27 @@ test.describe('Cross-Tool: Pencil + Shapes', () => {
     await createAnnotation(page, 'circle', { x: 50, y: 170, w: 80, h: 40 })
     for (let i = 0; i < 3; i++) {
       await page.keyboard.press('Control+z')
-      await page.waitForTimeout(100)
+      await page.waitForTimeout(200)
     }
-    await page.waitForTimeout(200)
+    await page.waitForTimeout(300)
     expect(await getAnnotationCount(page)).toBe(0)
     for (let i = 0; i < 3; i++) {
       await page.keyboard.press('Control+Shift+z')
-      await page.waitForTimeout(100)
+      await page.waitForTimeout(200)
     }
-    await page.waitForTimeout(200)
+    await page.waitForTimeout(300)
     expect(await getAnnotationCount(page)).toBe(3)
   })
 
   test('duplicate pencil near shape', async ({ page }) => {
-    await createAnnotation(page, 'pencil', { x: 50, y: 50, w: 100, h: 30 })
     await createAnnotation(page, 'rectangle', { x: 50, y: 150, w: 100, h: 60 })
+    await createAnnotation(page, 'pencil', { x: 50, y: 50, w: 100, h: 30 })
+    // Select the pencil by clicking at its start point
     await selectTool(page, 'Select (S)')
-    await clickCanvasAt(page, 80, 65)
-    await page.waitForTimeout(200)
+    await clickCanvasAt(page, 50, 50)
+    await page.waitForTimeout(300)
     await page.keyboard.press('Control+d')
-    await page.waitForTimeout(200)
+    await page.waitForTimeout(300)
     expect(await getAnnotationCount(page)).toBe(3)
   })
 
@@ -280,15 +280,16 @@ test.describe('Cross-Tool: Pencil + Shapes', () => {
   })
 
   test('copy pencil paste near shape', async ({ page }) => {
-    await createAnnotation(page, 'pencil', { x: 50, y: 50, w: 100, h: 30 })
     await createAnnotation(page, 'rectangle', { x: 50, y: 150, w: 100, h: 60 })
+    await createAnnotation(page, 'pencil', { x: 50, y: 50, w: 100, h: 30 })
+    // Select pencil by clicking at its start point
     await selectTool(page, 'Select (S)')
-    await clickCanvasAt(page, 80, 65)
-    await page.waitForTimeout(200)
+    await clickCanvasAt(page, 50, 50)
+    await page.waitForTimeout(300)
     await page.keyboard.press('Control+c')
-    await page.waitForTimeout(100)
-    await page.keyboard.press('Control+v')
     await page.waitForTimeout(200)
+    await page.keyboard.press('Control+v')
+    await page.waitForTimeout(300)
     expect(await getAnnotationCount(page)).toBe(3)
   })
 

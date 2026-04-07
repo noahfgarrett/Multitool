@@ -30,7 +30,7 @@ test.describe('Pencil Core', () => {
     await drawOnCanvas(page, [{ x: 100, y: 100 }, { x: 200, y: 150 }, { x: 250, y: 100 }])
     await page.waitForTimeout(200)
     const session = await page.evaluate(() => {
-      const raw = sessionStorage.getItem('lwt-pdf-annotate-session')
+      const raw = sessionStorage.getItem('mt-pdf-annotate-session')
       return raw ? JSON.parse(raw) : null
     })
     // Session may not have saved yet, check annotation count instead
@@ -260,7 +260,7 @@ test.describe('Pencil Core', () => {
   })
 
   test('draw stroke with each available color', async ({ page }) => {
-    const colors = ['#000000', '#FF0000', '#FF6600', '#F47B20', '#FFFF00', '#22C55E', '#3B82F6', '#8B5CF6', '#FFFFFF']
+    const colors = ['#000000', '#FF0000', '#FF6600', '#14B8A6', '#FFFF00', '#22C55E', '#3B82F6', '#8B5CF6', '#FFFFFF']
     await selectTool(page, 'Pencil (P)')
     // Enable sticky
     const pinBtn = page.locator('button[title*="Lock tool"]')

@@ -121,7 +121,7 @@ function SortableRow({
       className={`
         flex items-center gap-1 px-2 rounded-md transition-colors
         ${isParent ? 'py-2' : 'py-1.5'}
-        ${isSelected ? 'bg-[#F47B20]/[0.04]' : 'hover:bg-white/[0.02]'}
+        ${isSelected ? 'bg-[#14B8A6]/[0.04]' : 'hover:bg-white/[0.02]'}
       `}
     >
       {/* Checkbox */}
@@ -132,7 +132,7 @@ function SortableRow({
           className={`
             w-3.5 h-3.5 rounded border transition-colors flex items-center justify-center
             ${isSelected
-              ? 'bg-[#F47B20] border-[#F47B20]'
+              ? 'bg-[#14B8A6] border-[#14B8A6]'
               : 'border-white/20 hover:border-white/40'
             }
           `}
@@ -178,7 +178,7 @@ function SortableRow({
                 onCancelEdit()
               }
             }}
-            className="w-full bg-white/[0.04] border border-white/10 rounded px-2 py-0.5 text-sm text-white outline-none focus:border-[#F47B20]/40"
+            className="w-full bg-white/[0.04] border border-white/10 rounded px-2 py-0.5 text-sm text-white outline-none focus:border-[#14B8A6]/40"
           />
         ) : (
           <button
@@ -584,7 +584,7 @@ export function TocEditorModal({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <ListOrdered size={18} className="text-[#F47B20]" />
+              <ListOrdered size={18} className="text-[#14B8A6]" />
               <h3 className="text-sm font-semibold text-white">Table of Contents</h3>
             </div>
             <span className="text-[10px] bg-white/[0.06] text-white/40 px-2 py-0.5 rounded-full tabular-nums">
@@ -627,7 +627,7 @@ export function TocEditorModal({
                 className={`
                   px-2.5 py-1 text-[11px] rounded-md border transition-colors
                   ${numbering === preset.value
-                    ? 'bg-[#F47B20]/10 border-[#F47B20]/30 text-[#F47B20]'
+                    ? 'bg-[#14B8A6]/10 border-[#14B8A6]/30 text-[#14B8A6]'
                     : 'bg-white/[0.04] border-white/10 text-white/40 hover:text-white/60'
                   }
                 `}
@@ -641,7 +641,7 @@ export function TocEditorModal({
                 value={customPrefix}
                 onChange={(e) => onCustomPrefixChange(e.target.value)}
                 placeholder="Prefix"
-                className="ml-1 w-16 bg-white/[0.04] border border-white/10 rounded px-2 py-1 text-[11px] text-white outline-none focus:border-[#F47B20]/40"
+                className="ml-1 w-16 bg-white/[0.04] border border-white/10 rounded px-2 py-1 text-[11px] text-white outline-none focus:border-[#14B8A6]/40"
               />
             )}
           </div>
@@ -785,7 +785,7 @@ export function TocEditorModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-1.5 text-xs rounded-md bg-[#F47B20] text-white font-medium hover:bg-[#F47B20]/90 transition-colors"
+              className="px-4 py-1.5 text-xs rounded-md bg-[#14B8A6] text-white font-medium hover:bg-[#14B8A6]/90 transition-colors"
             >
               Done
             </button>

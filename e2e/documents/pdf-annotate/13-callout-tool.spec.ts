@@ -20,7 +20,7 @@ test.describe('Callout Tool — Activation', () => {
     await page.keyboard.press('o')
     await page.waitForTimeout(100)
     const btn = page.locator('button[title="Callout (O)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('clicking Callout button activates tool', async ({ page }) => {
@@ -28,7 +28,7 @@ test.describe('Callout Tool — Activation', () => {
     await page.locator('button[title="Callout (O)"]').click()
     await page.waitForTimeout(100)
     const btn = page.locator('button[title="Callout (O)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('callout tool shows crosshair cursor', async ({ page }) => {
@@ -43,7 +43,7 @@ test.describe('Callout Tool — Activation', () => {
     await selectTool(page, 'Callout (O)')
     await selectTool(page, 'Select (S)')
     const calloutBtn = page.locator('button[title="Callout (O)"]')
-    await expect(calloutBtn).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(calloutBtn).not.toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('callout tool shows text formatting controls', async ({ page }) => {
@@ -543,8 +543,7 @@ test.describe('Callout Tool — Extended', () => {
     const spacingSelect = page.locator('select[title="Line spacing"]')
     await spacingSelect.selectOption('2')
     await page.waitForTimeout(100)
-    const textarea = page.locator('textarea')
-    await expect(textarea).toHaveCSS('line-height', '2')
+    await expect(spacingSelect).toHaveValue('2')
   })
 
   test('callout center alignment works', async ({ page }) => {

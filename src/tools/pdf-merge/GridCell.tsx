@@ -280,7 +280,7 @@ export const GridCell = memo(function GridCell({
       ref={cellRef}
       className={`
         relative overflow-hidden
-        ${isSelected ? 'ring-2 ring-[#F47B20] z-10' : isMultiSelected ? 'ring-2 ring-[#3B82F6] z-10' : ''}
+        ${isSelected ? 'ring-2 ring-[#14B8A6] z-10' : isMultiSelected ? 'ring-2 ring-[#3B82F6] z-10' : ''}
       `}
       title={hasContent ? cell.file?.name ?? '' : ''}
       style={{
@@ -301,8 +301,8 @@ export const GridCell = memo(function GridCell({
     >
       {/* File drag-over overlay */}
       {isDragOver && (
-        <div className="absolute inset-0 z-30 bg-[#F47B20]/15 border-2 border-dashed border-[#F47B20] rounded-sm flex items-center justify-center pointer-events-none">
-          <span className="text-sm font-medium text-[#F47B20]">Drop file here</span>
+        <div className="absolute inset-0 z-30 bg-[#14B8A6]/15 border-2 border-dashed border-[#14B8A6] rounded-sm flex items-center justify-center pointer-events-none">
+          <span className="text-sm font-medium text-[#14B8A6]">Drop file here</span>
         </div>
       )}
       {/* Content */}
@@ -333,8 +333,8 @@ export const GridCell = memo(function GridCell({
           className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer group/add hover:bg-black/[0.03] transition-colors"
           onClick={(e) => { e.stopPropagation(); onAddFile() }}
         >
-          <div className="w-10 h-10 rounded-full border-2 border-dashed border-black/15 group-hover/add:border-[#F47B20]/50 group-hover/add:bg-[#F47B20]/5 flex items-center justify-center transition-colors">
-            <Plus size={20} className="text-black/20 group-hover/add:text-[#F47B20]/70 transition-colors" />
+          <div className="w-10 h-10 rounded-full border-2 border-dashed border-black/15 group-hover/add:border-[#14B8A6]/50 group-hover/add:bg-[#14B8A6]/5 flex items-center justify-center transition-colors">
+            <Plus size={20} className="text-black/20 group-hover/add:text-[#14B8A6]/70 transition-colors" />
           </div>
           <span className="text-[10px] text-black/20 group-hover/add:text-black/40 mt-1.5 transition-colors">Add file</span>
         </div>
@@ -353,7 +353,7 @@ export const GridCell = memo(function GridCell({
             e.stopPropagation()
           }}
           onClick={(e) => e.stopPropagation()}
-          className="absolute top-1.5 left-1.5 px-1 py-0 rounded text-[10px] font-bold z-20 bg-white text-black border border-[#F47B20] outline-none w-16"
+          className="absolute top-1.5 left-1.5 px-1 py-0 rounded text-[10px] font-bold z-20 bg-white text-black border border-[#14B8A6] outline-none w-16"
           maxLength={10}
         />
       ) : (
@@ -376,7 +376,7 @@ export const GridCell = memo(function GridCell({
         <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 z-20">
           <button
             onClick={(e) => { e.stopPropagation(); onFocus() }}
-            className="p-1 rounded bg-[#F47B20]/80 text-white hover:bg-[#F47B20] transition-colors mr-1"
+            className="p-1 rounded bg-[#14B8A6]/80 text-white hover:bg-[#14B8A6] transition-colors mr-1"
             title="Focus edit mode"
           >
             <Maximize2 size={12} />

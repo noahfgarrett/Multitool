@@ -100,7 +100,7 @@ export default function QrCodeTool() {
               onChange={(e) => setText(e.target.value)}
               placeholder="Enter text..."
               rows={4}
-              className="w-full px-3 py-2.5 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#F47B20]/40 resize-none"
+              className="w-full px-3 py-2.5 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#14B8A6]/40 resize-none"
             />
           )}
           {inputType === 'url' && (
@@ -108,7 +108,7 @@ export default function QrCodeTool() {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://example.com"
-              className="w-full px-3 py-2.5 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#F47B20]/40"
+              className="w-full px-3 py-2.5 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#14B8A6]/40"
             />
           )}
           {inputType === 'email' && (
@@ -117,7 +117,7 @@ export default function QrCodeTool() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="user@example.com"
               type="email"
-              className="w-full px-3 py-2.5 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#F47B20]/40"
+              className="w-full px-3 py-2.5 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#14B8A6]/40"
             />
           )}
           {inputType === 'wifi' && (
@@ -126,14 +126,14 @@ export default function QrCodeTool() {
                 value={wifiSSID}
                 onChange={(e) => setWifiSSID(e.target.value)}
                 placeholder="Network name (SSID)"
-                className="w-full px-3 py-2.5 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#F47B20]/40"
+                className="w-full px-3 py-2.5 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#14B8A6]/40"
               />
               <input
                 value={wifiPassword}
                 onChange={(e) => setWifiPassword(e.target.value)}
                 placeholder="Password"
                 type="password"
-                className="w-full px-3 py-2.5 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#F47B20]/40"
+                className="w-full px-3 py-2.5 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#14B8A6]/40"
               />
               <div className="flex gap-2">
                 {(['WPA', 'WEP', 'nopass'] as const).map((enc) => (
@@ -142,7 +142,7 @@ export default function QrCodeTool() {
                     onClick={() => setWifiEncryption(enc)}
                     className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
                       wifiEncryption === enc
-                        ? 'bg-[#F47B20] text-white'
+                        ? 'bg-[#14B8A6] text-white'
                         : 'bg-white/[0.06] text-white/50 hover:text-white'
                     }`}
                   >
@@ -173,7 +173,7 @@ export default function QrCodeTool() {
                 onClick={() => setErrorCorrection(level.id as 'L' | 'M' | 'Q' | 'H')}
                 className={`flex-1 px-2 py-1.5 text-xs rounded-md transition-colors ${
                   errorCorrection === level.id
-                    ? 'bg-[#F47B20] text-white'
+                    ? 'bg-[#14B8A6] text-white'
                     : 'bg-white/[0.06] text-white/50 hover:text-white'
                 }`}
               >
@@ -187,7 +187,7 @@ export default function QrCodeTool() {
           label="Foreground Color"
           value={fgColor}
           onChange={setFgColor}
-          presets={['#FFFFFF', '#000000', '#F47B20', '#0077B6', '#22C55E', '#EF4444']}
+          presets={['#FFFFFF', '#000000', '#14B8A6', '#0077B6', '#22C55E', '#EF4444']}
         />
         <ColorPicker
           label="Background Color"

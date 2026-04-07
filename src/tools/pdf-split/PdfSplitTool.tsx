@@ -41,7 +41,7 @@ function makeUid(): string { return `sp-${++_uid}` }
 function makeDocId(): string { return `doc-${++_uid}` }
 function makeSlotId(): string { return `slot-${++_uid}` }
 
-const DOC_COLORS = ['#F47B20', '#3B82F6', '#22C55E', '#A855F7', '#EC4899', '#14B8A6', '#F59E0B', '#6366F1']
+const DOC_COLORS = ['#14B8A6', '#3B82F6', '#22C55E', '#A855F7', '#EC4899', '#14B8A6', '#F59E0B', '#6366F1']
 
 /** Typed wrapper around the File System Access API — eliminates `any` casts */
 interface PickerHandle {
@@ -884,7 +884,7 @@ export default function PdfSplitTool() {
               step={1}
               value={resIdx}
               onChange={(e) => changeResolution(Number(e.target.value))}
-              className="w-14 h-1 accent-[#F47B20] cursor-pointer"
+              className="w-14 h-1 accent-[#14B8A6] cursor-pointer"
               title={`Thumbnail resolution: ${RES_LEVELS[resIdx].label} (${RES_LEVELS[resIdx].height}px)`}
             />
             <span className="text-[10px] text-white/30 min-w-[20px]">{RES_LEVELS[resIdx].label}</span>
@@ -973,16 +973,16 @@ export default function PdfSplitTool() {
                           autoFocus
                           onBlur={commitRename}
                           aria-label="Rename document"
-                          className="flex-1 min-w-0 text-xs bg-transparent border-b border-[#F47B20]/40 text-white outline-none px-0 py-0.5"
+                          className="flex-1 min-w-0 text-xs bg-transparent border-b border-[#14B8A6]/40 text-white outline-none px-0 py-0.5"
                         />
-                        <button type="submit" className="p-0.5 text-[#F47B20]" aria-label="Confirm rename">
+                        <button type="submit" className="p-0.5 text-[#14B8A6]" aria-label="Confirm rename">
                           <Check size={10} />
                         </button>
                       </form>
                     ) : (
                       <button
                         onClick={() => startRename(doc)}
-                        className="flex-1 min-w-0 text-left text-xs text-white truncate hover:text-[#F47B20] transition-colors group/name flex items-center gap-1"
+                        className="flex-1 min-w-0 text-left text-xs text-white truncate hover:text-[#14B8A6] transition-colors group/name flex items-center gap-1"
                         title="Click to rename"
                       >
                         {doc.name}
@@ -998,14 +998,14 @@ export default function PdfSplitTool() {
                     {!isActive ? (
                       <button
                         onClick={() => editDocument(doc.id)}
-                        className="p-0.5 rounded text-white/30 hover:text-[#F47B20] transition-colors flex-shrink-0"
+                        className="p-0.5 rounded text-white/30 hover:text-[#14B8A6] transition-colors flex-shrink-0"
                         title="Edit this document"
                         aria-label={`Edit ${doc.name}`}
                       >
                         <Unlock size={11} />
                       </button>
                     ) : (
-                      <div className="p-0.5 text-[#F47B20] flex-shrink-0" title="Currently editing">
+                      <div className="p-0.5 text-[#14B8A6] flex-shrink-0" title="Currently editing">
                         <Lock size={11} />
                       </div>
                     )}
@@ -1115,7 +1115,7 @@ export default function PdfSplitTool() {
                   }
                 }}
                 placeholder="e.g., 1-50, 75-100"
-                className="flex-1 min-w-0 px-2 py-1 text-[11px] bg-white/[0.04] border border-white/[0.08] rounded-md text-white placeholder:text-white/20 outline-none focus:border-[#F47B20]/40 transition-colors"
+                className="flex-1 min-w-0 px-2 py-1 text-[11px] bg-white/[0.04] border border-white/[0.08] rounded-md text-white placeholder:text-white/20 outline-none focus:border-[#14B8A6]/40 transition-colors"
               />
               <button
                 type="button"

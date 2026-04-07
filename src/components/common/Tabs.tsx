@@ -25,7 +25,7 @@ export const Tabs = memo(function Tabs({ tabs, activeTab, onChange, className = 
           className={`
             px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-150
             ${activeTab === tab.id
-              ? 'bg-[#F47B20] text-white shadow-sm'
+              ? 'bg-[#14B8A6] text-white shadow-sm'
               : 'hover:bg-white/[0.06]'
             }
           `}

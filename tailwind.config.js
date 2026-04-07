@@ -7,19 +7,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        // LotusWorks brand
-        'lotus-orange': {
-          DEFAULT: '#F47B20',
-          50: '#FFF3E0',
-          100: '#FFE0B2',
-          200: '#FFCC80',
-          300: '#FFB74D',
-          400: '#FFA726',
-          500: '#F47B20',
-          600: '#E06D15',
-          700: '#C75F10',
-          800: '#9A3412',
-          900: '#7C2D12',
+        // Multitool brand
+        'apex-teal': {
+          DEFAULT: '#14B8A6',
+          50: '#F0FDFA',
+          100: '#CCFBF1',
+          200: '#99F6E4',
+          300: '#5EEAD4',
+          400: '#2DD4BF',
+          500: '#14B8A6',
+          600: '#0D9488',
+          700: '#0F766E',
+          800: '#115E59',
+          900: '#134E4A',
         },
         'lotus-blue': {
           DEFAULT: '#0077B6',
@@ -62,6 +62,7 @@ export default {
       },
       fontFamily: {
         display: ['Space Grotesk', 'system-ui', 'sans-serif'],
+        logo: ['Sacramento', 'cursive'],
         body: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'monospace'],
       },
@@ -94,7 +95,7 @@ export default {
         'dark-md': '0 4px 16px rgba(0, 0, 0, 0.5)',
         'dark-lg': '0 8px 32px rgba(0, 0, 0, 0.6)',
         'dark-xl': '0 16px 48px rgba(0, 0, 0, 0.7)',
-        'glow-orange': '0 0 20px rgba(244, 123, 32, 0.3)',
+        'glow-teal': '0 0 20px rgba(20, 184, 166, 0.3)',
         'glow-blue': '0 0 20px rgba(0, 119, 182, 0.25)',
       },
     },

@@ -554,7 +554,7 @@ export function FormCanvas({ store, showTabOrder }: { store: FormStore; showTabO
                 width: 20,
                 height: 20,
                 borderRadius: '50%',
-                backgroundColor: '#F47B20',
+                backgroundColor: '#14B8A6',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

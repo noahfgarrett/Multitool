@@ -84,7 +84,7 @@ export function Toolbar({
         <select
           value={doc.pageSize}
           onChange={e => setPageSize(e.target.value as PageSize)}
-          className="px-1.5 py-1 text-[10px] bg-dark-surface border border-white/[0.08] rounded text-white/60 focus:outline-none focus:border-[#F47B20]/40"
+          className="px-1.5 py-1 text-[10px] bg-dark-surface border border-white/[0.08] rounded text-white/60 focus:outline-none focus:border-[#14B8A6]/40"
         >
           <option value="letter">Letter</option>
           <option value="a4">A4</option>
@@ -153,7 +153,7 @@ export function Toolbar({
         <button
           onClick={onToggleTabOrder}
           className={`px-2.5 py-1 text-[10px] font-medium rounded transition-colors flex items-center gap-1 ${
-            showTabOrder ? 'bg-[#F47B20]/20 text-[#F47B20]' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
+            showTabOrder ? 'bg-[#14B8A6]/20 text-[#14B8A6]' : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
           }`}
         >
           <ListOrdered size={12} />
@@ -253,7 +253,7 @@ function InlineTitle({ value, onChange }: { value: string; onChange: (v: string)
         if (e.key === 'Enter') commit()
         if (e.key === 'Escape') { setDraft(value); setEditing(false) }
       }}
-      className="px-2 py-1 text-xs bg-dark-surface border border-[#F47B20]/40 rounded text-white focus:outline-none max-w-[200px]"
+      className="px-2 py-1 text-xs bg-dark-surface border border-[#14B8A6]/40 rounded text-white focus:outline-none max-w-[200px]"
     />
   )
 }

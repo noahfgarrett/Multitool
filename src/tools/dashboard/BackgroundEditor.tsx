@@ -103,7 +103,7 @@ export function BackgroundEditor({ current, onApply, onClose }: BackgroundEditor
           onClick={() => setTab('templates')}
           className={`flex items-center gap-1.5 px-4 py-2 text-sm transition-colors ${
             tab === 'templates'
-              ? 'text-[#F47B20] border-b-2 border-[#F47B20]'
+              ? 'text-[#14B8A6] border-b-2 border-[#14B8A6]'
               : 'text-dark-text-muted hover:text-dark-text-primary'
           }`}
         >
@@ -114,7 +114,7 @@ export function BackgroundEditor({ current, onApply, onClose }: BackgroundEditor
           onClick={() => setTab('custom')}
           className={`flex items-center gap-1.5 px-4 py-2 text-sm transition-colors ${
             tab === 'custom'
-              ? 'text-[#F47B20] border-b-2 border-[#F47B20]'
+              ? 'text-[#14B8A6] border-b-2 border-[#14B8A6]'
               : 'text-dark-text-muted hover:text-dark-text-primary'
           }`}
         >
@@ -137,7 +137,7 @@ export function BackgroundEditor({ current, onApply, onClose }: BackgroundEditor
                     onClick={() => setCategory(c.id)}
                     className={`px-2.5 py-1 text-xs rounded-full transition-colors ${
                       category === c.id
-                        ? 'bg-[#F47B20]/20 text-[#F47B20]'
+                        ? 'bg-[#14B8A6]/20 text-[#14B8A6]'
                         : 'bg-white/[0.04] text-dark-text-muted hover:bg-white/[0.08]'
                     }`}
                   >
@@ -156,7 +156,7 @@ export function BackgroundEditor({ current, onApply, onClose }: BackgroundEditor
                       preview &&
                       preview.color1 === t.background.color1 &&
                       preview.type === t.background.type
-                        ? 'border-[#F47B20]'
+                        ? 'border-[#14B8A6]'
                         : 'border-transparent hover:border-white/[0.15]'
                     }`}
                     style={{
@@ -187,7 +187,7 @@ export function BackgroundEditor({ current, onApply, onClose }: BackgroundEditor
                       onClick={() => { setBgType(t); updateCustomPreview() }}
                       className={`flex-1 px-3 py-1.5 text-xs rounded-lg capitalize transition-colors ${
                         bgType === t
-                          ? 'bg-[#F47B20]/20 text-[#F47B20]'
+                          ? 'bg-[#14B8A6]/20 text-[#14B8A6]'
                           : 'bg-white/[0.04] text-dark-text-muted hover:bg-white/[0.08]'
                       }`}
                     >
@@ -221,7 +221,7 @@ export function BackgroundEditor({ current, onApply, onClose }: BackgroundEditor
                           onClick={() => { setGradientType(gt); setPreview(undefined) }}
                           className={`flex-1 px-2 py-1.5 text-xs rounded-lg capitalize transition-colors ${
                             gradientType === gt
-                              ? 'bg-[#F47B20]/20 text-[#F47B20]'
+                              ? 'bg-[#14B8A6]/20 text-[#14B8A6]'
                               : 'bg-white/[0.04] text-dark-text-muted hover:bg-white/[0.08]'
                           }`}
                         >
@@ -242,7 +242,7 @@ export function BackgroundEditor({ current, onApply, onClose }: BackgroundEditor
                         max={360}
                         value={angle}
                         onChange={(e) => { setAngle(Number(e.target.value)); setPreview(undefined) }}
-                        className="w-full accent-[#F47B20]"
+                        className="w-full accent-[#14B8A6]"
                       />
                     </div>
                   )}
@@ -262,7 +262,7 @@ export function BackgroundEditor({ current, onApply, onClose }: BackgroundEditor
                         onClick={() => { setPattern(p); setPreview(undefined) }}
                         className={`flex-1 px-2 py-1.5 text-xs rounded-lg capitalize transition-colors ${
                           pattern === p
-                            ? 'bg-[#F47B20]/20 text-[#F47B20]'
+                            ? 'bg-[#14B8A6]/20 text-[#14B8A6]'
                             : 'bg-white/[0.04] text-dark-text-muted hover:bg-white/[0.08]'
                         }`}
                       >
@@ -326,7 +326,7 @@ export function BackgroundEditor({ current, onApply, onClose }: BackgroundEditor
           </button>
           <button
             onClick={() => onApply(preview)}
-            className="px-3 py-1.5 text-sm font-medium rounded-lg bg-[#F47B20] hover:bg-[#F47B20]/90
+            className="px-3 py-1.5 text-sm font-medium rounded-lg bg-[#14B8A6] hover:bg-[#14B8A6]/90
               text-white transition-colors"
           >
             Apply
@@ -366,7 +366,7 @@ function ColorInput({
           onChange={(e) => onChange(e.target.value)}
           placeholder="#000000"
           className="flex-1 px-2 py-1.5 text-xs font-mono bg-white/[0.04] border border-dark-border rounded-lg
-            text-dark-text-primary placeholder:text-dark-text-muted/50 focus:outline-none focus:border-[#F47B20]/50"
+            text-dark-text-primary placeholder:text-dark-text-muted/50 focus:outline-none focus:border-[#14B8A6]/50"
         />
       </div>
     </div>

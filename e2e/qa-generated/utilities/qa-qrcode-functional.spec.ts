@@ -18,7 +18,7 @@ async function setupPage(page: Page): Promise<void> {
 async function goToQRCode(page: Page): Promise<void> {
   await setupPage(page)
   await page.goto(BASE_URL)
-  await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' })).toBeVisible({ timeout: 10_000 })
+  await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10_000 })
   const sidebar = page.locator('aside nav')
   await sidebar.locator('button').filter({ hasText: 'QR Code' }).click()
   await waitForToolLoad(page)

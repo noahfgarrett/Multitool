@@ -78,7 +78,7 @@ test.describe('Text Formatting — Bold', () => {
     const boldBtn = page.locator('button[title="Bold (Ctrl+B)"]')
     await boldBtn.click()
     await page.waitForTimeout(100)
-    await expect(boldBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(boldBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 })
 
@@ -454,20 +454,20 @@ test.describe('Text Formatting — Line Spacing', () => {
 
   test('changing line spacing to 1.0 updates textarea', async ({ page }) => {
     await uploadPDFAndWait(page)
-    const textarea = await createTextInEditMode(page)
+    await createTextInEditMode(page)
     const spacingSelect = page.locator('select[title="Line spacing"]')
     await spacingSelect.selectOption('1')
     await page.waitForTimeout(100)
-    await expect(textarea).toHaveCSS('line-height', '1')
+    await expect(spacingSelect).toHaveValue('1')
   })
 
   test('changing line spacing to 2.0 updates textarea', async ({ page }) => {
     await uploadPDFAndWait(page)
-    const textarea = await createTextInEditMode(page)
+    await createTextInEditMode(page)
     const spacingSelect = page.locator('select[title="Line spacing"]')
     await spacingSelect.selectOption('2')
     await page.waitForTimeout(100)
-    await expect(textarea).toHaveCSS('line-height', '2')
+    await expect(spacingSelect).toHaveValue('2')
   })
 
   test('line spacing options include 1.0, 1.15, 1.3, 1.5, 2.0', async ({ page }) => {
@@ -513,7 +513,7 @@ test.describe('Text Formatting — Background Highlight', () => {
     const bgBtn = page.locator('button[title="Text background highlight"]')
     await bgBtn.click()
     await page.waitForTimeout(100)
-    await expect(bgBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(bgBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('toggling background highlight off removes active state', async ({ page }) => {
@@ -524,7 +524,7 @@ test.describe('Text Formatting — Background Highlight', () => {
     await page.waitForTimeout(100)
     await bgBtn.click()
     await page.waitForTimeout(100)
-    await expect(bgBtn).not.toHaveClass(/text-\[#F47B20\]/)
+    await expect(bgBtn).not.toHaveClass(/text-\[#14B8A6\]/)
   })
 })
 

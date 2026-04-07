@@ -49,7 +49,7 @@ test.describe('New Toolbar Buttons', () => {
 
   test('clicking presets button shows Tool Presets panel with empty message', async ({ page }) => {
     // Clear any preexisting presets from localStorage
-    await page.evaluate(() => localStorage.removeItem('lwt-tool-presets'))
+    await page.evaluate(() => localStorage.removeItem('mt-tool-presets'))
     // Reopen the page to pick up cleared storage
     await page.goto('/')
     await navigateToTool(page, 'pdf-annotate')
@@ -105,7 +105,7 @@ test.describe('New Toolbar Buttons', () => {
 test.describe('Tool Presets', () => {
   test.beforeEach(async ({ page }) => {
     // Clear presets before each test in this group
-    await page.evaluate(() => localStorage.removeItem('lwt-tool-presets'))
+    await page.evaluate(() => localStorage.removeItem('mt-tool-presets'))
   })
 
   test('save a preset via prompt and see it appear in list', async ({ page }) => {

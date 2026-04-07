@@ -34,7 +34,7 @@ test.describe('Line Tool — Creation', () => {
     await page.keyboard.press('l')
     await page.waitForTimeout(100)
     const btn = page.locator('button[title="Line (L)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('line type stored correctly in session', async ({ page }) => {
@@ -93,7 +93,7 @@ test.describe('Arrow Tool — Creation', () => {
     await page.keyboard.press('a')
     await page.waitForTimeout(100)
     const btn = page.locator('button[title="Arrow (A)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('arrow type stored correctly in session', async ({ page }) => {

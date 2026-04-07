@@ -8,6 +8,7 @@ import { UpdateModal } from '@/components/common/UpdateModal.tsx'
 import { UserProfileModal } from '@/components/common/UserProfileModal.tsx'
 import { SettingsModal } from '@/components/common/SettingsModal.tsx'
 import { checkForUpdate } from '@/utils/updateChecker.ts'
+import { migrateFromLotusWorks } from '@/utils/migration.ts'
 import { getUserProfile, saveUserProfile, hasUserProfile } from '@/utils/userProfile.ts'
 import type { UpdateInfo } from '@/utils/updateChecker.ts'
 import type { UserProfile } from '@/utils/userProfile.ts'
@@ -38,7 +39,7 @@ const FeedbackForm = lazy(() => import('@/tools/feedback/FeedbackForm.tsx'))
 function LoadingFallback() {
   return (
     <div className="flex items-center justify-center h-full">
-      <div className="w-6 h-6 border-2 border-lotus-orange/30 border-t-lotus-orange rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-apex-teal/30 border-t-apex-teal rounded-full animate-spin" />
     </div>
   )
 }
@@ -55,6 +56,9 @@ export default function App() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
 
   useEffect(() => {
+    // Migrate localStorage/sessionStorage keys from LotusWorks → Multitool
+    migrateFromLotusWorks()
+
     // Check for user profile on first launch
     const existing = getUserProfile()
     setUserProfile(existing)
@@ -99,7 +103,7 @@ export default function App() {
         onClose={() => {
           setShowUpdateModal(false)
           setShowChangelog(false)
-          localStorage.setItem('lastSeenVersion', __APP_VERSION__)
+          localStorage.setItem('mt-lastSeenVersion', __APP_VERSION__)
         }}
         info={showUpdateModal ? updateInfo : null}
         defaultTab={showChangelog && !showUpdateModal ? 'changelog' : undefined}

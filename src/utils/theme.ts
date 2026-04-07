@@ -16,29 +16,29 @@ export const THEMES: ThemeDefinition[] = [
     id: 'night-sky',
     label: 'Night Sky',
     description: 'Dark navy gradient with twinkling stars and shooting stars',
-    preview: { bg: '#00171F', accent: '#F47B20', text: '#FFFFFF' },
+    preview: { bg: '#00171F', accent: '#14B8A6', text: '#FFFFFF' },
   },
   {
     id: 'blueprint',
     label: 'Blueprint',
     description: 'Dark navy with subtle grid lines — an engineering classic',
-    preview: { bg: '#0A1628', accent: '#F47B20', text: '#C8D6E5' },
+    preview: { bg: '#0A1628', accent: '#14B8A6', text: '#C8D6E5' },
   },
   {
     id: 'clean-dark',
     label: 'Clean Dark',
     description: 'Flat dark surfaces with no distractions',
-    preview: { bg: '#111111', accent: '#F47B20', text: '#E0E0E0' },
+    preview: { bg: '#111111', accent: '#14B8A6', text: '#E0E0E0' },
   },
   {
     id: 'light',
     label: 'Light',
     description: 'White backgrounds with dark text for bright environments',
-    preview: { bg: '#F5F5F5', accent: '#F47B20', text: '#1A1A1A' },
+    preview: { bg: '#F5F5F5', accent: '#14B8A6', text: '#1A1A1A' },
   },
 ]
 
-const THEME_STORAGE_KEY = 'lwt-theme'
+const THEME_STORAGE_KEY = 'mt-theme'
 
 export function loadTheme(): ThemeId {
   try {

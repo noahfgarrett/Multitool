@@ -13,27 +13,28 @@ test.beforeEach(async ({ page }) => {
 })
 
 test.describe('Multi-Page Core', () => {
-  test('page navigation input visible', async ({ page }) => {
-    const pageInput = page.locator('input[type="number"]')
-    await expect(pageInput).toBeVisible()
-    await expect(pageInput).toHaveValue('1')
+  test('page navigation indicator visible', async ({ page }) => {
+    // The page indicator is shown as a button like "1 / N"
+    const pageButton = page.locator('text=/1 \\/ \\d+/')
+    await expect(pageButton).toBeVisible({ timeout: 5000 })
   })
 
   test('navigate to page 2', async ({ page }) => {
-    const pageInput = page.locator('input[type="number"]')
     await goToPage(page, 2)
     await page.waitForTimeout(500)
-    await expect(pageInput).toHaveValue('2')
+    const pageButton = page.locator('text=/2 \\/ \\d+/')
+    await expect(pageButton).toBeVisible({ timeout: 5000 })
   })
 
   test('navigate to page 2 then back to page 1', async ({ page }) => {
-    const pageInput = page.locator('input[type="number"]')
     await goToPage(page, 2)
     await page.waitForTimeout(500)
-    await expect(pageInput).toHaveValue('2')
+    const page2Button = page.locator('text=/2 \\/ \\d+/')
+    await expect(page2Button).toBeVisible({ timeout: 5000 })
     await goToPage(page, 1)
     await page.waitForTimeout(500)
-    await expect(pageInput).toHaveValue('1')
+    const page1Button = page.locator('text=/1 \\/ \\d+/')
+    await expect(page1Button).toBeVisible({ timeout: 5000 })
   })
 
   test('draw on page 1', async ({ page }) => {
@@ -65,10 +66,9 @@ test.describe('Multi-Page Core', () => {
   })
 
   test('page count displayed', async ({ page }) => {
-    // Multi-page PDF shows page count in format "/ N" (e.g. "/ 3")
-    // The page navigation section has an input for current page + span with "/ {total}"
-    const pageCountSpan = page.locator('span', { hasText: /\/\s*\d+/ })
-    await expect(pageCountSpan.first()).toBeVisible({ timeout: 3000 })
+    // Multi-page PDF shows page count as a button like "1 / 5"
+    const pageButton = page.locator('text=/\\d+ \\/ \\d+/')
+    await expect(pageButton.first()).toBeVisible({ timeout: 5000 })
   })
 
   test('annotation count per page', async ({ page }) => {

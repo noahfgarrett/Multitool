@@ -245,7 +245,7 @@ test.describe('Page Count Badge Enhancement', () => {
     await expect(page.getByText('1/2 pages')).toBeVisible()
 
     const orangeSpan = page.locator('.text-xs.text-white\\/40 span').filter({ hasText: '1/2 pages' })
-    await expect(orangeSpan).toHaveClass(/text-\[#F47B20\]/)
+    await expect(orangeSpan).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('page count reverts to normal after re-including a page', async ({ page }) => {
@@ -263,7 +263,7 @@ test.describe('Page Count Badge Enhancement', () => {
     await expect(page.getByText('2/2 pages')).toBeVisible()
 
     const pageSpan = page.locator('.text-xs.text-white\\/40 span').filter({ hasText: '2/2 pages' })
-    await expect(pageSpan).not.toHaveClass(/text-\[#F47B20\]/)
+    await expect(pageSpan).not.toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('single-page file shows singular page text', async ({ page }) => {

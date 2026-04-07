@@ -31,7 +31,7 @@ test.describe('Settings, Themes, and Feedback', () => {
     }))
 
     await page.goto('/')
-    await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
 
     // Dismiss any blocking modal (update modal, changelog, etc.)
     await dismissAnyModal(page)

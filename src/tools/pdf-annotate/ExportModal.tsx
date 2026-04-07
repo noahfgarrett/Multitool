@@ -78,7 +78,7 @@ export function ExportModal({
               </span>
             </div>
             <p className="text-xs text-white/50 leading-relaxed">
-              Annotations visible in any PDF viewer. Edit data preserved — can be reopened in LotusWorks for further editing.
+              Annotations visible in any PDF viewer. Edit data preserved — can be reopened in Multitool for further editing.
             </p>
           </button>
 
@@ -176,7 +176,7 @@ export function ExportModal({
       {/* Final Submittal confirmation dialog */}
       <Modal open={showFinalConfirm} onClose={handleCancelConfirm} title="Confirm Final Export" width="sm">
         <p className="text-sm text-white/70 mb-5 leading-relaxed">
-          Are you sure? This cannot be undone. The exported PDF will not be editable in LotusWorks.
+          Are you sure? This cannot be undone. The exported PDF will not be editable in Multitool.
         </p>
         <div className="flex items-center justify-end gap-3">
           <Button variant="ghost" onClick={handleCancelConfirm}>

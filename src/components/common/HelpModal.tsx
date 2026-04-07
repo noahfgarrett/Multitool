@@ -35,7 +35,7 @@ export function HelpModal({ toolId, open, onClose }: HelpModalProps) {
             <ul className="space-y-1">
               {section.items.map((item, iIdx) => (
                 <li key={iIdx} className="flex items-start gap-2 text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                  <span className="text-[#F47B20] mt-1 flex-shrink-0">&bull;</span>
+                  <span className="text-[#14B8A6] mt-1 flex-shrink-0">&bull;</span>
                   <span>{item}</span>
                 </li>
               ))}
@@ -45,15 +45,15 @@ export function HelpModal({ toolId, open, onClose }: HelpModalProps) {
 
         {/* Tips */}
         {content.tips && content.tips.length > 0 && (
-          <div className="rounded-lg bg-[#F47B20]/[0.06] border border-[#F47B20]/[0.12] p-3">
+          <div className="rounded-lg bg-[#14B8A6]/[0.06] border border-[#14B8A6]/[0.12] p-3">
             <div className="flex items-center gap-1.5 mb-2">
-              <Lightbulb size={13} className="text-[#F47B20]" />
-              <span className="text-xs font-semibold text-[#F47B20]">Tips</span>
+              <Lightbulb size={13} className="text-[#14B8A6]" />
+              <span className="text-xs font-semibold text-[#14B8A6]">Tips</span>
             </div>
             <ul className="space-y-1">
               {content.tips.map((tip, tIdx) => (
                 <li key={tIdx} className="flex items-start gap-2 text-[13px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                  <span className="text-[#F47B20]/60 mt-0.5 flex-shrink-0">&bull;</span>
+                  <span className="text-[#14B8A6]/60 mt-0.5 flex-shrink-0">&bull;</span>
                   <span>{tip}</span>
                 </li>
               ))}

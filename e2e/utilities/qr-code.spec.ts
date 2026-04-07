@@ -4,7 +4,7 @@ import { waitForToolLoad } from '../helpers/navigation'
 test.describe('QR Code tool', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
 
     // Navigate to QR Code tool via sidebar
     const sidebar = page.locator('aside nav')
@@ -23,7 +23,7 @@ test.describe('QR Code tool', () => {
       await expect(tab).toBeVisible()
     }
 
-    // Text tab should be active by default (has bg-[#F47B20] styling)
+    // Text tab should be active by default (has bg-[#14B8A6] styling)
     const textTab = page.locator('button').filter({ hasText: 'Text' }).first()
     await expect(textTab).toHaveCSS('background-color', 'rgb(244, 123, 32)')
 
@@ -42,7 +42,7 @@ test.describe('QR Code tool', () => {
   test('text input generates QR canvas', async ({ page }) => {
     // Type text into the textarea
     const textarea = page.locator('textarea[placeholder="Enter text..."]')
-    await textarea.fill('Hello LotusWorks!')
+    await textarea.fill('Hello Multitool!')
 
     // The empty state message should disappear
     await expect(page.locator('text=Enter content to generate a QR code')).toBeHidden()

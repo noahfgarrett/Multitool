@@ -26,7 +26,7 @@ test.describe('Layers — Toolbar', () => {
     const btn = page.locator('button[title="Layers"]')
     await btn.click()
     await page.waitForTimeout(200)
-    await expect(btn).toHaveClass(/ring-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/ring-\[#14B8A6\]/)
   })
 })
 
@@ -61,7 +61,7 @@ test.describe('Layers — Panel', () => {
     // The "ACTIVE" label should appear near "Layer 1"
     // Check that the active highlight (orange text) is on Layer 1's row
     const layerRow = newLayerLabel.locator('xpath=ancestor::div[contains(@class, "cursor-pointer")]')
-    await expect(layerRow).toHaveClass(/text-\[#F47B20\]/)
+    await expect(layerRow).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('eye toggle hides/shows layer', async ({ page }) => {

@@ -11,6 +11,8 @@ import {
   waitForSessionSave,
   getSessionData,
   clearSessionData,
+  resetWithConfirm,
+  goToPage,
 } from '../../helpers/pdf-annotate'
 
 test.beforeEach(async ({ page }) => {
@@ -256,10 +258,7 @@ test.describe('Session — State Changes Persist', () => {
 
   test('navigating to page 2 updates session currentPage', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
-    await page.waitForTimeout(500)
+    await goToPage(page, 2)
     await waitForSessionSave(page)
     const data = await getSessionData(page)
     expect(data.currentPage).toBe(2)
@@ -423,11 +422,8 @@ test.describe('Session — Clear and Reset', () => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     await waitForSessionSave(page)
-    // Click "New" button — this triggers a styled confirm modal
-    await page.locator('button:has-text("New")').click()
-    await expect(page.locator('h2', { hasText: 'Start Over?' })).toBeVisible()
-    await page.getByRole('button', { name: 'Discard All' }).click()
-    await page.waitForTimeout(500)
+    // Click "New" button — this triggers a native confirm dialog
+    await resetWithConfirm(page)
     // Should return to empty state
     await expect(page.getByText('Drop a PDF file here')).toBeVisible()
     // Session should be cleared
@@ -598,10 +594,7 @@ test.describe('Session — Edge Cases', () => {
     // Draw on page 1
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     // Navigate to page 2
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
-    await page.waitForTimeout(500)
+    await goToPage(page, 2)
     await createAnnotation(page, 'circle', { x: 100, y: 100, w: 100, h: 80 })
     await waitForSessionSave(page)
     const data = await getSessionData(page)

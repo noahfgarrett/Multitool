@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 test.describe('Chaos: Rapid tool switching', () => {
   test('navigate through all 15 tools rapidly via sidebar clicks - no crash', async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
 
     const sidebar = page.locator('aside nav')
 
@@ -50,12 +50,12 @@ test.describe('Chaos: Rapid tool switching', () => {
     // Navigate back to home to confirm full app responsiveness
     const homeButton = sidebar.locator('button').filter({ hasText: 'Home Menu' })
     await homeButton.click()
-    await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' })).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 5000 })
   })
 
   test('rapid back-and-forth between two tools stays stable', async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
 
     const sidebar = page.locator('aside nav')
     const qrButton = sidebar.locator('button').filter({ hasText: 'QR Code' })
@@ -85,7 +85,7 @@ test.describe('Chaos: Rapid tool switching', () => {
 
   test('rapid switching between home and tools stays stable', async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
 
     const sidebar = page.locator('aside nav')
     const homeButton = sidebar.locator('button').filter({ hasText: 'Home Menu' })
@@ -102,7 +102,7 @@ test.describe('Chaos: Rapid tool switching', () => {
     }
 
     // End on home - verify welcome screen renders
-    await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' })).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 5000 })
 
     // Sidebar should still work
     const qrButton = sidebar.locator('button').filter({ hasText: 'QR Code' })

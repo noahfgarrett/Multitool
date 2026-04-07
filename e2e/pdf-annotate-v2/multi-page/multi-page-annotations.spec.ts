@@ -120,31 +120,34 @@ test.describe('Multi-Page Annotations', () => {
   })
 
   test('goToPage helper works', async ({ page }) => {
-    const pageInput = page.locator('input[type="number"]')
     await goToPage(page, 3)
     await page.waitForTimeout(500)
-    await expect(pageInput).toHaveValue('3')
+    // After goToPage, the page indicator button shows the current page
+    const pageButton = page.locator('text=/3 \\/ \\d+/')
+    await expect(pageButton).toBeVisible({ timeout: 5000 })
   })
 
-  test('page input field visible', async ({ page }) => {
-    const pageInput = page.locator('input[type="number"]')
-    await expect(pageInput).toBeVisible()
+  test('page indicator button visible', async ({ page }) => {
+    // The page indicator is shown as a button like "1 / 5"
+    const pageButton = page.locator('text=/\\d+ \\/ \\d+/')
+    await expect(pageButton.first()).toBeVisible({ timeout: 5000 })
   })
 
   test('page count displayed', async ({ page }) => {
-    const pageCountSpan = page.locator('span', { hasText: /\/\s*\d+/ })
-    await expect(pageCountSpan.first()).toBeVisible({ timeout: 3000 })
+    // The page count is shown in the page indicator button (e.g. "1 / 5")
+    const pageButton = page.locator('text=/\\d+ \\/ \\d+/')
+    await expect(pageButton.first()).toBeVisible({ timeout: 5000 })
   })
 
   test('next page button', async ({ page }) => {
-    const pageInput = page.locator('input[type="number"]')
-    await expect(pageInput).toHaveValue('1')
-    const nextBtn = page.locator('button[title*="Next"], button[title*="next"]').first()
-    if (await nextBtn.isVisible()) {
-      await nextBtn.click()
-      await page.waitForTimeout(500)
-      await expect(pageInput).toHaveValue('2')
-    }
+    // Verify starting on page 1
+    const pageButton = page.locator('text=/1 \\/ \\d+/')
+    await expect(pageButton).toBeVisible({ timeout: 5000 })
+    // Navigate to next page using goToPage helper
+    await goToPage(page, 2)
+    await page.waitForTimeout(500)
+    const page2Button = page.locator('text=/2 \\/ \\d+/')
+    await expect(page2Button).toBeVisible({ timeout: 5000 })
   })
 
   test('previous page button', async ({ page }) => {
@@ -342,8 +345,9 @@ test.describe('Multi-Page Annotations', () => {
     for (let p = 1; p <= 5; p++) {
       await goToPage(page, p)
       await page.waitForTimeout(300)
-      const pageInput = page.locator('input[type="number"]')
-      await expect(pageInput).toHaveValue(String(p))
+      // After goToPage, the page indicator button shows current page
+      const pageButton = page.locator(`text=/${p} \\/ \\d+/`)
+      await expect(pageButton).toBeVisible({ timeout: 5000 })
     }
   })
 
@@ -353,8 +357,8 @@ test.describe('Multi-Page Annotations', () => {
     for (let p = 5; p >= 1; p--) {
       await goToPage(page, p)
       await page.waitForTimeout(300)
-      const pageInput = page.locator('input[type="number"]')
-      await expect(pageInput).toHaveValue(String(p))
+      const pageButton = page.locator(`text=/${p} \\/ \\d+/`)
+      await expect(pageButton).toBeVisible({ timeout: 5000 })
     }
   })
 

@@ -100,7 +100,7 @@ function Section({
 
 // ── Select helper ───────────────────────────────
 
-const selectClass = 'w-full px-3 py-2 text-sm bg-dark-bg border border-dark-border rounded-lg text-dark-text-primary focus:outline-none focus:ring-1 focus:ring-[#F47B20]'
+const selectClass = 'w-full px-3 py-2 text-sm bg-dark-bg border border-dark-border rounded-lg text-dark-text-primary focus:outline-none focus:ring-1 focus:ring-[#14B8A6]'
 const inputClass = selectClass
 
 // ── Props ───────────────────────────────────────
@@ -251,10 +251,10 @@ export function ChartConfigurator({
       <div className="flex-1 overflow-y-auto">
         {/* Recommendations */}
         {recommendations.length > 0 && recommendations[0].confidence !== 'low' && (
-          <div className="px-4 py-3 bg-[#F47B20]/10 border-b border-[#F47B20]/20">
+          <div className="px-4 py-3 bg-[#14B8A6]/10 border-b border-[#14B8A6]/20">
             <button
               onClick={() => setShowRecommendations(!showRecommendations)}
-              className="flex items-center gap-2 text-sm font-medium text-[#F47B20] w-full"
+              className="flex items-center gap-2 text-sm font-medium text-[#14B8A6] w-full"
             >
               <Zap className="w-4 h-4" />
               Recommended: {CHART_TYPES.find(t => t.value === recommendations[0].type)?.label}
@@ -268,8 +268,8 @@ export function ChartConfigurator({
                     onClick={() => updateConfig({ type: rec.type })}
                     className={`text-left p-2 rounded-lg text-sm transition-colors ${
                       config.type === rec.type
-                        ? 'bg-[#F47B20]/20 text-[#F47B20]'
-                        : 'hover:bg-[#F47B20]/10 text-dark-text-secondary'
+                        ? 'bg-[#14B8A6]/20 text-[#14B8A6]'
+                        : 'hover:bg-[#14B8A6]/10 text-dark-text-secondary'
                     }`}
                   >
                     <span className="font-medium">{CHART_TYPES.find(t => t.value === rec.type)?.label}</span>
@@ -291,7 +291,7 @@ export function ChartConfigurator({
                 onClick={() => updateConfig({ type: type.value })}
                 className={`p-2 rounded-lg border text-center transition-all ${
                   config.type === type.value
-                    ? 'border-[#F47B20] bg-[#F47B20]/10 ring-1 ring-[#F47B20]'
+                    ? 'border-[#14B8A6] bg-[#14B8A6]/10 ring-1 ring-[#14B8A6]'
                     : 'border-dark-border hover:border-white/[0.12]'
                 }`}
                 title={type.label}
@@ -326,7 +326,7 @@ export function ChartConfigurator({
         {/* Data Configuration */}
         <Section title="Data" badge={
           supportsMultiSeries && currentSeries.length > 1 ? (
-            <span className="text-xs bg-[#F47B20]/20 text-[#F47B20] px-2 py-0.5 rounded-full">
+            <span className="text-xs bg-[#14B8A6]/20 text-[#14B8A6] px-2 py-0.5 rounded-full">
               {currentSeries.length} series
             </span>
           ) : null
@@ -355,7 +355,7 @@ export function ChartConfigurator({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className="block text-sm font-medium text-dark-text-muted">Value Series</label>
-                <button onClick={addSeries} className="flex items-center gap-1 text-xs text-[#F47B20]">
+                <button onClick={addSeries} className="flex items-center gap-1 text-xs text-[#14B8A6]">
                   <Plus className="w-3 h-3" /> Add Series
                 </button>
               </div>
@@ -363,7 +363,7 @@ export function ChartConfigurator({
               {currentSeries.length === 0 && (
                 <button
                   onClick={addSeries}
-                  className="w-full p-3 border-2 border-dashed border-dark-border rounded-lg text-sm text-dark-text-muted hover:border-[#F47B20]/40 hover:text-[#F47B20] transition-colors"
+                  className="w-full p-3 border-2 border-dashed border-dark-border rounded-lg text-sm text-dark-text-muted hover:border-[#14B8A6]/40 hover:text-[#14B8A6] transition-colors"
                 >
                   <Plus className="w-4 h-4 mx-auto mb-1" /> Add a data series
                 </button>
@@ -419,7 +419,7 @@ export function ChartConfigurator({
                             onClick={() => updateSeries(series.id, { renderAs: rt.value })}
                             className={`px-2 py-1 text-xs ${
                               series.renderAs === rt.value
-                                ? 'bg-[#F47B20]/20 text-[#F47B20]'
+                                ? 'bg-[#14B8A6]/20 text-[#14B8A6]'
                                 : 'hover:bg-white/[0.03] text-dark-text-muted'
                             }`}
                             title={rt.label}
@@ -530,7 +530,7 @@ export function ChartConfigurator({
         {rows.length > 0 && onFilterChange && (
           <Section title="Data Filter" defaultOpen={false} badge={
             localFilter.children.length > 0 ? (
-              <span className="px-2 py-0.5 text-xs rounded-full bg-[#F47B20]/20 text-[#F47B20]">
+              <span className="px-2 py-0.5 text-xs rounded-full bg-[#14B8A6]/20 text-[#14B8A6]">
                 {localFilter.children.length}
               </span>
             ) : null
@@ -546,7 +546,7 @@ export function ChartConfigurator({
                       key={logic}
                       onClick={() => setLocalFilter(prev => ({ ...prev, logic }))}
                       className={`px-3 py-1 text-xs font-medium ${
-                        localFilter.logic === logic ? 'bg-[#F47B20] text-white' : 'bg-dark-bg text-dark-text-muted hover:bg-white/[0.03]'
+                        localFilter.logic === logic ? 'bg-[#14B8A6] text-white' : 'bg-dark-bg text-dark-text-muted hover:bg-white/[0.03]'
                       }`}
                     >
                       {logic === 'AND' ? 'ALL' : 'ANY'}
@@ -572,7 +572,7 @@ export function ChartConfigurator({
                     <div key={condition.id}>
                       {index > 0 && (
                         <div className="flex items-center gap-2 py-1">
-                          <span className="text-xs font-medium text-[#F47B20] uppercase">{localFilter.logic}</span>
+                          <span className="text-xs font-medium text-[#14B8A6] uppercase">{localFilter.logic}</span>
                           <div className="flex-1 border-t border-dark-border" />
                         </div>
                       )}
@@ -607,7 +607,7 @@ export function ChartConfigurator({
             </div>
 
             <div className="flex items-center justify-between mt-3 pt-3 border-t border-dark-border">
-              <button onClick={addFilterCondition} className="flex items-center gap-1.5 text-sm text-[#F47B20]">
+              <button onClick={addFilterCondition} className="flex items-center gap-1.5 text-sm text-[#14B8A6]">
                 <Plus className="w-4 h-4" /> Add Condition
               </button>
               <div className="flex items-center gap-2">
@@ -617,7 +617,7 @@ export function ChartConfigurator({
                 {localFilter.children.length > 0 && (
                   <button onClick={clearFilter} className="text-xs text-red-400 hover:text-red-300">Clear</button>
                 )}
-                <button onClick={applyFilter} className="px-3 py-1 text-xs font-medium bg-[#F47B20] text-white rounded-lg">
+                <button onClick={applyFilter} className="px-3 py-1 text-xs font-medium bg-[#14B8A6] text-white rounded-lg">
                   Apply
                 </button>
               </div>
@@ -677,7 +677,7 @@ export function ChartConfigurator({
                     onClick={() => updateConfig({ legendPosition: pos.value })}
                     className={`flex-1 px-2 py-1.5 text-xs font-medium rounded-lg border transition-all ${
                       (config.legendPosition ?? 'bottom') === pos.value
-                        ? 'border-[#F47B20] bg-[#F47B20]/10 text-[#F47B20]'
+                        ? 'border-[#14B8A6] bg-[#14B8A6]/10 text-[#14B8A6]'
                         : 'border-dark-border text-dark-text-muted hover:border-white/[0.12]'
                     }`}
                   >
@@ -709,7 +709,7 @@ export function ChartConfigurator({
                     onClick={() => updateConfig({ pieLabelPosition: pos.value, showPieLabels: pos.value !== 'none' })}
                     className={`flex-1 px-2 py-1.5 text-xs font-medium rounded-lg border transition-all ${
                       (config.pieLabelPosition ?? 'inside') === pos.value
-                        ? 'border-[#F47B20] bg-[#F47B20]/10 text-[#F47B20]'
+                        ? 'border-[#14B8A6] bg-[#14B8A6]/10 text-[#14B8A6]'
                         : 'border-dark-border text-dark-text-muted'
                     }`}
                   >
@@ -733,7 +733,7 @@ export function ChartConfigurator({
                     onClick={() => updateConfig({ format: fmt.value })}
                     className={`px-2 py-1.5 text-xs rounded-lg border transition-all ${
                       (config.format ?? 'number') === fmt.value
-                        ? 'border-[#F47B20] bg-[#F47B20]/10 text-[#F47B20]'
+                        ? 'border-[#14B8A6] bg-[#14B8A6]/10 text-[#14B8A6]'
                         : 'border-dark-border text-dark-text-muted'
                     }`}
                   >
@@ -769,7 +769,7 @@ export function ChartConfigurator({
                 onClick={() => updateConfig({ colors: [...palette.colors] })}
                 className={`w-full flex items-center gap-3 p-2 rounded-lg border transition-all ${
                   JSON.stringify(config.colors) === JSON.stringify(palette.colors)
-                    ? 'border-[#F47B20] bg-[#F47B20]/10'
+                    ? 'border-[#14B8A6] bg-[#14B8A6]/10'
                     : 'border-dark-border hover:border-white/[0.12]'
                 }`}
               >

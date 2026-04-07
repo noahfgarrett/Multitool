@@ -293,7 +293,7 @@ export function TableDataSelector({
               <select
                 value={rowLimit}
                 onChange={(e) => setRowLimit(e.target.value as RowLimit)}
-                className="appearance-none pl-3 pr-7 py-1.5 text-xs bg-white/[0.04] border border-white/[0.08] rounded-lg text-dark-text-muted focus:outline-none focus:border-[#F47B20]/50 cursor-pointer"
+                className="appearance-none pl-3 pr-7 py-1.5 text-xs bg-white/[0.04] border border-white/[0.08] rounded-lg text-dark-text-muted focus:outline-none focus:border-[#14B8A6]/50 cursor-pointer"
               >
                 {ROW_LIMIT_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -697,7 +697,7 @@ export function TableDataSelector({
             <button
               onClick={onClose}
               disabled={!xColumn || !yColumn}
-              className="px-4 py-2 text-sm font-medium bg-[#F47B20] hover:bg-[#e06a10] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-30 disabled:pointer-events-none"
+              className="px-4 py-2 text-sm font-medium bg-[#14B8A6] hover:bg-[#e06a10] text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-30 disabled:pointer-events-none"
             >
               Apply Selection
               <ArrowRight size={14} />

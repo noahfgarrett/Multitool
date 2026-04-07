@@ -53,7 +53,7 @@ test.describe('Find Bar — Opening & Closing', () => {
     const findBtn = page.locator('button[title="Find text (Ctrl+F)"]')
     await page.keyboard.press('Control+f')
     await page.waitForTimeout(200)
-    await expect(findBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(findBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 })
 
@@ -181,10 +181,10 @@ test.describe('Find Bar — Enter to Search', () => {
     await page.waitForTimeout(200)
     const aaBtn = page.locator('button').filter({ hasText: 'Aa' })
     const classesBefore = await aaBtn.getAttribute('class') || ''
-    expect(classesBefore).not.toContain('text-[#F47B20]')
+    expect(classesBefore).not.toContain('text-[#14B8A6]')
     await aaBtn.click()
     await page.waitForTimeout(100)
-    await expect(aaBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(aaBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 })
 

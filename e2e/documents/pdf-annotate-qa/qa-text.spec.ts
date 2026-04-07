@@ -362,7 +362,7 @@ test.describe('QA Text — Bold / Italic / Underline', () => {
     const boldBtn = page.locator('button[title="Bold (Ctrl+B)"]')
     await boldBtn.click()
     await page.waitForTimeout(100)
-    await expect(boldBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(boldBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('formatting persists across edit sessions', async ({ page }) => {
@@ -735,7 +735,7 @@ test.describe('QA Text — Properties Sync', () => {
     await page.waitForTimeout(300)
     const boldBtn = page.locator('button[title="Bold (Ctrl+B)"]')
     if (await boldBtn.isVisible()) {
-      await expect(boldBtn).toHaveClass(/text-\[#F47B20\]/)
+      await expect(boldBtn).toHaveClass(/text-\[#14B8A6\]/)
     }
   })
 

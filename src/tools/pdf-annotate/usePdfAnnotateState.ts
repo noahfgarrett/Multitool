@@ -116,7 +116,7 @@ export function usePdfAnnotateState() {
   const [pdfFile, setPdfFile] = useState<PDFFile | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [activeTool, setActiveTool] = useState<ToolType>('select')
-  const [color, setColor] = useState('#F47B20')
+  const [color, setColor] = useState('#14B8A6')
   const [strokeWidth, setStrokeWidth] = useState(2)
   const [opacity, setOpacity] = useState(100)
   const [fontSize, setFontSize] = useState(16)
@@ -185,7 +185,7 @@ export function usePdfAnnotateState() {
 
   // Tool presets
   const [toolPresets, setToolPresets] = useState<ToolPreset[]>(() => {
-    try { return JSON.parse(localStorage.getItem('lwt-tool-presets') || '[]') } catch { return [] }
+    try { return JSON.parse(localStorage.getItem('mt-tool-presets') || '[]') } catch { return [] }
   })
   const [presetsOpen, setPresetsOpen] = useState(false)
 

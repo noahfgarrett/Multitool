@@ -37,9 +37,9 @@ export function WelcomeScreen() {
               absolute top-8 right-0
               flex items-center gap-2
               px-4 py-2 rounded-full
-              border border-[#F47B20]/40
-              text-[#F47B20] text-sm font-medium
-              hover:bg-[#F47B20]/15 hover:border-[#F47B20]/60
+              border border-[#14B8A6]/40
+              text-[#14B8A6] text-sm font-medium
+              hover:bg-[#14B8A6]/15 hover:border-[#14B8A6]/60
               transition-colors duration-200
             "
           >
@@ -50,13 +50,13 @@ export function WelcomeScreen() {
           {/* Profile avatar */}
           {profile && (
             <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 rounded-full border-2 border-[#F47B20]/30 flex items-center justify-center overflow-hidden" style={{ background: 'color-mix(in srgb, var(--bg-elevated) 80%, transparent)' }}>
+              <div className="w-16 h-16 rounded-full border-2 border-[#14B8A6]/30 flex items-center justify-center overflow-hidden" style={{ background: 'color-mix(in srgb, var(--bg-elevated) 80%, transparent)' }}>
                 {profile.photo ? (
                   <img src={profile.photo} alt="" className="w-full h-full object-cover" />
                 ) : profile.initials ? (
-                  <span className="text-xl font-bold text-[#F47B20]">{profile.initials}</span>
+                  <span className="text-xl font-bold text-[#14B8A6]">{profile.initials}</span>
                 ) : (
-                  <User size={28} className="text-[#F47B20]/50" />
+                  <User size={28} className="text-[#14B8A6]/50" />
                 )}
               </div>
             </div>
@@ -64,11 +64,11 @@ export function WelcomeScreen() {
 
           {firstName ? (
             <h1 className="text-4xl font-display font-bold mb-3" style={{ color: 'var(--text-primary)' }}>
-              Welcome back, <span className="text-[#F47B20]">{firstName}</span>
+              Welcome back, <span className="text-[#14B8A6]">{firstName}</span>
             </h1>
           ) : (
-            <h1 className="text-4xl font-display font-bold text-[#F47B20] mb-3">
-              LotusWorks Toolkit
+            <h1 className="text-4xl font-display font-bold text-[#14B8A6] mb-3">
+              Multitool
             </h1>
           )}
           <p className="text-lg max-w-lg mx-auto" style={{ color: 'var(--text-muted)' }}>
@@ -84,7 +84,7 @@ export function WelcomeScreen() {
             return (
               <div key={cat.id}>
                 <div className="flex items-center gap-2 mb-3">
-                  {CatIcon && <CatIcon size={16} className="text-lotus-orange" />}
+                  {CatIcon && <CatIcon size={16} className="text-apex-teal" />}
                   <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                     {cat.label}
                   </h2>
@@ -100,17 +100,17 @@ export function WelcomeScreen() {
                         className="
                           group flex flex-col items-start gap-2 p-4 rounded-xl
                           border transition-all duration-200 text-left
-                          hover:border-[#F47B20]/30 hover:bg-[#F47B20]/[0.06]
+                          hover:border-[#14B8A6]/30 hover:bg-[#14B8A6]/[0.06]
                         "
                         style={{
                           borderColor: 'var(--border-subtle)',
                           backgroundColor: 'color-mix(in srgb, var(--bg-surface) 40%, transparent)',
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = 'rgba(244,123,32,0.3)'
-                          e.currentTarget.style.backgroundColor = 'rgba(244,123,32,0.08)'
+                          e.currentTarget.style.borderColor = 'rgba(20,184,166,0.3)'
+                          e.currentTarget.style.backgroundColor = 'rgba(20,184,166,0.08)'
                           const icon = e.currentTarget.querySelector('[data-icon]') as HTMLElement
-                          if (icon) { icon.style.color = '#F47B20'; icon.style.backgroundColor = 'rgba(244,123,32,0.1)' }
+                          if (icon) { icon.style.color = '#14B8A6'; icon.style.backgroundColor = 'rgba(20,184,166,0.1)' }
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.borderColor = 'var(--border-subtle)'

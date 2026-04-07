@@ -181,7 +181,7 @@ export function ChatBubble({
 
           {/* Reply button */}
           <button
-            className="flex items-center gap-1 mt-1 text-[10px] text-white/30 hover:text-[#F47B20] transition-colors"
+            className="flex items-center gap-1 mt-1 text-[10px] text-white/30 hover:text-[#14B8A6] transition-colors"
             onClick={() => {
               setReplyTarget(comment)
               inputRef.current?.focus()
@@ -317,7 +317,7 @@ export function ChatBubble({
         {replyTarget && (
           <div className="flex items-center justify-between px-3 py-1.5 bg-white/[0.04] border-t border-white/[0.06]">
             <span className="text-[10px] text-white/50">
-              Replying to <span className="text-[#F47B20] font-medium">{replyTarget.authorName}</span>
+              Replying to <span className="text-[#14B8A6] font-medium">{replyTarget.authorName}</span>
             </span>
             <button
               className="text-[10px] text-white/30 hover:text-white transition-colors"
@@ -339,7 +339,7 @@ export function ChatBubble({
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder="Add a comment..."
-            className="flex-1 bg-white/[0.06] border border-white/[0.1] rounded-md px-2.5 py-1.5 text-xs text-white placeholder:text-white/30 outline-none focus:border-[#F47B20]/50 transition-colors"
+            className="flex-1 bg-white/[0.06] border border-white/[0.1] rounded-md px-2.5 py-1.5 text-xs text-white placeholder:text-white/30 outline-none focus:border-[#14B8A6]/50 transition-colors"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
@@ -350,7 +350,7 @@ export function ChatBubble({
           <button
             type="submit"
             disabled={!inputText.trim()}
-            className="flex-shrink-0 p-1.5 rounded-md bg-[#F47B20] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#E06D15] transition-colors"
+            className="flex-shrink-0 p-1.5 rounded-md bg-[#14B8A6] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#0D9488] transition-colors"
           >
             <Send size={14} />
           </button>

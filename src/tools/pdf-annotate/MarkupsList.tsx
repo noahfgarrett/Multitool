@@ -236,7 +236,7 @@ export default function MarkupsList({
         className="flex items-center justify-between px-4 py-2 hover:bg-white/[0.03] transition-colors w-full text-left shrink-0"
       >
         <div className="flex items-center gap-2">
-          <List size={16} className="text-[#F47B20]" />
+          <List size={16} className="text-[#14B8A6]" />
           <span className="text-white font-semibold text-sm">
             Markups ({totalCount})
           </span>
@@ -273,7 +273,7 @@ export default function MarkupsList({
             <select
               value={typeFilter}
               onChange={e => setTypeFilter(e.target.value)}
-              className="bg-white/[0.05] border border-white/[0.1] text-white/60 text-xs rounded px-2 py-1 outline-none focus:border-[#F47B20]/50"
+              className="bg-white/[0.05] border border-white/[0.1] text-white/60 text-xs rounded px-2 py-1 outline-none focus:border-[#14B8A6]/50"
             >
               <option value="all" className="bg-[#1a1a2e] text-white">All Types</option>
               {uniqueTypes.map(t => (
@@ -287,7 +287,7 @@ export default function MarkupsList({
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value as CommentStatus | 'all')}
-              className="bg-white/[0.05] border border-white/[0.1] text-white/60 text-xs rounded px-2 py-1 outline-none focus:border-[#F47B20]/50"
+              className="bg-white/[0.05] border border-white/[0.1] text-white/60 text-xs rounded px-2 py-1 outline-none focus:border-[#14B8A6]/50"
             >
               <option value="all" className="bg-[#1a1a2e] text-white">All Statuses</option>
               {STATUS_FILTER_OPTIONS.map(s => (
@@ -301,7 +301,7 @@ export default function MarkupsList({
             <select
               value={layerFilter}
               onChange={e => setLayerFilter(e.target.value)}
-              className="bg-white/[0.05] border border-white/[0.1] text-white/60 text-xs rounded px-2 py-1 outline-none focus:border-[#F47B20]/50"
+              className="bg-white/[0.05] border border-white/[0.1] text-white/60 text-xs rounded px-2 py-1 outline-none focus:border-[#14B8A6]/50"
             >
               <option value="all" className="bg-[#1a1a2e] text-white">All Layers</option>
               {layers.map(l => (
@@ -390,7 +390,7 @@ export default function MarkupsList({
                         onClick={() => onSelectAnnotation(row.id, row.page)}
                         className={`group border-b border-white/[0.03] cursor-pointer transition-colors ${
                           isSelected
-                            ? 'bg-[#F47B20]/10'
+                            ? 'bg-[#14B8A6]/10'
                             : 'hover:bg-white/[0.04]'
                         }`}
                       >

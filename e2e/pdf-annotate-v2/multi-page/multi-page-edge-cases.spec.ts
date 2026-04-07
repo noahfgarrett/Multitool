@@ -36,36 +36,42 @@ test.describe('Multi-Page Edge Cases', () => {
   })
 
   test('page number input accept valid page', async ({ page }) => {
-    const pageInput = page.locator('input[type="number"]')
     await goToPage(page, 3)
     await page.waitForTimeout(500)
-    await expect(pageInput).toHaveValue('3')
+    // After goToPage, the page indicator shows the new page
+    const pageButton = page.locator('text=/3 \\/ \\d+/')
+    await expect(pageButton).toBeVisible({ timeout: 5000 })
   })
 
   test('page number input reject invalid (0, negative, > max)', async ({ page }) => {
-    // Navigate to page 2 first so entering 0 will clamp and cause a page change
+    // Navigate to page 2 first
     await goToPage(page, 2)
     await page.waitForTimeout(500)
+    // Click page indicator to show input
+    const pageButton = page.locator('text=/\\d+ \\/ \\d+/')
+    await pageButton.click()
+    await page.waitForTimeout(200)
     const pageInput = page.locator('input[type="number"]')
     await pageInput.fill('0')
-    // The input uses onBlur to navigate, not onChange
     await pageInput.blur()
     await page.waitForTimeout(500)
-    // The page should clamp to 1 — verify via the input's new value after remount
-    const val = await pageInput.inputValue()
-    const num = parseInt(val)
-    expect(num).toBeGreaterThanOrEqual(1)
+    // The page should clamp to 1 — verify via the page indicator button
+    const page1Button = page.locator('text=/1 \\/ \\d+/')
+    await expect(page1Button).toBeVisible({ timeout: 5000 })
   })
 
   test('page number input clamp to range', async ({ page }) => {
+    // Click page indicator to show input
+    const pageButton = page.locator('text=/\\d+ \\/ \\d+/')
+    await pageButton.click()
+    await page.waitForTimeout(200)
     const pageInput = page.locator('input[type="number"]')
     await pageInput.fill('100')
-    // The input uses onBlur to navigate, not onChange
     await pageInput.blur()
     await page.waitForTimeout(500)
-    const val = await pageInput.inputValue()
-    const num = parseInt(val)
-    expect(num).toBeLessThanOrEqual(5)
+    // The page should clamp to max (5) — verify via the indicator
+    const page5Button = page.locator('text=/5 \\/ \\d+/')
+    await expect(page5Button).toBeVisible({ timeout: 5000 })
   })
 
   test('draw on page 1 check page 2 empty', async ({ page }) => {
@@ -88,8 +94,8 @@ test.describe('Multi-Page Edge Cases', () => {
   test('navigate to last page', async ({ page }) => {
     await goToPage(page, 5)
     await page.waitForTimeout(500)
-    const pageInput = page.locator('input[type="number"]')
-    await expect(pageInput).toHaveValue('5')
+    const pageButton = page.locator('text=/5 \\/ \\d+/')
+    await expect(pageButton).toBeVisible({ timeout: 5000 })
   })
 
   test('navigate to first page', async ({ page }) => {
@@ -97,34 +103,39 @@ test.describe('Multi-Page Edge Cases', () => {
     await page.waitForTimeout(500)
     await goToPage(page, 1)
     await page.waitForTimeout(500)
-    const pageInput = page.locator('input[type="number"]')
-    await expect(pageInput).toHaveValue('1')
+    const pageButton = page.locator('text=/1 \\/ \\d+/')
+    await expect(pageButton).toBeVisible({ timeout: 5000 })
   })
 
   test('navigate beyond last (stays)', async ({ page }) => {
+    // Click page indicator to show input
+    const pageButton = page.locator('text=/\\d+ \\/ \\d+/')
+    await pageButton.click()
+    await page.waitForTimeout(200)
     const pageInput = page.locator('input[type="number"]')
     await pageInput.fill('10')
-    // The input uses onBlur to navigate, not onChange
     await pageInput.blur()
     await page.waitForTimeout(500)
-    const val = await pageInput.inputValue()
-    const num = parseInt(val)
-    expect(num).toBeLessThanOrEqual(5)
+    // Should clamp to last page (5)
+    const page5Button = page.locator('text=/5 \\/ \\d+/')
+    await expect(page5Button).toBeVisible({ timeout: 5000 })
   })
 
   test('navigate before first (stays)', async ({ page }) => {
-    // Navigate to page 2 first so entering -1 will clamp and cause a page change
+    // Navigate to page 2 first
     await goToPage(page, 2)
     await page.waitForTimeout(500)
+    // Click page indicator to show input
+    const pageButton = page.locator('text=/\\d+ \\/ \\d+/')
+    await pageButton.click()
+    await page.waitForTimeout(200)
     const pageInput = page.locator('input[type="number"]')
     await pageInput.fill('-1')
-    // The input uses onBlur to navigate, not onChange
     await pageInput.blur()
     await page.waitForTimeout(500)
-    // The page should clamp to 1
-    const val = await pageInput.inputValue()
-    const num = parseInt(val)
-    expect(num).toBeGreaterThanOrEqual(1)
+    // Should clamp to 1
+    const page1Button = page.locator('text=/1 \\/ \\d+/')
+    await expect(page1Button).toBeVisible({ timeout: 5000 })
   })
 
   test('rapid navigation (click next 20 times on 5-page)', async ({ page }) => {
@@ -338,9 +349,9 @@ test.describe('Multi-Page Edge Cases', () => {
   })
 
   test('multi-page with large file (5 pages)', async ({ page }) => {
-    // multi-page.pdf has 5 pages
-    const pageCountSpan = page.locator('span', { hasText: /\/\s*5/ })
-    await expect(pageCountSpan.first()).toBeVisible({ timeout: 5000 })
+    // multi-page.pdf has 5 pages — page indicator button shows "1 / 5"
+    const pageButton = page.locator('text=/\\d+ \\/ 5/')
+    await expect(pageButton.first()).toBeVisible({ timeout: 5000 })
   })
 
   test('multi-page performance (draw on each page)', async ({ page }) => {
@@ -363,7 +374,7 @@ test.describe('Multi-Page Edge Cases', () => {
       await createAnnotation(page, 'pencil', { x: 100, y: 100, w: 80, h: 30 })
     }
     await waitForSessionSave(page)
-    const raw = await page.evaluate(() => sessionStorage.getItem('lwt-pdf-annotate-session'))
+    const raw = await page.evaluate(() => sessionStorage.getItem('mt-pdf-annotate-session'))
     expect(raw).toBeTruthy()
     expect(raw!.length).toBeLessThan(1_000_000)
   })
@@ -380,16 +391,18 @@ test.describe('Multi-Page Edge Cases', () => {
   })
 
   test('page indicator shows current page', async ({ page }) => {
-    const pageInput = page.locator('input[type="number"]')
-    await expect(pageInput).toHaveValue('1')
+    const page1Button = page.locator('text=/1 \\/ \\d+/')
+    await expect(page1Button).toBeVisible({ timeout: 5000 })
     await goToPage(page, 3)
     await page.waitForTimeout(500)
-    await expect(pageInput).toHaveValue('3')
+    const page3Button = page.locator('text=/3 \\/ \\d+/')
+    await expect(page3Button).toBeVisible({ timeout: 5000 })
   })
 
   test('page indicator shows total', async ({ page }) => {
-    const pageCountSpan = page.locator('span', { hasText: /\/\s*\d+/ })
-    await expect(pageCountSpan.first()).toBeVisible({ timeout: 3000 })
+    // Page indicator button shows "N / total"
+    const pageButton = page.locator('text=/\\d+ \\/ \\d+/')
+    await expect(pageButton.first()).toBeVisible({ timeout: 5000 })
   })
 
   test('keyboard page navigation', async ({ page }) => {

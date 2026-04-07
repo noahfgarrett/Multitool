@@ -344,8 +344,8 @@ export function CompareMode({ onClose }: CompareModeProps): React.ReactNode {
 
     if (loaded) {
       return (
-        <div className="flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-[#F47B20]/40 bg-[#F47B20]/5 min-h-[180px]">
-          <div className="text-sm font-medium text-[#F47B20]">{label}</div>
+        <div className="flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-[#14B8A6]/40 bg-[#14B8A6]/5 min-h-[180px]">
+          <div className="text-sm font-medium text-[#14B8A6]">{label}</div>
           <div className="text-xs text-white/60 truncate max-w-[200px]">{loaded.name}</div>
           <div className="text-xs text-white/40">{loaded.doc.numPages} page{loaded.doc.numPages !== 1 ? 's' : ''}</div>
           <button
@@ -366,7 +366,7 @@ export function CompareMode({ onClose }: CompareModeProps): React.ReactNode {
       <div
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop(target)}
-        className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-dashed border-white/20 hover:border-[#F47B20]/50 bg-white/[0.02] hover:bg-[#F47B20]/5 transition-all cursor-pointer min-h-[180px]"
+        className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-dashed border-white/20 hover:border-[#14B8A6]/50 bg-white/[0.02] hover:bg-[#14B8A6]/5 transition-all cursor-pointer min-h-[180px]"
         onClick={() => document.getElementById(inputId)?.click()}
       >
         <Upload size={32} className="text-white/30" />
@@ -397,7 +397,7 @@ export function CompareMode({ onClose }: CompareModeProps): React.ReactNode {
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.1] bg-[#00171F]/95 backdrop-blur-sm">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Layers size={18} className="text-[#F47B20]" />
+            <Layers size={18} className="text-[#14B8A6]" />
             <h1 className="text-sm font-semibold text-white">Compare PDFs</h1>
           </div>
 
@@ -412,7 +412,7 @@ export function CompareMode({ onClose }: CompareModeProps): React.ReactNode {
                   className={`
                     px-3 py-1.5 text-xs font-medium rounded-md transition-all
                     ${view === m.value
-                      ? 'bg-[#F47B20] text-white shadow-sm'
+                      ? 'bg-[#14B8A6] text-white shadow-sm'
                       : 'text-white/60 hover:text-white hover:bg-white/[0.06]'
                     }
                   `}

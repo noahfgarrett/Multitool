@@ -17,7 +17,7 @@ test.beforeEach(async ({ page }) => {
 test.describe('Properties — Stroke Color', () => {
   test('stroke color picker visible when drawing tool selected', async ({ page }) => {
     await selectTool(page, 'Pencil (P)')
-    // ANN_COLORS presets: '#000000', '#FF0000', '#FF6600', '#F47B20', etc.
+    // ANN_COLORS presets: '#000000', '#FF0000', '#14B8A6', '#FFFF00', '#22C55E', '#3B82F6', '#8B5CF6', '#EC4899', '#FFFFFF'
     const redPreset = page.locator('button[title="#FF0000"]')
     await expect(redPreset).toBeVisible({ timeout: 3000 })
   })

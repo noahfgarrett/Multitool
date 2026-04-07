@@ -265,7 +265,7 @@ export default function BgRemoveTool() {
 
         {/* Output info */}
         {outputBlob && (
-          <div className="p-3 rounded-lg bg-[#F47B20]/5 border border-[#F47B20]/20 space-y-1">
+          <div className="p-3 rounded-lg bg-[#14B8A6]/5 border border-[#14B8A6]/20 space-y-1">
             <p className="text-xs text-white/40">Output (PNG)</p>
             <p className="text-sm text-white">{originalSize.width} x {originalSize.height}px</p>
             <p className="text-xs text-white/40">{formatFileSize(outputBlob.size)}</p>
@@ -312,7 +312,7 @@ export default function BgRemoveTool() {
                 className={`max-w-full max-h-[60vh] ${isPickingColor ? 'cursor-crosshair' : ''}`}
               />
               {isPickingColor && (
-                <div className="absolute top-2 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-[#F47B20]/90 text-white text-xs font-medium backdrop-blur-sm pointer-events-none">
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-[#14B8A6]/90 text-white text-xs font-medium backdrop-blur-sm pointer-events-none">
                   Click to select the background color
                 </div>
               )}

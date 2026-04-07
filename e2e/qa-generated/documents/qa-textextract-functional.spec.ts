@@ -18,7 +18,7 @@ test.use({
     origins: [{
       origin: BASE_URL,
       localStorage: [{
-        name: 'lwt-user-profile',
+        name: 'mt-user-profile',
         value: JSON.stringify({ name: 'Test User', email: 'test@test.com', initials: 'TU' }),
       }],
     }],

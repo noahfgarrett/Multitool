@@ -225,9 +225,9 @@ export default function FlowchartTool() {
           <div className="p-3 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[10px] text-white/40 space-y-1">
             <p><span className="text-green-400/60">START</span> — Start node</p>
             <p><span className="text-white/60">Plain text</span> — Process step</p>
-            <p><span className="text-[#F47B20]/60">IF</span> — Decision (diamond)</p>
-            <p><span className="text-[#F47B20]/60">THEN / YES</span> — Yes branch</p>
-            <p><span className="text-[#F47B20]/60">OR / NO / ELSE</span> — No branch</p>
+            <p><span className="text-[#14B8A6]/60">IF</span> — Decision (diamond)</p>
+            <p><span className="text-[#14B8A6]/60">THEN / YES</span> — Yes branch</p>
+            <p><span className="text-[#14B8A6]/60">OR / NO / ELSE</span> — No branch</p>
             <p><span className="text-red-400/60">END</span> — End node</p>
           </div>
 
@@ -260,7 +260,7 @@ export default function FlowchartTool() {
             onChange={e => setImportText(e.target.value)}
             rows={10}
             placeholder="Type your flowchart here..."
-            className="w-full px-3 py-2 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white font-mono leading-relaxed resize-none focus:outline-none focus:border-[#F47B20]/40"
+            className="w-full px-3 py-2 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white font-mono leading-relaxed resize-none focus:outline-none focus:border-[#14B8A6]/40"
           />
 
           {/* Actions */}

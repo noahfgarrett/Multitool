@@ -4,6 +4,7 @@ import {
   uploadPDFAndWait, selectTool, drawOnCanvas, getAnnotationCount,
   clickCanvasAt, dragOnCanvas, waitForSessionSave, getSessionData,
   clearSessionData, createAnnotation, moveAnnotation, screenshotCanvas,
+  goToPage, exportPDF,
 } from '../helpers/pdf-annotate'
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -42,7 +43,7 @@ test.describe('Visual Regression', () => {
     await page.waitForTimeout(200)
     // Verify the pencil is active by checking the active class on any toolbar button
     // The shapes dropdown button should now have the active class
-    const activeBtn = page.locator('button.bg-\\[\\#F47B20\\]\\/15').first()
+    const activeBtn = page.locator('button.bg-\\[\\#14B8A6\\]\\/15').first()
     await expect(activeBtn).toBeVisible()
     await expect(page).toHaveScreenshot('toolbar-pencil-active.png', {
       maxDiffPixelRatio: 0.02,
@@ -437,11 +438,7 @@ test.describe('Session Persistence', () => {
   test('session stores current page', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf') // 2-page PDF
     // Navigate to page 2
-    const nextBtn = page.locator('button').filter({ has: page.locator('svg') }).filter({ hasText: '' })
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.press('Enter')
-    await page.waitForTimeout(500)
+    await goToPage(page, 2)
 
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     await waitForSessionSave(page)
@@ -624,32 +621,23 @@ test.describe('Session Persistence', () => {
 // ─── 5. Export / E2E Process ───────────────────────────────────────────────────
 
 test.describe('Export E2E', () => {
-  // showSaveFilePicker can hang in headless Chromium — force fallback to downloadBlob
-  const disablePicker = async (page: import('@playwright/test').Page) => {
-    await page.evaluate(() => { delete (window as Record<string, unknown>)['showSaveFilePicker'] })
-  }
-
   test('export produces a valid PDF download', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await disablePicker(page)
     // Add annotations
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     await createAnnotation(page, 'text', { x: 100, y: 250, w: 150, h: 50 })
 
-    // Click export
-    const downloadPromise = page.waitForEvent('download', { timeout: 30000 })
-    await page.getByText('Export PDF').click()
-    const download = await downloadPromise
+    // Export via helper (handles ExportModal interaction)
+    const download = await exportPDF(page)
 
     // Verify download
-    expect(download.suggestedFilename()).toContain('-annotated.pdf')
+    expect(download.suggestedFilename()).toContain('.pdf')
     const path = await download.path()
     expect(path).toBeTruthy()
   })
 
   test('export preserves all annotation types in PDF', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await disablePicker(page)
     // Draw multiple types
     await createAnnotation(page, 'rectangle', { x: 50, y: 50, w: 100, h: 70 })
     await createAnnotation(page, 'circle', { x: 200, y: 50, w: 80, h: 80 })
@@ -658,33 +646,24 @@ test.describe('Export E2E', () => {
     await createAnnotation(page, 'text', { x: 250, y: 200, w: 150, h: 50 })
     expect(await getAnnotationCount(page)).toBe(5)
 
-    // Export
-    const downloadPromise = page.waitForEvent('download', { timeout: 30000 })
-    await page.getByText('Export PDF').click()
-    const download = await downloadPromise
-
-    expect(download.suggestedFilename()).toContain('-annotated.pdf')
+    const download = await exportPDF(page)
+    expect(download.suggestedFilename()).toContain('.pdf')
   })
 
   test('export with rotated pages produces valid PDF', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await disablePicker(page)
     // Rotate
     await page.locator('button[title="Rotate CW"]').click()
     await page.waitForTimeout(300)
 
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
 
-    const downloadPromise = page.waitForEvent('download', { timeout: 30000 })
-    await page.getByText('Export PDF').click()
-    const download = await downloadPromise
-
-    expect(download.suggestedFilename()).toContain('-annotated.pdf')
+    const download = await exportPDF(page)
+    expect(download.suggestedFilename()).toContain('.pdf')
   })
 
   test('export with measurements produces valid PDF', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await disablePicker(page)
     await selectTool(page, 'Measure (M)')
 
     const canvas = page.locator('canvas').nth(1)
@@ -695,30 +674,20 @@ test.describe('Export E2E', () => {
     await page.mouse.click(box.x + 300, box.y + 100)
     await page.waitForTimeout(300)
 
-    const downloadPromise = page.waitForEvent('download', { timeout: 30000 })
-    await page.getByText('Export PDF').click()
-    const download = await downloadPromise
-
-    expect(download.suggestedFilename()).toContain('-annotated.pdf')
+    const download = await exportPDF(page)
+    expect(download.suggestedFilename()).toContain('.pdf')
   })
 
   test('export button shows loading state during export', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await disablePicker(page)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
 
-    const downloadPromise = page.waitForEvent('download', { timeout: 30000 })
-    await page.getByText('Export PDF').click()
-
-    // The button text may briefly show "Exporting..." during the export process
-    // Just verify the download completes successfully
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 
   test('export after undo produces PDF without undone annotations', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await disablePicker(page)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     await createAnnotation(page, 'circle', { x: 300, y: 100, w: 80, h: 80 })
     expect(await getAnnotationCount(page)).toBe(2)
@@ -728,10 +697,8 @@ test.describe('Export E2E', () => {
     await page.waitForTimeout(200)
     expect(await getAnnotationCount(page)).toBe(1)
 
-    const downloadPromise = page.waitForEvent('download', { timeout: 30000 })
-    await page.getByText('Export PDF').click()
-    const download = await downloadPromise
-    expect(download.suggestedFilename()).toContain('-annotated.pdf')
+    const download = await exportPDF(page)
+    expect(download.suggestedFilename()).toContain('.pdf')
   })
 })
 
@@ -803,10 +770,7 @@ test.describe('Chaos Testing', () => {
     ])
 
     // Switch pages rapidly
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.press('Enter')
-    await page.waitForTimeout(200)
+    await goToPage(page, 2)
 
     // Draw on page 2
     await drawOnCanvas(page, [
@@ -815,9 +779,7 @@ test.describe('Chaos Testing', () => {
     ])
 
     // Switch back
-    await pageInput.fill('1')
-    await pageInput.press('Enter')
-    await page.waitForTimeout(200)
+    await goToPage(page, 1)
 
     await expect(page.locator('canvas').first()).toBeVisible()
   })
@@ -963,14 +925,14 @@ test.describe('Undo/Redo', () => {
     await uploadPDFAndWait(page)
     const undoBtn = page.locator('button[title*="Undo"]')
     // Should be disabled (no history)
-    await expect(undoBtn).toHaveClass(/disabled:opacity-20/)
+    await expect(undoBtn).toBeDisabled()
   })
 
   test('redo button disabled when at end of history', async ({ page }) => {
     await uploadPDFAndWait(page)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     const redoBtn = page.locator('button[title*="Redo"]')
-    await expect(redoBtn).toHaveClass(/disabled:opacity-20/)
+    await expect(redoBtn).toBeDisabled()
   })
 
   test('undo/redo works across multiple annotation types', async ({ page }) => {
@@ -1129,7 +1091,7 @@ test.describe('Keyboard Shortcuts', () => {
       // Verify the tool activated by checking button has the active class
       const btn = page.locator(`button[title*="${title}"]`).first()
       if (await btn.isVisible()) {
-        await expect(btn).toHaveClass(/F47B20/)
+        await expect(btn).toHaveClass(/14B8A6/)
       }
     }
   })
@@ -1152,17 +1114,16 @@ test.describe('Keyboard Shortcuts', () => {
 // ─── 11. Multi-Page ────────────────────────────────────────────────────────────
 
 test.describe('Multi-Page', () => {
-  test('page navigation works with input field', async ({ page }) => {
+  test('page navigation works with page indicator', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf') // 2-page PDF
-    const pageInput = page.locator('input[type="number"]')
-    await expect(pageInput).toBeVisible()
+    // Page indicator shows "1 / 2"
+    await expect(page.locator('text=/^1 \\/ /')).toBeVisible()
 
     // Navigate to page 2
-    await pageInput.fill('2')
-    await pageInput.press('Enter')
-    await page.waitForTimeout(500)
+    await goToPage(page, 2)
 
-    // Status bar should show page 2 (or at least the page should have changed)
+    // Page indicator should show page 2
+    await expect(page.locator('text=/^2 \\/ /')).toBeVisible()
     await expect(page.locator('canvas').first()).toBeVisible()
   })
 

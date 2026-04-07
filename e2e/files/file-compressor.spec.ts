@@ -5,7 +5,7 @@ import { uploadFile } from '../helpers/file-upload'
 test.describe('File Compressor tool', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
 
     // Navigate to File Compressor tool via sidebar
     const sidebar = page.locator('aside nav')

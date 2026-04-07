@@ -103,16 +103,19 @@ test.describe('2A: Sticky Notes', () => {
     await uploadPDFAndWait(page)
     await page.keyboard.press('n')
     await page.waitForTimeout(100)
-    const noteBtn = page.locator('button[title="Sticky Note (N)"]')
-    await expect(noteBtn).toHaveClass(/F47B20/)
+    // Verify note tool is active via status bar hint
+    await expect(page.locator('text=/Click to place a sticky note/').first()).toBeVisible()
   })
 
   test('2A-02 — note tool activates via toolbar button click', async ({ page }) => {
     await uploadPDFAndWait(page)
+    // Expand "More tools" expander in sidebar (has border-dashed class) to reveal Sticky Note button
+    await page.locator('button[title="More tools"].border-dashed').click()
+    await page.waitForTimeout(300)
     await page.locator('button[title="Sticky Note (N)"]').click()
     await page.waitForTimeout(100)
-    const noteBtn = page.locator('button[title="Sticky Note (N)"]')
-    await expect(noteBtn).toHaveClass(/F47B20/)
+    // Verify note tool is active via status bar hint
+    await expect(page.locator('text=/Click to place a sticky note/').first()).toBeVisible()
   })
 
   test('2A-03 — clicking canvas in note mode places a sticky note pin', async ({ page }) => {
@@ -235,14 +238,17 @@ test.describe('2A: Sticky Notes', () => {
 
   test('2A-14 — sticky notes are per-page (multi-page PDF)', async ({ page }) => {
     await uploadPDFAndWait(page, 'multi-page.pdf')
-    await goToPage(page, 1)
+    // Place sticky note on page 1
     await placeStickyNote(page, 200, 200)
     await page.keyboard.press('Escape')
-    await page.waitForTimeout(200)
+    await page.waitForTimeout(500)
+    // Navigate to page 2 and wait for canvas to be visible
     await goToPage(page, 2)
-    await placeStickyNote(page, 300, 300)
+    await page.waitForTimeout(800)
+    // Place sticky note on page 2 — use smaller coords to stay within visible area
+    await placeStickyNote(page, 150, 150)
     await page.keyboard.press('Escape')
-    await page.waitForTimeout(200)
+    await page.waitForTimeout(500)
     await waitForSessionSave(page)
     const session = await getSessionData(page)
     const page1Notes = session.stickyNotes[1] || session.stickyNotes['1'] || []
@@ -575,8 +581,8 @@ test.describe('2B: Comment Threads', () => {
     await typeAndSendComment(page, 'A comment')
     await page.keyboard.press('Escape')
     await page.waitForTimeout(200)
-    // Check the badge on the comments panel button
-    const badge = page.locator('button[title="Comments panel"] span')
+    // Check the badge (small rounded-full span) on the comments panel button
+    const badge = page.locator('button[title="Comments panel"] span.rounded-full')
     await expect(badge).toBeVisible()
     await expect(badge).toHaveText('1')
   })
@@ -1030,7 +1036,7 @@ test.describe('2E: User Profile', () => {
     await uploadPDFAndWait(page)
     // Verify the profile is in localStorage
     const profile = await page.evaluate(() => {
-      const raw = localStorage.getItem('lwt-user-profile')
+      const raw = localStorage.getItem('mt-user-profile')
       return raw ? JSON.parse(raw) : null
     })
     expect(profile).toBeTruthy()
@@ -1047,7 +1053,7 @@ test.describe('2E: User Profile', () => {
 
   test('2E-03 — profile modal appears when no profile in localStorage', async ({ page }) => {
     // Clear the profile before loading
-    await page.evaluate(() => localStorage.removeItem('lwt-user-profile'))
+    await page.evaluate(() => localStorage.removeItem('mt-user-profile'))
     await page.reload()
     await page.waitForTimeout(1000)
     // The "Set Up Your Profile" modal should appear
@@ -1055,7 +1061,7 @@ test.describe('2E: User Profile', () => {
   })
 
   test('2E-04 — profile modal requires name to save', async ({ page }) => {
-    await page.evaluate(() => localStorage.removeItem('lwt-user-profile'))
+    await page.evaluate(() => localStorage.removeItem('mt-user-profile'))
     await page.reload()
     await page.waitForTimeout(1000)
     await expect(page.getByText('Set Up Your Profile')).toBeVisible({ timeout: 5000 })
@@ -1065,7 +1071,7 @@ test.describe('2E: User Profile', () => {
   })
 
   test('2E-05 — filling name enables the save button and auto-generates initials', async ({ page }) => {
-    await page.evaluate(() => localStorage.removeItem('lwt-user-profile'))
+    await page.evaluate(() => localStorage.removeItem('mt-user-profile'))
     await page.reload()
     await page.waitForTimeout(1000)
     await expect(page.getByText('Set Up Your Profile')).toBeVisible({ timeout: 5000 })
@@ -1081,7 +1087,7 @@ test.describe('2E: User Profile', () => {
   })
 
   test('2E-06 — saving profile stores it in localStorage and closes modal', async ({ page }) => {
-    await page.evaluate(() => localStorage.removeItem('lwt-user-profile'))
+    await page.evaluate(() => localStorage.removeItem('mt-user-profile'))
     await page.reload()
     await page.waitForTimeout(1000)
     await expect(page.getByText('Set Up Your Profile')).toBeVisible({ timeout: 5000 })
@@ -1096,7 +1102,7 @@ test.describe('2E: User Profile', () => {
     await expect(page.getByText('Set Up Your Profile')).toBeHidden()
     // Profile should be saved in localStorage
     const profile = await page.evaluate(() => {
-      const raw = localStorage.getItem('lwt-user-profile')
+      const raw = localStorage.getItem('mt-user-profile')
       return raw ? JSON.parse(raw) : null
     })
     expect(profile).toBeTruthy()

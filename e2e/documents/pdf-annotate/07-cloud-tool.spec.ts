@@ -63,7 +63,7 @@ test.describe('Cloud Tool Activation', () => {
   test('Cloud tool button shows active orange styling', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Cloud (K)')
-    await expect(page.locator('button[title="Cloud (K)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Cloud (K)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 })
 

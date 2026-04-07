@@ -193,7 +193,7 @@ export default function FormCreatorTool() {
                 <p className="text-sm text-white/30">Add elements from the left panel or choose a template</p>
                 <button
                   onClick={() => setShowTemplates(true)}
-                  className="px-4 py-2 text-xs bg-[#F47B20]/10 text-[#F47B20] rounded-lg hover:bg-[#F47B20]/20 transition-colors"
+                  className="px-4 py-2 text-xs bg-[#14B8A6]/10 text-[#14B8A6] rounded-lg hover:bg-[#14B8A6]/20 transition-colors"
                 >
                   Browse Templates
                 </button>
@@ -264,8 +264,8 @@ export default function FormCreatorTool() {
               onClick={() => handleSelectTemplate(i)}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left hover:bg-white/[0.04] transition-colors"
             >
-              <div className="w-8 h-8 rounded-lg bg-[#F47B20]/10 flex items-center justify-center flex-shrink-0">
-                <LayoutGrid size={14} className="text-[#F47B20]" />
+              <div className="w-8 h-8 rounded-lg bg-[#14B8A6]/10 flex items-center justify-center flex-shrink-0">
+                <LayoutGrid size={14} className="text-[#14B8A6]" />
               </div>
               <div className="flex-1">
                 <p className="text-sm text-white font-medium">{t.name}</p>

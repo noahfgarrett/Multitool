@@ -56,7 +56,7 @@ test.describe('PDF Merge Tool', () => {
     await expect(page.getByText(/2 files/)).toBeVisible({ timeout: 15000 })
 
     // The order numbers (1, 2) should be visible
-    const orderBadges = page.locator('.bg-\\[\\#F47B20\\]\\/15')
+    const orderBadges = page.locator('.bg-\\[\\#14B8A6\\]\\/15')
     await expect(orderBadges).toHaveCount(2)
 
     // Click "move down" on the first file (sample.pdf)

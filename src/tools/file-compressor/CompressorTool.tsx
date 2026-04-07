@@ -219,7 +219,7 @@ export default function CompressorTool() {
 
       {/* Summary */}
       {allDone && (
-        <div className="p-3 rounded-lg bg-[#F47B20]/5 border border-[#F47B20]/20 flex items-center gap-4">
+        <div className="p-3 rounded-lg bg-[#14B8A6]/5 border border-[#14B8A6]/20 flex items-center gap-4">
           <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>
             <span style={{ color: 'var(--text-primary)' }}>{formatFileSize(totalOriginal)}</span> → <span style={{ color: 'var(--text-primary)' }}>{formatFileSize(totalCompressed)}</span>
           </div>
@@ -256,7 +256,7 @@ export default function CompressorTool() {
               <Check size={14} className="text-emerald-400" />
             )}
             {entry.status === 'processing' && (
-              <div className="w-4 h-4 border-2 border-[#F47B20] border-t-transparent rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-[#14B8A6] border-t-transparent rounded-full animate-spin" />
             )}
             {entry.status === 'error' && (
               <span className="text-xs text-red-400">Error</span>

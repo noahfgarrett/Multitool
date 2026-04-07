@@ -199,7 +199,7 @@ export function FindReplace({
         <button
           onClick={() => setShowReplace(!showReplace)}
           title="Toggle Replace"
-          className={`p-0.5 transition-colors ${showReplace ? 'text-[#F47B20]' : 'text-white/40 hover:text-white'}`}
+          className={`p-0.5 transition-colors ${showReplace ? 'text-[#14B8A6]' : 'text-white/40 hover:text-white'}`}
         >
           <Replace size={14} />
         </button>

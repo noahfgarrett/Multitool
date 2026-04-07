@@ -111,7 +111,7 @@ export function Toolbar({
           onClick={() => setShowVersions(!showVersions)}
           className={`px-2.5 py-1 text-[10px] font-medium rounded transition-colors flex items-center gap-1 ${
             showVersions
-              ? 'text-[#F47B20] bg-[#F47B20]/15'
+              ? 'text-[#14B8A6] bg-[#14B8A6]/15'
               : 'text-white/50 hover:text-white hover:bg-white/[0.06]'
           }`}
           title="Version History"
@@ -181,7 +181,7 @@ function ToolbarButton({
         p-1.5 rounded transition-colors
         ${disabled ? 'opacity-30 pointer-events-none' : ''}
         ${active
-          ? 'bg-[#F47B20]/20 text-[#F47B20]'
+          ? 'bg-[#14B8A6]/20 text-[#14B8A6]'
           : danger
             ? 'text-white/40 hover:text-red-400 hover:bg-red-500/10'
             : 'text-white/40 hover:text-white hover:bg-white/[0.06]'

@@ -563,13 +563,13 @@ test.describe('Undo/Redo — Edge Cases', () => {
   test('undo disabled style has low opacity', async ({ page }) => {
     await uploadPDFAndWait(page)
     const undoBtn = page.locator('button[title="Undo (Ctrl+Z)"]')
-    await expect(undoBtn).toHaveClass(/disabled:opacity-20/)
+    await expect(undoBtn).toHaveClass(/disabled:text-white\/10/)
   })
 
   test('redo disabled style has low opacity', async ({ page }) => {
     await uploadPDFAndWait(page)
     const redoBtn = page.locator('button[title="Redo (Ctrl+Shift+Z)"]')
-    await expect(redoBtn).toHaveClass(/disabled:opacity-20/)
+    await expect(redoBtn).toHaveClass(/disabled:text-white\/10/)
   })
 
   test('undo after duplicate removes the duplicate', async ({ page }) => {

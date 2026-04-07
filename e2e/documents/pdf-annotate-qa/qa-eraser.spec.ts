@@ -247,7 +247,7 @@ test.describe('QA Eraser — Mode Toggle', () => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Eraser (E)')
     const partialBtn = page.locator('button[title="Partial erase"]')
-    await expect(partialBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(partialBtn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('clicking Object switches mode', async ({ page }) => {
@@ -256,7 +256,7 @@ test.describe('QA Eraser — Mode Toggle', () => {
     await page.locator('button[title="Object erase"]').click()
     await page.waitForTimeout(100)
     const objectBtn = page.locator('button[title="Object erase"]')
-    await expect(objectBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(objectBtn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('switching back to Partial works', async ({ page }) => {
@@ -267,7 +267,7 @@ test.describe('QA Eraser — Mode Toggle', () => {
     await page.locator('button[title="Partial erase"]').click()
     await page.waitForTimeout(100)
     const partialBtn = page.locator('button[title="Partial erase"]')
-    await expect(partialBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(partialBtn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('eraser mode saved in session', async ({ page }) => {
@@ -290,7 +290,7 @@ test.describe('QA Eraser — Mode Toggle', () => {
     await selectTool(page, 'Eraser (E)')
     await page.waitForTimeout(100)
     const objectBtn = page.locator('button[title="Object erase"]')
-    await expect(objectBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(objectBtn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('switching modes does not lose radius', async ({ page }) => {

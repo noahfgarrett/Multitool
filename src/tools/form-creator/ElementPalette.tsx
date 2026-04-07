@@ -46,8 +46,8 @@ export function ElementPalette({ onAddElement }: ElementPaletteProps) {
             onClick={() => onAddElement(type)}
             className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left hover:bg-white/[0.04] transition-colors group"
           >
-            <div className="w-7 h-7 rounded-md bg-white/[0.04] flex items-center justify-center flex-shrink-0 group-hover:bg-[#F47B20]/10 transition-colors">
-              <Icon size={13} className="text-white/30 group-hover:text-[#F47B20] transition-colors" />
+            <div className="w-7 h-7 rounded-md bg-white/[0.04] flex items-center justify-center flex-shrink-0 group-hover:bg-[#14B8A6]/10 transition-colors">
+              <Icon size={13} className="text-white/30 group-hover:text-[#14B8A6] transition-colors" />
             </div>
             <div className="min-w-0">
               <p className="text-xs text-white/70 group-hover:text-white transition-colors">{label}</p>

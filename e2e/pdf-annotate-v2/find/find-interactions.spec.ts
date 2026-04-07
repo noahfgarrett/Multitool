@@ -349,7 +349,7 @@ test.describe('Find Interactions', () => {
   })
 
   test('export works while find bar is open', async ({ page }) => {
-    test.setTimeout(300000)
+    test.setTimeout(60000)
     await page.keyboard.press('Control+f')
     await page.waitForTimeout(300)
     const findInput = page.locator('input[placeholder*="Find"]').first()
@@ -358,17 +358,17 @@ test.describe('Find Interactions', () => {
       await page.keyboard.press('Enter')
       await page.waitForTimeout(300)
     }
-    // Click somewhere on the page body to defocus find input before export
-    await page.locator('canvas').first().click({ position: { x: 5, y: 5 } })
+    // Close find bar before exporting — the find bar overlay intercepts pointer events
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(300)
+    // Blur focus away from any input
+    await page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null
+      if (el) el.blur()
+    })
     await page.waitForTimeout(200)
-    try {
-      const download = await exportPDF(page)
-      expect(download).toBeTruthy()
-    } catch {
-      // Export may timeout with find bar open in headless mode
-      const canvas = page.locator('canvas').first()
-      await expect(canvas).toBeVisible()
-    }
+    const download = await exportPDF(page)
+    expect(download).toBeTruthy()
   })
 
   // ─── 10. Find then switch tool (3 tests) ───

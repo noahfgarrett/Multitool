@@ -47,7 +47,7 @@ function ToolbarButton({
         p-1.5 rounded transition-colors
         ${disabled ? 'opacity-30 pointer-events-none' : ''}
         ${active
-          ? 'bg-[#F47B20]/20 text-[#F47B20]'
+          ? 'bg-[#14B8A6]/20 text-[#14B8A6]'
           : danger
             ? 'text-white/40 hover:text-red-400 hover:bg-red-500/10'
             : 'text-white/40 hover:text-white hover:bg-white/[0.06]'
@@ -180,7 +180,7 @@ export function Toolbar({
           onClick={() => switcherOpen ? setSwitcherOpen(false) : openSwitcher()}
           className="flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-white/[0.06] transition-colors"
         >
-          <LayoutDashboard size={13} className="text-[#F47B20] flex-shrink-0" />
+          <LayoutDashboard size={13} className="text-[#14B8A6] flex-shrink-0" />
           {isRenamingToolbar ? (
             <input
               ref={renameInputRef}
@@ -193,7 +193,7 @@ export function Toolbar({
               }}
               onClick={(e) => e.stopPropagation()}
               onBlur={commitRename}
-              className="text-[11px] font-medium text-dark-text-primary bg-white/[0.08] border border-[#F47B20]/40 rounded px-1.5 py-0.5 outline-none w-[120px]"
+              className="text-[11px] font-medium text-dark-text-primary bg-white/[0.08] border border-[#14B8A6]/40 rounded px-1.5 py-0.5 outline-none w-[120px]"
             />
           ) : (
             <span
@@ -241,7 +241,7 @@ export function Toolbar({
               if (isRenaming) {
                 return (
                   <div key={d.id} className="flex items-center gap-2 px-3 py-1.5">
-                    <LayoutDashboard size={12} className="text-[#F47B20] flex-shrink-0" />
+                    <LayoutDashboard size={12} className="text-[#14B8A6] flex-shrink-0" />
                     <input
                       ref={renameInputRef}
                       value={renameValue}
@@ -252,7 +252,7 @@ export function Toolbar({
                         e.stopPropagation()
                       }}
                       onBlur={commitRename}
-                      className="flex-1 min-w-0 text-xs text-dark-text-primary bg-white/[0.08] border border-[#F47B20]/40 rounded px-1.5 py-1 outline-none"
+                      className="flex-1 min-w-0 text-xs text-dark-text-primary bg-white/[0.08] border border-[#14B8A6]/40 rounded px-1.5 py-1 outline-none"
                     />
                     <button
                       onClick={commitRename}
@@ -282,7 +282,7 @@ export function Toolbar({
                   }}
                   className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs transition-colors group ${
                     isActive
-                      ? 'bg-[#F47B20]/10 text-[#F47B20]'
+                      ? 'bg-[#14B8A6]/10 text-[#14B8A6]'
                       : 'text-dark-text-secondary hover:bg-white/[0.06]'
                   }`}
                   title="Click to switch · Double-click to rename"
@@ -292,7 +292,7 @@ export function Toolbar({
                     <span className="truncate">{d.name}</span>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <span className={`text-[10px] ${isActive ? 'text-[#F47B20]/60' : 'text-dark-text-muted'}`}>
+                    <span className={`text-[10px] ${isActive ? 'text-[#14B8A6]/60' : 'text-dark-text-muted'}`}>
                       {d.widgetIds.length}w
                     </span>
                     <button
@@ -301,7 +301,7 @@ export function Toolbar({
                         startRename(d.id, d.name)
                       }}
                       className="p-0.5 rounded opacity-0 group-hover:opacity-60 hover:!opacity-100
-                        hover:bg-white/[0.08] text-dark-text-muted hover:text-[#F47B20] transition-all"
+                        hover:bg-white/[0.08] text-dark-text-muted hover:text-[#14B8A6] transition-all"
                       title="Rename"
                     >
                       <Pencil size={10} />

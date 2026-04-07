@@ -4,7 +4,7 @@
  * All operations wrapped in try-catch for Safari private browsing / quota exceeded.
  */
 
-const SESSION_KEY = 'lwt-pdf-annotate-session'
+const SESSION_KEY = 'mt-pdf-annotate-session'
 
 export interface PdfAnnotateSession {
   version: 1

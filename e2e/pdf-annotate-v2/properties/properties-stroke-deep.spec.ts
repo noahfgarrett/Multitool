@@ -61,14 +61,14 @@ test.describe('Stroke Color — Presets', () => {
     await expect(page.locator('button[title="#FF0000"]')).toBeVisible({ timeout: 3000 })
   })
 
-  test('stroke color preset #FF6600', async ({ page }) => {
+  test('stroke color preset #EC4899', async ({ page }) => {
     await selectTool(page, 'Pencil (P)')
-    await expect(page.locator('button[title="#FF6600"]')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('button[title="#EC4899"]')).toBeVisible({ timeout: 3000 })
   })
 
-  test('stroke color preset #F47B20', async ({ page }) => {
+  test('stroke color preset #14B8A6', async ({ page }) => {
     await selectTool(page, 'Pencil (P)')
-    await expect(page.locator('button[title="#F47B20"]')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('button[title="#14B8A6"]')).toBeVisible({ timeout: 3000 })
   })
 
   test('stroke color preset #FFFF00', async ({ page }) => {

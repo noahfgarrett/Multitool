@@ -132,16 +132,26 @@ test.describe('UI Core', () => {
   })
 
   test('toolbar buttons with title attributes are present', async ({ page }) => {
-    // Only these toolbar buttons have title attributes with keyboard shortcuts
-    const titledButtons = [
+    // Primary toolbar buttons visible without expanding
+    const primaryButtons = [
       'Select (S)',
       'Highlight (H)',
       'Eraser (E)',
       'Measure (M)',
-      'Stamp',
-      'Crop page',
     ]
-    for (const title of titledButtons) {
+    for (const title of primaryButtons) {
+      const btn = page.locator(`button[title="${title}"]`)
+      await expect(btn).toBeVisible()
+    }
+
+    // Stamp and Crop are in the "More tools" collapsed section — expand first
+    // Use the sidebar's dashed-border More tools button (not the header More dropdown)
+    const moreToolsBtn = page.locator('button[title="More tools"]').filter({ hasText: 'More tools' })
+    await moreToolsBtn.click()
+    await page.waitForTimeout(200)
+
+    const secondaryButtons = ['Stamp', 'Crop page']
+    for (const title of secondaryButtons) {
       const btn = page.locator(`button[title="${title}"]`)
       await expect(btn).toBeVisible()
     }

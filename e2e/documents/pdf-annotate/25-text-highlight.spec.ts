@@ -9,6 +9,8 @@ import {
   getAnnotationCount,
   createAnnotation,
   selectAnnotationAt,
+  exportPDF,
+  goToPage,
 } from '../../helpers/pdf-annotate'
 
 test.beforeEach(async ({ page }) => {
@@ -36,7 +38,7 @@ test.describe('Highlight Tool — Toolbar Presence', () => {
     await page.keyboard.press('h')
     await page.waitForTimeout(100)
     const highlightBtn = page.locator('button[title="Highlight (H)"]')
-    await expect(highlightBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(highlightBtn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('clicking highlight button activates highlight tool', async ({ page }) => {
@@ -44,7 +46,7 @@ test.describe('Highlight Tool — Toolbar Presence', () => {
     await page.locator('button[title="Highlight (H)"]').click()
     await page.waitForTimeout(100)
     const highlightBtn = page.locator('button[title="Highlight (H)"]')
-    await expect(highlightBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(highlightBtn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('clicking strikethrough button activates strikethrough tool', async ({ page }) => {
@@ -52,7 +54,7 @@ test.describe('Highlight Tool — Toolbar Presence', () => {
     await page.locator('button[title="Strikethrough (Shift+X)"]').click()
     await page.waitForTimeout(100)
     const strikeBtn = page.locator('button[title="Strikethrough (Shift+X)"]')
-    await expect(strikeBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(strikeBtn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('highlight tool shows freehand/straight mode toggle', async ({ page }) => {
@@ -139,7 +141,7 @@ test.describe('Highlight Tool — Properties', () => {
     // The color picker container has preset swatches
     const colorElement = page.locator('input[type="color"], [data-testid="color-picker"], button').filter({ hasText: '' }).first()
     // Simply verify the properties bar area has content
-    await expect(page.locator('text=/Width|Opacity|Free|Straight/')).toBeVisible()
+    await expect(page.locator('text=/Width|Opacity|Free|Straight/').first()).toBeVisible()
   })
 
   test('highlight tool shows opacity control (but not labeled Opacity since highlight is special)', async ({ page }) => {
@@ -156,7 +158,7 @@ test.describe('Highlight Tool — Properties', () => {
     await expect(page.locator('button:has-text("Free"), button:has-text("Straight")')).toBeVisible()
     await selectTool(page, 'Select (S)')
     // Select tool with no selection shows "Click to select annotations"
-    await expect(page.locator('text=/Click to select/')).toBeVisible()
+    await expect(page.locator('text=/Click to select/').first()).toBeVisible()
   })
 
   test('straight line mode toggle works for highlight', async ({ page }) => {
@@ -175,12 +177,11 @@ test.describe('Text Highlight — Drag Selection', () => {
     await uploadPDFAndWait(page, 'sample.pdf')
     // textHighlight doesn't have a direct single-key shortcut
     // It's activated by clicking the highlight dropdown or via button
-    // The toolbar shows "Drag to highlight" in status bar for textHighlight
+    // The toolbar shows hint text in status bar for highlight tool
     await page.locator('button[title="Highlight (H)"]').click()
     await page.waitForTimeout(100)
-    // The default highlight is freehand highlighter
-    const statusText = await page.locator('.grid-cols-3').last().textContent()
-    expect(statusText).toBeDefined()
+    // Verify highlight tool is active via status bar hint
+    await expect(page.locator('text=/Ctrl\\+scroll zoom/').first()).toBeVisible()
   })
 
   test('strikethrough tool shows status hint "Drag to highlight"', async ({ page }) => {
@@ -252,14 +253,16 @@ test.describe('Text Highlight — Delete and Undo', () => {
     await drawOnCanvas(page, [{ x: 100, y: 100 }, { x: 300, y: 100 }])
     await page.waitForTimeout(200)
     expect(await getAnnotationCount(page)).toBe(1)
-    // Switch to eraser
+    // Switch to eraser in object erase mode to cleanly remove the highlight
     await selectTool(page, 'Eraser (E)')
+    await page.locator('button[title="Object erase"]').click()
+    await page.waitForTimeout(100)
     // Erase over the highlight
     await drawOnCanvas(page, [{ x: 100, y: 100 }, { x: 300, y: 100 }])
     await page.waitForTimeout(300)
-    // Annotation should be reduced or removed
+    // Annotation should be removed
     const count = await getAnnotationCount(page)
-    expect(count).toBeLessThanOrEqual(1)
+    expect(count).toBe(0)
   })
 })
 
@@ -271,9 +274,7 @@ test.describe('Text Highlight — Multi-Page', () => {
     await page.waitForTimeout(200)
     expect(await getAnnotationCount(page)).toBe(1)
     // Navigate to page 2
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
+    await goToPage(page, 2)
     await page.waitForTimeout(500)
     expect(await getAnnotationCount(page)).toBe(0)
   })
@@ -281,9 +282,7 @@ test.describe('Text Highlight — Multi-Page', () => {
   test('highlight on page 2 is independent of page 1', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     // Navigate to page 2
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
+    await goToPage(page, 2)
     await page.waitForTimeout(500)
     // Draw highlight on page 2
     await selectTool(page, 'Highlight (H)')
@@ -291,8 +290,7 @@ test.describe('Text Highlight — Multi-Page', () => {
     await page.waitForTimeout(200)
     expect(await getAnnotationCount(page)).toBe(1)
     // Go back to page 1
-    await pageInput.fill('1')
-    await pageInput.dispatchEvent('change')
+    await goToPage(page, 1)
     await page.waitForTimeout(500)
     expect(await getAnnotationCount(page)).toBe(0)
   })
@@ -303,9 +301,9 @@ test.describe('Highlight Tool — Tool Switching', () => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Highlight (H)')
     const highlightBtn = page.locator('button[title="Highlight (H)"]')
-    await expect(highlightBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(highlightBtn).toHaveClass(/bg-\[#14B8A6\]/)
     await selectTool(page, 'Pencil (P)')
-    await expect(highlightBtn).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(highlightBtn).not.toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('switching from highlight to select deactivates highlight', async ({ page }) => {
@@ -313,7 +311,7 @@ test.describe('Highlight Tool — Tool Switching', () => {
     await selectTool(page, 'Highlight (H)')
     await selectTool(page, 'Select (S)')
     const highlightBtn = page.locator('button[title="Highlight (H)"]')
-    await expect(highlightBtn).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(highlightBtn).not.toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('switching from strikethrough to select deactivates strikethrough', async ({ page }) => {
@@ -322,7 +320,7 @@ test.describe('Highlight Tool — Tool Switching', () => {
     await page.waitForTimeout(100)
     await selectTool(page, 'Select (S)')
     const strikeBtn = page.locator('button[title="Strikethrough (Shift+X)"]')
-    await expect(strikeBtn).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(strikeBtn).not.toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('highlight tool can be reactivated after switching away', async ({ page }) => {
@@ -331,7 +329,7 @@ test.describe('Highlight Tool — Tool Switching', () => {
     await selectTool(page, 'Select (S)')
     await selectTool(page, 'Highlight (H)')
     const highlightBtn = page.locator('button[title="Highlight (H)"]')
-    await expect(highlightBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(highlightBtn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 })
 
@@ -410,7 +408,7 @@ test.describe('Highlight Tool — Interaction with Other Tools', () => {
     // Wait for session save
     await page.waitForTimeout(2000)
     const data = await page.evaluate(() => {
-      const raw = sessionStorage.getItem('lwt-pdf-annotate-session')
+      const raw = sessionStorage.getItem('mt-pdf-annotate-session')
       return raw ? JSON.parse(raw) : null
     })
     expect(data).not.toBeNull()
@@ -423,9 +421,7 @@ test.describe('Highlight Tool — Interaction with Other Tools', () => {
     await selectTool(page, 'Highlight (H)')
     await drawOnCanvas(page, [{ x: 100, y: 100 }, { x: 300, y: 100 }])
     await page.waitForTimeout(200)
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 

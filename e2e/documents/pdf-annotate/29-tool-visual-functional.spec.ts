@@ -40,7 +40,7 @@ test.beforeEach(async ({ page }) => {
 async function getAnnotationData(page: import('@playwright/test').Page): Promise<Record<string, unknown[]>> {
   await page.waitForTimeout(2200) // debounced session save
   return page.evaluate(() => {
-    const raw = sessionStorage.getItem('lwt-pdf-annotate-session')
+    const raw = sessionStorage.getItem('mt-pdf-annotate-session')
     if (!raw) return {}
     const session = JSON.parse(raw)
     return session.annotations || {}

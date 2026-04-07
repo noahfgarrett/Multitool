@@ -159,7 +159,7 @@ export function PropertiesPanel({ store }: { store: OrgChartStore }) {
             <p className="text-[10px] text-white/40 truncate">{selectedNode.title || 'No title'}</p>
             <button
               onClick={() => avatarInputRef.current?.click()}
-              className="text-[10px] text-[#F47B20]/60 hover:text-[#F47B20] transition-colors mt-0.5"
+              className="text-[10px] text-[#14B8A6]/60 hover:text-[#14B8A6] transition-colors mt-0.5"
             >
               {selectedNode.imageDataUrl ? 'Change photo' : 'Upload photo'}
             </button>
@@ -179,7 +179,7 @@ export function PropertiesPanel({ store }: { store: OrgChartStore }) {
             type="text"
             value={selectedNode.name}
             onChange={e => update({ name: e.target.value })}
-            className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#F47B20]/40"
+            className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#14B8A6]/40"
           />
         </PropSection>
 
@@ -190,7 +190,7 @@ export function PropertiesPanel({ store }: { store: OrgChartStore }) {
             value={selectedNode.title}
             onChange={e => update({ title: e.target.value })}
             placeholder="e.g. VP of Engineering"
-            className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white placeholder:text-white/20 focus:outline-none focus:border-[#F47B20]/40"
+            className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white placeholder:text-white/20 focus:outline-none focus:border-[#14B8A6]/40"
           />
         </PropSection>
 
@@ -207,7 +207,7 @@ export function PropertiesPanel({ store }: { store: OrgChartStore }) {
               onChange={e => handleDepartmentChange(e.target.value)}
               placeholder="e.g. Engineering"
               list="dept-suggestions"
-              className="flex-1 px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white placeholder:text-white/20 focus:outline-none focus:border-[#F47B20]/40"
+              className="flex-1 px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white placeholder:text-white/20 focus:outline-none focus:border-[#14B8A6]/40"
             />
             <datalist id="dept-suggestions">
               {Object.keys(DEPARTMENT_COLORS).map(d => (
@@ -224,7 +224,7 @@ export function PropertiesPanel({ store }: { store: OrgChartStore }) {
             value={selectedNode.email}
             onChange={e => update({ email: e.target.value })}
             placeholder="name@company.com"
-            className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white placeholder:text-white/20 focus:outline-none focus:border-[#F47B20]/40"
+            className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white placeholder:text-white/20 focus:outline-none focus:border-[#14B8A6]/40"
           />
         </PropSection>
 
@@ -235,7 +235,7 @@ export function PropertiesPanel({ store }: { store: OrgChartStore }) {
             value={selectedNode.phone}
             onChange={e => update({ phone: e.target.value })}
             placeholder="+1 (555) 000-0000"
-            className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white placeholder:text-white/20 focus:outline-none focus:border-[#F47B20]/40"
+            className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white placeholder:text-white/20 focus:outline-none focus:border-[#14B8A6]/40"
           />
         </PropSection>
 
@@ -246,7 +246,7 @@ export function PropertiesPanel({ store }: { store: OrgChartStore }) {
             value={selectedNode.location}
             onChange={e => update({ location: e.target.value })}
             placeholder="e.g. San Francisco, CA"
-            className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white placeholder:text-white/20 focus:outline-none focus:border-[#F47B20]/40"
+            className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white placeholder:text-white/20 focus:outline-none focus:border-[#14B8A6]/40"
           />
         </PropSection>
 
@@ -267,7 +267,7 @@ export function PropertiesPanel({ store }: { store: OrgChartStore }) {
               value={selectedNode.sectionTitle}
               onChange={e => update({ sectionTitle: e.target.value })}
               placeholder="e.g. Engineering"
-              className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white placeholder:text-white/20 focus:outline-none focus:border-[#F47B20]/40"
+              className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white placeholder:text-white/20 focus:outline-none focus:border-[#14B8A6]/40"
             />
           </PropSection>
         )}
@@ -278,7 +278,7 @@ export function PropertiesPanel({ store }: { store: OrgChartStore }) {
             <select
               value={selectedNode.reportsTo}
               onChange={e => store.reparentNode(selectedNode.id, e.target.value)}
-              className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#F47B20]/40"
+              className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#14B8A6]/40"
             >
               {reportsToOptions.map(n => (
                 <option key={n.id} value={n.id}>

@@ -138,7 +138,7 @@ export default function CommentsPanel({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.1] shrink-0">
         <div className="flex items-center gap-2">
-          <MessageSquare size={18} className="text-[#F47B20]" />
+          <MessageSquare size={18} className="text-[#14B8A6]" />
           <span className="text-white font-semibold text-sm">Comments</span>
           <span className="bg-white/[0.1] text-white/70 text-xs px-2 py-0.5 rounded-full">
             {threads.length}
@@ -165,7 +165,7 @@ export default function CommentsPanel({
               onClick={() => setActiveFilter(status)}
               className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs whitespace-nowrap transition-colors ${
                 isActive
-                  ? 'bg-[#F47B20]/20 text-[#F47B20]'
+                  ? 'bg-[#14B8A6]/20 text-[#14B8A6]'
                   : 'bg-white/[0.05] text-white/50 hover:bg-white/[0.1] hover:text-white/70'
               }`}
             >
@@ -176,7 +176,7 @@ export default function CommentsPanel({
                 />
               )}
               {STATUS_LABELS[status]}
-              <span className={`${isActive ? 'text-[#F47B20]/70' : 'text-white/30'}`}>
+              <span className={`${isActive ? 'text-[#14B8A6]/70' : 'text-white/30'}`}>
                 {count}
               </span>
             </button>
@@ -208,9 +208,9 @@ export default function CommentsPanel({
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-2">
                     {isStickyNote ? (
-                      <StickyNoteIcon size={14} className="text-[#F47B20]" />
+                      <StickyNoteIcon size={14} className="text-[#14B8A6]" />
                     ) : (
-                      <MessageSquare size={14} className="text-[#F47B20]" />
+                      <MessageSquare size={14} className="text-[#14B8A6]" />
                     )}
                     <span className="text-white/50 text-xs">
                       {isStickyNote ? 'Note' : annType} — p.{page}
@@ -255,7 +255,7 @@ export default function CommentsPanel({
                       e.stopPropagation()
                       onStatusChange(thread.annotationId, e.target.value as CommentStatus)
                     }}
-                    className="bg-white/[0.05] border border-white/[0.1] text-white/60 text-xs rounded px-1.5 py-0.5 outline-none focus:border-[#F47B20]/50"
+                    className="bg-white/[0.05] border border-white/[0.1] text-white/60 text-xs rounded px-1.5 py-0.5 outline-none focus:border-[#14B8A6]/50"
                   >
                     {FILTER_OPTIONS.map(s => (
                       <option key={s} value={s} className="bg-[#1a1a2e] text-white">

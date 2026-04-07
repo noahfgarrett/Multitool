@@ -1,12 +1,12 @@
 /**
  * Dashboard localStorage persistence
- * Key prefix: lwt-dashboard-
+ * Key prefix: mt-dashboard-
  * All operations wrapped in try-catch for Safari private browsing / quota exceeded.
  */
 
 import type { Dashboard, Widget } from './types.ts'
 
-const PREFIX = 'lwt-dashboard-'
+const PREFIX = 'mt-dashboard-'
 
 // ── Dashboard list ─────────────────────────────
 

@@ -148,13 +148,13 @@ test.describe('Tab Order Overlay', () => {
     const tabOrderButton = page.locator('button').filter({ hasText: 'Tab Order' })
 
     // Initially the button should NOT have the active orange background class
-    await expect(tabOrderButton).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(tabOrderButton).not.toHaveClass(/bg-\[#14B8A6\]/)
 
     // Click to activate
     await tabOrderButton.click()
 
     // After clicking, the button should have the active orange background
-    await expect(tabOrderButton).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(tabOrderButton).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('Tab Order button deactivates on second click', async ({ page }) => {
@@ -162,11 +162,11 @@ test.describe('Tab Order Overlay', () => {
 
     // Activate
     await tabOrderButton.click()
-    await expect(tabOrderButton).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(tabOrderButton).toHaveClass(/bg-\[#14B8A6\]/)
 
     // Deactivate
     await tabOrderButton.click()
-    await expect(tabOrderButton).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(tabOrderButton).not.toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('Tab Order overlay shows numbered badges on interactive elements', async ({ page }) => {
@@ -178,7 +178,7 @@ test.describe('Tab Order Overlay', () => {
     const tabOrderButton = page.locator('button').filter({ hasText: 'Tab Order' })
     await tabOrderButton.click()
 
-    // Orange tab-order badges should appear (circles with #F47B20 background)
+    // Orange tab-order badges should appear (circles with #14B8A6 background)
     // The badges are absolutely positioned divs with orange background
     const badges = page.locator('div[style*="background-color: rgb(244, 123, 32)"]')
     await expect(badges.first()).toBeVisible({ timeout: 3000 })

@@ -75,7 +75,7 @@ test.describe('Pencil — Freehand Drawing', () => {
     await page.keyboard.press('p')
     await page.waitForTimeout(100)
     const btn = page.locator('button[title="Pencil (P)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('single click without drag does not create annotation', async ({ page }) => {

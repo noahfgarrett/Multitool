@@ -43,6 +43,9 @@ test.describe('Crop Core', () => {
   })
 
   test('crop button exists in toolbar', async ({ page }) => {
+    // Crop is under "More tools" in the sidebar — expand it first
+    await page.locator('button[title="More tools"].border-dashed').click()
+    await page.waitForTimeout(300)
     const cropBtn = page.locator('button[title="Crop page"]')
     await expect(cropBtn).toBeVisible({ timeout: 3000 })
   })

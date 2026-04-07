@@ -254,7 +254,7 @@ test.describe('Session Multi-Page', () => {
       await createAnnotation(page, 'pencil', { x: 100, y: 100, w: 80, h: 30 })
     }
     await waitForSessionSave(page)
-    const raw = await page.evaluate(() => sessionStorage.getItem('lwt-pdf-annotate-session'))
+    const raw = await page.evaluate(() => sessionStorage.getItem('mt-pdf-annotate-session'))
     expect(raw).toBeTruthy()
     expect(raw!.length).toBeLessThan(1_000_000)
   })

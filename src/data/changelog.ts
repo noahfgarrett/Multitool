@@ -12,6 +12,22 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.0.0',
+    date: 'PLACEHOLDER',
+    type: 'major',
+    stats: { features: 8, tools: 15 },
+    notes: `### Multitool — A New Identity
+- **Full rebrand** — LotusWorks Toolkit is now **Multitool** by Visualize Build LLC, with a fresh teal color palette and Sacramento cursive logo
+- **4 new themes** — Night Sky, Blueprint, Clean Dark, and Light — switch instantly from Settings
+- **Global settings & user profile** — Set your name, photo, job title, and company for a personalized experience
+- **Org Chart — multi-root sections** — Create separate org trees (e.g. Management, Engineering, Field) with section titles and revision control
+- **Flowchart — P&ID symbol library** — 46 ISA-5.1 / ISO 14617 shapes across 7 categories with search, recents, and Visio .vsdx export
+- **"Got an Idea?" button** — Submit feature requests and bug reports right from the welcome screen
+- **PDF Annotate — layers & markups overhaul** — Layer management, markup list with filtering, inline delete, and layer assignment
+- **PDF Annotate — code refactor** — Extracted state, keyboard shortcuts, and export logic into dedicated modules for faster future development
+- **Changelog improvements** — Dates now show without timestamps for a cleaner look`,
+  },
+  {
     version: '3.1.5',
     date: '2026-04-02T14:15:22Z',
     type: 'fix',
@@ -86,7 +102,7 @@ export const CHANGELOG: ChangelogEntry[] = [
 - **Built-in changelog** — View the full release history right inside the app, no internet required
 - **Release type indicators** — Color-coded left bars show major releases, features, and fixes at a glance (hover to see the label)
 - **"What's New" notification** — Orange dot on the version number lets you know when you're running a new version
-- **Clickable version link** — Click "LotusWorks Toolkit v3.0.1" in the sidebar footer to open the changelog anytime`,
+- **Clickable version link** — Click "Multitool v3.0.1" in the sidebar footer to open the changelog anytime`,
   },
   {
     version: '3.0.0',

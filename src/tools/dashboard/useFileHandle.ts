@@ -1,7 +1,7 @@
 /**
  * useFileHandle — File System Access API hook.
  * Provides persistent file handles for auto-reconnecting to data files.
- * Uses IndexedDB (lwt-dashboard-files) for handle storage.
+ * Uses IndexedDB (mt-dashboard-files) for handle storage.
  */
 
 import { useState, useCallback, useEffect } from 'react'
@@ -28,7 +28,7 @@ export function isFileSystemAccessSupported(): boolean {
 
 // ── IndexedDB helpers ───────────────────────────
 
-const DB_NAME = 'lwt-dashboard-files'
+const DB_NAME = 'mt-dashboard-files'
 const STORE_NAME = 'file-handles'
 const DB_VERSION = 1
 

@@ -59,13 +59,24 @@ function getAnnotationCanvasForPage(page: Page, pageNum: number) {
   return page.locator(`[data-page="${pageNum}"] canvas.ann-canvas`)
 }
 
-/** Get the current page number from the page input */
+/** Get the current page number from the page indicator button or input */
 async function getCurrentPageNum(page: Page): Promise<number> {
+  // Try to read from the page indicator button (e.g. "2 / 5")
+  const pageButton = page.locator('text=/\\d+ \\/ \\d+/')
+  const buttonCount = await pageButton.count()
+  if (buttonCount > 0) {
+    const text = await pageButton.first().textContent()
+    const match = text?.match(/(\d+)\s*\//)
+    if (match) return parseInt(match[1], 10)
+  }
+  // Fallback to input if it's visible (active edit mode)
   const input = page.locator('input[type="number"]')
-  const count = await input.count()
-  if (count === 0) return 1 // single-page PDF
-  const val = await input.inputValue()
-  return parseInt(val) || 1
+  const inputCount = await input.count()
+  if (inputCount > 0) {
+    const val = await input.inputValue()
+    return parseInt(val) || 1
+  }
+  return 1 // single-page PDF
 }
 
 /** Get the annotation canvas for the currently displayed page, ensuring it's scrolled into view */
@@ -113,18 +124,16 @@ export async function drawOnCanvas(page: Page, points: { x: number; y: number }[
   await page.mouse.up()
 }
 
-/** Get annotation count from the annotation-list badge or session storage */
+/** Get annotation count from the status bar "{N} ann" text */
 export async function getAnnotationCount(page: Page): Promise<number> {
-  // The badge shows the count on the annotation list button (bg-[#F47B20] rounded-full)
-  const badge = page.locator('span.bg-\\[\\#F47B20\\].rounded-full.text-\\[8px\\]')
-  const badgeCount = await badge.count()
-  if (badgeCount > 0) {
-    const text = await badge.first().textContent()
-    if (text === '99+') return 100
-    const n = parseInt(text || '0', 10)
-    return isNaN(n) ? 0 : n
+  // The compact status bar shows "{count} ann" for the current page
+  const statusText = page.locator('text=/\\d+ ann/')
+  const count = await statusText.count()
+  if (count > 0) {
+    const text = await statusText.first().textContent()
+    const match = text?.match(/(\d+)\s*ann/)
+    if (match) return parseInt(match[1], 10)
   }
-  // Badge not visible means 0 annotations
   return 0
 }
 
@@ -163,14 +172,14 @@ export async function waitForSessionSave(page: Page) {
 /** Get the current session data from sessionStorage */
 export async function getSessionData(page: Page) {
   return page.evaluate(() => {
-    const raw = sessionStorage.getItem('lwt-pdf-annotate-session')
+    const raw = sessionStorage.getItem('mt-pdf-annotate-session')
     return raw ? JSON.parse(raw) : null
   })
 }
 
 /** Clear session data from sessionStorage */
 export async function clearSessionData(page: Page) {
-  await page.evaluate(() => sessionStorage.removeItem('lwt-pdf-annotate-session'))
+  await page.evaluate(() => sessionStorage.removeItem('mt-pdf-annotate-session'))
 }
 
 /** Create an annotation of a specific type and return the annotation count */
@@ -183,9 +192,11 @@ export async function createAnnotation(
   switch (type) {
     case 'pencil':
       await selectTool(page, 'Pencil (P)')
+      // Use curved path to avoid auto-conversion to line
       await drawOnCanvas(page, [
         { x: r.x, y: r.y },
-        { x: r.x + r.w / 3, y: r.y + r.h / 2 },
+        { x: r.x + r.w * 0.3, y: r.y + r.h * 0.7 },
+        { x: r.x + r.w * 0.6, y: r.y + r.h * 0.2 },
         { x: r.x + r.w, y: r.y + r.h },
       ])
       break
@@ -248,12 +259,20 @@ export async function screenshotCanvas(page: Page) {
 
 /** Navigate to a specific page number using the page input */
 export async function goToPage(page: Page, pageNum: number) {
+  // The page indicator is a button like "1 / 2" — click it to reveal the input
+  const pageButton = page.locator('text=/\\d+ \\/ \\d+/')
+  const buttonCount = await pageButton.count()
+  if (buttonCount === 0) return // single-page PDF
+
+  await pageButton.click()
+  await page.waitForTimeout(200)
+
   const pageInput = page.locator('input[type="number"]')
   const inputCount = await pageInput.count()
-  if (inputCount === 0) return // single-page PDF
+  if (inputCount === 0) return
 
   await pageInput.fill(String(pageNum))
-  await pageInput.dispatchEvent('change')
+  await pageInput.press('Enter')
   await page.waitForTimeout(300)
 
   // Scroll the target page into the visible area of the overflow container
@@ -273,14 +292,39 @@ export async function goToPage(page: Page, pageNum: number) {
   await page.waitForTimeout(200)
 }
 
-/** Click Export PDF and wait for the download event */
+/** Click Export PDF, interact with the ExportModal, and wait for the download event */
 export async function exportPDF(page: Page, timeout = 15000) {
   // Remove showSaveFilePicker so the app falls back to downloadBlob (anchor click)
   await page.evaluate(() => {
     delete (window as Record<string, unknown>)['showSaveFilePicker']
   })
-  const downloadPromise = page.waitForEvent('download', { timeout })
+
+  // Click Export PDF button — this opens the ExportModal
   const exportBtn = page.locator('button').filter({ hasText: 'Export PDF' })
   await exportBtn.click()
+
+  // Wait for the modal to appear, then click the "Export for Review" button inside it
+  // The modal has no role="dialog" — locate the button by its text content
+  const modalExportBtn = page.locator('button').filter({ hasText: /^Export for Review$/ })
+  await modalExportBtn.waitFor({ state: 'visible', timeout: 5000 })
+
+  const downloadPromise = page.waitForEvent('download', { timeout })
+  await modalExportBtn.click()
   return downloadPromise
+}
+
+/** Click the New button and accept the native confirm dialog */
+export async function resetWithConfirm(page: Page): Promise<void> {
+  page.once('dialog', dialog => dialog.accept())
+  const newBtn = page.locator('button').filter({ hasText: 'New' })
+  await newBtn.click()
+  await page.waitForTimeout(300)
+}
+
+/** Click the New button and dismiss the native confirm dialog */
+export async function resetWithDismiss(page: Page): Promise<void> {
+  page.once('dialog', dialog => dialog.dismiss())
+  const newBtn = page.locator('button').filter({ hasText: 'New' })
+  await newBtn.click()
+  await page.waitForTimeout(200)
 }

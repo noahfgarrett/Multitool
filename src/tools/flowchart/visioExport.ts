@@ -106,7 +106,7 @@ function genDocumentXml(): string {
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>`,
     `<VisioDocument xmlns="${NS_MAIN}" xmlns:r="${NS_R}">`,
     `  <DocumentProperties>`,
-    `    <Creator>LotusWorksToolkit</Creator>`,
+    `    <Creator>Multitool</Creator>`,
     `  </DocumentProperties>`,
     `</VisioDocument>`,
   ].join('\n')

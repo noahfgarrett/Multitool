@@ -23,7 +23,7 @@ test.describe('OCR Region Tool — Toolbar', () => {
     const btn = page.locator('button[title="OCR Region Scan"]')
     await btn.click()
     await page.waitForTimeout(100)
-    await expect(btn).toHaveClass(/ring-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/ring-\[#14B8A6\]/)
   })
 
   test('tool does not show properties bar', async ({ page }) => {

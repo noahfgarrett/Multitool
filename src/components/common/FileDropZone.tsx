@@ -67,20 +67,20 @@ export const FileDropZone = memo(function FileDropZone({
         ${className}
       `}
       style={{
-        borderColor: isDragOver || isHovered ? '#F47B20' : 'var(--border-default)',
-        background: isDragOver ? 'rgba(244,123,32,0.1)' : isHovered ? 'rgba(244,123,32,0.04)' : 'var(--bg-surface)',
+        borderColor: isDragOver || isHovered ? '#14B8A6' : 'var(--border-default)',
+        background: isDragOver ? 'rgba(20,184,166,0.1)' : isHovered ? 'rgba(20,184,166,0.04)' : 'color-mix(in srgb, var(--bg-surface) 40%, transparent)',
         boxShadow: isDragOver
-          ? '0 0 20px rgba(244,123,32,0.3), inset 0 0 20px rgba(244,123,32,0.05)'
+          ? '0 0 20px rgba(20,184,166,0.3), inset 0 0 20px rgba(20,184,166,0.05)'
           : isHovered
-            ? '0 0 12px rgba(244,123,32,0.15), inset 0 0 12px rgba(244,123,32,0.03)'
+            ? '0 0 12px rgba(20,184,166,0.15), inset 0 0 12px rgba(20,184,166,0.03)'
             : 'none',
       }}
     >
       <div
         className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors duration-300"
         style={{
-          background: isDragOver || isHovered ? 'rgba(244,123,32,0.15)' : 'var(--bg-elevated)',
-          color: isDragOver || isHovered ? '#F47B20' : 'var(--text-disabled)',
+          background: isDragOver || isHovered ? 'rgba(20,184,166,0.15)' : 'color-mix(in srgb, var(--bg-elevated) 50%, transparent)',
+          color: isDragOver || isHovered ? '#14B8A6' : 'var(--text-disabled)',
         }}
       >
         <Upload size={22} />

@@ -22,7 +22,7 @@ test.use({
     origins: [{
       origin: `http://127.0.0.1:${WORKTREE_PORT}`,
       localStorage: [{
-        name: 'lwt-user-profile',
+        name: 'mt-user-profile',
         value: JSON.stringify({ name: 'Test User', email: 'test@test.com', initials: 'TU' }),
       }],
     }],
@@ -32,7 +32,7 @@ test.use({
 /** Navigate to the File Compressor tool */
 async function goToCompressor(page: Page): Promise<void> {
   await page.goto('/')
-  await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' })).toBeVisible({ timeout: 10_000 })
+  await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10_000 })
   const sidebar = page.locator('aside nav')
   await sidebar.locator('button').filter({ hasText: 'File Compressor' }).click()
   await waitForToolLoad(page)
@@ -382,7 +382,7 @@ test.describe('File Compressor — Functional', () => {
     await expect(page.locator('button').filter({ hasText: 'Download' })).toBeVisible({ timeout: 30_000 })
 
     // Summary section should show original → compressed with arrow
-    const summary = page.locator('.border.border-\\[\\#F47B20\\]\\/20')
+    const summary = page.locator('.border.border-\\[\\#14B8A6\\]\\/20')
     await expect(summary).toBeVisible()
     // Should contain the arrow indicator
     await expect(summary.locator('text=/→/')).toBeVisible()

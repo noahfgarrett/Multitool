@@ -227,7 +227,7 @@ export function EmailModal({ isOpen, onClose, onSend, fileName }: EmailModalProp
         {/* Recipient Selection */}
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <Mail size={16} className="text-[#F47B20]" />
+            <Mail size={16} className="text-[#14B8A6]" />
             <span className="text-sm font-medium text-white">Recipients</span>
             {selectedCount > 0 && (
               <span className="text-xs text-white/50">({selectedCount} selected)</span>
@@ -266,9 +266,9 @@ export function EmailModal({ isOpen, onClose, onSend, fileName }: EmailModalProp
                         toggleGroup(group)
                       }}
                       onClick={(e) => e.stopPropagation()}
-                      className="accent-[#F47B20] rounded"
+                      className="accent-[#14B8A6] rounded"
                     />
-                    <Users size={14} className="text-[#F47B20]" />
+                    <Users size={14} className="text-[#14B8A6]" />
                     <span className="text-sm font-medium text-white/80">{group.name}</span>
                     <span className="text-xs text-white/40">({groupRecipients.length})</span>
                     <span className="ml-auto text-xs text-white/30">
@@ -285,7 +285,7 @@ export function EmailModal({ isOpen, onClose, onSend, fileName }: EmailModalProp
                           type="checkbox"
                           checked={selectedIds.has(r.id)}
                           onChange={() => toggleRecipient(r.id)}
-                          className="accent-[#F47B20] rounded"
+                          className="accent-[#14B8A6] rounded"
                         />
                         <span className="text-sm text-white/80">{r.name}</span>
                         <span className="text-xs text-white/40">{r.email}</span>
@@ -321,7 +321,7 @@ export function EmailModal({ isOpen, onClose, onSend, fileName }: EmailModalProp
                   type="checkbox"
                   checked={selectedIds.has(r.id)}
                   onChange={() => toggleRecipient(r.id)}
-                  className="accent-[#F47B20] rounded"
+                  className="accent-[#14B8A6] rounded"
                 />
                 <span className="text-sm text-white/80">{r.name}</span>
                 <span className="text-xs text-white/40">{r.email}</span>
@@ -345,7 +345,7 @@ export function EmailModal({ isOpen, onClose, onSend, fileName }: EmailModalProp
         <div>
           <button
             onClick={() => setIsAddingContact((prev) => !prev)}
-            className="flex items-center gap-1.5 text-xs text-[#F47B20] hover:text-[#F47B20]/80 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-[#14B8A6] hover:text-[#14B8A6]/80 transition-colors"
           >
             <UserPlus size={14} />
             {isAddingContact ? 'Hide' : 'Add Contact'}
@@ -359,21 +359,21 @@ export function EmailModal({ isOpen, onClose, onSend, fileName }: EmailModalProp
                   placeholder="Name"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  className="flex-1 h-8 px-2 text-sm bg-white/[0.06] border border-white/[0.1] rounded-md text-white placeholder:text-white/30 focus:outline-none focus:border-[#F47B20]/50"
+                  className="flex-1 h-8 px-2 text-sm bg-white/[0.06] border border-white/[0.1] rounded-md text-white placeholder:text-white/30 focus:outline-none focus:border-[#14B8A6]/50"
                 />
                 <input
                   type="email"
                   placeholder="Email"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  className="flex-1 h-8 px-2 text-sm bg-white/[0.06] border border-white/[0.1] rounded-md text-white placeholder:text-white/30 focus:outline-none focus:border-[#F47B20]/50"
+                  className="flex-1 h-8 px-2 text-sm bg-white/[0.06] border border-white/[0.1] rounded-md text-white placeholder:text-white/30 focus:outline-none focus:border-[#14B8A6]/50"
                 />
               </div>
               <div className="flex gap-2 items-center">
                 <select
                   value={newGroupId}
                   onChange={(e) => setNewGroupId(e.target.value)}
-                  className="flex-1 h-8 px-2 text-sm bg-white/[0.06] border border-white/[0.1] rounded-md text-white focus:outline-none focus:border-[#F47B20]/50"
+                  className="flex-1 h-8 px-2 text-sm bg-white/[0.06] border border-white/[0.1] rounded-md text-white focus:outline-none focus:border-[#14B8A6]/50"
                 >
                   <option value="">No group</option>
                   {groups.map((g) => (
@@ -416,7 +416,7 @@ export function EmailModal({ isOpen, onClose, onSend, fileName }: EmailModalProp
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleCreateGroup()
                   }}
-                  className="flex-1 h-8 px-2 text-sm bg-white/[0.06] border border-white/[0.1] rounded-md text-white placeholder:text-white/30 focus:outline-none focus:border-[#F47B20]/50"
+                  className="flex-1 h-8 px-2 text-sm bg-white/[0.06] border border-white/[0.1] rounded-md text-white placeholder:text-white/30 focus:outline-none focus:border-[#14B8A6]/50"
                 />
                 <Button
                   size="sm"
@@ -456,7 +456,7 @@ export function EmailModal({ isOpen, onClose, onSend, fileName }: EmailModalProp
             type="text"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            className="w-full h-9 px-3 text-sm bg-white/[0.06] border border-white/[0.1] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#F47B20]/50"
+            className="w-full h-9 px-3 text-sm bg-white/[0.06] border border-white/[0.1] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#14B8A6]/50"
           />
         </div>
 
@@ -467,7 +467,7 @@ export function EmailModal({ isOpen, onClose, onSend, fileName }: EmailModalProp
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={3}
-            className="w-full px-3 py-2 text-sm bg-white/[0.06] border border-white/[0.1] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#F47B20]/50 resize-none"
+            className="w-full px-3 py-2 text-sm bg-white/[0.06] border border-white/[0.1] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-[#14B8A6]/50 resize-none"
           />
         </div>
 

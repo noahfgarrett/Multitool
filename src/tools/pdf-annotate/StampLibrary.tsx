@@ -20,7 +20,7 @@ interface StampItem {
 
 // ── IndexedDB Helpers ──────────────────────────────────
 
-const DB_NAME = 'lwt-stamp-library'
+const DB_NAME = 'mt-stamp-library'
 const STORE_NAME = 'stamps'
 const DB_VERSION = 1
 
@@ -199,7 +199,7 @@ export function StampLibrary({ onSelectStamp, onClose }: StampLibraryProps): Rea
 
   const handleExport = useCallback(() => {
     if (stamps.length === 0) return
-    downloadJson(stamps, 'lwt-stamp-library.json')
+    downloadJson(stamps, 'mt-stamp-library.json')
   }, [stamps])
 
   const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -323,7 +323,7 @@ export function StampLibrary({ onSelectStamp, onClose }: StampLibraryProps): Rea
             <button
               type="button"
               onClick={() => setIsCreating(true)}
-              className="flex items-center gap-2 mb-4 px-3 py-2 w-full rounded-lg border-2 border-dashed border-white/15 hover:border-[#F47B20]/50 text-white/50 hover:text-[#F47B20] transition-all"
+              className="flex items-center gap-2 mb-4 px-3 py-2 w-full rounded-lg border-2 border-dashed border-white/15 hover:border-[#14B8A6]/50 text-white/50 hover:text-[#14B8A6] transition-all"
             >
               <Plus size={16} />
               <span className="text-sm font-medium">Create New Stamp</span>
@@ -353,7 +353,7 @@ export function StampLibrary({ onSelectStamp, onClose }: StampLibraryProps): Rea
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="w-28 h-28 rounded-lg border-2 border-dashed border-white/15 hover:border-[#F47B20]/50 flex flex-col items-center justify-center gap-1 text-white/40 hover:text-[#F47B20] transition-all"
+                      className="w-28 h-28 rounded-lg border-2 border-dashed border-white/15 hover:border-[#14B8A6]/50 flex flex-col items-center justify-center gap-1 text-white/40 hover:text-[#14B8A6] transition-all"
                     >
                       <ImageIcon size={24} />
                       <span className="text-[10px]">Upload</span>
@@ -377,7 +377,7 @@ export function StampLibrary({ onSelectStamp, onClose }: StampLibraryProps): Rea
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
                       placeholder="e.g. Company Logo"
-                      className="w-full h-8 px-2 text-sm bg-white/[0.06] border border-white/[0.1] rounded-md text-white placeholder:text-white/30 focus:outline-none focus:border-[#F47B20]/50"
+                      className="w-full h-8 px-2 text-sm bg-white/[0.06] border border-white/[0.1] rounded-md text-white placeholder:text-white/30 focus:outline-none focus:border-[#14B8A6]/50"
                     />
                   </div>
                   <div className="flex items-center gap-2">
@@ -428,7 +428,7 @@ export function StampLibrary({ onSelectStamp, onClose }: StampLibraryProps): Rea
               {stamps.map((stamp) => (
                 <div
                   key={stamp.id}
-                  className="group relative flex flex-col items-center gap-2 p-3 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] hover:border-[#F47B20]/30 transition-all cursor-pointer"
+                  className="group relative flex flex-col items-center gap-2 p-3 rounded-lg border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] hover:border-[#14B8A6]/30 transition-all cursor-pointer"
                   onClick={() => onSelectStamp(stamp.imageDataUrl, stamp.name)}
                   title={`Use "${stamp.name}"`}
                 >

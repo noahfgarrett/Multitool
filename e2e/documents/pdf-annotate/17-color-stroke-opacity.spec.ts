@@ -46,7 +46,7 @@ test.describe('Color Picker — Basics', () => {
     await selectTool(page, 'Pencil (P)')
     await waitForSessionSave(page)
     const session = await getSessionData(page)
-    expect(session?.color).toBe('#F47B20')
+    expect(session?.color).toBe('#14B8A6')
   })
 
   test('drawing with default color creates orange annotation', async ({ page }) => {
@@ -55,7 +55,7 @@ test.describe('Color Picker — Basics', () => {
     await waitForSessionSave(page)
     const session = await getSessionData(page)
     const anns = session?.annotations?.[1] || session?.annotations?.['1'] || []
-    expect(anns[0]?.color).toBe('#F47B20')
+    expect(anns[0]?.color).toBe('#14B8A6')
   })
 })
 
@@ -63,12 +63,9 @@ test.describe('Color Picker — Preset Colors', () => {
   test('black preset color creates black annotation', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Rectangle (R)')
-    // Click the black color swatch (first preset)
-    const swatches = page.locator('button[style*="background-color"]')
-    const blackSwatch = swatches.filter({ has: page.locator('[style*="#000000"], [style*="rgb(0, 0, 0)"]') }).first()
-    if (await blackSwatch.isVisible()) {
-      await blackSwatch.click()
-    }
+    // Click the black color swatch by title
+    const blackSwatch = page.locator('button[title="#000000"]')
+    await blackSwatch.click()
     await page.waitForTimeout(100)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     await waitForSessionSave(page)
@@ -244,7 +241,7 @@ test.describe('Stroke Width', () => {
     await slider.fill('10')
     await page.waitForTimeout(100)
     // The value label next to slider should show 10
-    await expect(page.locator('text=/10/')).toBeVisible()
+    await expect(page.getByText('10', { exact: true })).toBeVisible()
   })
 
   test('stroke width applies to new drawing', async ({ page }) => {

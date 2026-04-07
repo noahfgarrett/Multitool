@@ -64,14 +64,14 @@ test.describe('1A — Activation', () => {
     await page.keyboard.press('t')
     await page.waitForTimeout(100)
     const btn = page.locator('button[title="Text (T)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('clicking Text toolbar button activates text tool', async ({ page }) => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Text (T)"]').click()
     await page.waitForTimeout(100)
-    await expect(page.locator('button[title="Text (T)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Text (T)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('text tool shows text cursor on annotation canvas', async ({ page }) => {
@@ -85,7 +85,7 @@ test.describe('1A — Activation', () => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Text (T)')
     await selectTool(page, 'Select (S)')
-    await expect(page.locator('button[title="Text (T)"]')).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Text (T)"]')).not.toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('properties bar shows 13+ controls when text tool is active', async ({ page }) => {
@@ -308,8 +308,8 @@ test.describe('1A — Multiple Text Boxes & Re-Edit', () => {
     const anns = await getTextAnnotations(page)
     const textAnn = anns.find(a => a.text === 'Black text')
     if (textAnn) {
-      // Color should be black (#000000 or similar), not orange (#F47B20)
-      expect(String(textAnn.color)).not.toBe('#F47B20')
+      // Color should be black (#000000 or similar), not orange (#14B8A6)
+      expect(String(textAnn.color)).not.toBe('#14B8A6')
     }
   })
 
@@ -401,7 +401,7 @@ test.describe('1B — Bold', () => {
     const boldBtn = page.locator('button[title="Bold (Ctrl+B)"]')
     await boldBtn.click()
     await page.waitForTimeout(100)
-    await expect(boldBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(boldBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 })
 
@@ -500,7 +500,7 @@ test.describe('1B — Superscript & Subscript', () => {
     if (await superBtn.isVisible()) {
       await superBtn.click()
       await page.waitForTimeout(100)
-      await expect(superBtn).toHaveClass(/text-\[#F47B20\]/)
+      await expect(superBtn).toHaveClass(/text-\[#14B8A6\]/)
     }
   })
 
@@ -512,7 +512,7 @@ test.describe('1B — Superscript & Subscript', () => {
     if (await subBtn.isVisible()) {
       await subBtn.click()
       await page.waitForTimeout(100)
-      await expect(subBtn).toHaveClass(/text-\[#F47B20\]/)
+      await expect(subBtn).toHaveClass(/text-\[#14B8A6\]/)
     }
   })
 
@@ -525,12 +525,12 @@ test.describe('1B — Superscript & Subscript', () => {
     if (await superBtn.isVisible() && await subBtn.isVisible()) {
       await superBtn.click()
       await page.waitForTimeout(100)
-      await expect(superBtn).toHaveClass(/text-\[#F47B20\]/)
+      await expect(superBtn).toHaveClass(/text-\[#14B8A6\]/)
       await subBtn.click()
       await page.waitForTimeout(100)
       // Superscript should be deactivated
-      await expect(superBtn).not.toHaveClass(/text-\[#F47B20\]/)
-      await expect(subBtn).toHaveClass(/text-\[#F47B20\]/)
+      await expect(superBtn).not.toHaveClass(/text-\[#14B8A6\]/)
+      await expect(subBtn).toHaveClass(/text-\[#14B8A6\]/)
     }
   })
 })

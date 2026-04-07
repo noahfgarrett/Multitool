@@ -95,7 +95,7 @@ export function createNode(overrides: Partial<OrgNode> = {}): OrgNode {
     phone: '',
     location: '',
     imageDataUrl: null,
-    nodeColor: '#F47B20',
+    nodeColor: '#14B8A6',
     offsetX: 0,
     offsetY: 0,
     sectionTitle: '',

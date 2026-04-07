@@ -35,7 +35,7 @@ test.describe('Basic Rectangle Creation', () => {
     await uploadPDFAndWait(page)
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    await expect(page.locator('button[title="Rectangle (R)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Rectangle (R)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('Rectangle shows "Shift for perfect shapes" status', async ({ page }) => {
@@ -107,7 +107,7 @@ test.describe('Basic Circle Creation', () => {
     await uploadPDFAndWait(page)
     await page.keyboard.press('c')
     await page.waitForTimeout(100)
-    await expect(page.locator('button[title="Circle (C)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Circle (C)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('Circle shows "Shift for perfect shapes" status', async ({ page }) => {

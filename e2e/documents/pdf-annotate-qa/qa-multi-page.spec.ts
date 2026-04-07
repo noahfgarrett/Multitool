@@ -62,7 +62,8 @@ test.describe('Multi-Page QA — Thumbnail Sidebar', () => {
     await expect(thumbnails.nth(1)).toBeVisible({ timeout: 5000 })
     await thumbnails.nth(1).click()
     await page.waitForTimeout(500)
-    await expect(page.locator('input[type="number"]')).toHaveValue('2')
+    // Page indicator button should show page 2
+    await expect(page.locator('text=/^2 \\/ /')).toBeVisible()
   })
 
   test('active thumbnail has highlight styling when sidebar open', async ({ page }) => {
@@ -70,16 +71,17 @@ test.describe('Multi-Page QA — Thumbnail Sidebar', () => {
     const toggle = page.locator('button[title="Page thumbnails"]')
     await toggle.click()
     await page.waitForTimeout(300)
-    await expect(toggle).toHaveClass(/text-\[#F47B20\]/)
+    await expect(toggle).toHaveClass(/text-\[#14B8A6\]/)
   })
 })
 
 // ─── Page Number and Status Bar ─────────────────────────────────────────────
 
 test.describe('Multi-Page QA — Page Number Display', () => {
-  test('page input defaults to 1 on load', async ({ page }) => {
+  test('page indicator defaults to page 1 on load', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    await expect(page.locator('input[type="number"]')).toHaveValue('1')
+    // Page indicator button shows "1 / 2"
+    await expect(page.locator('text=/^1 \\/ /')).toBeVisible()
   })
 
   test('total page count shows "/ 2" for 2-page PDF', async ({ page }) => {
@@ -87,10 +89,10 @@ test.describe('Multi-Page QA — Page Number Display', () => {
     await expect(page.locator('text=/\\/ 2/')).toBeVisible()
   })
 
-  test('single-page PDF shows "1 page" instead of navigation', async ({ page }) => {
+  test('single-page PDF does not show page navigation', async ({ page }) => {
     await uploadPDFAndWait(page, 'single-page.pdf')
-    await expect(page.locator('input[type="number"]')).toBeHidden()
-    await expect(page.locator('text=/1 page/')).toBeVisible()
+    // No page indicator for single-page PDFs
+    await expect(page.locator('text=/\\/ \\d+/')).toBeHidden()
   })
 
   test('status bar shows filename', async ({ page }) => {
@@ -100,64 +102,67 @@ test.describe('Multi-Page QA — Page Number Display', () => {
 
   test('status bar shows file size', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const statusLeft = page.locator('.grid-cols-3 > div').first()
-    const text = await statusLeft.textContent()
-    expect(text).toMatch(/\d+(\.\d+)?\s*(B|KB|MB)/)
+    // File size is in the compact status bar at the bottom
+    await expect(page.locator('text=/\\d+(\\.\\d+)?\\s*(B|KB|MB)/')).toBeVisible()
   })
 })
 
-// ─── Chevron Navigation ─────────────────────────────────────────────────────
+// ─── Page Navigation ───────────────────────────────────────────────────────
 
-test.describe('Multi-Page QA — Chevron Navigation', () => {
-  test('next button navigates from page 1 to page 2', async ({ page }) => {
+test.describe('Multi-Page QA — Page Navigation', () => {
+  test('PageDown navigates from page 1 to page 2', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const pageInput = page.locator('input[type="number"]')
-    await expect(pageInput).toHaveValue('1')
-    const nextBtn = page.locator('.justify-center button').last()
-    await nextBtn.click()
+    await expect(page.locator('text=/^1 \\/ /')).toBeVisible()
+    await page.keyboard.press('PageDown')
     await page.waitForTimeout(500)
-    await expect(pageInput).toHaveValue('2')
+    await expect(page.locator('text=/^2 \\/ /')).toBeVisible()
   })
 
-  test('prev button navigates from page 2 to page 1', async ({ page }) => {
+  test('PageUp navigates from page 2 to page 1', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
+    await page.keyboard.press('PageDown')
     await page.waitForTimeout(500)
-    const navButtons = page.locator('.grid-cols-3 button')
-    await navButtons.first().click()
+    await expect(page.locator('text=/^2 \\/ /')).toBeVisible()
+    await page.keyboard.press('PageUp')
     await page.waitForTimeout(500)
-    await expect(pageInput).toHaveValue('1')
+    await expect(page.locator('text=/^1 \\/ /')).toBeVisible()
   })
 
-  test('prev button is disabled on page 1', async ({ page }) => {
+  test('PageUp on first page stays on first page', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const prevBtn = page.locator('.grid-cols-3 .justify-center button').first()
-    await expect(prevBtn).toBeDisabled()
+    await page.keyboard.press('PageUp')
+    await page.waitForTimeout(300)
+    await expect(page.locator('text=/^1 \\/ /')).toBeVisible()
   })
 
-  test('next button is disabled on last page', async ({ page }) => {
+  test('PageDown on last page stays on last page', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
+    await page.keyboard.press('PageDown')
+    await page.waitForTimeout(300)
+    await page.keyboard.press('PageDown')
+    await page.waitForTimeout(300)
+    // Should be clamped to page 2
+    await expect(page.locator('text=/^2 \\/ /')).toBeVisible()
+  })
+
+  test('clicking page indicator opens input for direct navigation', async ({ page }) => {
+    await uploadPDFAndWait(page, 'sample.pdf')
+    // Click the page indicator button to reveal input
+    await page.locator('text=/^1 \\/ /').click()
+    await page.waitForTimeout(200)
     const pageInput = page.locator('input[type="number"]')
+    await expect(pageInput).toBeVisible()
     await pageInput.fill('2')
     await pageInput.press('Enter')
     await page.waitForTimeout(500)
-    const nextBtn = page.locator('.grid-cols-3 .justify-center button').last()
-    await expect(nextBtn).toBeDisabled()
-  })
-
-  test('typing page number in input navigates directly', async ({ page }) => {
-    await uploadPDFAndWait(page, 'sample.pdf')
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
-    await page.waitForTimeout(500)
-    await expect(pageInput).toHaveValue('2')
+    await expect(page.locator('text=/^2 \\/ /')).toBeVisible()
   })
 
   test('page input has correct min and max attributes', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
+    // Click to reveal the input
+    await page.locator('text=/^1 \\/ /').click()
+    await page.waitForTimeout(200)
     const pageInput = page.locator('input[type="number"]')
     await expect(pageInput).toHaveAttribute('min', '1')
     await expect(pageInput).toHaveAttribute('max', '2')
@@ -171,10 +176,7 @@ test.describe('Multi-Page QA — Annotation Isolation', () => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     expect(await getAnnotationCount(page)).toBe(1)
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
-    await page.waitForTimeout(500)
+    await goToPage(page, 2)
     expect(await getAnnotationCount(page)).toBe(0)
   })
 
@@ -218,10 +220,7 @@ test.describe('Multi-Page QA — Annotation Isolation', () => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     await expect(page.locator('text=/1 ann/')).toBeVisible()
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
-    await page.waitForTimeout(500)
+    await goToPage(page, 2)
     await expect(page.locator('text=/0 ann/')).toBeVisible()
   })
 
@@ -245,13 +244,8 @@ test.describe('Multi-Page QA — Navigate While Editing', () => {
     await drawOnCanvas(page, [{ x: 50, y: 50 }, { x: 250, y: 100 }])
     await page.waitForTimeout(300)
     await page.keyboard.type('Page 1 text')
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
-    await page.waitForTimeout(500)
-    await pageInput.fill('1')
-    await pageInput.dispatchEvent('change')
-    await page.waitForTimeout(500)
+    await goToPage(page, 2)
+    await goToPage(page, 1)
     expect(await getAnnotationCount(page)).toBe(1)
   })
 
@@ -260,7 +254,7 @@ test.describe('Multi-Page QA — Navigate While Editing', () => {
     await selectTool(page, 'Pencil (P)')
     await goToPage(page, 2)
     // Verify pencil tool button is still active after page switch
-    await expect(page.locator('button[title="Pencil (P)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Pencil (P)"]')).toHaveClass(/bg-\[#14B8A6\]/)
     // Draw with pencil on page 2
     await drawOnCanvas(page, [
       { x: 100, y: 100 },
@@ -275,10 +269,7 @@ test.describe('Multi-Page QA — Navigate While Editing', () => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await page.locator('button[title="Zoom in"]').click()
     await page.waitForTimeout(200)
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
-    await page.waitForTimeout(500)
+    await goToPage(page, 2)
     await expect(page.locator('canvas').first()).toBeVisible()
   })
 })
@@ -286,26 +277,19 @@ test.describe('Multi-Page QA — Navigate While Editing', () => {
 // ─── Current Page Indicator ─────────────────────────────────────────────────
 
 test.describe('Multi-Page QA — Current Page Indicator', () => {
-  test('page input updates when navigating with next button', async ({ page }) => {
+  test('page indicator updates when navigating with PageDown', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const pageInput = page.locator('input[type="number"]')
-    const nextBtn = page.locator('.justify-center button').last()
-    await nextBtn.click()
+    await page.keyboard.press('PageDown')
     await page.waitForTimeout(500)
-    await expect(pageInput).toHaveValue('2')
+    await expect(page.locator('text=/^2 \\/ /')).toBeVisible()
   })
 
   test('round-trip navigation preserves correct page number', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
-    await page.waitForTimeout(500)
-    await expect(pageInput).toHaveValue('2')
-    await pageInput.fill('1')
-    await pageInput.dispatchEvent('change')
-    await page.waitForTimeout(500)
-    await expect(pageInput).toHaveValue('1')
+    await goToPage(page, 2)
+    await expect(page.locator('text=/^2 \\/ /')).toBeVisible()
+    await goToPage(page, 1)
+    await expect(page.locator('text=/^1 \\/ /')).toBeVisible()
   })
 
   test('data-page containers exist for both pages', async ({ page }) => {
@@ -319,10 +303,7 @@ test.describe('Multi-Page QA — Current Page Indicator', () => {
     await page.locator('button[title="Rotate CW"]').click()
     await page.waitForTimeout(300)
     await expect(page.locator('text=/90°/')).toBeVisible()
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
-    await page.waitForTimeout(500)
+    await goToPage(page, 2)
     await expect(page.locator('text=/90°/')).toBeHidden()
   })
 })
@@ -332,10 +313,13 @@ test.describe('Multi-Page QA — Current Page Indicator', () => {
 test.describe('Multi-Page QA — Rapid Navigation', () => {
   test('rapid page toggling does not crash', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const pageInput = page.locator('input[type="number"]')
     for (let i = 0; i < 10; i++) {
-      await pageInput.fill(i % 2 === 0 ? '2' : '1')
-      await pageInput.dispatchEvent('change')
+      if (i % 2 === 0) {
+        await page.keyboard.press('PageDown')
+      } else {
+        await page.keyboard.press('PageUp')
+      }
+      await page.waitForTimeout(100)
     }
     await page.waitForTimeout(500)
     await expect(page.locator('canvas').first()).toBeVisible()
@@ -343,25 +327,22 @@ test.describe('Multi-Page QA — Rapid Navigation', () => {
 
   test('drawing after rapid page switch works', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
-    await pageInput.fill('1')
-    await pageInput.dispatchEvent('change')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
-    await page.waitForTimeout(500)
+    await page.keyboard.press('PageDown')
+    await page.waitForTimeout(100)
+    await page.keyboard.press('PageUp')
+    await page.waitForTimeout(100)
+    await page.keyboard.press('PageDown')
+    await page.waitForTimeout(300)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     await expect(page.locator('canvas').first()).toBeVisible()
   })
 
-  test('rapid next button clicks clamp to last page', async ({ page }) => {
+  test('rapid PageDown clicks clamp to last page', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const nextBtn = page.locator('.grid-cols-3 .justify-center button').last()
-    await nextBtn.click()
-    await nextBtn.click()
-    await nextBtn.click()
+    await page.keyboard.press('PageDown')
+    await page.keyboard.press('PageDown')
+    await page.keyboard.press('PageDown')
     await page.waitForTimeout(500)
-    await expect(page.locator('input[type="number"]')).toHaveValue('2')
+    await expect(page.locator('text=/^2 \\/ /')).toBeVisible()
   })
 })

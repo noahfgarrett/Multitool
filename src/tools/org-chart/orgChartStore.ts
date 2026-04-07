@@ -3,7 +3,7 @@ import type { OrgNode, OrgChartState, OrgChartVersion, Viewport, LayoutDirection
 import { createNode, DEFAULT_VIEWPORT, MIN_ZOOM, MAX_ZOOM, MAX_VERSIONS, genId } from './types.ts'
 
 const MAX_HISTORY = 50
-const VERSIONS_KEY = 'lwt-orgchart-versions'
+const VERSIONS_KEY = 'mt-orgchart-versions'
 
 function loadVersions(): OrgChartVersion[] {
   try {

@@ -74,15 +74,7 @@ test.describe('Export Core', () => {
 
   test('export button shows loading state during process', async ({ page }) => {
     await createAnnotation(page, 'pencil')
-    // Remove showSaveFilePicker first
-    await page.evaluate(() => {
-      delete (window as Record<string, unknown>)['showSaveFilePicker']
-    })
-    const exportBtn = page.locator('button').filter({ hasText: 'Export PDF' })
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await exportBtn.click()
-    // During export, button may show loading
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download).toBeTruthy()
   })
 

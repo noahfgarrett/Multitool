@@ -18,7 +18,7 @@ import {
   clearSessionData,
 } from '../../helpers/pdf-annotate'
 
-const ANN_COLORS = ['#000000', '#FF0000', '#FF6600', '#F47B20', '#FFFF00', '#22C55E', '#3B82F6', '#8B5CF6', '#FFFFFF']
+const ANN_COLORS = ['#000000', '#FF0000', '#14B8A6', '#FFFF00', '#22C55E', '#3B82F6', '#8B5CF6', '#EC4899', '#FFFFFF']
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -50,7 +50,7 @@ test.describe('Pencil Color Presets', () => {
     expect(await getAnnotationCount(page)).toBe(1)
   })
 
-  test('drawing with orange (#FF6600) creates annotation', async ({ page }) => {
+  test('drawing with teal (#14B8A6) creates annotation', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Pencil (P)')
     const swatches = page.locator('button[style*="background-color"]')
@@ -61,7 +61,7 @@ test.describe('Pencil Color Presets', () => {
     expect(await getAnnotationCount(page)).toBe(1)
   })
 
-  test('drawing with brand orange (#F47B20) creates annotation', async ({ page }) => {
+  test('drawing with yellow (#FFFF00) creates annotation', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Pencil (P)')
     const swatches = page.locator('button[style*="background-color"]')
@@ -72,7 +72,7 @@ test.describe('Pencil Color Presets', () => {
     expect(await getAnnotationCount(page)).toBe(1)
   })
 
-  test('drawing with yellow (#FFFF00) creates annotation', async ({ page }) => {
+  test('drawing with green (#22C55E) creates annotation', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Pencil (P)')
     const swatches = page.locator('button[style*="background-color"]')
@@ -83,7 +83,7 @@ test.describe('Pencil Color Presets', () => {
     expect(await getAnnotationCount(page)).toBe(1)
   })
 
-  test('drawing with green (#22C55E) creates annotation', async ({ page }) => {
+  test('drawing with blue (#3B82F6) creates annotation', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Pencil (P)')
     const swatches = page.locator('button[style*="background-color"]')
@@ -94,7 +94,7 @@ test.describe('Pencil Color Presets', () => {
     expect(await getAnnotationCount(page)).toBe(1)
   })
 
-  test('drawing with blue (#3B82F6) creates annotation', async ({ page }) => {
+  test('drawing with purple (#8B5CF6) creates annotation', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Pencil (P)')
     const swatches = page.locator('button[style*="background-color"]')
@@ -105,7 +105,7 @@ test.describe('Pencil Color Presets', () => {
     expect(await getAnnotationCount(page)).toBe(1)
   })
 
-  test('drawing with purple (#8B5CF6) creates annotation', async ({ page }) => {
+  test('drawing with pink (#EC4899) creates annotation', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Pencil (P)')
     const swatches = page.locator('button[style*="background-color"]')

@@ -153,13 +153,13 @@ export default function ImageResizerTool() {
                 onChange={(e) => handleWidthChange(Number(e.target.value))}
                 min={1}
                 max={8192}
-                className="w-full px-3 py-2 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white focus:outline-none focus:border-[#F47B20]/40"
+                className="w-full px-3 py-2 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white focus:outline-none focus:border-[#14B8A6]/40"
               />
             </div>
             <button
               onClick={() => setLockAspect(!lockAspect)}
               className={`p-2 rounded-lg mb-0.5 transition-colors ${
-                lockAspect ? 'text-[#F47B20] bg-[#F47B20]/10' : 'text-white/30 hover:text-white/60'
+                lockAspect ? 'text-[#14B8A6] bg-[#14B8A6]/10' : 'text-white/30 hover:text-white/60'
               }`}
               title={lockAspect ? 'Unlock aspect ratio' : 'Lock aspect ratio'}
               aria-label={lockAspect ? 'Unlock aspect ratio' : 'Lock aspect ratio'}
@@ -174,7 +174,7 @@ export default function ImageResizerTool() {
                 onChange={(e) => handleHeightChange(Number(e.target.value))}
                 min={1}
                 max={8192}
-                className="w-full px-3 py-2 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white focus:outline-none focus:border-[#F47B20]/40"
+                className="w-full px-3 py-2 text-sm bg-dark-surface border border-white/[0.1] rounded-lg text-white focus:outline-none focus:border-[#14B8A6]/40"
               />
             </div>
           </div>
@@ -209,7 +209,7 @@ export default function ImageResizerTool() {
                 onClick={() => setFormat(f.id)}
                 className={`flex-1 px-2 py-1.5 text-xs rounded-md transition-colors ${
                   format === f.id
-                    ? 'bg-[#F47B20] text-white'
+                    ? 'bg-[#14B8A6] text-white'
                     : 'bg-white/[0.06] text-white/50 hover:text-white'
                 }`}
               >
@@ -267,7 +267,7 @@ export default function ImageResizerTool() {
 
         {/* Output info */}
         {outputBlob && (
-          <div className="p-3 rounded-lg bg-[#F47B20]/5 border border-[#F47B20]/20 space-y-1">
+          <div className="p-3 rounded-lg bg-[#14B8A6]/5 border border-[#14B8A6]/20 space-y-1">
             <p className="text-xs text-white/40">Output</p>
             <p className="text-sm text-white">{width} x {height}px</p>
             <p className="text-xs text-white/40">{formatFileSize(outputBlob.size)}</p>

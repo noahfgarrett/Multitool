@@ -55,7 +55,7 @@ function buildEmailBody(
     '',
     '---',
     '',
-    `Sent from LotusWorks Toolkit v${version}`,
+    `Sent from Multitool v${version}`,
   ].join('\n')
 }
 
@@ -228,7 +228,7 @@ export default function FeedbackForm() {
           <select
             value={tool}
             onChange={(e) => { setTool(e.target.value); setErrors((prev) => ({ ...prev, tool: false })) }}
-            className={`w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border text-sm text-white/80 appearance-none cursor-pointer focus:outline-none focus:border-[#F47B20]/40 ${
+            className={`w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border text-sm text-white/80 appearance-none cursor-pointer focus:outline-none focus:border-[#14B8A6]/40 ${
               errors.tool ? 'border-red-500/50' : 'border-white/10'
             }`}
           >
@@ -256,7 +256,7 @@ export default function FeedbackForm() {
             value={subject}
             onChange={(e) => { setSubject(e.target.value); setErrors((prev) => ({ ...prev, subject: false })) }}
             placeholder="Brief summary of the issue or idea..."
-            className={`w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border text-sm text-white placeholder-white/25 focus:outline-none focus:border-[#F47B20]/40 ${
+            className={`w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border text-sm text-white placeholder-white/25 focus:outline-none focus:border-[#14B8A6]/40 ${
               errors.subject ? 'border-red-500/50' : 'border-white/10'
             }`}
           />
@@ -271,7 +271,7 @@ export default function FeedbackForm() {
             {(['low', 'medium', 'high'] as const).map((p) => {
               const activeStyles: Record<Priority, string> = {
                 low: 'bg-green-500/10 border border-green-500/30 text-green-400',
-                medium: 'bg-[#F47B20]/10 border border-[#F47B20]/30 text-[#F47B20]',
+                medium: 'bg-[#14B8A6]/10 border border-[#14B8A6]/30 text-[#14B8A6]',
                 high: 'bg-red-500/10 border border-red-500/30 text-red-400',
               }
               return (
@@ -301,7 +301,7 @@ export default function FeedbackForm() {
             onChange={(e) => { setDescription(e.target.value); setErrors((prev) => ({ ...prev, description: false })) }}
             placeholder={descriptionPlaceholder}
             rows={5}
-            className={`w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border text-sm text-white placeholder-white/25 resize-y focus:outline-none focus:border-[#F47B20]/40 ${
+            className={`w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border text-sm text-white placeholder-white/25 resize-y focus:outline-none focus:border-[#14B8A6]/40 ${
               errors.description ? 'border-red-500/50' : 'border-white/10'
             }`}
           />
@@ -318,7 +318,7 @@ export default function FeedbackForm() {
         {/* Sender identity badge */}
         {hasProfile && profile ? (
           <div className="flex items-center gap-3 px-3.5 py-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
-            <div className="w-8 h-8 rounded-full bg-[#F47B20]/15 flex items-center justify-center text-xs font-semibold text-[#F47B20] flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[#14B8A6]/15 flex items-center justify-center text-xs font-semibold text-[#14B8A6] flex-shrink-0">
               {profile.initials}
             </div>
             <div className="min-w-0 flex-1">
@@ -349,7 +349,7 @@ export default function FeedbackForm() {
           <button
             onClick={handleSubmit}
             disabled={!hasProfile}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#F47B20] text-white text-sm font-semibold hover:bg-[#F47B20]/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[#14B8A6] text-white text-sm font-semibold hover:bg-[#14B8A6]/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Mail size={14} />
             Open in Email Client

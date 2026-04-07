@@ -187,7 +187,7 @@ export default function OrgChartTool() {
                       setVersionRefresh(v => v + 1)
                     }
                   }}
-                  className="text-xs px-2 py-1 bg-[#F47B20] text-white rounded hover:bg-[#F47B20]/80 transition-colors"
+                  className="text-xs px-2 py-1 bg-[#14B8A6] text-white rounded hover:bg-[#14B8A6]/80 transition-colors"
                 >
                   Save Current
                 </button>
@@ -385,8 +385,8 @@ function TemplateCard({
       onClick={onClick}
       className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left hover:bg-white/[0.04] transition-colors"
     >
-      <div className="w-8 h-8 rounded-lg bg-[#F47B20]/10 flex items-center justify-center flex-shrink-0">
-        <Users size={14} className="text-[#F47B20]" />
+      <div className="w-8 h-8 rounded-lg bg-[#14B8A6]/10 flex items-center justify-center flex-shrink-0">
+        <Users size={14} className="text-[#14B8A6]" />
       </div>
       <div className="flex-1">
         <p className="text-sm text-white font-medium">{name}</p>

@@ -238,8 +238,14 @@ test.describe('Cross-Tool: Eraser with All Types', () => {
     }
     expect(await getAnnotationCount(page)).toBe(5)
     await activateObjectEraser(page)
-    await drawOnCanvas(page, [{ x: 70, y: 20 }, { x: 70, y: 260 }])
-    await page.waitForTimeout(300)
+    // Use a zigzag path to ensure we cross each pencil stroke
+    await drawOnCanvas(page, [
+      { x: 60, y: 20 }, { x: 80, y: 40 }, { x: 60, y: 60 },
+      { x: 80, y: 90 }, { x: 60, y: 110 }, { x: 80, y: 140 },
+      { x: 60, y: 160 }, { x: 80, y: 190 }, { x: 60, y: 210 },
+      { x: 80, y: 240 }, { x: 60, y: 260 },
+    ])
+    await page.waitForTimeout(500)
     expect(await getAnnotationCount(page)).toBeLessThanOrEqual(4)
   })
 

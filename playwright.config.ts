@@ -22,7 +22,7 @@ export default defineConfig({
       origins: [{
         origin: `http://localhost:${PORT}`,
         localStorage: [{
-          name: 'lwt-user-profile',
+          name: 'mt-user-profile',
           value: JSON.stringify({ name: 'Test User', email: 'test@test.com', initials: 'TU', jobTitle: '', company: '', photo: '' }),
         }],
       }],

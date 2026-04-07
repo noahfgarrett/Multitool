@@ -96,7 +96,7 @@ export function Minimap({ store }: { store: FlowchartStore }) {
       ctx.beginPath()
       ctx.moveTo(source.x + source.width / 2, source.y + source.height / 2)
       ctx.lineTo(target.x + target.width / 2, target.y + target.height / 2)
-      ctx.strokeStyle = 'rgba(244, 123, 32, 0.3)'
+      ctx.strokeStyle = 'rgba(20, 184, 166, 0.3)'
       ctx.lineWidth = 1 / scale
       ctx.stroke()
     }
@@ -104,9 +104,9 @@ export function Minimap({ store }: { store: FlowchartStore }) {
     // Draw nodes as colored rectangles (no text)
     const sortedNodes = [...nodes].sort((a, b) => a.zIndex - b.zIndex)
     for (const node of sortedNodes) {
-      ctx.fillStyle = node.style.fill || 'rgba(244, 123, 32, 0.15)'
+      ctx.fillStyle = node.style.fill || 'rgba(20, 184, 166, 0.15)'
       ctx.fillRect(node.x, node.y, node.width, node.height)
-      ctx.strokeStyle = node.style.stroke || 'rgba(244, 123, 32, 0.4)'
+      ctx.strokeStyle = node.style.stroke || 'rgba(20, 184, 166, 0.4)'
       ctx.lineWidth = 1 / scale
       ctx.strokeRect(node.x, node.y, node.width, node.height)
     }

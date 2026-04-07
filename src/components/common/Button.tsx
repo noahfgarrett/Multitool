@@ -13,10 +13,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variants: Record<ButtonVariant, string> = {
   primary: `
-    bg-[#F47B20] text-white
-    hover:bg-[#E06D15] active:bg-[#C75F10]
-    shadow-lg shadow-[#F47B20]/20
-    hover:shadow-xl hover:shadow-[#F47B20]/30
+    bg-[#14B8A6] text-white
+    hover:bg-[#0D9488] active:bg-[#0F766E]
+    shadow-lg shadow-[#14B8A6]/20
+    hover:shadow-xl hover:shadow-[#14B8A6]/30
   `,
   secondary: `
     border
@@ -62,7 +62,7 @@ export const Button = memo(function Button({
       className={`
         inline-flex items-center justify-center font-medium
         transition-all duration-200
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F47B20]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-base
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14B8A6]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-base
         disabled:opacity-40 disabled:pointer-events-none
         ${variants[variant]}
         ${sizes[size]}

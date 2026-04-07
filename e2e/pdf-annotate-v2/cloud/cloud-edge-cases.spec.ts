@@ -644,7 +644,7 @@ test.describe('Cloud Hit-Test', () => {
     // Click center of cloud (no fill = should not select)
     await clickCanvasAt(page, 200, 200)
     await page.waitForTimeout(200)
-    const statusText = page.locator('text=/Click to select/')
+    const statusText = page.locator('text=/Click to select/').first()
     const isNoSelection = await statusText.isVisible().catch(() => false)
     // May or may not select depending on bump rendering; just verify no crash
     expect(await getAnnotationCount(page)).toBe(1)

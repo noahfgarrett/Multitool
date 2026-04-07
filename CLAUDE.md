@@ -1,4 +1,4 @@
-# LotusWorksToolkit
+# Multitool
 
 Professional-grade local toolbox delivered as a single HTML file. All tools run 100% in-browser with zero server calls — safe for intellectual property, sensitive documents, and regulated industries. Distributed via email, OneDrive, SharePoint, or any file share.
 
@@ -84,7 +84,7 @@ When the user says "push a new release", "push to GitHub", or "release vX.Y.Z", 
 ### Release Checklist
 
 1. **Bump version** in `package.json`
-2. **Build**: `npm run build` → produces `dist/LotusWorksToolkit.html`
+2. **Build**: `npm run build` → produces `dist/Multitool.html`
 3. **Update changelog** — Add a new entry to the TOP of `src/data/changelog.ts` with a **placeholder date**:
    ```typescript
    {
@@ -98,12 +98,12 @@ When the user says "push a new release", "push to GitHub", or "release vX.Y.Z", 
    - Add to the TOP of the `CHANGELOG` array (newest first)
    - Follow release notes style (short, user-facing, no QA mentions)
    - Rebuild after adding so the changelog is baked into the HTML
-4. **Verify version is baked in**: `grep -o '"X\.Y\.Z"' dist/LotusWorksToolkit.html | head -1` must show the new version
+4. **Verify version is baked in**: `grep -o '"X\.Y\.Z"' dist/Multitool.html | head -1` must show the new version
 5. **Commit and push** the version bump
 6. **Create the release with `target_commitish`** pointing to the actual commit SHA — this ensures `created_at` gets a fresh timestamp:
    ```bash
    COMMIT=$(git rev-parse HEAD)
-   gh api repos/noahfgarrett/LotusWorksToolkit/releases -X POST \
+   gh api repos/noahfgarrett/Multitool/releases -X POST \
      -f tag_name=vX.Y.Z \
      -f target_commitish="$COMMIT" \
      -f name="vX.Y.Z — Title" \
@@ -113,23 +113,23 @@ When the user says "push a new release", "push to GitHub", or "release vX.Y.Z", 
    ```
 7. **Upload the HTML asset**:
    ```bash
-   gh release upload vX.Y.Z dist/LotusWorksToolkit.html
+   gh release upload vX.Y.Z dist/Multitool.html
    ```
 8. **Verify `/releases/latest` returns the new version**:
    ```bash
-   gh api repos/noahfgarrett/LotusWorksToolkit/releases/latest --jq '{tag_name, created_at, assets: [.assets[].name]}'
+   gh api repos/noahfgarrett/Multitool/releases/latest --jq '{tag_name, created_at, assets: [.assets[].name]}'
    ```
-   Must show: correct tag, fresh `created_at` date, and `LotusWorksToolkit.html` in assets.
+   Must show: correct tag, fresh `created_at` date, and `Multitool.html` in assets.
 9. **Patch changelog with real timestamp** — Pull the actual `published_at` from GitHub, update the changelog entry, rebuild, and re-upload:
    ```bash
-   REAL_DATE=$(gh api repos/noahfgarrett/LotusWorksToolkit/releases/tags/vX.Y.Z --jq '.published_at')
+   REAL_DATE=$(gh api repos/noahfgarrett/Multitool/releases/tags/vX.Y.Z --jq '.published_at')
    # Replace 'PLACEHOLDER' with $REAL_DATE in src/data/changelog.ts
    npm run build
    # Delete old asset and re-upload
-   ASSET_ID=$(gh api repos/noahfgarrett/LotusWorksToolkit/releases/tags/vX.Y.Z --jq '.assets[0].id')
-   gh api repos/noahfgarrett/LotusWorksToolkit/releases/assets/$ASSET_ID -X DELETE
-   gh release upload vX.Y.Z dist/LotusWorksToolkit.html
-   git add src/data/changelog.ts && git add -f dist/LotusWorksToolkit.html
+   ASSET_ID=$(gh api repos/noahfgarrett/Multitool/releases/tags/vX.Y.Z --jq '.assets[0].id')
+   gh api repos/noahfgarrett/Multitool/releases/assets/$ASSET_ID -X DELETE
+   gh release upload vX.Y.Z dist/Multitool.html
+   git add src/data/changelog.ts && git add -f dist/Multitool.html
    git commit -m "fix: patch changelog timestamp for vX.Y.Z" && git push
    ```
    This ensures the changelog displays the exact date and time the release was published.
@@ -143,9 +143,9 @@ The update checker (`updateChecker.ts`) fetches `/releases/latest`, checks if th
 ### Cleanup
 If `gh release create` fails with HTTP 500, it may leave orphaned **draft releases**. Check for and delete them:
 ```bash
-gh api repos/noahfgarrett/LotusWorksToolkit/releases --jq '.[] | select(.draft) | {id, tag_name}'
+gh api repos/noahfgarrett/Multitool/releases --jq '.[] | select(.draft) | {id, tag_name}'
 # Delete any orphaned drafts:
-gh api repos/noahfgarrett/LotusWorksToolkit/releases/<id> -X DELETE
+gh api repos/noahfgarrett/Multitool/releases/<id> -X DELETE
 ```
 
 ## Gotchas

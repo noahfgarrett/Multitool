@@ -20,7 +20,7 @@ test.describe('Highlighter Tool — Activation', () => {
     await page.keyboard.press('h')
     await page.waitForTimeout(100)
     const btn = page.locator('button[title="Highlight (H)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('clicking Highlight button activates tool', async ({ page }) => {
@@ -28,7 +28,7 @@ test.describe('Highlighter Tool — Activation', () => {
     await page.locator('button[title="Highlight (H)"]').click()
     await page.waitForTimeout(100)
     const btn = page.locator('button[title="Highlight (H)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('highlight tool shows crosshair cursor on canvas', async ({ page }) => {
@@ -43,7 +43,7 @@ test.describe('Highlighter Tool — Activation', () => {
     await selectTool(page, 'Highlight (H)')
     await selectTool(page, 'Select (S)')
     const highlightBtn = page.locator('button[title="Highlight (H)"]')
-    await expect(highlightBtn).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(highlightBtn).not.toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('highlight tool shows straight/free toggle', async ({ page }) => {
@@ -557,7 +557,7 @@ test.describe('Highlighter Tool — Opacity and Stroke', () => {
   test('highlight with orange color', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Highlight (H)')
-    const orangeSwatch = page.locator('button[title="#F47B20"]')
+    const orangeSwatch = page.locator('button[title="#14B8A6"]')
     if (await orangeSwatch.isVisible()) await orangeSwatch.click()
     await page.waitForTimeout(100)
     await drawOnCanvas(page, [{ x: 100, y: 150 }, { x: 300, y: 155 }])
@@ -566,7 +566,7 @@ test.describe('Highlighter Tool — Opacity and Stroke', () => {
     const session = await getSessionData(page)
     const anns = Object.values(session.annotations).flat() as Array<{ type: string; color: string }>
     const highlight = anns.find(a => a.type === 'highlighter')
-    expect(highlight!.color).toBe('#F47B20')
+    expect(highlight!.color).toBe('#14B8A6')
   })
 
   test('highlight with purple color', async ({ page }) => {

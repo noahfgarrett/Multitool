@@ -5,7 +5,7 @@ import { uploadFile, uploadFiles } from '../helpers/file-upload'
 test.describe('File Converter — HEIC/HEIF support', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
 
     const sidebar = page.locator('aside nav')
     await sidebar.locator('button').filter({ hasText: 'File Converter' }).click()
@@ -88,7 +88,7 @@ test.describe('File Converter — HEIC/HEIF support', () => {
     await entry.locator('button').filter({ hasText: /^Convert$/ }).click()
 
     await expect(page.locator('text=/1 converted/')).toBeVisible({ timeout: 30000 })
-    await expect(entry).toHaveClass(/border-\[#F47B20\]/)
+    await expect(entry).toHaveClass(/border-\[#14B8A6\]/)
   })
 
   test('HEIC file converts to WebP successfully', async ({ page }) => {
@@ -100,7 +100,7 @@ test.describe('File Converter — HEIC/HEIF support', () => {
     await entry.locator('button').filter({ hasText: /^Convert$/ }).click()
 
     await expect(page.locator('text=/1 converted/')).toBeVisible({ timeout: 30000 })
-    await expect(entry).toHaveClass(/border-\[#F47B20\]/)
+    await expect(entry).toHaveClass(/border-\[#14B8A6\]/)
   })
 
   test('HEIC file converts to PDF successfully', async ({ page }) => {
@@ -112,7 +112,7 @@ test.describe('File Converter — HEIC/HEIF support', () => {
     await entry.locator('button').filter({ hasText: /^Convert$/ }).click()
 
     await expect(page.locator('text=/1 converted/')).toBeVisible({ timeout: 30000 })
-    await expect(entry).toHaveClass(/border-\[#F47B20\]/)
+    await expect(entry).toHaveClass(/border-\[#14B8A6\]/)
   })
 
   test('HEIC file can be removed from the list', async ({ page }) => {
@@ -130,7 +130,7 @@ test.describe('File Converter — HEIC/HEIF support', () => {
 test.describe('File Converter — Bulk conversion progress bar', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
 
     const sidebar = page.locator('aside nav')
     await sidebar.locator('button').filter({ hasText: 'File Converter' }).click()

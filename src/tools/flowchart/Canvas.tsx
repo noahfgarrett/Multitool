@@ -930,7 +930,7 @@ export function Canvas({ store }: { store: FlowchartStore }) {
         <path
           d={def.svgPath(def.defaultWidth, def.defaultHeight)}
           fill="rgba(244,123,32,0.08)"
-          stroke="#F47B20"
+          stroke="#14B8A6"
           strokeWidth={1.5 / viewport.zoom}
           strokeDasharray={`${5 / viewport.zoom} ${3 / viewport.zoom}`}
         />
@@ -1082,7 +1082,7 @@ export function Canvas({ store }: { store: FlowchartStore }) {
                   setEditingEdgeId(null)
                 }
               }}
-              className="w-[120px] px-2 py-1 text-xs text-center bg-dark-surface border border-[#F47B20]/40 rounded text-white outline-none"
+              className="w-[120px] px-2 py-1 text-xs text-center bg-dark-surface border border-[#14B8A6]/40 rounded text-white outline-none"
               placeholder="Edge label..."
             />
           </div>

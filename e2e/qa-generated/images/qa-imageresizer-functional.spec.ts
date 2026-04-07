@@ -8,7 +8,7 @@ import { uploadFile } from '../../helpers/file-upload'
  */
 async function goToImageResizer(page: import('@playwright/test').Page) {
   await page.goto('/')
-  await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' })).toBeVisible({ timeout: 10000 })
+  await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
   const sidebar = page.locator('aside nav')
   await sidebar.locator('button').filter({ hasText: 'Image Resizer' }).click()
   await waitForToolLoad(page)
@@ -136,7 +136,7 @@ test.describe('Image Resizer — Functional QA', () => {
 
     // PNG button should be highlighted (active)
     const pngBtn = page.locator('button').filter({ hasText: 'PNG' }).first()
-    // Active state has bg-[#F47B20] class
+    // Active state has bg-[#14B8A6] class
     await expect(pngBtn).toHaveCSS('background-color', 'rgb(244, 123, 32)')
   })
 

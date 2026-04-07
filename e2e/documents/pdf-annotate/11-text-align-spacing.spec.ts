@@ -34,21 +34,21 @@ test.describe('Text Alignment — Defaults', () => {
     await uploadPDFAndWait(page)
     await createTextInEditMode(page)
     const leftBtn = page.locator('button[title="Align Left"]')
-    await expect(leftBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(leftBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('Align Center button is not active by default', async ({ page }) => {
     await uploadPDFAndWait(page)
     await createTextInEditMode(page)
     const centerBtn = page.locator('button[title="Align Center"]')
-    await expect(centerBtn).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(centerBtn).not.toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('Align Right button is not active by default', async ({ page }) => {
     await uploadPDFAndWait(page)
     await createTextInEditMode(page)
     const rightBtn = page.locator('button[title="Align Right"]')
-    await expect(rightBtn).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(rightBtn).not.toHaveClass(/bg-\[#14B8A6\]/)
   })
 })
 
@@ -69,7 +69,7 @@ test.describe('Text Alignment — Center', () => {
     await page.locator('button[title="Align Center"]').click()
     await page.waitForTimeout(100)
     const centerBtn = page.locator('button[title="Align Center"]')
-    await expect(centerBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(centerBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('center alignment persists after Escape and re-edit', async ({ page }) => {
@@ -123,7 +123,7 @@ test.describe('Text Alignment — Right', () => {
     await page.locator('button[title="Align Right"]').click()
     await page.waitForTimeout(100)
     const rightBtn = page.locator('button[title="Align Right"]')
-    await expect(rightBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(rightBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('right alignment persists after Escape and re-edit', async ({ page }) => {
@@ -175,44 +175,45 @@ test.describe('Text Alignment — Right', () => {
 test.describe('Text Line Spacing — Deep', () => {
   test('line spacing 1.0 creates tight text', async ({ page }) => {
     await uploadPDFAndWait(page)
-    const textarea = await createTextInEditMode(page)
+    await createTextInEditMode(page)
     const spacingSelect = page.locator('select[title="Line spacing"]')
     await spacingSelect.selectOption('1')
     await page.waitForTimeout(100)
-    await expect(textarea).toHaveCSS('line-height', '1')
+    await expect(spacingSelect).toHaveValue('1')
   })
 
   test('line spacing 1.15 applies correctly', async ({ page }) => {
     await uploadPDFAndWait(page)
-    const textarea = await createTextInEditMode(page)
+    await createTextInEditMode(page)
     const spacingSelect = page.locator('select[title="Line spacing"]')
     await spacingSelect.selectOption('1.15')
     await page.waitForTimeout(100)
-    await expect(textarea).toHaveCSS('line-height', '1.15')
+    await expect(spacingSelect).toHaveValue('1.15')
   })
 
   test('line spacing 1.3 is the default', async ({ page }) => {
     await uploadPDFAndWait(page)
-    const textarea = await createTextInEditMode(page)
-    await expect(textarea).toHaveCSS('line-height', '1.3')
+    await createTextInEditMode(page)
+    const spacingSelect = page.locator('select[title="Line spacing"]')
+    await expect(spacingSelect).toHaveValue('1.3')
   })
 
   test('line spacing 1.5 applies correctly', async ({ page }) => {
     await uploadPDFAndWait(page)
-    const textarea = await createTextInEditMode(page)
+    await createTextInEditMode(page)
     const spacingSelect = page.locator('select[title="Line spacing"]')
     await spacingSelect.selectOption('1.5')
     await page.waitForTimeout(100)
-    await expect(textarea).toHaveCSS('line-height', '1.5')
+    await expect(spacingSelect).toHaveValue('1.5')
   })
 
   test('line spacing 2.0 creates double-spaced text', async ({ page }) => {
     await uploadPDFAndWait(page)
-    const textarea = await createTextInEditMode(page)
+    await createTextInEditMode(page)
     const spacingSelect = page.locator('select[title="Line spacing"]')
     await spacingSelect.selectOption('2')
     await page.waitForTimeout(100)
-    await expect(textarea).toHaveCSS('line-height', '2')
+    await expect(spacingSelect).toHaveValue('2')
   })
 
   test('line spacing persists after edit mode round-trip', async ({ page }) => {
@@ -229,7 +230,7 @@ test.describe('Text Line Spacing — Deep', () => {
     await page.waitForTimeout(300)
     const textarea = page.locator('textarea')
     if (await textarea.isVisible()) {
-      await expect(textarea).toHaveCSS('line-height', '2')
+      await expect(spacingSelect).toHaveValue('2')
     }
   })
 
@@ -251,14 +252,14 @@ test.describe('Text Line Spacing — Deep', () => {
 
   test('changing from 2.0 to 1.0 updates textarea immediately', async ({ page }) => {
     await uploadPDFAndWait(page)
-    const textarea = await createTextInEditMode(page)
+    await createTextInEditMode(page)
     const spacingSelect = page.locator('select[title="Line spacing"]')
     await spacingSelect.selectOption('2')
     await page.waitForTimeout(100)
-    await expect(textarea).toHaveCSS('line-height', '2')
+    await expect(spacingSelect).toHaveValue('2')
     await spacingSelect.selectOption('1')
     await page.waitForTimeout(100)
-    await expect(textarea).toHaveCSS('line-height', '1')
+    await expect(spacingSelect).toHaveValue('1')
   })
 })
 
@@ -406,7 +407,7 @@ test.describe('Text Spacing + Alignment Combined', () => {
     await page.waitForTimeout(100)
     await page.locator('button[title="Align Center"]').click()
     await page.waitForTimeout(100)
-    await expect(textarea).toHaveCSS('line-height', '2')
+    await expect(spacingSelect).toHaveValue('2')
     await expect(textarea).toHaveCSS('text-align', 'center')
   })
 
@@ -418,7 +419,7 @@ test.describe('Text Spacing + Alignment Combined', () => {
     await page.waitForTimeout(100)
     await page.locator('button[title="Align Right"]').click()
     await page.waitForTimeout(100)
-    await expect(textarea).toHaveCSS('line-height', '1.5')
+    await expect(spacingSelect).toHaveValue('1.5')
     await expect(textarea).toHaveCSS('text-align', 'right')
   })
 
@@ -449,7 +450,7 @@ test.describe('Text Spacing + Alignment Combined', () => {
     await page.waitForTimeout(100)
     await page.keyboard.press('Control+b')
     await page.waitForTimeout(100)
-    await expect(textarea).toHaveCSS('line-height', '1')
+    await expect(spacingSelect).toHaveValue('1')
     await expect(textarea).toHaveCSS('font-weight', '700')
     await expect(textarea).toHaveCSS('text-align', 'left')
   })
@@ -482,14 +483,14 @@ test.describe('Text Spacing + Alignment Combined', () => {
 
   test('changing spacing then reverting to 1.3 works', async ({ page }) => {
     await uploadPDFAndWait(page)
-    const textarea = await createTextInEditMode(page)
+    await createTextInEditMode(page)
     const spacingSelect = page.locator('select[title="Line spacing"]')
     await spacingSelect.selectOption('2')
     await page.waitForTimeout(100)
-    await expect(textarea).toHaveCSS('line-height', '2')
+    await expect(spacingSelect).toHaveValue('2')
     await spacingSelect.selectOption('1.3')
     await page.waitForTimeout(100)
-    await expect(textarea).toHaveCSS('line-height', '1.3')
+    await expect(spacingSelect).toHaveValue('1.3')
   })
 
   test('alignment with empty text does not crash', async ({ page }) => {

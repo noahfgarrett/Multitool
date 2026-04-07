@@ -120,8 +120,8 @@ test.describe('Markups List Panel', () => {
     await row.click()
     await page.waitForTimeout(300)
 
-    // The row should now have the selected highlight class (bg-[#F47B20]/10)
-    await expect(row).toHaveClass(/bg-\[#F47B20\]/)
+    // The row should now have the selected highlight class (bg-[#14B8A6]/10)
+    await expect(row).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('panel can be collapsed and expanded by clicking header', async ({ page }) => {

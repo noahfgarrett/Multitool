@@ -599,7 +599,7 @@ export const DARK_CHART_STYLES = {
   tooltipBg: 'rgba(26, 26, 36, 0.90)',
   tooltipBorder: 'rgba(255, 255, 255, 0.06)',
   tooltipText: '#FFFFFF',
-  selectionGlow: 'rgba(244, 123, 32, 0.4)',
+  selectionGlow: 'rgba(20, 184, 166, 0.4)',
   animationDuration: 300,
   /** Convenience: Recharts Tooltip contentStyle */
   tooltip: {

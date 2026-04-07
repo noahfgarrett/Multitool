@@ -29,7 +29,7 @@ test.describe('Highlighter — Activation', () => {
     await page.keyboard.press('h')
     await page.waitForTimeout(100)
     const btn = page.locator('button[title="Highlight (H)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('highlight tool shows crosshair cursor', async ({ page }) => {
@@ -42,7 +42,7 @@ test.describe('Highlighter — Activation', () => {
     await selectTool(page, 'Highlight (H)')
     await selectTool(page, 'Select (S)')
     const btn = page.locator('button[title="Highlight (H)"]')
-    await expect(btn).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).not.toHaveClass(/bg-\[#14B8A6\]/)
   })
 })
 

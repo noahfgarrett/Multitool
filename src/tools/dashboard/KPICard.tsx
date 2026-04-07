@@ -121,7 +121,7 @@ export function KPICard({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           {icon && (
-            <div className="p-2 rounded-lg bg-[#F47B20]/10 text-[#F47B20]">
+            <div className="p-2 rounded-lg bg-[#14B8A6]/10 text-[#14B8A6]">
               {icon}
             </div>
           )}

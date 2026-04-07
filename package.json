@@ -1,11 +1,11 @@
 {
-  "name": "lotusworks-toolkit",
+  "name": "multitool",
   "private": true,
-  "version": "3.1.5",
+  "version": "4.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && mv dist/index.html dist/LotusWorksToolkit.html",
+    "build": "tsc -b && vite build && mv dist/index.html dist/Multitool.html",
     "preview": "vite preview",
     "test": "npx playwright test",
     "test:ui": "npx playwright test --ui",

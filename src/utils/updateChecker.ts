@@ -1,7 +1,7 @@
 import { isNewer } from '@/utils/semver.ts'
 
 const GITHUB_API_URL =
-  'https://api.github.com/repos/noahfgarrett/LotusWorksToolkit/releases/latest'
+  'https://api.github.com/repos/noahfgarrett/Multitool/releases/latest'
 const TIMEOUT_MS = 5000
 
 export interface UpdateInfo {

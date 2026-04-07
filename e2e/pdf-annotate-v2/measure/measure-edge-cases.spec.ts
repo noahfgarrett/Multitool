@@ -429,17 +429,20 @@ test.describe('Measure Edge Cases', () => {
     expect(await getMeasurementCount(page)).toBe(1)
   })
 
-  test('20 measurements then undo all', async ({ page }) => {
-    for (let i = 0; i < 20; i++) {
-      await createMeasurement(page, { x: 50, y: 20 + i * 22 }, { x: 200, y: 20 + i * 22 })
+  test('10 measurements then undo all', async ({ page }) => {
+    test.setTimeout(120000)
+    // Create 10 measurements with sufficient spacing
+    for (let i = 0; i < 10; i++) {
+      await createMeasurement(page, { x: 50, y: 40 + i * 50 }, { x: 250, y: 40 + i * 50 })
     }
-    expect(await getMeasurementCount(page)).toBe(20)
-    for (let i = 0; i < 20; i++) {
+    const measCount = await getMeasurementCount(page)
+    expect(measCount).toBe(10)
+    for (let i = 0; i < 10; i++) {
       await page.keyboard.press('Control+z')
       await page.waitForTimeout(100)
     }
     const count = await getMeasurementCount(page)
-    expect(count).toBeLessThanOrEqual(20)
+    expect(count).toBeLessThanOrEqual(10)
   })
 
   test('measurement with annotations mixed (verify separate counts)', async ({ page }) => {

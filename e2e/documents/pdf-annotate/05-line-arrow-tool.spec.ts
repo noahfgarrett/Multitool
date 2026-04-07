@@ -35,7 +35,7 @@ test.describe('Basic Line Creation', () => {
     await uploadPDFAndWait(page)
     await page.keyboard.press('l')
     await page.waitForTimeout(100)
-    await expect(page.locator('button[title="Line (L)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Line (L)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('Line tool shows "Shift for perfect shapes" status', async ({ page }) => {
@@ -107,7 +107,7 @@ test.describe('Basic Arrow Creation', () => {
     await uploadPDFAndWait(page)
     await page.keyboard.press('a')
     await page.waitForTimeout(100)
-    await expect(page.locator('button[title="Arrow (A)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Arrow (A)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('Arrow tool shows "Shift for perfect shapes" status', async ({ page }) => {

@@ -1,5 +1,5 @@
 /**
- * Browser-adapted PDF utilities for LotusWorks Toolkit.
+ * Browser-adapted PDF utilities for Multitool.
  * Uses pdfjs-dist for rendering and pdf-lib for manipulation.
  * No Electron/filesystem dependencies - works entirely with File objects and Uint8Arrays.
  */

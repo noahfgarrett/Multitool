@@ -96,7 +96,7 @@ async function rightClickCanvasAt(page: import('@playwright/test').Page, x: numb
 /** Get the active tool by checking which toolbar button has the active style */
 async function getActiveTool(page: import('@playwright/test').Page): Promise<string> {
   // Check for the active button ring indicator style
-  const activeBtn = page.locator('button.ring-1.ring-inset.ring-\\[\\#F47B20\\]')
+  const activeBtn = page.locator('button.ring-1.ring-inset.ring-\\[\\#14B8A6\\]')
   const count = await activeBtn.count()
   if (count === 0) return 'unknown'
   const title = await activeBtn.first().getAttribute('title')
@@ -1325,15 +1325,21 @@ test.describe('4E: Keyboard Shortcuts Complete', () => {
     // Reset to upload state, then load multi-page PDF for the page number input
     await resetWithConfirm(page)
     await uploadPDFAndWait(page, 'multi-page.pdf')
-    const pageInput = page.locator('input[type="number"]')
-    if (await pageInput.count() > 0) {
-      await pageInput.first().focus()
-      await page.waitForTimeout(100)
-      // Typing 'r' in the input should NOT switch to rectangle tool
-      await page.keyboard.type('2')
-      await page.waitForTimeout(100)
-      await page.keyboard.press('Escape')
+    // Click page indicator to reveal the page number input
+    const pageButton = page.locator('text=/\\d+ \\/ \\d+/')
+    if (await pageButton.count() > 0) {
+      await pageButton.click()
       await page.waitForTimeout(200)
+      const pageInput = page.locator('input[type="number"]')
+      if (await pageInput.count() > 0) {
+        await pageInput.first().focus()
+        await page.waitForTimeout(100)
+        // Typing '2' in the input should NOT switch to rectangle tool
+        await page.keyboard.type('2')
+        await page.waitForTimeout(100)
+        await page.keyboard.press('Escape')
+        await page.waitForTimeout(200)
+      }
     }
     // If we're here without errors, shortcuts were properly suppressed
     expect(true).toBeTruthy()

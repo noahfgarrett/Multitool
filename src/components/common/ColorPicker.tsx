@@ -9,7 +9,7 @@ interface ColorPickerProps {
 }
 
 const defaultPresets = [
-  '#FFFFFF', '#000000', '#EF4444', '#F47B20',
+  '#FFFFFF', '#000000', '#EF4444', '#14B8A6',
   '#EAB308', '#22C55E', '#3B82F6', '#8B5CF6', '#EC4899',
 ]
 
@@ -103,7 +103,7 @@ export const ColorPicker = memo(function ColorPicker({
             const v = e.target.value
             if (HEX_PATTERN.test(v)) onChange(v)
           }}
-          className="w-full px-2 py-1 text-xs rounded-md focus:outline-none focus:border-[#F47B20]/40"
+          className="w-full px-2 py-1 text-xs rounded-md focus:outline-none focus:border-[#14B8A6]/40"
           style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
           placeholder="#000000"
         />

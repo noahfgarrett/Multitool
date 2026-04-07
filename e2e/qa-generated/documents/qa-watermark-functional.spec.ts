@@ -82,7 +82,7 @@ test.describe('PDF Watermark — Functional', () => {
   test('default position is Center', async ({ page }) => {
     await setupWatermarkTool(page)
     const centerBtn = page.locator('button').filter({ hasText: 'Center' })
-    await expect(centerBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(centerBtn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   // ─── Text Watermark ──────────────────────────────────────────
@@ -241,11 +241,11 @@ test.describe('PDF Watermark — Functional', () => {
     const centerBtn = page.locator('button').filter({ hasText: 'Center' })
     const topLeftBtn = page.locator('button').filter({ hasText: 'Top Left' })
     // Center is default
-    await expect(centerBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(centerBtn).toHaveClass(/bg-\[#14B8A6\]/)
     // Click Top Left
     await topLeftBtn.click()
-    await expect(topLeftBtn).toHaveClass(/bg-\[#F47B20\]/)
-    await expect(centerBtn).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(topLeftBtn).toHaveClass(/bg-\[#14B8A6\]/)
+    await expect(centerBtn).not.toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('selecting Tile hides drag hint', async ({ page }) => {

@@ -4,12 +4,12 @@ import { navigateToTool } from '../helpers/navigation'
 // ── Helpers ─────────────────────────────────────────────────────
 
 /** Ensure user profile exists in localStorage before navigation.
- *  The real storage key is 'lwt-user-profile' (not 'lwt-user-profile'
+ *  The real storage key is 'mt-user-profile' (not 'mt-user-profile'
  *  as set in the Playwright config storageState). Without this, the
  *  UserProfileModal opens on load and blocks all interactions. */
 async function ensureProfile(page: Page): Promise<void> {
   await page.addInitScript(() => {
-    const key = 'lwt-user-profile'
+    const key = 'mt-user-profile'
     if (!localStorage.getItem(key)) {
       localStorage.setItem(key, JSON.stringify({
         name: 'Test User',

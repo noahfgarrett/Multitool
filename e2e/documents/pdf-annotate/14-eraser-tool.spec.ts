@@ -20,7 +20,7 @@ test.describe('Eraser Tool — Activation', () => {
     await page.keyboard.press('e')
     await page.waitForTimeout(100)
     const btn = page.locator('button[title="Eraser (E)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('clicking Eraser button activates tool', async ({ page }) => {
@@ -28,7 +28,7 @@ test.describe('Eraser Tool — Activation', () => {
     await page.locator('button[title="Eraser (E)"]').click()
     await page.waitForTimeout(100)
     const btn = page.locator('button[title="Eraser (E)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('eraser tool shows "none" cursor on canvas (custom cursor)', async ({ page }) => {
@@ -43,7 +43,7 @@ test.describe('Eraser Tool — Activation', () => {
     await selectTool(page, 'Eraser (E)')
     await selectTool(page, 'Select (S)')
     const eraserBtn = page.locator('button[title="Eraser (E)"]')
-    await expect(eraserBtn).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(eraserBtn).not.toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('eraser shows mode controls (Partial / Object)', async ({ page }) => {
@@ -68,7 +68,7 @@ test.describe('Eraser Tool — Mode Controls', () => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Eraser (E)')
     const partialBtn = page.locator('button:has-text("Partial")')
-    await expect(partialBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(partialBtn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('clicking Object mode switches to object erase', async ({ page }) => {
@@ -77,7 +77,7 @@ test.describe('Eraser Tool — Mode Controls', () => {
     await page.locator('button:has-text("Object")').click()
     await page.waitForTimeout(100)
     const objectBtn = page.locator('button:has-text("Object")')
-    await expect(objectBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(objectBtn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('switching back to Partial mode works', async ({ page }) => {
@@ -88,7 +88,7 @@ test.describe('Eraser Tool — Mode Controls', () => {
     await page.locator('button:has-text("Partial")').click()
     await page.waitForTimeout(100)
     const partialBtn = page.locator('button:has-text("Partial")')
-    await expect(partialBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(partialBtn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('eraser radius slider has default value of 15', async ({ page }) => {
@@ -637,7 +637,7 @@ test.describe('Eraser Tool — Extended', () => {
     await page.waitForTimeout(100)
     // Object mode should still be active
     const objectBtn = page.locator('button:has-text("Object")')
-    await expect(objectBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(objectBtn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('eraser radius persists after switching away and back', async ({ page }) => {

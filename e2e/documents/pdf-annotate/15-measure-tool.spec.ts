@@ -19,7 +19,7 @@ test.describe('Measure Tool — Activation', () => {
     await page.keyboard.press('m')
     await page.waitForTimeout(100)
     const btn = page.locator('button[title="Measure (M)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('measure tool button is visible in toolbar', async ({ page }) => {
@@ -32,7 +32,7 @@ test.describe('Measure Tool — Activation', () => {
     await page.locator('button[title="Measure (M)"]').click()
     await page.waitForTimeout(100)
     const btn = page.locator('button[title="Measure (M)"]')
-    await expect(btn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('status bar shows "Click two points" when measure active', async ({ page }) => {
@@ -46,7 +46,7 @@ test.describe('Measure Tool — Activation', () => {
     await selectTool(page, 'Measure (M)')
     await selectTool(page, 'Select (S)')
     const btn = page.locator('button[title="Measure (M)"]')
-    await expect(btn).not.toHaveClass(/bg-\[#F47B20\]/)
+    await expect(btn).not.toHaveClass(/bg-\[#14B8A6\]/)
   })
 })
 

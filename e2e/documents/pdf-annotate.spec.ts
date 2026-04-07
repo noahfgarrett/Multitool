@@ -49,7 +49,7 @@ test.describe('Select Tool', () => {
     await uploadPDFAndWait(page)
     // The select button should have the active styling (orange background)
     const selectBtn = page.locator('button[title="Select (S)"]')
-    await expect(selectBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(selectBtn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('pressing S key activates select tool', async ({ page }) => {
@@ -61,7 +61,7 @@ test.describe('Select Tool', () => {
     await page.keyboard.press('s')
     await page.waitForTimeout(100)
     const selectBtn = page.locator('button[title="Select (S)"]')
-    await expect(selectBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(selectBtn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('clicking empty space with select tool deselects', async ({ page }) => {
@@ -136,7 +136,10 @@ test.describe('Select Tool', () => {
     // Switch to select tool via keyboard shortcut
     await page.keyboard.press('s')
     await page.waitForTimeout(300)
-    // Double-click the annotation to enter edit mode
+    // First click to select the annotation
+    await clickCanvasAt(page, 150, 75)
+    await page.waitForTimeout(300)
+    // Double-click the selected annotation to enter edit mode
     await doubleClickCanvasAt(page, 150, 75)
     await page.waitForTimeout(500)
     // Textarea should be visible (edit mode)
@@ -444,7 +447,7 @@ test.describe('Text Tool — Formatting', () => {
     const boldBtn = page.locator('button[title="Bold (Ctrl+B)"]')
     await boldBtn.click()
     await page.waitForTimeout(100)
-    await expect(boldBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(boldBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('italic button toggles italic formatting', async ({ page }) => {
@@ -455,7 +458,7 @@ test.describe('Text Tool — Formatting', () => {
     const italicBtn = page.locator('button[title="Italic (Ctrl+I)"]')
     await italicBtn.click()
     await page.waitForTimeout(100)
-    await expect(italicBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(italicBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('underline button toggles underline formatting', async ({ page }) => {
@@ -466,7 +469,7 @@ test.describe('Text Tool — Formatting', () => {
     const underlineBtn = page.locator('button[title="Underline (Ctrl+U)"]')
     await underlineBtn.click()
     await page.waitForTimeout(100)
-    await expect(underlineBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(underlineBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('strikethrough button toggles strikethrough formatting', async ({ page }) => {
@@ -477,7 +480,7 @@ test.describe('Text Tool — Formatting', () => {
     const strikeBtn = page.locator('button[title="Strikethrough (Ctrl+Shift+X)"]')
     await strikeBtn.click()
     await page.waitForTimeout(100)
-    await expect(strikeBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(strikeBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('Ctrl+B shortcut toggles bold while editing', async ({ page }) => {
@@ -489,7 +492,7 @@ test.describe('Text Tool — Formatting', () => {
     await page.keyboard.press('Control+b')
     await page.waitForTimeout(100)
     const boldBtn = page.locator('button[title="Bold (Ctrl+B)"]')
-    await expect(boldBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(boldBtn).toHaveClass(/text-\[#14B8A6\]/)
     // Textarea should reflect bold
     const textarea = page.locator('textarea')
     await expect(textarea).toHaveCSS('font-weight', '700')
@@ -589,7 +592,7 @@ test.describe('Text Tool — Formatting', () => {
     await page.waitForTimeout(300)
     // Bold button should still be active
     const boldBtn = page.locator('button[title="Bold (Ctrl+B)"]')
-    await expect(boldBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(boldBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('bold and italic can be combined', async ({ page }) => {
@@ -629,7 +632,7 @@ test.describe('Text Tool — Alignment', () => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Text (T)')
     const leftBtn = page.locator('button[title="Align Left"]')
-    await expect(leftBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(leftBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('center alignment button can be activated', async ({ page }) => {
@@ -640,7 +643,7 @@ test.describe('Text Tool — Alignment', () => {
     const centerBtn = page.locator('button[title="Align Center"]')
     await centerBtn.click()
     await page.waitForTimeout(100)
-    await expect(centerBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(centerBtn).toHaveClass(/text-\[#14B8A6\]/)
     const textarea = page.locator('textarea')
     await expect(textarea).toHaveCSS('text-align', 'center')
   })
@@ -653,7 +656,7 @@ test.describe('Text Tool — Alignment', () => {
     const rightBtn = page.locator('button[title="Align Right"]')
     await rightBtn.click()
     await page.waitForTimeout(100)
-    await expect(rightBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(rightBtn).toHaveClass(/text-\[#14B8A6\]/)
     const textarea = page.locator('textarea')
     await expect(textarea).toHaveCSS('text-align', 'right')
   })
@@ -672,7 +675,7 @@ test.describe('Text Tool — Alignment', () => {
     // Re-enter edit
     await doubleClickCanvasAt(page, 100, 70)
     await page.waitForTimeout(300)
-    await expect(centerBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(centerBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 })
 
@@ -754,7 +757,7 @@ test.describe('Text Tool — Background Color', () => {
     const bgBtn = page.locator('button[title="Text background highlight"]')
     await bgBtn.click()
     await page.waitForTimeout(100)
-    await expect(bgBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(bgBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('clicking background highlight again toggles it off', async ({ page }) => {
@@ -765,7 +768,7 @@ test.describe('Text Tool — Background Color', () => {
     await page.waitForTimeout(100)
     await bgBtn.click()
     await page.waitForTimeout(100)
-    await expect(bgBtn).not.toHaveClass(/text-\[#F47B20\]/)
+    await expect(bgBtn).not.toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('background color state syncs in enterEditMode', async ({ page }) => {
@@ -780,7 +783,7 @@ test.describe('Text Tool — Background Color', () => {
     await bgBtn.click()
     await page.waitForTimeout(200)
     // Verify bg button is active
-    await expect(bgBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(bgBtn).toHaveClass(/text-\[#14B8A6\]/)
     // Exit edit mode (Escape commits text, keeps selection)
     await page.keyboard.press('Escape')
     await page.waitForTimeout(400)
@@ -790,7 +793,7 @@ test.describe('Text Tool — Background Color', () => {
     // Verify we entered edit mode
     await expect(page.locator('textarea')).toBeVisible({ timeout: 5000 })
     // Background button should still be active (enterEditMode syncs bg color from annotation)
-    await expect(bgBtn).toHaveClass(/text-\[#F47B20\]/, { timeout: 3000 })
+    await expect(bgBtn).toHaveClass(/text-\[#14B8A6\]/, { timeout: 3000 })
   })
 })
 
@@ -1044,7 +1047,7 @@ test.describe('Text Tool — Keyboard Shortcuts', () => {
     await page.keyboard.press('e')
     await page.waitForTimeout(100)
     const eraserBtn = page.locator('button[title="Eraser (E)"]')
-    await expect(eraserBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(eraserBtn).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('P key switches to pencil tool', async ({ page }) => {
@@ -1258,7 +1261,7 @@ test.describe('Drawing Tools', () => {
     const eraserBtn = page.locator('button[title="Eraser (E)"]')
     await eraserBtn.click()
     await page.waitForTimeout(100)
-    await expect(eraserBtn).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(eraserBtn).toHaveClass(/bg-\[#14B8A6\]/)
     // Eraser controls should appear
     await expect(page.locator('button:has-text("Partial")')).toBeVisible()
     await expect(page.locator('button:has-text("Object")')).toBeVisible()

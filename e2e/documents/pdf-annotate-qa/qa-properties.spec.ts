@@ -43,7 +43,7 @@ test.describe('Properties QA — Color Picker', () => {
     await selectTool(page, 'Pencil (P)')
     await waitForSessionSave(page)
     const session = await getSessionData(page)
-    expect(session?.color).toBe('#F47B20')
+    expect(session?.color).toBe('#14B8A6')
   })
 
   test('drawing with default color creates orange annotation', async ({ page }) => {
@@ -52,7 +52,7 @@ test.describe('Properties QA — Color Picker', () => {
     await waitForSessionSave(page)
     const session = await getSessionData(page)
     const anns = session?.annotations?.[1] || session?.annotations?.['1'] || []
-    expect(anns[0]?.color).toBe('#F47B20')
+    expect(anns[0]?.color).toBe('#14B8A6')
   })
 
   test('color picker appears when annotation is selected', async ({ page }) => {

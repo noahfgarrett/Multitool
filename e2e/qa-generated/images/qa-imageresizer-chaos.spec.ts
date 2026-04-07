@@ -8,7 +8,7 @@ import { uploadFile } from '../../helpers/file-upload'
  */
 async function goToImageResizer(page: import('@playwright/test').Page) {
   await page.goto('/')
-  await expect(page.locator('h1').filter({ hasText: 'LotusWorks Toolkit' })).toBeVisible({ timeout: 10000 })
+  await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
   const sidebar = page.locator('aside nav')
   await sidebar.locator('button').filter({ hasText: 'Image Resizer' }).click()
   await waitForToolLoad(page)

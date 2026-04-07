@@ -11,6 +11,8 @@ import {
   selectAnnotationAt,
   waitForSessionSave,
   getSessionData,
+  goToPage,
+  exportPDF,
 } from '../../helpers/pdf-annotate'
 
 test.beforeEach(async ({ page }) => {
@@ -301,6 +303,9 @@ test.describe('Stress — Rapid Zoom', () => {
       await page.waitForTimeout(50)
     }
     await page.waitForTimeout(300)
+    // Fit to window to bring canvas back to viewable area before drawing
+    await page.locator('button[title*="Fit to window"]').click()
+    await page.waitForTimeout(300)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     expect(await getAnnotationCount(page)).toBeGreaterThanOrEqual(1)
   })
@@ -432,10 +437,11 @@ test.describe('Stress — Edge Cases', () => {
     // Start drawing and navigate simultaneously
     await page.mouse.move(box.x + 100, box.y + 100)
     await page.mouse.down()
-    // Navigate to page 2 while drawing
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
+    // Navigate to page 2 while drawing — use scroll-based navigation
+    await page.evaluate(() => {
+      const container = document.querySelector('[data-page="2"]')
+      if (container) container.scrollIntoView({ behavior: 'instant', block: 'start' })
+    })
     await page.mouse.move(box.x + 200, box.y + 150, { steps: 2 })
     await page.mouse.up()
     await page.waitForTimeout(500)
@@ -518,8 +524,9 @@ test.describe('Stress — Edge Cases', () => {
       })
     }
     expect(await getAnnotationCount(page)).toBe(3)
-    // Rapidly undo all 3
-    for (let i = 0; i < 3; i++) {
+    // Text annotations push 2 history entries each (creation + text commit),
+    // so 3 text annotations need 6 undos to fully remove
+    for (let i = 0; i < 6; i++) {
       await page.keyboard.press('Control+z')
       await page.waitForTimeout(50)
     }
@@ -622,18 +629,14 @@ test.describe('Stress — Edge Cases', () => {
   test('creating annotations across pages in rapid sequence', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 80, h: 50 })
-    const pageInput = page.locator('input[type="number"]')
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
+    await goToPage(page, 2)
     await page.waitForTimeout(300)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 80, h: 50 })
-    await pageInput.fill('1')
-    await pageInput.dispatchEvent('change')
+    await goToPage(page, 1)
     await page.waitForTimeout(300)
     await createAnnotation(page, 'circle', { x: 250, y: 100, w: 80, h: 80 })
     expect(await getAnnotationCount(page)).toBe(2)
-    await pageInput.fill('2')
-    await pageInput.dispatchEvent('change')
+    await goToPage(page, 2)
     await page.waitForTimeout(300)
     expect(await getAnnotationCount(page)).toBe(1)
   })
@@ -703,9 +706,7 @@ test.describe('Stress — Edge Cases', () => {
     await page.locator('button[title="Rotate CW"]').click()
     await page.waitForTimeout(200)
     // Export
-    const downloadPromise = page.waitForEvent('download', { timeout: 15000 })
-    await page.locator('button').filter({ hasText: 'Export PDF' }).click()
-    const download = await downloadPromise
+    const download = await exportPDF(page)
     expect(download.suggestedFilename()).toContain('.pdf')
   })
 })

@@ -30,7 +30,7 @@ test.describe('Tool Switching Shortcuts', () => {
     await selectTool(page, 'Pencil (P)')
     await page.keyboard.press('s')
     await page.waitForTimeout(100)
-    await expect(page.locator('button[title="Select (S)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Select (S)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('P key activates Pencil tool', async ({ page }) => {
@@ -45,28 +45,28 @@ test.describe('Tool Switching Shortcuts', () => {
     await page.keyboard.press('l')
     await page.waitForTimeout(100)
     await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible()
-    await expect(page.locator('button[title="Line (L)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Line (L)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('A key activates Arrow tool', async ({ page }) => {
     await uploadPDFAndWait(page)
     await page.keyboard.press('a')
     await page.waitForTimeout(100)
-    await expect(page.locator('button[title="Arrow (A)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Arrow (A)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('R key activates Rectangle tool', async ({ page }) => {
     await uploadPDFAndWait(page)
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    await expect(page.locator('button[title="Rectangle (R)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Rectangle (R)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('C key activates Circle tool', async ({ page }) => {
     await uploadPDFAndWait(page)
     await page.keyboard.press('c')
     await page.waitForTimeout(100)
-    await expect(page.locator('button[title="Circle (C)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Circle (C)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('K key activates Cloud tool', async ({ page }) => {
@@ -94,7 +94,7 @@ test.describe('Tool Switching Shortcuts', () => {
     await uploadPDFAndWait(page)
     await page.keyboard.press('e')
     await page.waitForTimeout(100)
-    await expect(page.locator('button[title="Eraser (E)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Eraser (E)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('Shift+H activates Text Highlight tool', async ({ page }) => {
@@ -109,7 +109,7 @@ test.describe('Tool Switching Shortcuts', () => {
     await uploadPDFAndWait(page)
     await page.keyboard.press('Shift+x')
     await page.waitForTimeout(100)
-    await expect(page.locator('button[title="Strikethrough (Shift+X)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Strikethrough (Shift+X)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('Space bar activates pan mode', async ({ page }) => {
@@ -128,7 +128,7 @@ test.describe('Tool Switching Shortcuts', () => {
     await uploadPDFAndWait(page)
     await page.keyboard.press('h')
     await page.waitForTimeout(100)
-    await expect(page.locator('button[title="Highlight (H)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Highlight (H)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('M key activates Measure tool', async ({ page }) => {
@@ -148,7 +148,7 @@ test.describe('Tool Switching Shortcuts', () => {
     await page.waitForTimeout(50)
     await page.keyboard.press('l')
     await page.waitForTimeout(100)
-    await expect(page.locator('button[title="Line (L)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Line (L)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 })
 
@@ -622,7 +622,7 @@ test.describe('Shortcuts Blocked During Text Editing', () => {
     await page.keyboard.press('Control+b')
     await page.waitForTimeout(100)
     const boldBtn = page.locator('button[title="Bold (Ctrl+B)"]')
-    await expect(boldBtn).toHaveClass(/text-\[#F47B20\]/)
+    await expect(boldBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('Ctrl+I works as italic toggle during text editing', async ({ page }) => {
@@ -666,7 +666,7 @@ test.describe('Shortcuts After Tool Switching', () => {
     // Create annotation with keyboard shortcut
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    await expect(page.locator('button[title="Rectangle (R)"]')).toHaveClass(/bg-\[#F47B20\]/)
+    await expect(page.locator('button[title="Rectangle (R)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
   test('undo works after switching tools', async ({ page }) => {
@@ -701,30 +701,28 @@ test.describe('Shortcuts After Tool Switching', () => {
 test.describe('Page Navigation Shortcuts', () => {
   test('PageDown navigates to next page on multi-page PDF', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    const pageInput = page.locator('input[type="number"][min="1"]')
-    await expect(pageInput).toHaveValue('1')
+    // Page indicator is a button showing "1 / 2"
+    await expect(page.locator('text=/^1 \\/ /')).toBeVisible()
     await page.keyboard.press('PageDown')
     await page.waitForTimeout(500)
-    await expect(pageInput).toHaveValue('2')
+    await expect(page.locator('text=/^2 \\/ /')).toBeVisible()
   })
 
   test('PageUp navigates to previous page', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await page.keyboard.press('PageDown')
     await page.waitForTimeout(500)
-    const pageInput = page.locator('input[type="number"][min="1"]')
-    await expect(pageInput).toHaveValue('2')
+    await expect(page.locator('text=/^2 \\/ /')).toBeVisible()
     await page.keyboard.press('PageUp')
     await page.waitForTimeout(500)
-    await expect(pageInput).toHaveValue('1')
+    await expect(page.locator('text=/^1 \\/ /')).toBeVisible()
   })
 
   test('PageUp on first page stays on first page', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await page.keyboard.press('PageUp')
     await page.waitForTimeout(300)
-    const pageInput = page.locator('input[type="number"][min="1"]')
-    await expect(pageInput).toHaveValue('1')
+    await expect(page.locator('text=/^1 \\/ /')).toBeVisible()
   })
 })
 

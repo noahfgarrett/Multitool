@@ -362,11 +362,11 @@ test.describe('Session Restore', () => {
     await waitForSessionSave(page)
     // Corrupt the hash
     await page.evaluate(() => {
-      const raw = sessionStorage.getItem('lwt-pdf-annotate-session')
+      const raw = sessionStorage.getItem('mt-pdf-annotate-session')
       if (raw) {
         const data = JSON.parse(raw)
         if (data.hash) data.hash = 'invalid-hash'
-        sessionStorage.setItem('lwt-pdf-annotate-session', JSON.stringify(data))
+        sessionStorage.setItem('mt-pdf-annotate-session', JSON.stringify(data))
       }
     })
     await page.goto('/')
@@ -511,11 +511,11 @@ test.describe('Session Restore', () => {
     await waitForSessionSave(page)
     // Corrupt session by removing some fields
     await page.evaluate(() => {
-      const raw = sessionStorage.getItem('lwt-pdf-annotate-session')
+      const raw = sessionStorage.getItem('mt-pdf-annotate-session')
       if (raw) {
         const data = JSON.parse(raw)
         delete data.zoom
-        sessionStorage.setItem('lwt-pdf-annotate-session', JSON.stringify(data))
+        sessionStorage.setItem('mt-pdf-annotate-session', JSON.stringify(data))
       }
     })
     await page.goto('/')
@@ -527,7 +527,7 @@ test.describe('Session Restore', () => {
 
   test('corrupt session handling', async ({ page }) => {
     await page.evaluate(() => {
-      sessionStorage.setItem('lwt-pdf-annotate-session', '{invalid json!!!')
+      sessionStorage.setItem('mt-pdf-annotate-session', '{invalid json!!!')
     })
     await page.goto('/')
     await navigateToTool(page, 'pdf-annotate')

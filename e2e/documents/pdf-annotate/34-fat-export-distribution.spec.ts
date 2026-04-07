@@ -63,7 +63,7 @@ async function openEmailModal(page: import('@playwright/test').Page): Promise<vo
 async function downloadReport(page: import('@playwright/test').Page, timeout = 15000) {
   await removeFilePicker(page)
   const downloadPromise = page.waitForEvent('download', { timeout })
-  await page.locator('button').filter({ hasText: 'Report' }).click()
+  await page.getByRole('button', { name: 'Report', exact: true }).click()
   return downloadPromise
 }
 
@@ -647,7 +647,7 @@ test.describe('3D: Print', () => {
 test.describe('3E: Markup Report', () => {
   test('3E-01 Report button is visible after PDF upload', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await expect(page.locator('button').filter({ hasText: 'Report' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Report', exact: true })).toBeVisible()
   })
 
   test('3E-02 Clicking Report triggers a PDF download', async ({ page }) => {

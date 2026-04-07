@@ -2,7 +2,11 @@ import { PDFDocument, PDFName, PDFString, PDFDict } from 'pdf-lib'
 
 import type { EmbeddedAnnotationData } from './types.ts'
 
-const METADATA_KEY = 'LotusWorksAnnotations'
+const METADATA_KEY = 'MultitoolAnnotations'
+/** Legacy key for backward compatibility with PDFs exported during the Apex era */
+const LEGACY_APEX_KEY = 'ApexAnnotations'
+/** Legacy key for backward compatibility with PDFs exported before the Apex rebrand */
+const LEGACY_METADATA_KEY = 'LotusWorksAnnotations'
 const GZIP_MAGIC = [0x1f, 0x8b] as const
 
 // ── UTF-8 safe base64 helpers ──────────────────────────────────────────
@@ -148,7 +152,14 @@ export async function extractAnnotationData(
     const doc = await PDFDocument.load(pdfBytes)
     const infoDict = getInfoDict(doc)
 
-    const entry = infoDict.lookup(PDFName.of(METADATA_KEY))
+    // Try new key first, then Apex-era key, then original LotusWorks key
+    let entry = infoDict.lookup(PDFName.of(METADATA_KEY))
+    if (entry === undefined || !(entry instanceof PDFString)) {
+      entry = infoDict.lookup(PDFName.of(LEGACY_APEX_KEY))
+    }
+    if (entry === undefined || !(entry instanceof PDFString)) {
+      entry = infoDict.lookup(PDFName.of(LEGACY_METADATA_KEY))
+    }
     if (entry === undefined) return null
     if (!(entry instanceof PDFString)) return null
 
@@ -173,7 +184,7 @@ export async function extractAnnotationData(
 }
 
 /**
- * Quick check: returns true if the PDF contains embedded LotusWorks annotation data.
+ * Quick check: returns true if the PDF contains embedded Multitool annotation data.
  */
 export async function hasEmbeddedAnnotations(
   pdfBytes: Uint8Array
@@ -181,8 +192,13 @@ export async function hasEmbeddedAnnotations(
   try {
     const doc = await PDFDocument.load(pdfBytes)
     const infoDict = getInfoDict(doc)
+    // Check new key first, then Apex-era key, then original LotusWorks key
     const entry = infoDict.lookup(PDFName.of(METADATA_KEY))
-    return entry instanceof PDFString
+    if (entry instanceof PDFString) return true
+    const apexEntry = infoDict.lookup(PDFName.of(LEGACY_APEX_KEY))
+    if (apexEntry instanceof PDFString) return true
+    const legacyEntry = infoDict.lookup(PDFName.of(LEGACY_METADATA_KEY))
+    return legacyEntry instanceof PDFString
   } catch {
     return false
   }

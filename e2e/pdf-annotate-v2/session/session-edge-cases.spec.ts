@@ -411,7 +411,7 @@ test.describe('Session Edge Cases', () => {
   test('session format is JSON', async ({ page }) => {
     await createAnnotation(page, 'pencil')
     await waitForSessionSave(page)
-    const raw = await page.evaluate(() => sessionStorage.getItem('lwt-pdf-annotate-session'))
+    const raw = await page.evaluate(() => sessionStorage.getItem('mt-pdf-annotate-session'))
     expect(raw).toBeTruthy()
     expect(() => JSON.parse(raw!)).not.toThrow()
   })
@@ -419,14 +419,14 @@ test.describe('Session Edge Cases', () => {
   test('session stored in sessionStorage', async ({ page }) => {
     await createAnnotation(page, 'pencil')
     await waitForSessionSave(page)
-    const raw = await page.evaluate(() => sessionStorage.getItem('lwt-pdf-annotate-session'))
+    const raw = await page.evaluate(() => sessionStorage.getItem('mt-pdf-annotate-session'))
     expect(raw).toBeTruthy()
   })
 
-  test('session key is lwt-pdf-annotate-session', async ({ page }) => {
+  test('session key is mt-pdf-annotate-session', async ({ page }) => {
     await createAnnotation(page, 'pencil')
     await waitForSessionSave(page)
-    const raw = await page.evaluate(() => sessionStorage.getItem('lwt-pdf-annotate-session'))
+    const raw = await page.evaluate(() => sessionStorage.getItem('mt-pdf-annotate-session'))
     expect(raw).toBeTruthy()
   })
 
@@ -566,7 +566,7 @@ test.describe('Session Edge Cases', () => {
       await createAnnotation(page, 'pencil', { x: 20 + (i % 5) * 60, y: 20 + Math.floor(i / 5) * 60, w: 40, h: 20 })
     }
     await waitForSessionSave(page)
-    const raw = await page.evaluate(() => sessionStorage.getItem('lwt-pdf-annotate-session'))
+    const raw = await page.evaluate(() => sessionStorage.getItem('mt-pdf-annotate-session'))
     expect(raw).toBeTruthy()
     // Session should be under 1MB for 10 annotations
     expect(raw!.length).toBeLessThan(1_000_000)
