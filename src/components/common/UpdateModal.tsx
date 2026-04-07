@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { marked } from 'marked'
-import { Download, Loader2, X, ChevronDown, CheckCircle2 } from 'lucide-react'
+import { Download, X, ChevronDown, CheckCircle2 } from 'lucide-react'
 import { Modal } from '@/components/common/Modal.tsx'
 import { Button } from '@/components/common/Button.tsx'
 import { CHANGELOG } from '@/data/changelog.ts'
@@ -41,7 +41,6 @@ const TYPE_COLORS: Record<ChangelogEntry['type'], { bar: string; text: string; b
 const INITIAL_VISIBLE = 8
 
 export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProps) {
-  const [downloading, setDownloading] = useState(false)
   const [updated, setUpdated] = useState(false)
   const [activeTab, setActiveTab] = useState<'update' | 'changelog'>(
     defaultTab ?? (info ? 'update' : 'changelog'),
@@ -103,86 +102,14 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
     })
   }
 
-  const [downloadError, setDownloadError] = useState<string | null>(null)
-
-  async function handleDownload(): Promise<void> {
+  function handleDownload(): void {
     if (!info?.downloadUrl) return
-    setDownloading(true)
-    setDownloadError(null)
-
-    // Open the tab synchronously (in the click handler stack) so the browser
-    // doesn't block it as a popup. We'll redirect it after the fetch completes.
-    const newTab = window.open('about:blank', '_blank')
-
-    try {
-      // Try the API endpoint first (returns binary with octet-stream accept header)
-      let blob: Blob | null = null
-      try {
-        const res = await fetch(info.assetApiUrl, {
-          headers: { Accept: 'application/octet-stream' },
-        })
-        if (res.ok) blob = await res.blob()
-      } catch {
-        // API fetch failed (CORS, network) — try browser_download_url next
-      }
-
-      // Fallback 1: fetch the browser download URL directly
-      if (!blob) {
-        try {
-          const res = await fetch(info.downloadUrl)
-          if (res.ok) blob = await res.blob()
-        } catch {
-          // browser_download_url fetch also failed — will use navigation fallback
-        }
-      }
-
-      if (blob) {
-        // Save a copy to downloads folder
-        const downloadUrl = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = downloadUrl
-        a.download = info.assetName || 'Multitool.html'
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(downloadUrl)
-
-        // Navigate the pre-opened tab to the new version
-        const openUrl = URL.createObjectURL(blob)
-        if (newTab) {
-          newTab.location.href = openUrl
-        }
-        setUpdated(true)
-      } else {
-        // Fallback 2: both fetches failed (CORS, corporate proxy, file:// origin).
-        // Navigate the pre-opened tab directly to the download URL.
-        // The browser will download the file natively.
-        if (newTab) {
-          newTab.location.href = info.downloadUrl
-        } else {
-          // Popup was blocked — use an anchor tag click instead
-          const a = document.createElement('a')
-          a.href = info.downloadUrl
-          a.download = info.assetName || 'Multitool.html'
-          a.target = '_blank'
-          a.rel = 'noopener'
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-        }
-        setUpdated(true)
-      }
-    } catch {
-      // Last resort: navigate the tab to the download URL
-      if (newTab) {
-        newTab.location.href = info.downloadUrl
-        setUpdated(true)
-      } else {
-        setDownloadError('Download failed. Check your internet connection and try again.')
-      }
-    } finally {
-      setDownloading(false)
-    }
+    // Simple direct download — navigates to GitHub's download URL which serves
+    // the file with Content-Disposition: attachment (triggers browser download,
+    // never shows a GitHub web page). Works everywhere: file://, corporate
+    // proxies, users without GitHub accounts.
+    window.open(info.downloadUrl, '_blank', 'noopener')
+    setUpdated(true)
   }
 
   function formatStats(entry: ChangelogEntry): string | null {
@@ -233,13 +160,13 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
             <div className="flex flex-col items-center gap-4 py-6">
               <CheckCircle2 size={48} className="text-emerald-400" />
               <div className="text-center space-y-1.5">
-                <p className="text-lg font-semibold text-white">You&apos;re all set!</p>
+                <p className="text-lg font-semibold text-white">Download started!</p>
                 <p className="text-sm text-white/50">
-                  v{info.version} is open in a new tab. You can close this tab.
+                  v{info.version} is downloading now.
                 </p>
               </div>
               <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 text-xs text-white/40 text-center max-w-sm">
-                A copy was also saved to your Downloads folder. Replace your current Multitool.html with it, or update your bookmark to point to the new file.
+                Replace your current Multitool.html with the downloaded file, or update your bookmark to point to the new copy.
               </div>
             </div>
           ) : (
@@ -262,15 +189,9 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
               )}
 
               <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 text-xs text-white/50 space-y-1.5">
-                <p className="text-white/70 font-medium">What happens when you click update:</p>
-                <p>The new version will <span className="text-white/60 font-medium">open in a new tab</span> and a copy will be saved to your Downloads folder. Replace your current Multitool.html with the downloaded file to keep future updates working.</p>
+                <p className="text-white/70 font-medium">After downloading:</p>
+                <p>Replace your current Multitool.html with the new file to keep future updates working.</p>
               </div>
-
-              {downloadError && (
-                <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-400">
-                  {downloadError}
-                </div>
-              )}
 
               <div className="flex items-center gap-2 justify-end pt-1">
                 <Button variant="ghost" size="sm" onClick={onClose} icon={<X size={14} />}>
@@ -279,11 +200,11 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
                 <Button
                   variant="primary"
                   size="sm"
-                  onClick={() => void handleDownload()}
-                  disabled={!info.downloadUrl || downloading}
-                  icon={downloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                  onClick={handleDownload}
+                  disabled={!info.downloadUrl}
+                  icon={<Download size={14} />}
                 >
-                  {downloading ? 'Updating...' : `Update to v${info.version}`}
+                  Download v{info.version}
                 </Button>
               </div>
             </>
