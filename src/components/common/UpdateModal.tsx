@@ -123,36 +123,63 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
         })
         if (res.ok) blob = await res.blob()
       } catch {
-        // API fetch failed (CORS, network) — try browser_download_url directly
+        // API fetch failed (CORS, network) — try browser_download_url next
       }
 
-      // Fallback: fetch the browser download URL directly
+      // Fallback 1: fetch the browser download URL directly
       if (!blob) {
-        const res = await fetch(info.downloadUrl)
-        if (!res.ok) throw new Error('Download failed')
-        blob = await res.blob()
+        try {
+          const res = await fetch(info.downloadUrl)
+          if (res.ok) blob = await res.blob()
+        } catch {
+          // browser_download_url fetch also failed — will use navigation fallback
+        }
       }
 
-      // Save a copy to downloads folder
-      const downloadUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = downloadUrl
-      a.download = info.assetName || 'Multitool.html'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(downloadUrl)
+      if (blob) {
+        // Save a copy to downloads folder
+        const downloadUrl = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = downloadUrl
+        a.download = info.assetName || 'Multitool.html'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(downloadUrl)
 
-      // Navigate the pre-opened tab to the new version
-      const openUrl = URL.createObjectURL(blob)
-      if (newTab) {
-        newTab.location.href = openUrl
+        // Navigate the pre-opened tab to the new version
+        const openUrl = URL.createObjectURL(blob)
+        if (newTab) {
+          newTab.location.href = openUrl
+        }
+        setUpdated(true)
+      } else {
+        // Fallback 2: both fetches failed (CORS, corporate proxy, file:// origin).
+        // Navigate the pre-opened tab directly to the download URL.
+        // The browser will download the file natively.
+        if (newTab) {
+          newTab.location.href = info.downloadUrl
+        } else {
+          // Popup was blocked — use an anchor tag click instead
+          const a = document.createElement('a')
+          a.href = info.downloadUrl
+          a.download = info.assetName || 'Multitool.html'
+          a.target = '_blank'
+          a.rel = 'noopener'
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+        }
+        setUpdated(true)
       }
-      setUpdated(true)
     } catch {
-      // Close the blank tab if the download failed
-      if (newTab) newTab.close()
-      setDownloadError('Download failed. Check your internet connection and try again.')
+      // Last resort: navigate the tab to the download URL
+      if (newTab) {
+        newTab.location.href = info.downloadUrl
+        setUpdated(true)
+      } else {
+        setDownloadError('Download failed. Check your internet connection and try again.')
+      }
     } finally {
       setDownloading(false)
     }
