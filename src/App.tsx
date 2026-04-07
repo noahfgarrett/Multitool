@@ -66,12 +66,18 @@ export default function App() {
       setShowProfileModal(true)
     }
 
-    checkForUpdate().then((info) => {
-      if (info) {
-        setUpdateInfo(info)
-        setShowUpdateModal(true)
-      }
-    })
+    // In PWA mode, the service worker handles updates — skip the download modal.
+    // Only show the update modal for standalone HTML file users.
+    const isPwa = window.matchMedia('(display-mode: standalone)').matches
+      || (navigator as unknown as { standalone?: boolean }).standalone === true
+    if (!isPwa) {
+      checkForUpdate().then((info) => {
+        if (info) {
+          setUpdateInfo(info)
+          setShowUpdateModal(true)
+        }
+      })
+    }
   }, [])
 
   const ActiveComponent = activeTool ? toolComponents[activeTool] : null
