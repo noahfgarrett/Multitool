@@ -182,6 +182,7 @@ export type HandleId = 'nw' | 'ne' | 'sw' | 'se' | 'n' | 'e' | 's' | 'w'
 export interface PageRefs {
   pdfCanvas: HTMLCanvasElement
   annCanvas: HTMLCanvasElement
+  activeCanvas: HTMLCanvasElement
   container: HTMLDivElement
 }
 

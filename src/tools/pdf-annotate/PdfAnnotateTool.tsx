@@ -374,6 +374,7 @@ export default function PdfAnnotateTool() {
     canUndo, canRedo, isDrawTool, isTextTool, currentRotation,
     findCommittedQuery, setFindCommittedQuery,
     activeTouchIdsRef, touchPositionsRef, prevPinchDistRef,
+    pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     annPageMap, totalAnnotationCount,
   } = S
 
@@ -577,243 +578,7 @@ export default function PdfAnnotateTool() {
       }
     }
 
-    // OCR Region in-progress preview
-    if (activeTool === 'ocrRegion' && isActive && ocrRegionPreviewRef.current) {
-      const r = ocrRegionPreviewRef.current
-      ctx.save()
-      ctx.strokeStyle = '#3B82F6'
-      ctx.lineWidth = 2
-      ctx.setLineDash([6, 3])
-      ctx.globalAlpha = 0.8
-      ctx.strokeRect(r.x * rs, r.y * rs, r.w * rs, r.h * rs)
-      ctx.fillStyle = '#3B82F6'
-      ctx.globalAlpha = 0.08
-      ctx.fillRect(r.x * rs, r.y * rs, r.w * rs, r.h * rs)
-      ctx.setLineDash([])
-      ctx.restore()
-    }
-
-    // Crop in-progress preview
-    if (activeTool === 'crop' && isActive && cropDrawRef.current && currentPtsRef.current.length >= 2) {
-      const cpts = currentPtsRef.current
-      const cx = Math.min(cpts[0].x, cpts[1].x)
-      const cy = Math.min(cpts[0].y, cpts[1].y)
-      const cw = Math.abs(cpts[1].x - cpts[0].x)
-      const ch = Math.abs(cpts[1].y - cpts[0].y)
-      ctx.save()
-      ctx.strokeStyle = '#f97316'
-      ctx.lineWidth = 2
-      ctx.setLineDash([6, 3])
-      ctx.globalAlpha = 0.8
-      ctx.strokeRect(cx * rs, cy * rs, cw * rs, ch * rs)
-      ctx.setLineDash([])
-      ctx.restore()
-    }
-
-    // ── In-progress elements (only on the active page) ──
-    if (isActive) {
-      // In-progress stroke
-      if (isDrawingRef.current && activeTool !== 'select' && activeTool !== 'eraser' && activeTool !== 'text' && activeTool !== 'callout' && activeTool !== 'cloud' && activeTool !== 'polygon' && activeTool !== 'measure' && activeTool !== 'textHighlight' && activeTool !== 'textStrikethrough' && activeTool !== 'ocrRegion') {
-        const pts = currentPtsRef.current
-        if (pts.length > 0) {
-          const inProgress: Annotation = {
-            id: '_progress', type: activeTool as Annotation['type'],
-            points: pts, color, fontSize,
-            strokeWidth: strokeWidth,
-            opacity: activeTool === 'highlighter' ? 0.4 : opacity / 100,
-            ...(fillColor && (activeTool === 'rectangle' || activeTool === 'circle') ? { fillColor } : {}),
-            ...(cornerRadius > 0 && activeTool === 'rectangle' ? { cornerRadius } : {}),
-            ...(dashPattern !== 'solid' ? { dashPattern } : {}),
-            ...(arrowStart && activeTool === 'arrow' ? { arrowStart: true } : {}),
-          }
-          drawAnnotation(ctx, inProgress, rs)
-        }
-      }
-
-      // Text highlight preview
-      if (activeTool === 'textHighlight' && textHighlightPreviewRectsRef.current.length > 0) {
-        ctx.save()
-        ctx.globalAlpha = 0.4
-        ctx.globalCompositeOperation = 'multiply'
-        ctx.fillStyle = color
-        for (const r of textHighlightPreviewRectsRef.current) {
-          ctx.fillRect(r.x * rs, r.y * rs, r.w * rs, r.h * rs)
-        }
-        ctx.restore()
-      }
-
-      // Text strikethrough preview
-      if (activeTool === 'textStrikethrough' && textHighlightPreviewRectsRef.current.length > 0) {
-        ctx.save()
-        ctx.globalAlpha = 1
-        ctx.strokeStyle = color
-        ctx.lineWidth = Math.max(1, 2 * rs)
-        ctx.beginPath()
-        for (const r of textHighlightPreviewRectsRef.current) {
-          const midY = (r.y + r.h / 2) * rs
-          ctx.moveTo(r.x * rs, midY)
-          ctx.lineTo((r.x + r.w) * rs, midY)
-        }
-        ctx.stroke()
-        ctx.restore()
-      }
-
-      // Select tool: text selection highlight
-      {
-        const selectRects = selectTextRectsRef.current.length > 0
-          ? selectTextRectsRef.current
-          : selectTextToolbar?.rects ?? []
-        if (selectRects.length > 0) {
-          ctx.save()
-          ctx.globalAlpha = 0.3
-          ctx.fillStyle = '#3B82F6'
-          for (const r of selectRects) {
-            ctx.fillRect(r.x * rs, r.y * rs, r.w * rs, r.h * rs)
-          }
-          ctx.restore()
-        }
-      }
-
-      // Cloud polygon vertex placement preview
-      if ((activeTool === 'cloud' || activeTool === 'polygon') && currentPtsRef.current.length > 0) {
-        const cpts = currentPtsRef.current
-        const preview = cloudPreviewRef.current
-        const scale = rs
-        const arcSize = 20 * scale
-
-        ctx.save()
-        ctx.strokeStyle = color
-        ctx.lineWidth = strokeWidth * scale
-        ctx.globalAlpha = opacity / 100
-
-        if (cpts.length >= 2) {
-          ctx.beginPath()
-          ctx.moveTo(cpts[0].x * scale, cpts[0].y * scale)
-          for (let i = 0; i < cpts.length - 1; i++) {
-            drawCloudEdge(ctx, cpts[i].x * scale, cpts[i].y * scale, cpts[i + 1].x * scale, cpts[i + 1].y * scale, arcSize)
-          }
-          ctx.stroke()
-        }
-
-        if (preview) {
-          ctx.globalAlpha = (opacity / 100) * 0.5
-          ctx.beginPath()
-          ctx.moveTo(cpts[cpts.length - 1].x * scale, cpts[cpts.length - 1].y * scale)
-          drawCloudEdge(ctx, cpts[cpts.length - 1].x * scale, cpts[cpts.length - 1].y * scale, preview.x * scale, preview.y * scale, arcSize)
-          ctx.stroke()
-
-          if (cpts.length >= 2) {
-            ctx.setLineDash([4, 3])
-            ctx.beginPath()
-            ctx.moveTo(preview.x * scale, preview.y * scale)
-            drawCloudEdge(ctx, preview.x * scale, preview.y * scale, cpts[0].x * scale, cpts[0].y * scale, arcSize)
-            ctx.stroke()
-            ctx.setLineDash([])
-          }
-        }
-
-        ctx.globalAlpha = 1
-        ctx.fillStyle = '#3B82F6'
-        for (const p of cpts) {
-          ctx.beginPath()
-          ctx.arc(p.x * scale, p.y * scale, 4, 0, Math.PI * 2)
-          ctx.fill()
-        }
-
-        // Snap indicator: highlight first vertex when cursor is near it
-        if (preview && cpts.length >= 3) {
-          const snapDist = Math.hypot(preview.x - cpts[0].x, preview.y - cpts[0].y)
-          if (snapDist < 15 / zoomRef.current) {
-            ctx.strokeStyle = '#22C55E'
-            ctx.lineWidth = 2
-            ctx.beginPath()
-            ctx.arc(cpts[0].x * scale, cpts[0].y * scale, 8, 0, Math.PI * 2)
-            ctx.stroke()
-          }
-        }
-
-        ctx.setLineDash([])
-        ctx.restore()
-      }
-
-      // In-progress textbox creation
-      if (isDrawingRef.current && activeTool === 'text') {
-        const pts = currentPtsRef.current
-        if (pts.length >= 2) {
-          ctx.save()
-          ctx.strokeStyle = '#3B82F6'
-          ctx.lineWidth = 1.5
-          ctx.setLineDash([4, 3])
-          const x = Math.min(pts[0].x, pts[1].x) * rs
-          const y = Math.min(pts[0].y, pts[1].y) * rs
-          const w = Math.abs(pts[1].x - pts[0].x) * rs
-          const h = Math.abs(pts[1].y - pts[0].y) * rs
-          ctx.strokeRect(x, y, w, h)
-          ctx.setLineDash([])
-          ctx.restore()
-        }
-      }
-
-      // In-progress callout box creation
-      if (isDrawingRef.current && activeTool === 'callout' && !calloutArrowDragRef.current) {
-        const pts = currentPtsRef.current
-        if (pts.length >= 2) {
-          ctx.save()
-          ctx.strokeStyle = '#3B82F6'
-          ctx.lineWidth = 1.5
-          ctx.setLineDash([4, 3])
-          const x = Math.min(pts[0].x, pts[1].x) * rs
-          const y = Math.min(pts[0].y, pts[1].y) * rs
-          const w = Math.abs(pts[1].x - pts[0].x) * rs
-          const h = Math.abs(pts[1].y - pts[0].y) * rs
-          ctx.strokeRect(x, y, w, h)
-          ctx.setLineDash([])
-          ctx.restore()
-        }
-      }
-
-      // Callout arrow drag preview
-      if (calloutArrowDragRef.current && selectedAnnId) {
-        const ann = getAnnotation(selectedAnnId)
-        if (ann && ann.type === 'callout' && ann.width && ann.height) {
-          const tip = calloutArrowDragRef.current.tipPt
-          const origin = nearestPointOnRect(ann.points[0].x, ann.points[0].y, ann.width, ann.height, tip.x, tip.y)
-          ctx.save()
-          ctx.strokeStyle = '#000000'
-          ctx.lineWidth = 1.5 * rs
-          ctx.setLineDash([4, 3])
-          ctx.beginPath()
-          ctx.moveTo(origin.x * rs, origin.y * rs)
-          ctx.lineTo(tip.x * rs, tip.y * rs)
-          ctx.stroke()
-          ctx.setLineDash([])
-          ctx.restore()
-        }
-      }
-
-      // In-progress measurement preview (distance mode)
-      if (activeTool === 'measure' && measureMode === 'distance' && measureStartRef.current && measurePreviewRef.current) {
-        const preview: Measurement = {
-          id: '_measure_preview',
-          startPt: measureStartRef.current,
-          endPt: measurePreviewRef.current,
-          page: pageNum,
-        }
-        drawMeasurement(ctx, preview, rs, calibration, false)
-      }
-      // In-progress polylength preview
-      if (activeTool === 'measure' && measureMode === 'polylength' && polyPointsRef.current.length > 0) {
-        const pts = [...polyPointsRef.current]
-        if (polyPreviewRef.current) pts.push(polyPreviewRef.current)
-        drawPolylength(ctx, pts, rs, calibration, false)
-      }
-      // In-progress area preview
-      if (activeTool === 'measure' && measureMode === 'area' && polyPointsRef.current.length > 0) {
-        const pts = [...polyPointsRef.current]
-        if (polyPreviewRef.current) pts.push(polyPreviewRef.current)
-        drawAreaPolygon(ctx, pts, rs, calibration, false, false)
-      }
-    }
+    // In-progress elements are now rendered on the active canvas via drawActiveStroke()
 
     // Committed measurements for this page
     const pageMeasurements = measurements[pageNum] || []
@@ -855,13 +620,341 @@ export default function PdfAnnotateTool() {
         drawStickyNotePin(ctx, note, rs, chatBubbleTarget?.annotationId === note.id, thread)
       }
     }
-  }, [annotations, activeTool, selectedAnnId, color, strokeWidth, opacity, fontSize, measurements, calibration, selectedMeasureId, selectedArrowIdx, selectTextToolbar, hoveredAnnId, getAnnotation, findMatches, findIdx, cropRegions, measureMode, polyMeasurements, countGroups, stickyNotes, commentThreads, chatBubbleTarget, layers])
+  }, [annotations, selectedAnnId, measurements, calibration, selectedMeasureId, selectedArrowIdx, hoveredAnnId, getAnnotation, findMatches, findIdx, cropRegions, polyMeasurements, countGroups, stickyNotes, commentThreads, chatBubbleTarget, layers])
 
   const redrawAll = useCallback(() => {
     for (const pageNum of renderedPagesRef.current) {
       redrawPage(pageNum)
     }
   }, [redrawPage])
+
+  // ── Active canvas helpers (iPad perf overhaul) ──────
+
+  const getActiveCtx = useCallback((pageNum: number): CanvasRenderingContext2D | null => {
+    const cached = activeCtxCacheRef.current.get(pageNum)
+    if (cached) return cached
+    const refs = pageRefsMap.current.get(pageNum)
+    if (!refs?.activeCanvas) return null
+    const ctx = refs.activeCanvas.getContext('2d', { desynchronized: true })
+    if (ctx) activeCtxCacheRef.current.set(pageNum, ctx)
+    return ctx
+  }, [])
+
+  const drawActiveStroke = useCallback((pageNum: number) => {
+    const refs = pageRefsMap.current.get(pageNum)
+    if (!refs?.activeCanvas) return
+    const actCtx = getActiveCtx(pageNum)
+    if (!actCtx) return
+    const rs = pageRenderScaleRef.current.get(pageNum) ?? RENDER_SCALE
+    actCtx.clearRect(0, 0, refs.activeCanvas.width, refs.activeCanvas.height)
+
+    // In-progress stroke
+    if (isDrawingRef.current && activeTool !== 'select' && activeTool !== 'eraser' && activeTool !== 'text' && activeTool !== 'callout' && activeTool !== 'cloud' && activeTool !== 'polygon' && activeTool !== 'measure' && activeTool !== 'textHighlight' && activeTool !== 'textStrikethrough' && activeTool !== 'ocrRegion') {
+      const pts = currentPtsRef.current
+      if (pts.length > 0) {
+        if (activeTool === 'highlighter') {
+          // Use offscreen canvas for consistent opacity (no stacking at self-intersections)
+          const hlPts = currentPtsRef.current
+          if (hlPts.length >= 2) {
+            const pad = strokeWidth * rs
+            let minX = hlPts[0].x, maxX = hlPts[0].x, minY = hlPts[0].y, maxY = hlPts[0].y
+            for (const p of hlPts) {
+              if (p.x < minX) minX = p.x
+              if (p.x > maxX) maxX = p.x
+              if (p.y < minY) minY = p.y
+              if (p.y > maxY) maxY = p.y
+            }
+            const offX = minX * rs - pad
+            const offY = minY * rs - pad
+            const offW = Math.ceil((maxX - minX) * rs + pad * 2)
+            const offH = Math.ceil((maxY - minY) * rs + pad * 2)
+            if (offW > 0 && offH > 0) {
+              const offscreen = new OffscreenCanvas(offW, offH)
+              const offCtx = offscreen.getContext('2d')
+              if (offCtx) {
+                offCtx.strokeStyle = color
+                offCtx.lineWidth = strokeWidth * rs
+                offCtx.lineCap = 'butt'
+                offCtx.lineJoin = 'bevel'
+                offCtx.beginPath()
+                offCtx.moveTo(hlPts[0].x * rs - offX, hlPts[0].y * rs - offY)
+                for (let i = 1; i < hlPts.length; i++) {
+                  offCtx.lineTo(hlPts[i].x * rs - offX, hlPts[i].y * rs - offY)
+                }
+                offCtx.stroke()
+                actCtx.save()
+                actCtx.globalAlpha = 0.4
+                actCtx.drawImage(offscreen, offX, offY)
+                actCtx.restore()
+              }
+            }
+          }
+        } else if (activeTool === 'pencil') {
+          const livePts = currentPtsRef.current
+          const livePressure = currentPressureRef.current
+          if (livePts.length >= 2) {
+            const inputPts = livePts.map((p, i) => [
+              p.x * rs,
+              p.y * rs,
+              livePressure[i] ?? 0.5,
+            ] as [number, number, number])
+            const hasTruePressure = livePressure.some(p => p !== 0.5 && p !== 0)
+            renderFreehandStroke(actCtx, inputPts, {
+              size: strokeWidth * rs * 2,
+              simulatePressure: !hasTruePressure,
+              last: false,
+              color,
+              opacity: opacity / 100,
+            })
+          }
+        } else {
+          const inProgress: Annotation = {
+            id: '_progress', type: activeTool as Annotation['type'],
+            points: pts, color, fontSize,
+            strokeWidth: strokeWidth,
+            opacity: opacity / 100,
+            ...(fillColor && (activeTool === 'rectangle' || activeTool === 'circle') ? { fillColor } : {}),
+            ...(cornerRadius > 0 && activeTool === 'rectangle' ? { cornerRadius } : {}),
+            ...(dashPattern !== 'solid' ? { dashPattern } : {}),
+            ...(arrowStart && activeTool === 'arrow' ? { arrowStart: true } : {}),
+          }
+          drawAnnotation(actCtx, inProgress, rs)
+        }
+      }
+    }
+
+    // Text highlight preview
+    if (activeTool === 'textHighlight' && textHighlightPreviewRectsRef.current.length > 0) {
+      actCtx.save()
+      actCtx.globalAlpha = 0.4
+      actCtx.globalCompositeOperation = 'multiply'
+      actCtx.fillStyle = color
+      for (const r of textHighlightPreviewRectsRef.current) {
+        actCtx.fillRect(r.x * rs, r.y * rs, r.w * rs, r.h * rs)
+      }
+      actCtx.restore()
+    }
+
+    // Text strikethrough preview
+    if (activeTool === 'textStrikethrough' && textHighlightPreviewRectsRef.current.length > 0) {
+      actCtx.save()
+      actCtx.globalAlpha = 1
+      actCtx.strokeStyle = color
+      actCtx.lineWidth = Math.max(1, 2 * rs)
+      actCtx.beginPath()
+      for (const r of textHighlightPreviewRectsRef.current) {
+        const midY = (r.y + r.h / 2) * rs
+        actCtx.moveTo(r.x * rs, midY)
+        actCtx.lineTo((r.x + r.w) * rs, midY)
+      }
+      actCtx.stroke()
+      actCtx.restore()
+    }
+
+    // Select tool: text selection highlight
+    {
+      const selectRects = selectTextRectsRef.current.length > 0
+        ? selectTextRectsRef.current
+        : selectTextToolbar?.rects ?? []
+      if (selectRects.length > 0) {
+        actCtx.save()
+        actCtx.globalAlpha = 0.3
+        actCtx.fillStyle = '#3B82F6'
+        for (const r of selectRects) {
+          actCtx.fillRect(r.x * rs, r.y * rs, r.w * rs, r.h * rs)
+        }
+        actCtx.restore()
+      }
+    }
+
+    // Cloud polygon vertex placement preview
+    if ((activeTool === 'cloud' || activeTool === 'polygon') && currentPtsRef.current.length > 0) {
+      const cpts = currentPtsRef.current
+      const preview = cloudPreviewRef.current
+      const scale = rs
+      const arcSize = 20 * scale
+
+      actCtx.save()
+      actCtx.strokeStyle = color
+      actCtx.lineWidth = strokeWidth * scale
+      actCtx.globalAlpha = opacity / 100
+
+      if (cpts.length >= 2) {
+        actCtx.beginPath()
+        actCtx.moveTo(cpts[0].x * scale, cpts[0].y * scale)
+        for (let i = 0; i < cpts.length - 1; i++) {
+          drawCloudEdge(actCtx, cpts[i].x * scale, cpts[i].y * scale, cpts[i + 1].x * scale, cpts[i + 1].y * scale, arcSize)
+        }
+        actCtx.stroke()
+      }
+
+      if (preview) {
+        actCtx.globalAlpha = (opacity / 100) * 0.5
+        actCtx.beginPath()
+        actCtx.moveTo(cpts[cpts.length - 1].x * scale, cpts[cpts.length - 1].y * scale)
+        drawCloudEdge(actCtx, cpts[cpts.length - 1].x * scale, cpts[cpts.length - 1].y * scale, preview.x * scale, preview.y * scale, arcSize)
+        actCtx.stroke()
+
+        if (cpts.length >= 2) {
+          actCtx.setLineDash([4, 3])
+          actCtx.beginPath()
+          actCtx.moveTo(preview.x * scale, preview.y * scale)
+          drawCloudEdge(actCtx, preview.x * scale, preview.y * scale, cpts[0].x * scale, cpts[0].y * scale, arcSize)
+          actCtx.stroke()
+          actCtx.setLineDash([])
+        }
+      }
+
+      actCtx.globalAlpha = 1
+      actCtx.fillStyle = '#3B82F6'
+      for (const p of cpts) {
+        actCtx.beginPath()
+        actCtx.arc(p.x * scale, p.y * scale, 4, 0, Math.PI * 2)
+        actCtx.fill()
+      }
+
+      // Snap indicator: highlight first vertex when cursor is near it
+      if (preview && cpts.length >= 3) {
+        const snapDist = Math.hypot(preview.x - cpts[0].x, preview.y - cpts[0].y)
+        if (snapDist < 15 / zoomRef.current) {
+          actCtx.strokeStyle = '#22C55E'
+          actCtx.lineWidth = 2
+          actCtx.beginPath()
+          actCtx.arc(cpts[0].x * scale, cpts[0].y * scale, 8, 0, Math.PI * 2)
+          actCtx.stroke()
+        }
+      }
+
+      actCtx.setLineDash([])
+      actCtx.restore()
+    }
+
+    // In-progress textbox creation
+    if (isDrawingRef.current && activeTool === 'text') {
+      const pts = currentPtsRef.current
+      if (pts.length >= 2) {
+        actCtx.save()
+        actCtx.strokeStyle = '#3B82F6'
+        actCtx.lineWidth = 1.5
+        actCtx.setLineDash([4, 3])
+        const x = Math.min(pts[0].x, pts[1].x) * rs
+        const y = Math.min(pts[0].y, pts[1].y) * rs
+        const w = Math.abs(pts[1].x - pts[0].x) * rs
+        const h = Math.abs(pts[1].y - pts[0].y) * rs
+        actCtx.strokeRect(x, y, w, h)
+        actCtx.setLineDash([])
+        actCtx.restore()
+      }
+    }
+
+    // In-progress callout box creation
+    if (isDrawingRef.current && activeTool === 'callout' && !calloutArrowDragRef.current) {
+      const pts = currentPtsRef.current
+      if (pts.length >= 2) {
+        actCtx.save()
+        actCtx.strokeStyle = '#3B82F6'
+        actCtx.lineWidth = 1.5
+        actCtx.setLineDash([4, 3])
+        const x = Math.min(pts[0].x, pts[1].x) * rs
+        const y = Math.min(pts[0].y, pts[1].y) * rs
+        const w = Math.abs(pts[1].x - pts[0].x) * rs
+        const h = Math.abs(pts[1].y - pts[0].y) * rs
+        actCtx.strokeRect(x, y, w, h)
+        actCtx.setLineDash([])
+        actCtx.restore()
+      }
+    }
+
+    // Callout arrow drag preview
+    if (calloutArrowDragRef.current && selectedAnnId) {
+      const ann = getAnnotation(selectedAnnId)
+      if (ann && ann.type === 'callout' && ann.width && ann.height) {
+        const tip = calloutArrowDragRef.current.tipPt
+        const origin = nearestPointOnRect(ann.points[0].x, ann.points[0].y, ann.width, ann.height, tip.x, tip.y)
+        actCtx.save()
+        actCtx.strokeStyle = '#000000'
+        actCtx.lineWidth = 1.5 * rs
+        actCtx.setLineDash([4, 3])
+        actCtx.beginPath()
+        actCtx.moveTo(origin.x * rs, origin.y * rs)
+        actCtx.lineTo(tip.x * rs, tip.y * rs)
+        actCtx.stroke()
+        actCtx.setLineDash([])
+        actCtx.restore()
+      }
+    }
+
+    // In-progress measurement preview (distance mode)
+    if (activeTool === 'measure' && measureMode === 'distance' && measureStartRef.current && measurePreviewRef.current) {
+      const preview: Measurement = {
+        id: '_measure_preview',
+        startPt: measureStartRef.current,
+        endPt: measurePreviewRef.current,
+        page: pageNum,
+      }
+      drawMeasurement(actCtx, preview, rs, calibration, false)
+    }
+    // In-progress polylength preview
+    if (activeTool === 'measure' && measureMode === 'polylength' && polyPointsRef.current.length > 0) {
+      const pts = [...polyPointsRef.current]
+      if (polyPreviewRef.current) pts.push(polyPreviewRef.current)
+      drawPolylength(actCtx, pts, rs, calibration, false)
+    }
+    // In-progress area preview
+    if (activeTool === 'measure' && measureMode === 'area' && polyPointsRef.current.length > 0) {
+      const pts = [...polyPointsRef.current]
+      if (polyPreviewRef.current) pts.push(polyPreviewRef.current)
+      drawAreaPolygon(actCtx, pts, rs, calibration, false, false)
+    }
+
+    // OCR Region in-progress preview
+    if (activeTool === 'ocrRegion' && ocrRegionPreviewRef.current) {
+      const r = ocrRegionPreviewRef.current
+      actCtx.save()
+      actCtx.strokeStyle = '#3B82F6'
+      actCtx.lineWidth = 2
+      actCtx.setLineDash([6, 3])
+      actCtx.globalAlpha = 0.8
+      actCtx.strokeRect(r.x * rs, r.y * rs, r.w * rs, r.h * rs)
+      actCtx.fillStyle = '#3B82F6'
+      actCtx.globalAlpha = 0.08
+      actCtx.fillRect(r.x * rs, r.y * rs, r.w * rs, r.h * rs)
+      actCtx.setLineDash([])
+      actCtx.restore()
+    }
+
+    // Crop in-progress preview
+    if (activeTool === 'crop' && cropDrawRef.current && currentPtsRef.current.length >= 2) {
+      const cpts = currentPtsRef.current
+      const cx = Math.min(cpts[0].x, cpts[1].x)
+      const cy = Math.min(cpts[0].y, cpts[1].y)
+      const cw = Math.abs(cpts[1].x - cpts[0].x)
+      const ch = Math.abs(cpts[1].y - cpts[0].y)
+      actCtx.save()
+      actCtx.strokeStyle = '#f97316'
+      actCtx.lineWidth = 2
+      actCtx.setLineDash([6, 3])
+      actCtx.globalAlpha = 0.8
+      actCtx.strokeRect(cx * rs, cy * rs, cw * rs, ch * rs)
+      actCtx.setLineDash([])
+      actCtx.restore()
+    }
+  }, [getActiveCtx, activeTool, color, strokeWidth, opacity, fontSize, fillColor, cornerRadius, dashPattern, arrowStart, selectedAnnId, getAnnotation, selectTextToolbar, measureMode, calibration])
+
+  // ── rAF batching ──────────────────────────────────────
+
+  const renderLoop = useCallback(() => {
+    rafRunningRef.current = false
+    const ap = activePageRef.current
+    drawActiveStroke(ap)
+  }, [drawActiveStroke])
+
+  const scheduleRender = useCallback(() => {
+    if (!rafRunningRef.current) {
+      rafRunningRef.current = true
+      rafIdRef.current = requestAnimationFrame(renderLoop)
+    }
+  }, [renderLoop])
 
   // ── History management ───────────────────────────────
 
@@ -1384,6 +1477,17 @@ export default function PdfAnnotateTool() {
       if (dims) {
         refs.annCanvas.style.width = dims.width + 'px'
         refs.annCanvas.style.height = dims.height + 'px'
+      }
+      // Sync active canvas (in-progress drawing overlay)
+      if (refs.activeCanvas) {
+        refs.activeCanvas.width = refs.pdfCanvas.width
+        refs.activeCanvas.height = refs.pdfCanvas.height
+        if (dims) {
+          refs.activeCanvas.style.width = dims.width + 'px'
+          refs.activeCanvas.style.height = dims.height + 'px'
+        }
+        // Invalidate cached context since dimensions changed
+        activeCtxCacheRef.current.delete(pageNum)
       }
       pageRenderScaleRef.current.set(pageNum, rs)
       redrawPage(pageNum)
@@ -2587,14 +2691,9 @@ export default function PdfAnnotateTool() {
 
     isDrawingRef.current = true
 
-    // Snapshot canvas for incremental freehand rendering
+    // Capture initial pressure for freehand drawing
     if (activeTool === 'pencil' || activeTool === 'highlighter') {
-      currentPressureRef.current = [e.pressure]  // capture initial pressure
-      const annCanvas = pageRefsMap.current.get(pageNum)?.annCanvas
-      if (annCanvas) {
-        const ctx = annCanvas.getContext('2d')
-        if (ctx) canvasSnapshotRef.current = ctx.getImageData(0, 0, annCanvas.width, annCanvas.height)
-      }
+      currentPressureRef.current = [e.pressure]
     }
 
     if (activeTool === 'eraser') {
@@ -2637,9 +2736,9 @@ export default function PdfAnnotateTool() {
     }
 
     currentPtsRef.current = [pt]
-    redrawPage(pageNum)
+    scheduleRender()
   }, [getPointForPage, activeTool, annotations, editingTextId, selectedAnnId, selectTextToolbar,
-      commitTextEditing, commitAnnotation, getAnnotation, findTextAnnotationAt, findCalloutAt, findAnnotationAt, enterEditMode, redrawPage,
+      commitTextEditing, commitAnnotation, getAnnotation, findTextAnnotationAt, findCalloutAt, findAnnotationAt, redrawPage, scheduleRender,
       eraserRadius, eraserMode, zoom, color, strokeWidth, fontSize, opacity, fontFamily, bold, italic, underline, textAlign,
       activeStampPreset])
 
@@ -2700,12 +2799,12 @@ export default function PdfAnnotateTool() {
     if (activeTool === 'measure') {
       if (measureMode === 'distance' && measureStartRef.current) {
         measurePreviewRef.current = getPointForPage(ap, e)
-        redrawPage(ap)
+        scheduleRender()
         return
       }
       if ((measureMode === 'polylength' || measureMode === 'area') && polyPointsRef.current.length > 0) {
         polyPreviewRef.current = getPointForPage(ap, e)
-        redrawPage(ap)
+        scheduleRender()
         return
       }
     }
@@ -2713,7 +2812,7 @@ export default function PdfAnnotateTool() {
     // Cloud polygon: track cursor for preview
     if ((activeTool === 'cloud' || activeTool === 'polygon') && currentPtsRef.current.length > 0) {
       cloudPreviewRef.current = getPointForPage(ap, e)
-      redrawPage(ap)
+      scheduleRender()
       return
     }
 
@@ -2725,14 +2824,14 @@ export default function PdfAnnotateTool() {
         x: Math.min(start.x, cur.x), y: Math.min(start.y, cur.y),
         w: Math.abs(cur.x - start.x), h: Math.abs(cur.y - start.y),
       }
-      redrawPage(ap)
+      scheduleRender()
       return
     }
 
     // Crop tool: draw dashed rectangle preview
     if (activeTool === 'crop' && cropDrawRef.current && isDrawingRef.current) {
       currentPtsRef.current = [cropDrawRef.current.startPt, getPointForPage(ap, e)]
-      redrawPage(ap)
+      scheduleRender()
       return
     }
 
@@ -2865,7 +2964,7 @@ export default function PdfAnnotateTool() {
       const cacheKey = `${ap}_${selRotation}`
       const items = textItemsCacheRef.current[cacheKey] || []
       selectTextRectsRef.current = flowSelectTextItems(items, selectTextStartRef.current, pt)
-      redrawPage(ap)
+      scheduleRender()
       return
     }
 
@@ -2882,7 +2981,7 @@ export default function PdfAnnotateTool() {
       const cacheKey = `${ap}_${hlRotation}`
       const items = textItemsCacheRef.current[cacheKey] || []
       textHighlightPreviewRectsRef.current = findIntersectingTextItems(items, selRect)
-      redrawPage(ap)
+      scheduleRender()
       return
     }
 
@@ -2890,7 +2989,7 @@ export default function PdfAnnotateTool() {
     if (activeTool === 'callout') {
       if (calloutArrowDragRef.current) {
         calloutArrowDragRef.current.tipPt = pt
-        redrawPage(ap)
+        scheduleRender()
         return
       }
       if (textDragRef.current) {
@@ -2931,7 +3030,7 @@ export default function PdfAnnotateTool() {
       }
       // Creating callout box
       currentPtsRef.current = [currentPtsRef.current[0], pt]
-      redrawPage(ap)
+      scheduleRender()
       return
     }
 
@@ -2984,7 +3083,7 @@ export default function PdfAnnotateTool() {
     // Text tool: creating textbox
     if (activeTool === 'text') {
       currentPtsRef.current = [currentPtsRef.current[0], pt]
-      redrawPage(ap)
+      scheduleRender()
       return
     }
 
@@ -3060,75 +3159,8 @@ export default function PdfAnnotateTool() {
           currentPtsRef.current.push(cePt)
           currentPressureRef.current.push(ce.pressure)
         }
-        // Incremental rendering: restore snapshot + draw only current stroke
-        if (!straightLineMode && canvasSnapshotRef.current) {
-          const annCanvas = pageRefsMap.current.get(ap)?.annCanvas
-          if (annCanvas) {
-            const ctx = annCanvas.getContext('2d')
-            if (ctx) {
-              ctx.putImageData(canvasSnapshotRef.current, 0, 0)
-              const pageRs = pageRenderScaleRef.current.get(ap) ?? RENDER_SCALE
-              if (activeTool === 'highlighter') {
-                // Use offscreen canvas for consistent opacity (no stacking at self-intersections)
-                const hlPts = currentPtsRef.current
-                if (hlPts.length >= 2) {
-                  const pad = strokeWidth * pageRs
-                  let minX = hlPts[0].x, maxX = hlPts[0].x, minY = hlPts[0].y, maxY = hlPts[0].y
-                  for (const p of hlPts) {
-                    if (p.x < minX) minX = p.x
-                    if (p.x > maxX) maxX = p.x
-                    if (p.y < minY) minY = p.y
-                    if (p.y > maxY) maxY = p.y
-                  }
-                  const offX = minX * pageRs - pad
-                  const offY = minY * pageRs - pad
-                  const offW = Math.ceil((maxX - minX) * pageRs + pad * 2)
-                  const offH = Math.ceil((maxY - minY) * pageRs + pad * 2)
-                  if (offW > 0 && offH > 0) {
-                    const offscreen = new OffscreenCanvas(offW, offH)
-                    const offCtx = offscreen.getContext('2d')
-                    if (offCtx) {
-                      offCtx.strokeStyle = color
-                      offCtx.lineWidth = strokeWidth * pageRs
-                      offCtx.lineCap = 'butt'
-                      offCtx.lineJoin = 'bevel'
-                      offCtx.beginPath()
-                      offCtx.moveTo(hlPts[0].x * pageRs - offX, hlPts[0].y * pageRs - offY)
-                      for (let i = 1; i < hlPts.length; i++) {
-                        offCtx.lineTo(hlPts[i].x * pageRs - offX, hlPts[i].y * pageRs - offY)
-                      }
-                      offCtx.stroke()
-                      ctx.save()
-                      ctx.globalAlpha = 0.4
-                      ctx.drawImage(offscreen, offX, offY)
-                      ctx.restore()
-                    }
-                  }
-                }
-              } else {
-                const livePts = currentPtsRef.current
-                const livePressure = currentPressureRef.current
-                if (livePts.length >= 2) {
-                  const inputPts = livePts.map((p, i) => [
-                    p.x * pageRs,
-                    p.y * pageRs,
-                    livePressure[i] ?? 0.5,
-                  ] as [number, number, number])
-                  const hasTruePressure = livePressure.some(p => p !== 0.5 && p !== 0)
-                  renderFreehandStroke(ctx, inputPts, {
-                    size: strokeWidth * pageRs * 2,
-                    simulatePressure: !hasTruePressure,
-                    last: false,
-                    color,
-                    opacity: opacity / 100,
-                  })
-                }
-              }
-              return
-            }
-          }
-        }
       }
+      scheduleRender()
     } else {
       const start = currentPtsRef.current[0]
       let endPt = pt
@@ -3153,9 +3185,9 @@ export default function PdfAnnotateTool() {
       }
 
       currentPtsRef.current = [start, endPt]
+      scheduleRender()
     }
-    redrawPage(ap)
-  }, [getPointForPage, activeTool, annotations, redrawPage, eraserRadius, eraserMode, zoom, straightLineMode, selectedAnnId, findAnnotationAt, zoomAtCenter])
+  }, [getPointForPage, activeTool, annotations, redrawPage, eraserRadius, eraserMode, zoom, straightLineMode, selectedAnnId, findAnnotationAt, zoomAtCenter, scheduleRender])
 
   const handlePointerUp = useCallback((e?: React.PointerEvent) => {
     // Clean up touch tracking
@@ -3171,6 +3203,15 @@ export default function PdfAnnotateTool() {
     isDrawingRef.current = false
     canvasSnapshotRef.current = null
     const ap = activePageRef.current
+
+    // Cancel any pending rAF and clear the active canvas
+    cancelAnimationFrame(rafIdRef.current)
+    rafRunningRef.current = false
+    const activeCtx = getActiveCtx(ap)
+    const activeRefs = pageRefsMap.current.get(ap)
+    if (activeCtx && activeRefs?.activeCanvas) {
+      activeCtx.clearRect(0, 0, activeRefs.activeCanvas.width, activeRefs.activeCanvas.height)
+    }
 
     // General drag (select tool: moving shapes)
     if (generalDragRef.current) {
@@ -3503,7 +3544,7 @@ export default function PdfAnnotateTool() {
       setSelectedAnnId(ann.id)
     }
   }, [activeTool, color, strokeWidth, opacity, fontSize, fillColor, cornerRadius, dashPattern, arrowStart, commitAnnotation,
-      pushHistory, redrawPage, annotations, getAnnotation, updateAnnotation, selectedAnnId, addToast])
+      pushHistory, redrawPage, annotations, getAnnotation, updateAnnotation, selectedAnnId, addToast, getActiveCtx])
 
   // ── Comment & Sticky Note Management ─────────────────
 
@@ -4469,8 +4510,9 @@ export default function PdfAnnotateTool() {
                       if (!existing || existing.container !== el) {
                         const pdfCanvas = el.querySelector<HTMLCanvasElement>('canvas.pdf-canvas')
                         const annCanvas = el.querySelector<HTMLCanvasElement>('canvas.ann-canvas')
-                        if (pdfCanvas && annCanvas) {
-                          pageRefsMap.current.set(pageNum, { pdfCanvas, annCanvas, container: el })
+                        const activeCanvas = el.querySelector<HTMLCanvasElement>('canvas.active-canvas')
+                        if (pdfCanvas && annCanvas && activeCanvas) {
+                          pageRefsMap.current.set(pageNum, { pdfCanvas, annCanvas, activeCanvas, container: el })
                         }
                       }
                     }
@@ -4485,7 +4527,13 @@ export default function PdfAnnotateTool() {
                     className="ann-canvas absolute top-0 left-0"
                     width={dims?.width ?? 0}
                     height={dims?.height ?? 0}
-                    style={{ mixBlendMode: 'multiply', touchAction: 'none', cursor: canvasCursor || (activeTool === 'select' && selectedAnnId ? 'default' : CURSOR_MAP[activeTool]) }}
+                    style={{ mixBlendMode: 'multiply' }}
+                  />
+                  <canvas
+                    className="active-canvas absolute top-0 left-0"
+                    width={dims?.width ?? 0}
+                    height={dims?.height ?? 0}
+                    style={{ touchAction: 'none', cursor: canvasCursor || (activeTool === 'select' && selectedAnnId ? 'default' : CURSOR_MAP[activeTool]) }}
                     onPointerDown={e => handlePointerDown(e, pageNum)}
                     onPointerMove={e => handlePointerMove(e, pageNum)}
                     onPointerUp={handlePointerUp}

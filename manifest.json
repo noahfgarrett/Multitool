@@ -1,0 +1,22 @@
+{
+  "name": "Multitool",
+  "short_name": "Multitool",
+  "description": "A lightweight, all-in-one toolbox built for construction teams.",
+  "start_url": "/Multitool/",
+  "scope": "/Multitool/",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#14B8A6",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

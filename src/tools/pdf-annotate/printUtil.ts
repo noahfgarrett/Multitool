@@ -56,9 +56,12 @@ export async function printAnnotatedPDF(
       const ctx = compositeCanvas.getContext('2d')
       if (!ctx) continue
 
-      // Draw PDF layer first, then annotation layer on top
+      // Draw PDF layer first, then annotation layer, then active canvas on top
       ctx.drawImage(pdfCanvas, 0, 0)
       ctx.drawImage(annCanvas, 0, 0)
+      if (refs.activeCanvas) {
+        ctx.drawImage(refs.activeCanvas, 0, 0)
+      }
 
       const dataUrl = compositeCanvas.toDataURL('image/png')
 

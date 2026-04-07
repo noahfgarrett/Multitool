@@ -12,6 +12,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.0.2',
+    date: 'PLACEHOLDER',
+    type: 'feature',
+    stats: { features: 1, tools: 1 },
+    notes: `### Performance
+- **PDF Annotate — smoother drawing on iPad** — Completely reworked the drawing engine with a three-canvas architecture and frame-rate batching for dramatically reduced lag when using Apple Pencil or touch`,
+  },
+  {
     version: '4.0.1',
     date: '2026-04-07T12:22:09Z',
     type: 'fix',

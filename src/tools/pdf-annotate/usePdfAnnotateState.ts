@@ -399,6 +399,12 @@ export function usePdfAnnotateState() {
   const touchPositionsRef = useRef(new Map<number, { x: number; y: number }>())
   const prevPinchDistRef = useRef<number | null>(null)
 
+  // Active canvas drawing pipeline (iPad perf overhaul)
+  const pointBufferRef = useRef<{ x: number; y: number; pressure: number }[]>([])
+  const rafIdRef = useRef<number>(0)
+  const rafRunningRef = useRef(false)
+  const activeCtxCacheRef = useRef<Map<number, CanvasRenderingContext2D>>(new Map())
+
   // O(1) annotation→page lookup
   const annPageMap = useMemo(() => {
     const map = new Map<string, number>()
@@ -571,6 +577,8 @@ export function usePdfAnnotateState() {
     findCommittedQuery, setFindCommittedQuery,
     // Touch
     activeTouchIdsRef, touchPositionsRef, prevPinchDistRef,
+    // Active canvas pipeline
+    pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     // Memos
     annPageMap, totalAnnotationCount,
   }
