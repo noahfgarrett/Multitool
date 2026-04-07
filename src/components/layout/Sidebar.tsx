@@ -215,7 +215,9 @@ export function Sidebar() {
               setShowChangelog(true)
               localStorage.setItem('lastSeenVersion', __APP_VERSION__)
             }}
-            className="relative text-[10px] text-center mt-2 w-full transition-colors cursor-pointer hover:text-[#14B8A6]"
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#14B8A6' }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-disabled)' }}
+            className="relative text-[10px] text-center mt-2 w-full transition-colors cursor-pointer"
             style={{ color: 'var(--text-disabled)' }}
             title="View changelog"
           >
