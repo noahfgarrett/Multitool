@@ -12,6 +12,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.0.1',
+    date: 'PLACEHOLDER',
+    type: 'fix',
+    stats: { fixes: 2 },
+    notes: `### Fixes
+- **Profile photo updates instantly** — Saving your profile now immediately updates your photo and name everywhere without needing to refresh
+- **Improved update reliability** — The update button now works on more networks and corporate environments`,
+  },
+  {
     version: '4.0.0',
     date: '2026-04-07T11:33:34Z',
     type: 'major',
