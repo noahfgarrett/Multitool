@@ -114,13 +114,16 @@ function ProfileTab() {
     e.target.value = ''
   }, [addToast])
 
+  const bumpProfileVersion = useAppStore((s) => s.bumpProfileVersion)
+
   const handleSave = useCallback(() => {
     const profile: UserProfile = { name: name.trim(), email: existing?.email ?? '', initials: existing?.initials ?? '', jobTitle: jobTitle.trim(), company: company.trim(), photo }
     saveUserProfile(profile)
+    bumpProfileVersion()
     setSaved(true)
     addToast({ type: 'success', message: 'Profile saved' })
     setTimeout(() => setSaved(false), 2000)
-  }, [name, jobTitle, company, photo, addToast])
+  }, [name, jobTitle, company, photo, addToast, bumpProfileVersion])
 
   return (
     <div className="space-y-5">

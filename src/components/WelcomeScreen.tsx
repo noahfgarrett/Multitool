@@ -21,6 +21,7 @@ const iconMap: Record<string, React.ComponentType<{ size?: number; className?: s
 export function WelcomeScreen() {
   const setActiveTool = useAppStore((s) => s.setActiveTool)
   const setActiveView = useAppStore((s) => s.setActiveView)
+  useAppStore((s) => s.profileVersion) // subscribe to profile changes
   const profile = getUserProfile()
   const firstName = profile?.name?.split(/\s+/)[0] || ''
 

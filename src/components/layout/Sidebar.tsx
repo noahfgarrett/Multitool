@@ -36,6 +36,7 @@ export function Sidebar() {
   const setActiveView = useAppStore((s) => s.setActiveView)
   const setShowChangelog = useAppStore((s) => s.setShowChangelog)
   const openSettings = useAppStore((s) => s.openSettings)
+  useAppStore((s) => s.profileVersion) // subscribe to profile changes
   const profile = loadUserProfile()
 
   return (

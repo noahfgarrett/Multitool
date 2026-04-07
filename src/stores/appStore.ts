@@ -30,6 +30,10 @@ interface AppState {
   showChangelog: boolean
   setShowChangelog: (show: boolean) => void
 
+  // Profile reactivity (bump to trigger re-renders when profile is saved)
+  profileVersion: number
+  bumpProfileVersion: () => void
+
   // Focus mode
   focusMode: boolean
   setFocusMode: (focus: boolean) => void
@@ -70,6 +74,8 @@ export const useAppStore = create<AppState>((set) => ({
   feedbackPayload: null,
   clearFeedbackPayload: () => set({ feedbackPayload: null }),
   showChangelog: false,
+  profileVersion: 0,
+  bumpProfileVersion: () => set((s) => ({ profileVersion: s.profileVersion + 1 })),
   focusMode: false,
   setFocusMode: (focus) => set({ focusMode: focus }),
 

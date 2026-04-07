@@ -13,6 +13,7 @@ export function Header() {
   const [helpOpen, setHelpOpen] = useState(false)
 
   const openSettings = useAppStore((s) => s.openSettings)
+  useAppStore((s) => s.profileVersion) // subscribe to profile changes
   const profile = getUserProfile()
   const hasHelp = toolDef && toolHelp[toolDef.id]
 
