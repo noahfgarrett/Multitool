@@ -46,13 +46,13 @@ export function Sidebar() {
       }`}
     >
       {/* Logo / collapse toggle */}
-      <div className="flex items-center h-14 px-3 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+      <div className="flex items-center h-[72px] px-3 border-b overflow-visible" style={{ borderColor: 'var(--border-subtle)' }}>
         {sidebarExpanded && (
-          <div className="flex flex-col justify-center flex-1 truncate" style={{ paddingTop: '4px' }}>
-            <span className="text-[40px] font-logo text-[#14B8A6] leading-none truncate">
+          <div className="flex flex-col justify-center flex-1 min-w-0">
+            <span className="text-[36px] font-logo text-[#14B8A6] leading-[1.1] overflow-visible">
               Multitool
             </span>
-            <span className="text-[9px] tracking-widest uppercase truncate" style={{ color: 'var(--text-disabled)', marginTop: '-2px' }}>
+            <span className="text-[9px] tracking-widest uppercase truncate" style={{ color: 'var(--text-disabled)', marginTop: '1px' }}>
               Visualize Build LLC
             </span>
           </div>
