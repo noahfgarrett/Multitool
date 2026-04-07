@@ -238,9 +238,9 @@ function AboutTab() {
 
         {/* Description */}
         <p className="text-sm text-center leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-          A professional-grade local toolbox for construction professionals.
-          All tools run 100% in your browser with zero server calls — your
-          documents never leave your machine.
+          A lightweight, all-in-one toolbox built for construction teams.
+          Every tool runs 100% in your browser — your documents never
+          leave your machine.
         </p>
 
         {/* Creator */}

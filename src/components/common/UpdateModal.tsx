@@ -33,7 +33,7 @@ function renderMarkdown(md: string): string {
 }
 
 const TYPE_COLORS: Record<ChangelogEntry['type'], { bar: string; text: string; bg: string; label: string }> = {
-  major: { bar: 'border-l-[#14B8A6]', text: 'text-[#14B8A6]', bg: 'bg-[#14B8A6]/[0.04]', label: 'Major' },
+  major: { bar: 'border-l-amber-400', text: 'text-amber-400', bg: 'bg-amber-400/[0.04]', label: 'Major' },
   feature: { bar: 'border-l-blue-400', text: 'text-blue-400', bg: 'bg-blue-400/[0.04]', label: 'Feature' },
   fix: { bar: 'border-l-emerald-400', text: 'text-emerald-400', bg: 'bg-emerald-400/[0.04]', label: 'Fix' },
 }
