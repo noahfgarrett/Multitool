@@ -445,6 +445,13 @@ export function usePdfAnnotateState() {
   const pinchScrollRectRef = useRef({ left: 0, top: 0 })
   const pinchRafIdRef = useRef<number | null>(null)
   const pinchPendingRef = useRef<{ zoom: number; midX: number; midY: number } | null>(null)
+  // Ratcheted zoom deadzone: pinch gestures start as pure pan and only
+  // "unlock" into zoom mode once the finger distance has diverged from
+  // the start distance by more than PINCH_ZOOM_DEADZONE (3%). Once
+  // unlocked, the gesture stays in zoom mode until all fingers lift.
+  // Prevents finger jitter during a 2-finger pan from committing a
+  // spurious zoom change on release.
+  const pinchZoomUnlockedRef = useRef(false)
 
   // Active canvas drawing pipeline (iPad perf overhaul)
   const pointBufferRef = useRef<{ x: number; y: number; pressure: number }[]>([])
@@ -632,7 +639,7 @@ export function usePdfAnnotateState() {
     // Pinch gesture (imperative, bypasses React state)
     pinchActiveRef, pinchStartZoomRef, pinchStartDistRef, pinchStartScrollRef,
     pinchStartMidContentRef, pinchLocalZoomRef, pinchScrollRectRef,
-    pinchRafIdRef, pinchPendingRef,
+    pinchRafIdRef, pinchPendingRef, pinchZoomUnlockedRef,
     // Active canvas pipeline
     pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     // Memos

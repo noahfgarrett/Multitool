@@ -386,7 +386,7 @@ export default function PdfAnnotateTool() {
     activeTouchIdsRef, touchPositionsRef, prevPinchDistRef, prevPinchMidRef,
     pinchActiveRef, pinchStartZoomRef, pinchStartDistRef, pinchStartScrollRef,
     pinchStartMidContentRef, pinchLocalZoomRef, pinchScrollRectRef,
-    pinchRafIdRef, pinchPendingRef,
+    pinchRafIdRef, pinchPendingRef, pinchZoomUnlockedRef,
     pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     annPageMap, totalAnnotationCount,
   } = S
@@ -1478,47 +1478,62 @@ export default function PdfAnnotateTool() {
     renderedPagesRef.current.add(pageNum)
     try {
       const rotation = pageRotationsRef.current[pageNum] || 0
-      // Render at zoom-aware scale so the pixel buffer is always DPR-matched at the current zoom
       const clampedZoom = Math.min(Math.max(zoomRef.current, 0.25), 4)
       const requestedRs = RENDER_SCALE * clampedZoom
       const dims = pageDimsMap.current.get(pageNum)
       const maxRs = dims ? getMaxRenderScale(dims.width, dims.height) : requestedRs
-      // If the requested render scale would make a single canvas exceed
-      // the browser's per-canvas pixel cap, switch to tiled rendering —
-      // split the page into a grid of smaller canvases, each under the
-      // cap, and render only visible tiles via an IntersectionObserver.
-      // This keeps the PDF crystal clear at any zoom level. Annotation
-      // and active canvases stay at cap resolution (slight blur at
-      // extreme zoom is acceptable since users perceive their own markup
-      // differently from the source drawing).
       const needsTiling = !!dims && requestedRs > maxRs * 1.02
-      if (needsTiling && dims) {
-        // Tear down any previous grid that was built at a different scale
-        // or rotation. Same-scale grids are reused so we don't thrash.
-        const existing = pageTileGridsRef.current.get(pageNum)
-        const reuse = existing && existing.scale === requestedRs && existing.rotation === rotation
-        if (existing && !reuse) {
-          teardownTileGrid(existing)
-          pageTileGridsRef.current.delete(pageNum)
+
+      // STEP 1 — always render pdf-canvas at the capped "base" scale,
+      // even when a tile grid will eventually overlay it. pdf-canvas
+      // acts as a permanent fallback layer so the user never sees blank
+      // space during tile grid rebuilds. Tile canvases sit on top when
+      // they're needed; when torn down, the base layer is already there.
+      const baseRs = Math.min(requestedRs, maxRs)
+      await renderPageToCanvas(pdfFile, pageNum, refs.pdfCanvas, baseRs, rotation)
+
+      // Base canvas CSS size tracks the unscaled doc dimensions — the
+      // parent `transform: scale(zoom)` handles visual scaling.
+      if (dims) {
+        refs.pdfCanvas.style.width = dims.width + 'px'
+        refs.pdfCanvas.style.height = dims.height + 'px'
+      }
+      refs.pdfCanvas.style.display = ''
+
+      // Annotation canvases track the base canvas pixel buffer so
+      // hit-testing math stays consistent with where annotations were
+      // stored.
+      refs.annCanvas.width = refs.pdfCanvas.width
+      refs.annCanvas.height = refs.pdfCanvas.height
+      if (dims) {
+        refs.annCanvas.style.width = dims.width + 'px'
+        refs.annCanvas.style.height = dims.height + 'px'
+      }
+      if (refs.activeCanvas) {
+        refs.activeCanvas.width = refs.pdfCanvas.width
+        refs.activeCanvas.height = refs.pdfCanvas.height
+        if (dims) {
+          refs.activeCanvas.style.width = dims.width + 'px'
+          refs.activeCanvas.style.height = dims.height + 'px'
         }
+        activeCtxCacheRef.current.delete(pageNum)
+      }
+      pageRenderScaleRef.current.set(pageNum, baseRs)
+      redrawPage(pageNum)
+
+      // STEP 2 — if the zoom requires it, build a tile overlay. Tiles
+      // are purely additive detail on top of pdf-canvas; we never hide
+      // pdf-canvas. Reuse an existing grid if scale + rotation match.
+      if (needsTiling && dims) {
+        const existing = pageTileGridsRef.current.get(pageNum)
+        const reuse = existing
+          && existing.scale === requestedRs
+          && existing.rotation === rotation
 
         if (!reuse) {
-          // Annotation layers stay at the cap. Size them now so hit
-          // testing and drawing see stable buffer dimensions.
-          const annRs = maxRs
-          const annW = Math.max(1, Math.floor(dims.width * annRs))
-          const annH = Math.max(1, Math.floor(dims.height * annRs))
-          refs.pdfCanvas.style.display = 'none'
-          refs.annCanvas.width = annW
-          refs.annCanvas.height = annH
-          refs.annCanvas.style.width = dims.width + 'px'
-          refs.annCanvas.style.height = dims.height + 'px'
-          if (refs.activeCanvas) {
-            refs.activeCanvas.width = annW
-            refs.activeCanvas.height = annH
-            refs.activeCanvas.style.width = dims.width + 'px'
-            refs.activeCanvas.style.height = dims.height + 'px'
-            activeCtxCacheRef.current.delete(pageNum)
+          if (existing) {
+            teardownTileGrid(existing)
+            pageTileGridsRef.current.delete(pageNum)
           }
 
           const grid = buildTileGrid({
@@ -1534,7 +1549,7 @@ export default function PdfAnnotateTool() {
 
           // Per-tile IntersectionObserver — tiles render as the user
           // scrolls near them. rootMargin gives a bit of prefetch so
-          // tiles pop in before they're visible.
+          // tiles pop in before they're strictly visible.
           const scrollEl = scrollRef.current
           if (scrollEl) {
             const obs = new IntersectionObserver(
@@ -1551,8 +1566,8 @@ export default function PdfAnnotateTool() {
                   ).then(() => { tile.rendered = true })
                     .catch((err: unknown) => {
                       if (!isRenderingCancelled(err)) {
-                        // Any non-cancellation error — leave unrendered,
-                        // the intersection observer may retry on next scroll.
+                        // Non-cancellation failure — leave unrendered;
+                        // the observer may retry on the next scroll.
                       }
                     })
                 }
@@ -1564,52 +1579,16 @@ export default function PdfAnnotateTool() {
           }
 
           pageTileGridsRef.current.set(pageNum, grid)
-          // Store the ANN canvas scale so hit-testing math (which
-          // reads ann-canvas.width / storedRs to get doc-space coords)
-          // stays consistent.
-          pageRenderScaleRef.current.set(pageNum, annRs)
-          redrawPage(pageNum)
-        } else {
-          // Reusing an existing grid at the same scale — just make sure
-          // the pdf-canvas stays hidden and redraw annotations.
-          refs.pdfCanvas.style.display = 'none'
-          redrawPage(pageNum)
         }
       } else {
-        // SINGLE-CANVAS PATH (unchanged from v4.0.9).
-        // First tear down any tile grid left over from a higher zoom.
+        // Not tiling — tear down any grid left over from a higher zoom.
+        // pdf-canvas is already rendered at the correct scale above, so
+        // removing tiles leaves the sharp base layer visible.
         const existing = pageTileGridsRef.current.get(pageNum)
         if (existing) {
           teardownTileGrid(existing)
           pageTileGridsRef.current.delete(pageNum)
         }
-        refs.pdfCanvas.style.display = ''
-
-        const rs = Math.min(requestedRs, maxRs)
-        await renderPageToCanvas(pdfFile, pageNum, refs.pdfCanvas, rs, rotation)
-        // CSS display size matches pageDimsMap (scale=1, CSS-pixel space);
-        // zoom is applied via CSS transform on the parent.
-        if (dims) {
-          refs.pdfCanvas.style.width = dims.width + 'px'
-          refs.pdfCanvas.style.height = dims.height + 'px'
-        }
-        refs.annCanvas.width = refs.pdfCanvas.width
-        refs.annCanvas.height = refs.pdfCanvas.height
-        if (dims) {
-          refs.annCanvas.style.width = dims.width + 'px'
-          refs.annCanvas.style.height = dims.height + 'px'
-        }
-        if (refs.activeCanvas) {
-          refs.activeCanvas.width = refs.pdfCanvas.width
-          refs.activeCanvas.height = refs.pdfCanvas.height
-          if (dims) {
-            refs.activeCanvas.style.width = dims.width + 'px'
-            refs.activeCanvas.style.height = dims.height + 'px'
-          }
-          activeCtxCacheRef.current.delete(pageNum)
-        }
-        pageRenderScaleRef.current.set(pageNum, rs)
-        redrawPage(pageNum)
       }
     } catch (err: unknown) {
       // A newer renderSinglePage call cancelled this one via renderPageToCanvas —
@@ -2394,6 +2373,10 @@ export default function PdfAnnotateTool() {
             const rect = el.getBoundingClientRect()
             const currentZoom = zoomRef.current
             pinchActiveRef.current = true
+            // Start in pan-only mode. Once the finger distance changes
+            // by more than PINCH_ZOOM_DEADZONE (3%), flip to zoom mode
+            // and stay there until the gesture ends.
+            pinchZoomUnlockedRef.current = false
             pinchStartZoomRef.current = currentZoom
             pinchLocalZoomRef.current = currentZoom
             pinchStartDistRef.current = dist
@@ -3135,11 +3118,24 @@ export default function PdfAnnotateTool() {
         const midX = (positions[0].x + positions[1].x) / 2
         const midY = (positions[0].y + positions[1].y) / 2
 
+        // Ratcheted zoom deadzone: until the finger distance has
+        // changed by more than 3% from the start, treat the gesture as
+        // pure pan. Once it crosses the threshold, flip to zoom mode
+        // and stay there for the rest of the gesture. This prevents
+        // finger jitter during a pure 2-finger pan from committing a
+        // spurious zoom change on release.
+        const PINCH_ZOOM_DEADZONE = 0.03
+        const ratio = dist / pinchStartDistRef.current
+        if (!pinchZoomUnlockedRef.current && Math.abs(ratio - 1) > PINCH_ZOOM_DEADZONE) {
+          pinchZoomUnlockedRef.current = true
+        }
         // Proportional zoom relative to gesture START, not the previous
         // move. This prevents error accumulation and makes the zoom feel
-        // directly linked to finger distance.
-        const ratio = dist / pinchStartDistRef.current
-        const targetZoom = Math.min(4.0, Math.max(0.25, pinchStartZoomRef.current * ratio))
+        // directly linked to finger distance. In pan-only mode the zoom
+        // is held at the start value; midpoint updates still drive pan.
+        const targetZoom = pinchZoomUnlockedRef.current
+          ? Math.min(4.0, Math.max(0.25, pinchStartZoomRef.current * ratio))
+          : pinchStartZoomRef.current
         pinchPendingRef.current = { zoom: targetZoom, midX, midY }
 
         if (pinchRafIdRef.current === null) {
@@ -3632,6 +3628,9 @@ export default function PdfAnnotateTool() {
       // reconcile + debounced page re-render happens exactly once at the
       // end of the gesture, not on every frame during it.
       if (activeTouchIdsRef.current.size < 2) {
+        // Capture the last mid-point BEFORE clearing it so the release
+        // re-anchor math has something to read.
+        const lastMidBeforeClear = prevPinchMidRef.current
         prevPinchDistRef.current = null
         prevPinchMidRef.current = null
         if (pinchActiveRef.current) {
@@ -3641,21 +3640,45 @@ export default function PdfAnnotateTool() {
             pinchRafIdRef.current = null
           }
           pinchPendingRef.current = null
-          // Snap the committed zoom to 2 decimal places so preset comparisons
-          // (and the zoom % readout) stay stable.
-          const finalZoom = Math.round(pinchLocalZoomRef.current * 100) / 100
-          // Snap the imperative layout styles to the exact final zoom so
-          // there's no visual stutter between our imperative mid-gesture
-          // values and React's upcoming reflow.
-          if (innerRef.current) innerRef.current.style.transform = `scale(${finalZoom})`
-          if (zoomLayoutRef.current) {
-            zoomLayoutRef.current.style.width = `${naturalW * finalZoom}px`
-            zoomLayoutRef.current.style.height = `${naturalH * finalZoom}px`
+          // If the gesture never unlocked into zoom mode (pure pan),
+          // commit the start zoom exactly — no rounding, no spurious
+          // zoom change, no layout snap, no scroll jump.
+          const finalZoom = pinchZoomUnlockedRef.current
+            ? Math.round(pinchLocalZoomRef.current * 100) / 100
+            : pinchStartZoomRef.current
+          pinchZoomUnlockedRef.current = false
+
+          // Snap all imperative layout styles to exactly finalZoom AND
+          // re-anchor scroll to the last pinch midpoint so any sub-pixel
+          // mismatch between the gesture-time and committed zoom values
+          // doesn't leave scrollLeft stale.
+          const el = scrollRef.current
+          const inner = innerRef.current
+          const layoutEl = zoomLayoutRef.current
+          const paddedEl = paddedWrapperRef.current
+          if (inner) inner.style.transform = `scale(${finalZoom})`
+          if (layoutEl) {
+            layoutEl.style.width = `${naturalW * finalZoom}px`
+            layoutEl.style.height = `${naturalH * finalZoom}px`
           }
-          if (paddedWrapperRef.current && scrollRef.current) {
-            const newPad = Math.max(24, (scrollRef.current.clientWidth - naturalW * finalZoom) / 2)
-            paddedWrapperRef.current.style.paddingLeft = `${newPad}px`
-            paddedWrapperRef.current.style.paddingRight = `${newPad}px`
+          let newPad = 24
+          if (paddedEl && el) {
+            newPad = Math.max(24, (el.clientWidth - naturalW * finalZoom) / 2)
+            paddedEl.style.paddingLeft = `${newPad}px`
+            paddedEl.style.paddingRight = `${newPad}px`
+          }
+          if (el) {
+            // Re-anchor the pinch midpoint in content space at the
+            // committed zoom. Uses the same formula as the rAF apply
+            // inside handlePointerMove, so the user's fingers stay
+            // visually locked to the same spot across the release.
+            const rect = pinchScrollRectRef.current
+            const lastMid = lastMidBeforeClear
+              ?? { x: rect.left + el.clientWidth / 2, y: rect.top + el.clientHeight / 2 }
+            const vpX = lastMid.x - rect.left
+            const vpY = lastMid.y - rect.top
+            el.scrollLeft = pinchStartMidContentRef.current.x * finalZoom + newPad - vpX
+            el.scrollTop = pinchStartMidContentRef.current.y * finalZoom + 24 - vpY
           }
           if (finalZoom !== zoomRef.current) {
             setZoom(finalZoom)
