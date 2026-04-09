@@ -12,6 +12,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.0.8',
+    date: 'PLACEHOLDER',
+    type: 'fix',
+    stats: { fixes: 2 },
+    notes: `### PDF Annotate — Focus mode and zoom polish
+- **Focus mode is truly distraction-free** — On tablet as well as desktop, turning on Focus mode now hides the top toolbar and leaves only the document and your right tool drawer. A faint exit button in the top-left corner brings the toolbar back.
+- **Smoother pinch-to-zoom** — Pinching on iPad now stays anchored under your fingers throughout the gesture, and pages no longer disappear mid-zoom on larger documents.`,
+  },
+  {
     version: '4.0.7',
     date: '2026-04-09T14:07:08Z',
     type: 'fix',

@@ -348,6 +348,12 @@ export function usePdfAnnotateState() {
   const observerRef = useRef<IntersectionObserver | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
+  // Zoom-scaled layout wrapper (explicit width+height = scaled) and its
+  // parent padded wrapper (for imperatively recomputing centering padding).
+  // These exist so the pinch handler can keep layout in sync with the
+  // transformed visual content without round-tripping through React state.
+  const zoomLayoutRef = useRef<HTMLDivElement>(null)
+  const paddedWrapperRef = useRef<HTMLDivElement>(null)
   const zoomRef = useRef(zoom)
   const focusModeRef = useRef(focusMode)
   focusModeRef.current = focusMode
@@ -595,7 +601,7 @@ export function usePdfAnnotateState() {
     // Refs
     pageRefsMap, pageDimsMap, renderedPagesRef,
     activePageRef, maxCanvasWidthRef, observerRef,
-    scrollRef, innerRef, zoomRef, focusModeRef, currentPageRef,
+    scrollRef, innerRef, zoomLayoutRef, paddedWrapperRef, zoomRef, focusModeRef, currentPageRef,
     panRef, spaceHeldRef,
     shapesDropdownRef, textDropdownRef, zoomDropdownRef,
     stampDropdownRef, contextMenuRef,

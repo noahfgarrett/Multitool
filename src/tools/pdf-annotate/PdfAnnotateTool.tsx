@@ -363,7 +363,7 @@ export default function PdfAnnotateTool() {
     loadingThumbs,
     pageRefsMap, pageDimsMap, renderedPagesRef,
     activePageRef, maxCanvasWidthRef, observerRef,
-    scrollRef, innerRef, zoomRef, focusModeRef, currentPageRef,
+    scrollRef, innerRef, zoomLayoutRef, paddedWrapperRef, zoomRef, focusModeRef, currentPageRef,
     panRef, spaceHeldRef,
     shapesDropdownRef, textDropdownRef, zoomDropdownRef,
     stampDropdownRef, contextMenuRef,
@@ -2259,6 +2259,7 @@ export default function PdfAnnotateTool() {
           prevPinchMidRef.current = { x: midX, y: midY }
 
           const el = scrollRef.current
+          const paddedEl = paddedWrapperRef.current
           if (el) {
             const rect = el.getBoundingClientRect()
             const currentZoom = zoomRef.current
@@ -2268,11 +2269,20 @@ export default function PdfAnnotateTool() {
             pinchStartDistRef.current = dist
             pinchStartScrollRef.current = { left: el.scrollLeft, top: el.scrollTop }
             pinchScrollRectRef.current = { left: rect.left, top: rect.top }
-            // Convert the midpoint to content-space coordinates once up
-            // front so every frame can reuse this anchor.
+            // Convert the pinch midpoint to UNSCALED document coordinates so
+            // every frame can reuse it as a zoom-invariant anchor. The
+            // scroll container's layout is in SCALED units (zoomLayoutRef
+            // has explicit scaled width/height), so we subtract the current
+            // padding before dividing by zoom to get the doc-space X.
+            const startPad = paddedEl
+              ? parseFloat(getComputedStyle(paddedEl).paddingLeft) || 24
+              : 24
+            const startPadTop = paddedEl
+              ? parseFloat(getComputedStyle(paddedEl).paddingTop) || 24
+              : 24
             pinchStartMidContentRef.current = {
-              x: (el.scrollLeft + (midX - rect.left)) / currentZoom,
-              y: (el.scrollTop + (midY - rect.top)) / currentZoom,
+              x: (el.scrollLeft + (midX - rect.left) - startPad) / currentZoom,
+              y: (el.scrollTop + (midY - rect.top) - startPadTop) / currentZoom,
             }
           }
         }
@@ -3009,20 +3019,39 @@ export default function PdfAnnotateTool() {
             if (!pending) return
             pinchPendingRef.current = null
             const inner = innerRef.current
+            const layoutEl = zoomLayoutRef.current
+            const paddedEl = paddedWrapperRef.current
             const el = scrollRef.current
-            if (!inner || !el) return
-            // Apply transform directly — bypasses React. React's inline
-            // style.transform won't overwrite this unless the zoom state
-            // prop changes, which we only do on gesture end.
+            if (!inner || !layoutEl || !paddedEl || !el) return
+            // Keep layout and visuals in LOCKSTEP:
+            //   1. transform child scales visually
+            //   2. layout wrapper gets the new scaled width/height so the
+            //      scroll container's scrollable area matches the visuals
+            //   3. padded wrapper's centering padding gets recomputed so
+            //      the page stays horizontally centered when it fits
+            // All three are imperative DOM writes in the same frame — React
+            // is not involved until gesture end.
+            const newScaledW = naturalW * pending.zoom
+            const newScaledH = naturalH * pending.zoom
             inner.style.transform = `scale(${pending.zoom})`
+            layoutEl.style.width = `${newScaledW}px`
+            layoutEl.style.height = `${newScaledH}px`
+            const avail = el.clientWidth
+            const newPad = Math.max(24, (avail - newScaledW) / 2)
+            paddedEl.style.paddingLeft = `${newPad}px`
+            paddedEl.style.paddingRight = `${newPad}px`
             // Anchor the pinch midpoint in content space: compute where
             // the start-captured content anchor should now land in the
             // viewport so the gesture feels "pinned" to the user's fingers.
+            // The anchor is stored in UNSCALED document coords, and the
+            // scroll container now measures in SCALED layout units (because
+            // of the zoom layout wrapper), so multiply by new zoom and
+            // subtract the padding and viewport offset.
             const rect = pinchScrollRectRef.current
             const vpX = pending.midX - rect.left
             const vpY = pending.midY - rect.top
-            el.scrollLeft = pinchStartMidContentRef.current.x * pending.zoom - vpX
-            el.scrollTop = pinchStartMidContentRef.current.y * pending.zoom - vpY
+            el.scrollLeft = pinchStartMidContentRef.current.x * pending.zoom + newPad - vpX
+            el.scrollTop = pinchStartMidContentRef.current.y * pending.zoom + 24 - vpY
             pinchLocalZoomRef.current = pending.zoom
           })
         }
@@ -3485,14 +3514,21 @@ export default function PdfAnnotateTool() {
           // Snap the committed zoom to 2 decimal places so preset comparisons
           // (and the zoom % readout) stay stable.
           const finalZoom = Math.round(pinchLocalZoomRef.current * 100) / 100
+          // Snap the imperative layout styles to the exact final zoom so
+          // there's no visual stutter between our imperative mid-gesture
+          // values and React's upcoming reflow.
+          if (innerRef.current) innerRef.current.style.transform = `scale(${finalZoom})`
+          if (zoomLayoutRef.current) {
+            zoomLayoutRef.current.style.width = `${naturalW * finalZoom}px`
+            zoomLayoutRef.current.style.height = `${naturalH * finalZoom}px`
+          }
+          if (paddedWrapperRef.current && scrollRef.current) {
+            const newPad = Math.max(24, (scrollRef.current.clientWidth - naturalW * finalZoom) / 2)
+            paddedWrapperRef.current.style.paddingLeft = `${newPad}px`
+            paddedWrapperRef.current.style.paddingRight = `${newPad}px`
+          }
           if (finalZoom !== zoomRef.current) {
             setZoom(finalZoom)
-          } else if (innerRef.current) {
-            // If the rounded final matches current state, React won't
-            // re-render the transform — restore it to the committed value
-            // so the imperative style we set during the gesture doesn't
-            // linger with a slightly off fractional scale.
-            innerRef.current.style.transform = `scale(${finalZoom})`
           }
         }
       }
@@ -4032,14 +4068,12 @@ export default function PdfAnnotateTool() {
     if (!drawerPinned) setDrawerOpen(false)
   }
 
-  // Compute scaled layout dimensions for innerRef so it centers when zoomed out.
-  // CSS transform: scale() shrinks visually but the layout box stays at unscaled size;
-  // setting explicit width/height + margin:auto makes the box match its visual size.
-  const innerScaledW = (() => {
-    if (!pdfFile || maxCanvasWidthRef.current === 0) return 0
-    return maxCanvasWidthRef.current * zoom
-  })()
-  const innerScaledH = (() => {
+  // Natural (unscaled) layout dimensions of the inner transform child.
+  // These are stable across zoom changes because `transform: scale()` doesn't
+  // affect layout — the transform child's layout width/height always equal
+  // the unscaled doc dimensions.
+  const naturalW = maxCanvasWidthRef.current
+  const naturalH = (() => {
     if (!pdfFile) return 0
     let totalH = 0
     for (let p = 1; p <= pdfFile.pageCount; p++) {
@@ -4047,8 +4081,15 @@ export default function PdfAnnotateTool() {
       if (d) totalH += d.height
     }
     totalH += Math.max(0, pdfFile.pageCount - 1) * 24 // gap-6 = 24px
-    return totalH * zoom
+    return totalH
   })()
+  // Scaled layout wrapper dimensions. The zoom layout wrapper has an
+  // EXPLICIT size at the scaled value so the scroll container measures in
+  // scaled units (matching what `scrollLeft`/`scrollTop` must represent for
+  // pinch anchor math to work). The transform child sits absolutely inside
+  // with the unscaled natural width and `transform: scale(zoom)`.
+  const innerScaledW = pdfFile && naturalW > 0 ? naturalW * zoom : 0
+  const innerScaledH = pdfFile && naturalH > 0 ? naturalH * zoom : 0
 
   // Get the editing text annotation for textarea overlay
   const editingAnn = editingTextId ? getAnnotation(editingTextId) : null
@@ -4098,7 +4139,9 @@ export default function PdfAnnotateTool() {
       )}
 
       {/* ── Top Bar: Zoom + Export only ── */}
-      {!isMobile && (
+      {/* Hidden on mobile (peek bar replaces it) AND in focus mode (only
+          the document + right drawer + corner exit button are visible). */}
+      {!isMobile && !focusMode && (
       <div className="flex items-center gap-1 px-3 py-1 border-b border-white/[0.06] flex-shrink-0">
         {focusMode && (
           <button
@@ -4375,7 +4418,9 @@ export default function PdfAnnotateTool() {
       )}
 
       {/* ── Contextual Properties Bar ── */}
-      {!isMobile && (
+      {/* Hidden on mobile (long-press popover replaces it) AND in focus
+          mode (same rule as the top bar). */}
+      {!isMobile && !focusMode && (
       <div className="flex items-center gap-2 px-3 py-1 border-b border-white/[0.06] flex-shrink-0 min-h-[28px]">
         {/* Color picker */}
         {showColorPicker && (
@@ -4818,7 +4863,27 @@ export default function PdfAnnotateTool() {
 
         {/* ── Canvas area ─────────────────────────── */}
         <div ref={scrollRef} className="flex-1 overflow-auto bg-black/20 relative">
-          <div style={{
+          {/*
+            Focus-mode corner exit button — faint by default, more visible
+            on hover/tap. Fixed to the top-left of the canvas area so it's
+            reachable on both desktop and tablet once the top bar is
+            hidden. Hidden on mobile because the mobile peek bar already
+            has its own focus toggle in the top overlay.
+          */}
+          {focusMode && !isMobile && (
+            <button
+              onClick={() => {
+                setFocusMode(false)
+                if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+              }}
+              title="Exit focus mode (Shift+F)"
+              aria-label="Exit focus mode"
+              className="absolute top-3 left-3 z-30 w-9 h-9 rounded-full flex items-center justify-center bg-black/20 backdrop-blur-sm text-white/30 hover:text-white hover:bg-black/50 transition-all border border-white/[0.08]"
+            >
+              <Minimize2 size={14} />
+            </button>
+          )}
+          <div ref={paddedWrapperRef} style={{
             display: 'inline-block',
             minWidth: '100%',
             minHeight: '100%',
@@ -4828,8 +4893,30 @@ export default function PdfAnnotateTool() {
             paddingLeft: innerScaledW ? `max(24px, calc((100% - ${innerScaledW}px) / 2))` : 24,
             paddingRight: innerScaledW ? `max(24px, calc((100% - ${innerScaledW}px) / 2))` : 24,
           }}>
-          <div style={{ height: innerScaledH || undefined }}>
-          <div ref={innerRef} style={{ transform: `scale(${zoom})`, transformOrigin: '0 0' }} className="flex flex-col items-center gap-6">
+          {/*
+            zoomLayoutRef: explicit scaled width/height so the scroll
+            container's layout matches the visual dimensions. Inside, the
+            transform child has the unscaled natural layout and a
+            `transform: scale(zoom)` — these can be imperatively updated
+            in lockstep during a pinch gesture to keep layout and visuals
+            in sync without triggering a React re-render per frame.
+          */}
+          <div
+            ref={zoomLayoutRef}
+            style={{
+              width: innerScaledW || undefined,
+              height: innerScaledH || undefined,
+              position: 'relative',
+            }}
+          >
+          <div ref={innerRef} style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: naturalW || undefined,
+            transform: `scale(${zoom})`,
+            transformOrigin: '0 0',
+          }} className="flex flex-col items-center gap-6">
             {Array.from({ length: pdfFile.pageCount }, (_, i) => i + 1).map(pageNum => {
               const dims = pageDimsMap.current.get(pageNum)
               return (
