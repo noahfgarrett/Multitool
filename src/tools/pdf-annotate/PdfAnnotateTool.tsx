@@ -365,7 +365,7 @@ export default function PdfAnnotateTool() {
     loadingThumbs,
     pageRefsMap, pageDimsMap, renderedPagesRef,
     activePageRef, maxCanvasWidthRef, observerRef,
-    scrollRef, innerRef, zoomLayoutRef, paddedWrapperRef, gestureTransformRef, pinchCommitRef, pageTileGridsRef, zoomRef, focusModeRef, currentPageRef,
+    scrollRef, innerRef, zoomLayoutRef, paddedWrapperRef, gestureTransformRef, pinchCommitRef, pageTileGridsRef, pendingOldTileGridsRef, zoomRef, focusModeRef, currentPageRef,
     panRef, spaceHeldRef,
     shapesDropdownRef, textDropdownRef, zoomDropdownRef,
     stampDropdownRef, contextMenuRef,
@@ -388,6 +388,7 @@ export default function PdfAnnotateTool() {
     pinchStartMidContentRef, pinchLocalZoomRef, pinchScrollRectRef,
     pinchRafIdRef, pinchPendingRef, pinchZoomUnlockedRef,
     pinchStartMidViewportRef, pinchStartPaddingRef,
+    pinchStartNaturalSizeRef, pinchStartClientSizeRef,
     pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     annPageMap, totalAnnotationCount,
   } = S
@@ -1532,10 +1533,47 @@ export default function PdfAnnotateTool() {
           && existing.rotation === rotation
 
         if (!reuse) {
-          if (existing) {
-            teardownTileGrid(existing)
-            pageTileGridsRef.current.delete(pageNum)
+          // Double-buffered rebuild: instead of tearing down the old
+          // grid before the new one is ready (which causes a white
+          // flash), keep the old grid alive until the new grid's
+          // initially-visible tiles have rendered. The new grid is
+          // inserted just before pdf-canvas — which means between the
+          // old grid and pdf-canvas in DOM order — so the new grid's
+          // tiles paint ABOVE the old ones. As new tiles fill in,
+          // they atomically replace old tiles at the same coordinates.
+
+          // 1. Flush any STALE pending old grid from a prior rebuild
+          //    that never finished (rapid repeat-zoom guard).
+          const stalePending = pendingOldTileGridsRef.current.get(pageNum)
+          if (stalePending) {
+            teardownTileGrid(stalePending)
+            pendingOldTileGridsRef.current.delete(pageNum)
           }
+
+          // 2. Stash the current grid as the pending old one. Its
+          //    observer is disconnected so it stops queueing new
+          //    tile renders that would waste work at the old scale.
+          if (existing) {
+            existing.observer?.disconnect()
+            existing.observer = null
+            pendingOldTileGridsRef.current.set(pageNum, existing)
+            // Safety net: if the new grid never finishes rendering
+            // visible tiles (e.g. page scrolled off-screen before any
+            // tile fires its IntersectionObserver callback), tear the
+            // old grid down after a bounded delay.
+            const stashedOld = existing
+            setTimeout(() => {
+              const current = pendingOldTileGridsRef.current.get(pageNum)
+              if (current === stashedOld) {
+                teardownTileGrid(stashedOld)
+                pendingOldTileGridsRef.current.delete(pageNum)
+              }
+            }, 1500)
+          }
+          // 3. Remove the stale entry from the ACTIVE map before
+          //    setting the new one — pageTileGridsRef should reference
+          //    the grid that's currently the source of truth.
+          pageTileGridsRef.current.delete(pageNum)
 
           const grid = buildTileGrid({
             pageNum,
@@ -1553,6 +1591,25 @@ export default function PdfAnnotateTool() {
           // tiles pop in before they're strictly visible.
           const scrollEl = scrollRef.current
           if (scrollEl) {
+            // Track how many tiles the observer has scheduled for
+            // render vs. how many have finished. Once all scheduled
+            // tiles complete (and at least one was scheduled), we
+            // know the new grid's visible area is stable and can
+            // safely tear down the pending old grid.
+            let scheduledRenders = 0
+            let completedRenders = 0
+            let oldGridTornDown = false
+            const tryTeardownPendingOld = (): void => {
+              if (oldGridTornDown) return
+              if (scheduledRenders === 0 || completedRenders < scheduledRenders) return
+              oldGridTornDown = true
+              const pending = pendingOldTileGridsRef.current.get(pageNum)
+              if (pending) {
+                teardownTileGrid(pending)
+                pendingOldTileGridsRef.current.delete(pageNum)
+              }
+            }
+
             const obs = new IntersectionObserver(
               entries => {
                 for (const entry of entries) {
@@ -1560,17 +1617,23 @@ export default function PdfAnnotateTool() {
                   const el = entry.target as HTMLCanvasElement
                   const tile = grid.tiles.find((t: PageTile) => t.canvas === el)
                   if (!tile || tile.rendered) continue
+                  scheduledRenders++
                   renderPageTile(
                     pdfFile, pageNum, tile.canvas,
                     requestedRs, rotation,
                     tile.x, tile.y, tile.w, tile.h,
-                  ).then(() => { tile.rendered = true })
-                    .catch((err: unknown) => {
-                      if (!isRenderingCancelled(err)) {
-                        // Non-cancellation failure — leave unrendered;
-                        // the observer may retry on the next scroll.
-                      }
-                    })
+                  ).then(() => {
+                    tile.rendered = true
+                    completedRenders++
+                    tryTeardownPendingOld()
+                  }).catch((err: unknown) => {
+                    completedRenders++
+                    tryTeardownPendingOld()
+                    if (!isRenderingCancelled(err)) {
+                      // Non-cancellation failure — leave unrendered;
+                      // the observer may retry on the next scroll.
+                    }
+                  })
                 }
               },
               { root: scrollEl, rootMargin: '500px' },
@@ -1589,6 +1652,14 @@ export default function PdfAnnotateTool() {
         if (existing) {
           teardownTileGrid(existing)
           pageTileGridsRef.current.delete(pageNum)
+        }
+        // Also flush any still-pending old grid from a prior
+        // double-buffered rebuild — we're transitioning to single-
+        // canvas mode, so the sharper pdf-canvas is the new base.
+        const pendingOld = pendingOldTileGridsRef.current.get(pageNum)
+        if (pendingOld) {
+          teardownTileGrid(pendingOld)
+          pendingOldTileGridsRef.current.delete(pageNum)
         }
       }
     } catch (err: unknown) {
@@ -2422,6 +2493,27 @@ export default function PdfAnnotateTool() {
               x: (el.scrollLeft + (midX - rect.left) - pinchStartPaddingRef.current.left) / currentZoom,
               y: (el.scrollTop + (midY - rect.top) - pinchStartPaddingRef.current.top) / currentZoom,
             }
+            // Capture unscaled doc dims and scroll container size so the
+            // pinch preview + commit clamp can compute the target scroll
+            // bounds cheaply, without forcing a layout read per frame.
+            // Height is recomputed from the ref here (not the closure
+            // variable) so it stays fresh across multi-page doc loads.
+            let totalDocH = 0
+            if (pdfFile) {
+              for (let p = 1; p <= pdfFile.pageCount; p++) {
+                const d = pageDimsMap.current.get(p)
+                if (d) totalDocH += d.height
+              }
+              totalDocH += Math.max(0, pdfFile.pageCount - 1) * 24
+            }
+            pinchStartNaturalSizeRef.current = {
+              width: maxCanvasWidthRef.current,
+              height: totalDocH,
+            }
+            pinchStartClientSizeRef.current = {
+              width: el.clientWidth,
+              height: el.clientHeight,
+            }
           }
         }
       }
@@ -3176,6 +3268,11 @@ export default function PdfAnnotateTool() {
             pinchPendingRef.current = null
             const wrapper = gestureTransformRef.current
             if (!wrapper) return
+            // Read the CURRENT pending ratio (not the `clampedRatio`
+            // captured when this rAF was scheduled) so every frame
+            // draws the most recent finger state — prevents one-frame
+            // stale zooms when multiple move events coalesce.
+            const r = pending.zoom / pinchStartZoomRef.current
             // Anchor math: the content point under the pinch midpoint at
             // gesture start must remain under the current midpoint. All
             // coordinates are relative to the scroll container's border
@@ -3189,16 +3286,43 @@ export default function PdfAnnotateTool() {
             // Full derivation lives in the v4.0.12 commit body. The
             // gesture is 100% GPU composition — this is the ONLY DOM
             // write per frame on the pinch path.
-            const r = clampedRatio
             const rect = pinchScrollRectRef.current
             const currentMidX = pending.midX - rect.left
             const currentMidY = pending.midY - rect.top
             const mxS = pinchStartMidViewportRef.current.x
             const myS = pinchStartMidViewportRef.current.y
-            const tx = currentMidX - r * mxS
+            const txUnclamped = currentMidX - r * mxS
               + (pinchStartScrollRef.current.left - pinchStartPaddingRef.current.left) * (1 - r)
-            const ty = currentMidY - r * myS
+            const tyUnclamped = currentMidY - r * myS
               + (pinchStartScrollRef.current.top - pinchStartPaddingRef.current.top) * (1 - r)
+
+            // Bounds clamp: compute the scroll position that the release
+            // commit WOULD apply at the current ratio, clamp it to the
+            // scrollable area at that zoom, and shift the translate by
+            // the clamping delta. Without this, panning past the left/
+            // right/top/bottom edges works freely during the gesture
+            // but the commit on release gets clamped by the browser —
+            // the content snaps back by the clamped amount, which is
+            // the "two-finger pan jumps" bug the user reported.
+            const previewZoom = pinchStartZoomRef.current * r
+            const natW = pinchStartNaturalSizeRef.current.width
+            const natH = pinchStartNaturalSizeRef.current.height
+            const clientW = pinchStartClientSizeRef.current.width
+            const clientH = pinchStartClientSizeRef.current.height
+            const newPadLeft = Math.max(24, (clientW - natW * previewZoom) / 2)
+            const contentW = natW * previewZoom + 2 * newPadLeft
+            const contentH = natH * previewZoom + 48 // 24 top + 24 bottom
+            const maxScrollLeft = Math.max(0, contentW - clientW)
+            const maxScrollTop = Math.max(0, contentH - clientH)
+            const rawLeft = pinchStartMidContentRef.current.x * previewZoom + newPadLeft - currentMidX
+            const rawTop = pinchStartMidContentRef.current.y * previewZoom + 24 - currentMidY
+            const clampedLeft = Math.max(0, Math.min(maxScrollLeft, rawLeft))
+            const clampedTop = Math.max(0, Math.min(maxScrollTop, rawTop))
+            const deltaX = rawLeft - clampedLeft
+            const deltaY = rawTop - clampedTop
+            const tx = txUnclamped + deltaX
+            const ty = tyUnclamped + deltaY
+
             wrapper.style.transform = `translate(${tx}px, ${ty}px) scale(${r})`
           })
         }
@@ -3677,10 +3801,25 @@ export default function PdfAnnotateTool() {
               ?? { x: rect.left + el.clientWidth / 2, y: rect.top + el.clientHeight / 2 }
             const vpX = lastMid.x - rect.left
             const vpY = lastMid.y - rect.top
-            const newPad = Math.max(24, (el.clientWidth - naturalW * finalZoom) / 2)
+            const clientW = pinchStartClientSizeRef.current.width
+            const clientH = pinchStartClientSizeRef.current.height
+            const natW = pinchStartNaturalSizeRef.current.width
+            const natH = pinchStartNaturalSizeRef.current.height
+            const newPad = Math.max(24, (clientW - natW * finalZoom) / 2)
+            const rawLeft = pinchStartMidContentRef.current.x * finalZoom + newPad - vpX
+            const rawTop = pinchStartMidContentRef.current.y * finalZoom + 24 - vpY
+            // Clamp to the scrollable area at the committed zoom. Without
+            // this, the browser silently clamps on scroll assignment and
+            // the content visibly jumps by the clamp delta on release.
+            // The gesture preview was already clamped to match, so the
+            // commit lands exactly where the user saw it.
+            const contentW = natW * finalZoom + 2 * newPad
+            const contentH = natH * finalZoom + 48
+            const maxScrollLeft = Math.max(0, contentW - clientW)
+            const maxScrollTop = Math.max(0, contentH - clientH)
             pinchCommitRef.current = {
-              scrollLeft: pinchStartMidContentRef.current.x * finalZoom + newPad - vpX,
-              scrollTop: pinchStartMidContentRef.current.y * finalZoom + 24 - vpY,
+              scrollLeft: Math.max(0, Math.min(maxScrollLeft, rawLeft)),
+              scrollTop: Math.max(0, Math.min(maxScrollTop, rawTop)),
             }
           }
 
@@ -5037,7 +5176,11 @@ export default function PdfAnnotateTool() {
         )}
 
         {/* ── Canvas area ─────────────────────────── */}
-        <div ref={scrollRef} className="flex-1 overflow-auto bg-black/20 relative">
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-auto bg-black/20 relative"
+          style={{ overscrollBehavior: 'contain' }}
+        >
           {/*
             Focus-mode corner exit button — faint by default, more visible
             on hover/tap. Fixed to the top-left of the canvas area so it's

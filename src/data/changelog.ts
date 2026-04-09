@@ -12,6 +12,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.0.13',
+    date: 'PLACEHOLDER',
+    type: 'fix',
+    stats: { fixes: 3 },
+    notes: `### PDF Annotate
+- No more white flash when zooming on tablet
+- Two-finger pan stays locked to your fingers
+- Smoother zoom on large documents`,
+  },
+  {
     version: '4.0.12',
     date: '2026-04-09T18:18:44Z',
     type: 'fix',

@@ -484,6 +484,19 @@ body.theme-light .glass-sidebar {
   button.p-1\.5 { padding: 0.625rem; }
 }
 
+/* ── PDF Annotate canvas stacking ───────────
+   Explicit z-index for the layers inside each page container so
+   stacking never depends on implicit DOM paint order. Important
+   during tile grid rebuilds (double-buffered) where both the old
+   and new tile containers coexist briefly, and during gesture
+   transforms where the parent's transform establishes a new
+   stacking context. Order: pdf-canvas (base) < pdf-tile-container
+   < ann-canvas < active-canvas. */
+canvas.pdf-canvas { position: relative; z-index: 1; }
+.pdf-tile-container { z-index: 2; }
+canvas.ann-canvas { z-index: 3; }
+canvas.active-canvas { z-index: 4; }
+
 @media (hover: none) {
   /* Reveal hover-hidden action buttons on touch-only devices */
   .group:hover .group-hover\:opacity-100,

@@ -429,17 +429,23 @@ export async function renderPageTile(
   // inside the tile canvas commit — anything outside is clipped.
   const viewport = page.getViewport({ scale: scale / outputScale, rotation })
 
-  tileCanvas.width = tileW
-  tileCanvas.height = tileH
-
-  const ctx = tileCanvas.getContext('2d', { alpha: false })
-  if (!ctx) throw new Error('Failed to get tile canvas context')
+  // Render into an offscreen buffer first, exactly like renderPageToCanvas.
+  // The visible tile canvas keeps displaying whatever it had (blank on
+  // first paint, stale tile on re-render) until we atomically drawImage
+  // the finished buffer over in a single frame. Without this, pdf.js
+  // progressively rasterizes into the visible canvas and we get a
+  // visible flash / partial-paint during zoom.
+  const offscreen = document.createElement('canvas')
+  offscreen.width = tileW
+  offscreen.height = tileH
+  const offCtx = offscreen.getContext('2d', { alpha: false })
+  if (!offCtx) throw new Error('Failed to get offscreen tile canvas context')
 
   const transform: [number, number, number, number, number, number] =
     [outputScale, 0, 0, outputScale, -tileX, -tileY]
 
   const renderTask = page.render({
-    canvasContext: ctx,
+    canvasContext: offCtx,
     viewport,
     transform,
     intent: 'print',
@@ -456,6 +462,16 @@ export async function renderPageTile(
   }
 
   if (renderGenerations.get(tileCanvas) !== gen) throw new StaleRenderError()
+
+  // Atomic swap: only resize the visible tile canvas if its dimensions
+  // have actually changed (buildTileGrid sets them initially). Then
+  // drawImage the finished buffer over on the same frame — the user
+  // never sees the intermediate blank/partial state.
+  const ctx = tileCanvas.getContext('2d', { alpha: false })
+  if (!ctx) throw new Error('Failed to get tile canvas context')
+  if (tileCanvas.width !== tileW) tileCanvas.width = tileW
+  if (tileCanvas.height !== tileH) tileCanvas.height = tileH
+  ctx.drawImage(offscreen, 0, 0)
 
   page.cleanup()
 }
