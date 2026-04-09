@@ -68,6 +68,10 @@ import { StampLibrary } from './StampLibrary.tsx'
 import { recognizeShape } from './shapeRecognizer.ts'
 // getUserProfile and UserProfile are used in usePdfAnnotateState
 import FloatingToolbar from './FloatingToolbar.tsx'
+import {
+  MobilePeekBar, MobileTopOverlay, MobileThumbSheet, MobileLongPressPopover,
+  type MobileCoreTool,
+} from './MobileChrome.tsx'
 
 // ── Thumbnail sidebar item ──────────────────────────────
 
@@ -297,6 +301,10 @@ export default function PdfAnnotateTool() {
     toolbarExpanded, setToolbarExpanded, moreToolsOpen, setMoreToolsOpen,
     isTouchDevice, drawerOpen, setDrawerOpen,
     drawerPinned, setDrawerPinned,
+    isMobile,
+    mobileTopOverlayOpen, setMobileTopOverlayOpen,
+    mobileThumbSheetOpen, setMobileThumbSheetOpen,
+    mobileLongPressPopover, setMobileLongPressPopover,
     drawerShapesOpen, setDrawerShapesOpen,
     drawerTextOpen, setDrawerTextOpen,
     drawerMeasureOpen, setDrawerMeasureOpen,
@@ -1550,8 +1558,14 @@ export default function PdfAnnotateTool() {
       }, 150)
     } else if (!initialFitDoneRef.current) {
       initialFitDoneRef.current = true
-      // Always open at 100% zoom — predictable starting point on any screen size/DPR
-      setZoom(1.0)
+      if (isMobile) {
+        // Mobile phones: fit the document to the narrow viewport so nothing
+        // overflows horizontally on first load. Run after layout is ready.
+        requestAnimationFrame(() => fitToWindow())
+      } else {
+        // Always open at 100% zoom — predictable starting point on any screen size/DPR
+        setZoom(1.0)
+      }
     }
 
     return () => obs.disconnect()
@@ -2091,6 +2105,133 @@ export default function PdfAnnotateTool() {
       el.removeEventListener('touchmove', preventMultiTouch)
     }
   }, [])
+
+  // ── Mobile edge-swipe + 3-finger gestures ───────────
+  // Runs only when the mobile layout is active. Native touch listeners on
+  // the scroll element so we can inspect the first touch position and
+  // decide whether it's an edge swipe (open a drawer) or regular drawing.
+  useEffect(() => {
+    if (!isMobile) return
+    const el = scrollRef.current
+    if (!el) return
+
+    const EDGE_PX = 20
+    const TOP_PEEK_PX = 80
+    const THRESHOLD_PX = 60
+    const THREE_FINGER_MS = 400
+
+    let gesture:
+      | null
+      | { kind: 'edge-left' | 'edge-right' | 'top-peek'; startX: number; startY: number }
+      | { kind: 'three-finger'; startX: number; startT: number } = null
+    let consumed = false
+
+    const onTouchStart = (ev: TouchEvent): void => {
+      consumed = false
+      // Three-finger gesture takes priority
+      if (ev.touches.length === 3) {
+        const avgX = (ev.touches[0].clientX + ev.touches[1].clientX + ev.touches[2].clientX) / 3
+        gesture = { kind: 'three-finger', startX: avgX, startT: Date.now() }
+        ev.preventDefault()
+        return
+      }
+      if (ev.touches.length !== 1) { gesture = null; return }
+      const t = ev.touches[0]
+      const rect = el.getBoundingClientRect()
+      const localX = t.clientX - rect.left
+      const localY = t.clientY - rect.top
+      if (localX <= EDGE_PX) {
+        gesture = { kind: 'edge-left', startX: t.clientX, startY: t.clientY }
+      } else if (localX >= rect.width - EDGE_PX) {
+        gesture = { kind: 'edge-right', startX: t.clientX, startY: t.clientY }
+      } else if (localY <= TOP_PEEK_PX) {
+        gesture = { kind: 'top-peek', startX: t.clientX, startY: t.clientY }
+      } else {
+        gesture = null
+      }
+    }
+
+    const onTouchMove = (ev: TouchEvent): void => {
+      if (!gesture || consumed) return
+      if (gesture.kind === 'three-finger') {
+        if (ev.touches.length !== 3) { gesture = null; return }
+        if (Date.now() - gesture.startT > THREE_FINGER_MS) { gesture = null; return }
+        const avgX = (ev.touches[0].clientX + ev.touches[1].clientX + ev.touches[2].clientX) / 3
+        const dx = avgX - gesture.startX
+        if (Math.abs(dx) > THRESHOLD_PX) {
+          consumed = true
+          ev.preventDefault()
+          if (dx < 0) { if (canUndo) undo() }
+          else { if (canRedo) redo() }
+          gesture = null
+        }
+        return
+      }
+      if (ev.touches.length !== 1) { gesture = null; return }
+      const t = ev.touches[0]
+      const dx = t.clientX - gesture.startX
+      const dy = t.clientY - gesture.startY
+      if (gesture.kind === 'edge-left') {
+        if (dx > THRESHOLD_PX && Math.abs(dx) > Math.abs(dy)) {
+          consumed = true
+          ev.preventDefault()
+          setMobileThumbSheetOpen(true)
+          gesture = null
+        }
+      } else if (gesture.kind === 'edge-right') {
+        if (dx < -THRESHOLD_PX && Math.abs(dx) > Math.abs(dy)) {
+          consumed = true
+          ev.preventDefault()
+          setDrawerOpen(true)
+          gesture = null
+        }
+      } else if (gesture.kind === 'top-peek') {
+        if (dy > THRESHOLD_PX && Math.abs(dy) > Math.abs(dx)) {
+          consumed = true
+          ev.preventDefault()
+          setMobileTopOverlayOpen(true)
+          gesture = null
+        }
+      }
+    }
+
+    const onTouchEnd = (): void => { gesture = null }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: false })
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    el.addEventListener('touchend', onTouchEnd)
+    el.addEventListener('touchcancel', onTouchEnd)
+
+    // Peek bar swipe-down (a separate attach because it's not inside scrollRef)
+    const peekBar = document.querySelector<HTMLElement>('[data-mobile-peek-bar]')
+    let peekStart: { x: number; y: number } | null = null
+    const peekStartHandler = (ev: TouchEvent): void => {
+      if (ev.touches.length !== 1) { peekStart = null; return }
+      peekStart = { x: ev.touches[0].clientX, y: ev.touches[0].clientY }
+    }
+    const peekMoveHandler = (ev: TouchEvent): void => {
+      if (!peekStart || ev.touches.length !== 1) return
+      const dy = ev.touches[0].clientY - peekStart.y
+      if (dy > THRESHOLD_PX) {
+        setMobileTopOverlayOpen(true)
+        peekStart = null
+      }
+    }
+    const peekEndHandler = (): void => { peekStart = null }
+    peekBar?.addEventListener('touchstart', peekStartHandler, { passive: true })
+    peekBar?.addEventListener('touchmove', peekMoveHandler, { passive: true })
+    peekBar?.addEventListener('touchend', peekEndHandler)
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEnd)
+      el.removeEventListener('touchcancel', onTouchEnd)
+      peekBar?.removeEventListener('touchstart', peekStartHandler)
+      peekBar?.removeEventListener('touchmove', peekMoveHandler)
+      peekBar?.removeEventListener('touchend', peekEndHandler)
+    }
+  }, [isMobile, canUndo, canRedo, undo, redo, setMobileThumbSheetOpen, setDrawerOpen, setMobileTopOverlayOpen])
 
   // ── Pointer handlers ─────────────────────────────────
 
@@ -3917,7 +4058,35 @@ export default function PdfAnnotateTool() {
 
   return (
     <div className="h-full flex flex-col">
+      {/* ── Mobile peek bar ─────────────────────────── */}
+      {isMobile && (
+        <MobilePeekBar
+          activeTool={activeTool}
+          pageCount={pdfFile.pageCount}
+          currentPage={currentPage}
+          onOpenThumbs={() => setMobileThumbSheetOpen(true)}
+          onOpenDrawer={() => setDrawerOpen(true)}
+          onOpenTopOverlay={() => setMobileTopOverlayOpen(true)}
+          onSelectTool={(tool: MobileCoreTool) => {
+            if (tool === 'pencil') { setActiveTool('pencil'); setActiveDraw('pencil') }
+            else if (tool === 'highlighter') { setActiveTool('highlighter'); setActiveHighlight('highlighter') }
+            else if (tool === 'text') { setActiveTool('text'); setActiveText('text') }
+            else setActiveTool(tool)
+          }}
+          onLongPressTool={(tool, x, y) => {
+            // Also select the tool when long-pressing so the popover reflects
+            // the currently-active one.
+            if (tool === 'pencil') { setActiveTool('pencil'); setActiveDraw('pencil') }
+            else if (tool === 'highlighter') { setActiveTool('highlighter'); setActiveHighlight('highlighter') }
+            else if (tool === 'text') { setActiveTool('text'); setActiveText('text') }
+            else setActiveTool(tool)
+            setMobileLongPressPopover({ tool, x, y })
+          }}
+        />
+      )}
+
       {/* ── Top Bar: Zoom + Export only ── */}
+      {!isMobile && (
       <div className="flex items-center gap-1 px-3 py-1 border-b border-white/[0.06] flex-shrink-0">
         {focusMode && (
           <button
@@ -4136,6 +4305,7 @@ export default function PdfAnnotateTool() {
           {isExporting ? 'Exporting...' : 'Export PDF'}
         </Button>
       </div>
+      )}
 
       {/* ── Find Bar ── */}
       {findOpen && (
@@ -4193,6 +4363,7 @@ export default function PdfAnnotateTool() {
       )}
 
       {/* ── Contextual Properties Bar ── */}
+      {!isMobile && (
       <div className="flex items-center gap-2 px-3 py-1 border-b border-white/[0.06] flex-shrink-0 min-h-[28px]">
         {/* Color picker */}
         {showColorPicker && (
@@ -4605,11 +4776,12 @@ export default function PdfAnnotateTool() {
           <span className="text-[10px] text-white/25 italic">Click to select annotations</span>
         )}
       </div>
+      )}
 
       {/* ── Content: sidebar + canvas ──────────────── */}
       <div className="flex-1 flex overflow-hidden">
         {/* Thumbnail sidebar */}
-        {sidebarOpen && (
+        {!isMobile && sidebarOpen && (
           <div className="w-48 border-r border-white/[0.06] bg-black/20 flex flex-col flex-shrink-0">
             <div className="px-3 py-2 text-xs text-white/50 font-medium border-b border-white/[0.06]">
               Pages ({pdfFile.pageCount})
@@ -4712,8 +4884,8 @@ export default function PdfAnnotateTool() {
         </div>
 
         {/* ── Right Tool Panel ── */}
-        {focusMode && isTouchDevice ? (
-          /* ── DRAWER MODE (tablet focus) ── */
+        {(focusMode && isTouchDevice) || isMobile ? (
+          /* ── DRAWER MODE (tablet focus + all mobile) ── */
           <>
             {/* Handle tab at right edge */}
             {!drawerOpen && (
@@ -6422,6 +6594,119 @@ export default function PdfAnnotateTool() {
             addToast({ type: 'success', message: 'Click on the PDF to place the stamp' })
           }}
           onClose={() => setStampLibraryOpen(false)}
+        />
+      )}
+
+      {/* ── Mobile: pull-down top toolbar sheet ── */}
+      {isMobile && (
+        <MobileTopOverlay
+          open={mobileTopOverlayOpen}
+          onClose={() => setMobileTopOverlayOpen(false)}
+          zoomPct={zoomPct}
+          onZoomOut={() => zoomAtCenter(Math.round(Math.max(0.25, zoom - 0.25) * 100) / 100)}
+          onZoomIn={() => zoomAtCenter(Math.round(Math.min(4.0, zoom + 0.25) * 100) / 100)}
+          onFitToWindow={fitToWindow}
+          onOpenFind={() => setFindOpen(true)}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={undo}
+          onRedo={redo}
+          onRotateCCW={() => rotatePage(-90)}
+          onRotateCW={() => rotatePage(90)}
+          onEmail={() => setEmailModalOpen(true)}
+          onPrint={() => {
+            if (!pdfFile) return
+            printAnnotatedPDF(pageRefsMap.current, pdfFile.pageCount, pageDimsMap.current)
+              .catch((err: Error) => addToast({ type: 'error', message: err.message || 'Print failed' }))
+          }}
+          onReport={async () => {
+            if (!pdfFile) return
+            try {
+              const reportBytes = await generateMarkupReport({
+                fileName: pdfFile.name,
+                pageCount: pdfFile.pageCount,
+                pageRefsMap: pageRefsMap.current,
+                annotations, measurements, polyMeasurements, countGroups,
+                commentThreads, stickyNotes, calibration,
+              })
+              downloadBlob(new Blob([reportBytes], { type: 'application/pdf' }), `report-${pdfFile.name}`)
+            } catch {
+              addToast({ type: 'error', message: 'Report failed' })
+            }
+          }}
+          onNew={() => {
+            if (confirm('Discard all annotations and start over?')) {
+              setPdfFile(null)
+              setAnnotations({})
+              setMeasurements({})
+              clearSession()
+            }
+          }}
+          onExport={() => setExportModalOpen(true)}
+          focusMode={focusMode}
+          onToggleFocus={() => {
+            const next = !focusMode
+            setFocusMode(next)
+            if (next && document.documentElement.requestFullscreen) {
+              document.documentElement.requestFullscreen().catch(() => {})
+            } else if (!next && document.fullscreenElement) {
+              document.exitFullscreen().catch(() => {})
+            }
+          }}
+          pageCount={pdfFile.pageCount}
+          currentPage={currentPage}
+          onNavigateToPage={navigateToPage}
+        />
+      )}
+
+      {/* ── Mobile: thumbnails sheet ── */}
+      {isMobile && (
+        <MobileThumbSheet
+          open={mobileThumbSheetOpen}
+          onClose={() => setMobileThumbSheetOpen(false)}
+          pageCount={pdfFile.pageCount}
+        >
+          {Array.from({ length: pdfFile.pageCount }, (_, i) => i + 1).map(pageNum => (
+            <ThumbnailItem
+              key={pageNum}
+              pageNum={pageNum}
+              thumbnail={thumbnails[pageNum]}
+              isCurrent={pageNum === currentPage}
+              isSelected={pageNum === selectedThumbPage}
+              hasAnnotations={(annotations[pageNum] || []).length > 0}
+              onVisible={handleThumbVisible}
+              onClick={pn => { handleThumbClick(pn); setMobileThumbSheetOpen(false) }}
+              onDoubleClick={handleThumbClick}
+            />
+          ))}
+        </MobileThumbSheet>
+      )}
+
+      {/* ── Mobile: long-press quick settings popover ── */}
+      {isMobile && mobileLongPressPopover && (
+        <MobileLongPressPopover
+          x={mobileLongPressPopover.x}
+          y={mobileLongPressPopover.y}
+          tool={mobileLongPressPopover.tool}
+          color={color}
+          onChangeColor={c => {
+            setColor(c)
+            if (selectedAnnId) updateAnnotation(selectedAnnId, { color: c })
+          }}
+          strokeWidth={strokeWidth}
+          onChangeStrokeWidth={w => {
+            setStrokeWidth(w)
+            if (selectedAnnId && isShapeAnnSelected) updateAnnotation(selectedAnnId, { strokeWidth: w })
+          }}
+          opacity={opacity}
+          onChangeOpacity={o => {
+            setOpacity(o)
+            if (selectedAnnId) updateAnnotation(selectedAnnId, { opacity: o })
+          }}
+          onClose={() => setMobileLongPressPopover(null)}
+          colorPresets={
+            mobileLongPressPopover.tool === 'highlighter' ? HIGHLIGHT_COLORS : ANN_COLORS
+          }
         />
       )}
     </div>

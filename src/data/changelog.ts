@@ -12,6 +12,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.0.6',
+    date: 'PLACEHOLDER',
+    type: 'feature',
+    stats: { features: 1, tools: 1 },
+    notes: `### PDF Annotate — Mobile phone layout
+- **Built for phones** — On iPhone and Android phones, PDF Annotate now opens as a full-bleed document reader. A 44px peek bar at the top holds the five core tools (Select, Pencil, Highlight, Text, Eraser) plus the page counter and a "more tools" button for everything else.
+- **Swipe gestures** — Swipe down from the peek bar or top of the document to open the full toolbar sheet (zoom, find, rotate, undo, redo, export, print, email). Swipe from the right edge to open the tool drawer. Swipe from the left edge to open thumbnails.
+- **Long-press a tool** — Hold on any core tool button to pop up its quick settings (color, stroke width, opacity) without opening the drawer.
+- **Three-finger swipe** — Swipe left to undo, swipe right to redo, anywhere on the document.
+- **Fits on load** — On mobile, PDFs fit to the viewport width on first open so nothing overflows.`,
+  },
+  {
     version: '4.0.5',
     date: '2026-04-09T12:02:59Z',
     type: 'fix',

@@ -219,6 +219,29 @@ export function usePdfAnnotateState() {
   const [drawerPinned, setDrawerPinned] = useState(() => {
     return localStorage.getItem('pdfAnnotate.drawerPinned') === 'true'
   })
+
+  // Mobile phone layout — narrow + touch. Tablets and desktop keep the
+  // existing layouts. Live-updated via matchMedia so rotating the phone or
+  // resizing a browser window flips the layout in place.
+  const MOBILE_QUERY = '(max-width: 767px) and (any-pointer: coarse)'
+  const [isMobile, setIsMobile] = useState<boolean>(() =>
+    typeof window !== 'undefined' && window.matchMedia(MOBILE_QUERY).matches,
+  )
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia(MOBILE_QUERY)
+    const onChange = (e: MediaQueryListEvent): void => setIsMobile(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  // Mobile-specific overlay panels
+  const [mobileTopOverlayOpen, setMobileTopOverlayOpen] = useState(false)
+  const [mobileThumbSheetOpen, setMobileThumbSheetOpen] = useState(false)
+  const [mobileLongPressPopover, setMobileLongPressPopover] = useState<
+    | { tool: 'pencil' | 'highlighter' | 'text' | 'select' | 'eraser'; x: number; y: number }
+    | null
+  >(null)
   const [drawerShapesOpen, setDrawerShapesOpen] = useState(false)
   const [drawerTextOpen, setDrawerTextOpen] = useState(false)
   const [drawerMeasureOpen, setDrawerMeasureOpen] = useState(false)
@@ -500,6 +523,11 @@ export function usePdfAnnotateState() {
     drawerMeasureOpen, setDrawerMeasureOpen,
     drawerStampOpen, setDrawerStampOpen,
     drawerMoreToolsOpen, setDrawerMoreToolsOpen,
+    // Mobile phone layout
+    isMobile,
+    mobileTopOverlayOpen, setMobileTopOverlayOpen,
+    mobileThumbSheetOpen, setMobileThumbSheetOpen,
+    mobileLongPressPopover, setMobileLongPressPopover,
     // Watermark
     exportWatermark, setExportWatermark,
     exportWatermarkOpacity, setExportWatermarkOpacity,
