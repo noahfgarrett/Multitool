@@ -12,6 +12,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.0.5',
+    date: 'PLACEHOLDER',
+    type: 'fix',
+    stats: { fixes: 1 },
+    notes: `### PDF Annotate — Smoother pinch zoom on iPad
+- **Silky pinch-to-zoom** — Pinching on iPad is now smooth end-to-end. The gesture drives the view directly instead of routing through the app's state machine every frame, and the page only re-renders for sharpness once you lift your fingers.`,
+  },
+  {
     version: '4.0.4',
     date: '2026-04-09T03:11:40Z',
     type: 'fix',

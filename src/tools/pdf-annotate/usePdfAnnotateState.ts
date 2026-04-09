@@ -400,6 +400,20 @@ export function usePdfAnnotateState() {
   const prevPinchDistRef = useRef<number | null>(null)
   const prevPinchMidRef = useRef<{ x: number; y: number } | null>(null)
 
+  // Pinch gesture: during a 2-finger gesture, we bypass React state and
+  // drive the zoom/scroll imperatively via rAF to avoid reconciling the
+  // entire PdfAnnotateTool tree per pointer move. The final zoom is
+  // committed to React state on gesture end.
+  const pinchActiveRef = useRef(false)
+  const pinchStartZoomRef = useRef(1)
+  const pinchStartDistRef = useRef(0)
+  const pinchStartScrollRef = useRef({ left: 0, top: 0 })
+  const pinchStartMidContentRef = useRef({ x: 0, y: 0 })
+  const pinchLocalZoomRef = useRef(1)
+  const pinchScrollRectRef = useRef({ left: 0, top: 0 })
+  const pinchRafIdRef = useRef<number | null>(null)
+  const pinchPendingRef = useRef<{ zoom: number; midX: number; midY: number } | null>(null)
+
   // Active canvas drawing pipeline (iPad perf overhaul)
   const pointBufferRef = useRef<{ x: number; y: number; pressure: number }[]>([])
   const rafIdRef = useRef<number>(0)
@@ -578,6 +592,10 @@ export function usePdfAnnotateState() {
     findCommittedQuery, setFindCommittedQuery,
     // Touch
     activeTouchIdsRef, touchPositionsRef, prevPinchDistRef, prevPinchMidRef,
+    // Pinch gesture (imperative, bypasses React state)
+    pinchActiveRef, pinchStartZoomRef, pinchStartDistRef, pinchStartScrollRef,
+    pinchStartMidContentRef, pinchLocalZoomRef, pinchScrollRectRef,
+    pinchRafIdRef, pinchPendingRef,
     // Active canvas pipeline
     pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     // Memos

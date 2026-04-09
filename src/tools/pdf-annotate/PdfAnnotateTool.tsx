@@ -374,6 +374,9 @@ export default function PdfAnnotateTool() {
     canUndo, canRedo, isDrawTool, isTextTool, currentRotation,
     findCommittedQuery, setFindCommittedQuery,
     activeTouchIdsRef, touchPositionsRef, prevPinchDistRef, prevPinchMidRef,
+    pinchActiveRef, pinchStartZoomRef, pinchStartDistRef, pinchStartScrollRef,
+    pinchStartMidContentRef, pinchLocalZoomRef, pinchScrollRectRef,
+    pinchRafIdRef, pinchPendingRef,
     pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     annPageMap, totalAnnotationCount,
   } = S
@@ -2099,17 +2102,37 @@ export default function PdfAnnotateTool() {
       activeTouchIdsRef.current.add(e.pointerId)
       touchPositionsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
 
-      // Initialize pinch state when 2 touches are active
+      // Initialize pinch gesture state when the second finger lands.
+      // We capture everything we need for the entire gesture here — no
+      // getBoundingClientRect() calls during the hot move loop.
       if (activeTouchIdsRef.current.size === 2) {
         const positions = Array.from(touchPositionsRef.current.values())
         if (positions.length >= 2) {
-          prevPinchDistRef.current = Math.hypot(
+          const dist = Math.hypot(
             positions[1].x - positions[0].x,
             positions[1].y - positions[0].y,
           )
-          prevPinchMidRef.current = {
-            x: (positions[0].x + positions[1].x) / 2,
-            y: (positions[0].y + positions[1].y) / 2,
+          const midX = (positions[0].x + positions[1].x) / 2
+          const midY = (positions[0].y + positions[1].y) / 2
+          prevPinchDistRef.current = dist
+          prevPinchMidRef.current = { x: midX, y: midY }
+
+          const el = scrollRef.current
+          if (el) {
+            const rect = el.getBoundingClientRect()
+            const currentZoom = zoomRef.current
+            pinchActiveRef.current = true
+            pinchStartZoomRef.current = currentZoom
+            pinchLocalZoomRef.current = currentZoom
+            pinchStartDistRef.current = dist
+            pinchStartScrollRef.current = { left: el.scrollLeft, top: el.scrollTop }
+            pinchScrollRectRef.current = { left: rect.left, top: rect.top }
+            // Convert the midpoint to content-space coordinates once up
+            // front so every frame can reuse this anchor.
+            pinchStartMidContentRef.current = {
+              x: (el.scrollLeft + (midX - rect.left)) / currentZoom,
+              y: (el.scrollTop + (midY - rect.top)) / currentZoom,
+            }
           }
         }
       }
@@ -2813,39 +2836,51 @@ export default function PdfAnnotateTool() {
     if (e.pointerType === 'touch') {
       touchPositionsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
 
-      // Two-finger pinch-to-zoom + pan
-      if (activeTouchIdsRef.current.size === 2 && touchPositionsRef.current.size >= 2) {
+      // Two-finger pinch-to-zoom + pan — imperative + rAF-coalesced.
+      // Crucially, we do NOT call setZoom / setState anywhere in this hot
+      // path; the whole component tree would reconcile 60–120 times per
+      // second otherwise. We mutate the inner container's CSS transform and
+      // the scroll element directly, and commit the final zoom to React
+      // state only on gesture end.
+      if (pinchActiveRef.current && activeTouchIdsRef.current.size === 2 && touchPositionsRef.current.size >= 2) {
         const positions = Array.from(touchPositionsRef.current.values())
         const dist = Math.hypot(positions[1].x - positions[0].x, positions[1].y - positions[0].y)
-        const currentMid = {
-          x: (positions[0].x + positions[1].x) / 2,
-          y: (positions[0].y + positions[1].y) / 2,
+        const midX = (positions[0].x + positions[1].x) / 2
+        const midY = (positions[0].y + positions[1].y) / 2
+
+        // Proportional zoom relative to gesture START, not the previous
+        // move. This prevents error accumulation and makes the zoom feel
+        // directly linked to finger distance.
+        const ratio = dist / pinchStartDistRef.current
+        const targetZoom = Math.min(4.0, Math.max(0.25, pinchStartZoomRef.current * ratio))
+        pinchPendingRef.current = { zoom: targetZoom, midX, midY }
+
+        if (pinchRafIdRef.current === null) {
+          pinchRafIdRef.current = requestAnimationFrame(() => {
+            pinchRafIdRef.current = null
+            const pending = pinchPendingRef.current
+            if (!pending) return
+            pinchPendingRef.current = null
+            const inner = innerRef.current
+            const el = scrollRef.current
+            if (!inner || !el) return
+            // Apply transform directly — bypasses React. React's inline
+            // style.transform won't overwrite this unless the zoom state
+            // prop changes, which we only do on gesture end.
+            inner.style.transform = `scale(${pending.zoom})`
+            // Anchor the pinch midpoint in content space: compute where
+            // the start-captured content anchor should now land in the
+            // viewport so the gesture feels "pinned" to the user's fingers.
+            const rect = pinchScrollRectRef.current
+            const vpX = pending.midX - rect.left
+            const vpY = pending.midY - rect.top
+            el.scrollLeft = pinchStartMidContentRef.current.x * pending.zoom - vpX
+            el.scrollTop = pinchStartMidContentRef.current.y * pending.zoom - vpY
+            pinchLocalZoomRef.current = pending.zoom
+          })
         }
-
-        if (prevPinchDistRef.current !== null && prevPinchMidRef.current !== null) {
-          // Smooth proportional zoom
-          const zoomRatio = dist / prevPinchDistRef.current
-          const currentZoom = zoomRef.current
-          const newZoom = Math.round(Math.min(4.0, Math.max(0.25, currentZoom * zoomRatio)) * 100) / 100
-          if (newZoom !== currentZoom) {
-            zoomAtPoint(newZoom, currentMid.x, currentMid.y)
-          }
-
-          // Simultaneous two-finger pan
-          const el = scrollRef.current
-          if (el) {
-            const dx = currentMid.x - prevPinchMidRef.current.x
-            const dy = currentMid.y - prevPinchMidRef.current.y
-            el.scrollLeft -= dx
-            el.scrollTop -= dy
-          }
-
-          prevPinchDistRef.current = dist
-          prevPinchMidRef.current = currentMid
-        } else {
-          prevPinchDistRef.current = dist
-          prevPinchMidRef.current = currentMid
-        }
+        prevPinchDistRef.current = dist
+        prevPinchMidRef.current = { x: midX, y: midY }
         return
       }
 
@@ -3280,10 +3315,33 @@ export default function PdfAnnotateTool() {
     if (e?.pointerType === 'touch') {
       activeTouchIdsRef.current.delete(e.pointerId)
       touchPositionsRef.current.delete(e.pointerId)
-      // Reset pinch state when fewer than 2 touches remain
+      // Reset pinch state when fewer than 2 touches remain — commit the
+      // final zoom to React state here (and only here) so the expensive
+      // reconcile + debounced page re-render happens exactly once at the
+      // end of the gesture, not on every frame during it.
       if (activeTouchIdsRef.current.size < 2) {
         prevPinchDistRef.current = null
         prevPinchMidRef.current = null
+        if (pinchActiveRef.current) {
+          pinchActiveRef.current = false
+          if (pinchRafIdRef.current !== null) {
+            cancelAnimationFrame(pinchRafIdRef.current)
+            pinchRafIdRef.current = null
+          }
+          pinchPendingRef.current = null
+          // Snap the committed zoom to 2 decimal places so preset comparisons
+          // (and the zoom % readout) stay stable.
+          const finalZoom = Math.round(pinchLocalZoomRef.current * 100) / 100
+          if (finalZoom !== zoomRef.current) {
+            setZoom(finalZoom)
+          } else if (innerRef.current) {
+            // If the rounded final matches current state, React won't
+            // re-render the transform — restore it to the committed value
+            // so the imperative style we set during the gesture doesn't
+            // linger with a slightly off fractional scale.
+            innerRef.current.style.transform = `scale(${finalZoom})`
+          }
+        }
       }
       // Reset single-finger pan for pencilOnlyMode
       if (pencilOnlyMode && activeTouchIdsRef.current.size === 0) {
