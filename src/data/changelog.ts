@@ -17,7 +17,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     type: 'fix',
     stats: { fixes: 1 },
     notes: `### PDF Annotate
-- Silky pinch-to-zoom on iPad, like Bluebeam or Acrobat`,
+- Updated pinch-to-zoom settings`,
   },
   {
     version: '4.0.11',
