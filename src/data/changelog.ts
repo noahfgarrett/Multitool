@@ -13,7 +13,7 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '4.0.6',
-    date: 'PLACEHOLDER',
+    date: '2026-04-09T12:53:06Z',
     type: 'feature',
     stats: { features: 1, tools: 1 },
     notes: `### PDF Annotate — Mobile phone layout
