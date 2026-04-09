@@ -357,6 +357,16 @@ export function usePdfAnnotateState() {
   // transformed visual content without round-tripping through React state.
   const zoomLayoutRef = useRef<HTMLDivElement>(null)
   const paddedWrapperRef = useRef<HTMLDivElement>(null)
+  // Gesture-only transform wrapper. During a pinch we set ONLY this
+  // element's CSS transform — no layout / padding / scroll writes —
+  // so the gesture is pure GPU composition with zero main-thread
+  // reflow. On release, the transform is cleared inside a
+  // useLayoutEffect immediately after setZoom commits, so the user
+  // never sees an intermediate state.
+  const gestureTransformRef = useRef<HTMLDivElement>(null)
+  // Stashed scroll target bridging the pinch release handler and the
+  // post-setZoom useLayoutEffect that finalises scroll + transform.
+  const pinchCommitRef = useRef<{ scrollLeft: number; scrollTop: number } | null>(null)
   const zoomRef = useRef(zoom)
   const focusModeRef = useRef(focusMode)
   focusModeRef.current = focusMode
@@ -452,6 +462,13 @@ export function usePdfAnnotateState() {
   // Prevents finger jitter during a 2-finger pan from committing a
   // spurious zoom change on release.
   const pinchZoomUnlockedRef = useRef(false)
+  // Pinch midpoint in VIEWPORT (window) coordinates at gesture start.
+  // Used by the CSS-transform-only gesture preview to keep the anchor
+  // locked under the user's fingers without touching scroll or layout.
+  const pinchStartMidViewportRef = useRef({ x: 0, y: 0 })
+  // Scroll container padding at gesture start — captured once so the
+  // gesture math doesn't have to read getComputedStyle every frame.
+  const pinchStartPaddingRef = useRef({ left: 24, top: 24 })
 
   // Active canvas drawing pipeline (iPad perf overhaul)
   const pointBufferRef = useRef<{ x: number; y: number; pressure: number }[]>([])
@@ -611,7 +628,7 @@ export function usePdfAnnotateState() {
     // Refs
     pageRefsMap, pageDimsMap, renderedPagesRef,
     activePageRef, maxCanvasWidthRef, observerRef,
-    scrollRef, innerRef, zoomLayoutRef, paddedWrapperRef, pageTileGridsRef, zoomRef, focusModeRef, currentPageRef,
+    scrollRef, innerRef, zoomLayoutRef, paddedWrapperRef, gestureTransformRef, pinchCommitRef, pageTileGridsRef, zoomRef, focusModeRef, currentPageRef,
     panRef, spaceHeldRef,
     shapesDropdownRef, textDropdownRef, zoomDropdownRef,
     stampDropdownRef, contextMenuRef,
@@ -640,6 +657,7 @@ export function usePdfAnnotateState() {
     pinchActiveRef, pinchStartZoomRef, pinchStartDistRef, pinchStartScrollRef,
     pinchStartMidContentRef, pinchLocalZoomRef, pinchScrollRectRef,
     pinchRafIdRef, pinchPendingRef, pinchZoomUnlockedRef,
+    pinchStartMidViewportRef, pinchStartPaddingRef,
     // Active canvas pipeline
     pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     // Memos
