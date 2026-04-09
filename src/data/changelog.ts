@@ -12,6 +12,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.0.4',
+    date: 'PLACEHOLDER',
+    type: 'fix',
+    stats: { fixes: 1 },
+    notes: `### PDF Annotate — Render Reliability
+- **Pages no longer load black or upside-down** — Fixed a rendering race where rapid zoom, rotate, or scroll actions could leave a page stuck black or flipped. Each page now always renders crisply on the first try.`,
+  },
+  {
     version: '4.0.3',
     date: '2026-04-07T18:43:59Z',
     type: 'feature',

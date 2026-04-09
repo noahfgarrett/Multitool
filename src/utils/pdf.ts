@@ -6,6 +6,7 @@
 
 import { PDFDocument, PDFDict, PDFName, PDFHexString, PDFArray, PDFNumber, PDFRef, degrees } from 'pdf-lib'
 import * as pdfjsLib from 'pdfjs-dist'
+import type { RenderTask } from 'pdfjs-dist'
 import type { PDFFile, PDFPage, PageRangeValidation } from '@/types'
 
 // Centralized PDF.js worker setup (side-effect import)
@@ -183,7 +184,37 @@ export async function generateAllThumbnails(
 }
 
 /**
+ * Serializes concurrent renders targeting the same canvas. Without this,
+ * racing renders on one canvas (triggered by zoom changes, rotation, or
+ * IntersectionObserver re-entry while a previous render is in flight)
+ * produce black pages — the second render clears the canvas while the first
+ * is mid-draw — or upside-down pages — two viewport transforms composed, each
+ * with its own Y-flip, cancelling out the intended flip.
+ *
+ * The generation counter closes the early-await window: a later caller bumps
+ * the generation synchronously on entry, and every earlier caller checks its
+ * own generation after each await. A stale generation aborts the earlier
+ * caller with a cancellation-shaped error before it can touch the canvas.
+ */
+const activeRenderTasks = new WeakMap<HTMLCanvasElement, RenderTask>()
+const renderGenerations = new WeakMap<HTMLCanvasElement, number>()
+
+/**
+ * Matches pdf.js's RenderingCancelledException shape so the shared
+ * isRenderingCancelled() check catches both.
+ */
+class StaleRenderError extends Error {
+  override name = 'RenderingCancelledException'
+  constructor() {
+    super('Render superseded by a newer call on the same canvas')
+  }
+}
+
+/**
  * Render a PDF page to a canvas at a given scale.
+ * Cancels any in-flight render on the same canvas before starting.
+ * Throws a cancellation-shaped error if a newer call on the same canvas
+ * preempts this one — callers must swallow that via isRenderingCancelled().
  */
 export async function renderPageToCanvas(
   pdfFile: PDFFile,
@@ -192,8 +223,26 @@ export async function renderPageToCanvas(
   scale: number = 1.5,
   rotation: number = 0,
 ): Promise<void> {
+  // Claim a generation synchronously. Any earlier in-flight call that sees a
+  // newer generation on its next await checkpoint will bail out.
+  const gen = (renderGenerations.get(canvas) ?? 0) + 1
+  renderGenerations.set(canvas, gen)
+
+  // Cancel any pdf.js render already in flight on this canvas. pdf.js rejects
+  // the previous .promise with a RenderingCancelledException, which propagates
+  // out of this function.
+  const previous = activeRenderTasks.get(canvas)
+  if (previous) {
+    previous.cancel()
+    activeRenderTasks.delete(canvas)
+  }
+
   const doc = await getCachedDoc(pdfFile.id, pdfFile.file)
+  if (renderGenerations.get(canvas) !== gen) throw new StaleRenderError()
+
   const page = await doc.getPage(pageNumber)
+  if (renderGenerations.get(canvas) !== gen) throw new StaleRenderError()
+
   // Per PDF.js best practices: get viewport at logical scale, then use a
   // transform matrix to handle HiDPI. This keeps viewport dimensions in
   // CSS-pixel space and multiplies the pixel buffer by outputScale.
@@ -211,7 +260,7 @@ export async function renderPageToCanvas(
   const transform: [number, number, number, number, number, number] | undefined =
     outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : undefined
 
-  await page.render({
+  const renderTask = page.render({
     canvasContext: ctx,
     viewport,
     transform,
@@ -222,8 +271,24 @@ export async function renderPageToCanvas(
     // Without this, native PDF stamps/comments render on the same canvas and
     // conflict with our annotation system.
     annotationMode: pdfjsLib.AnnotationMode.DISABLE,
-  }).promise
+  })
+  activeRenderTasks.set(canvas, renderTask)
+
+  try {
+    await renderTask.promise
+  } finally {
+    // Only clear the map if we're still the current task. A newer render may
+    // have already replaced us; don't wipe its entry.
+    if (activeRenderTasks.get(canvas) === renderTask) {
+      activeRenderTasks.delete(canvas)
+    }
+  }
   page.cleanup()
+}
+
+/** True if the error is pdf.js's RenderingCancelledException (or our own stale-render variant). */
+export function isRenderingCancelled(err: unknown): boolean {
+  return (err as { name?: string } | null)?.name === 'RenderingCancelledException'
 }
 
 /**

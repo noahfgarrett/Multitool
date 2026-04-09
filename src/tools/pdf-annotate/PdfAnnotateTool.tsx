@@ -8,7 +8,7 @@ import { usePdfAnnotateState } from './usePdfAnnotateState.ts'
 import type { ToolPreset } from './usePdfAnnotateState.ts'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts.ts'
 import { exportAnnotatedPdf } from './exportPdf.ts'
-import { loadPDFFile, renderPageToCanvas, generateThumbnail, removePDFFromCache, getPDFBytes, extractPositionedText, getAllPageDimensions, validatePageRange } from '@/utils/pdf.ts'
+import { loadPDFFile, renderPageToCanvas, generateThumbnail, removePDFFromCache, getPDFBytes, extractPositionedText, getAllPageDimensions, validatePageRange, isRenderingCancelled } from '@/utils/pdf.ts'
 import Tesseract from 'tesseract.js'
 import { downloadBlob } from '@/utils/download.ts'
 import { saveSession, loadSession, clearSession, computeFileHash } from './storage.ts'
@@ -1493,7 +1493,11 @@ export default function PdfAnnotateTool() {
       }
       pageRenderScaleRef.current.set(pageNum, rs)
       redrawPage(pageNum)
-    } catch {
+    } catch (err: unknown) {
+      // A newer renderSinglePage call cancelled this one via renderPageToCanvas —
+      // leave renderedPagesRef alone so the new call keeps its entry, and skip
+      // the post-render DOM updates above (they'd stomp the new render's canvas).
+      if (isRenderingCancelled(err)) return
       renderedPagesRef.current.delete(pageNum)
     }
   }, [pdfFile, redrawPage])
