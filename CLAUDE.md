@@ -66,16 +66,31 @@ After a tool works functionally, do a second pass before marking done:
 - All file processing (PDF, image, etc.) must use client-side libraries only. See existing tools for patterns.
 
 ## Release Notes Style
-- Keep patch notes short and simple. Write for non-technical users.
+
+**Keep it vague. High-level bullet points only. What was fixed or added — nothing else.**
+
+- One terse bullet per change. No descriptions, no explanations, no marketing copy, no "how it works" details.
+- No bold titles followed by em-dash + sentence. Just the fix/feature itself, 2–8 words.
+- Optional `### Section` headers for grouping under a tool name (e.g. `### PDF Annotate`). Use them only when there are 3+ bullets for the same tool.
 - No "technical details" sections — save that for commit messages.
-- **Never mention QA, testing, test coverage, or automated tests in patch notes.** Users don't care about internal testing — only mention what changed for them.
-- Focus on user-facing improvements: bug fixes, new features, performance gains, UI polish.
-- Keep it high-level and overarching. Group related fixes into a single bullet when possible (e.g. "Improved multi-page annotation reliability" instead of listing 5 separate fixes).
-- **Bullet format**: `**Tool Name — short title** — One-sentence description of what changed for the user`. Example:
+- **Never mention QA, testing, test coverage, or automated tests in patch notes.** Users don't care about internal testing.
+- Focus on user-facing outcomes: bug fixes, new features, performance gains, UI polish.
+- Group related fixes into a single bullet rather than listing 5 bullets for the same thing.
+- **Format example** (good):
   ```
-  - **PDF Annotate — drag & resize fix** — Fixed an issue where moving or resizing an annotation could accidentally affect a different annotation
-  - **PDF Annotate — text box interaction improved** — Single-clicking a selected text box now moves it; double-click to edit
+  ### PDF Annotate
+  - Pages no longer blank while zooming
+  - Focus mode hides the app sidebar and header
+  - Mobile page counter stays on one line
+  - Eraser circle matches the actual erase area
   ```
+- **Bad (too chatty):**
+  ```
+  - **Pages no longer blank while zooming** — Zooming in or out no longer blanks the page while it re-renders. The old page stays on screen until the sharper version is ready.
+  ```
+  Everything after the em-dash is noise. Delete it.
+
+The rule of thumb: if you can't read the full changelog entry out loud in 15 seconds, it's too long.
 
 ## Releasing to GitHub
 
