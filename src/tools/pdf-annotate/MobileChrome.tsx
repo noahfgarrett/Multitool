@@ -149,10 +149,10 @@ export const MobilePeekBar = memo(function MobilePeekBar({
         <button
           onClick={onOpenTopOverlay}
           aria-label="Page navigation and tools"
-          className="flex items-center gap-1 px-2 h-9 rounded-lg text-[11px] text-white/60 hover:text-white hover:bg-white/[0.06] tabular-nums"
+          className="flex items-center gap-1 px-2 h-9 rounded-lg text-[11px] text-white/60 hover:text-white hover:bg-white/[0.06] tabular-nums whitespace-nowrap flex-shrink-0"
         >
-          <span>{currentPage} / {pageCount}</span>
-          <ChevronDown size={12} className="opacity-60" />
+          <span className="whitespace-nowrap">{currentPage}&nbsp;/&nbsp;{pageCount}</span>
+          <ChevronDown size={12} className="opacity-60 flex-shrink-0" />
         </button>
       )}
     </div>

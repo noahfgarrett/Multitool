@@ -2922,7 +2922,13 @@ export default function PdfAnnotateTool() {
 
     if (activeTool === 'eraser') {
       eraserModsRef.current = { removed: new Set(), added: [] }
-      const docRadius = eraserRadius / (zoom * RENDER_SCALE)
+      // eraserRadius is the visual cursor radius in VIEWPORT CSS pixels.
+      // The document renders inside a CSS `transform: scale(zoom)` wrapper,
+      // so 1 viewport CSS pixel = 1/zoom doc CSS pixels. The old formula
+      // divided by an extra RENDER_SCALE, which made the actual hit area
+      // 2–3x smaller than the visible circle (noticeably broken on mobile
+      // where the fit-to-window zoom is well below 1).
+      const docRadius = eraserRadius / zoom
       const pageAnns = annotations[pageNum] || []
       for (const ann of pageAnns) {
         if (eraserMode === 'object') {
@@ -3350,7 +3356,13 @@ export default function PdfAnnotateTool() {
     }
 
     if (activeTool === 'eraser') {
-      const docRadius = eraserRadius / (zoom * RENDER_SCALE)
+      // eraserRadius is the visual cursor radius in VIEWPORT CSS pixels.
+      // The document renders inside a CSS `transform: scale(zoom)` wrapper,
+      // so 1 viewport CSS pixel = 1/zoom doc CSS pixels. The old formula
+      // divided by an extra RENDER_SCALE, which made the actual hit area
+      // 2–3x smaller than the visible circle (noticeably broken on mobile
+      // where the fit-to-window zoom is well below 1).
+      const docRadius = eraserRadius / zoom
       const mods = eraserModsRef.current
       const pageAnns = annotations[ap] || []
       for (const ann of pageAnns) {
@@ -5759,7 +5771,15 @@ export default function PdfAnnotateTool() {
       })()}
 
       {/* ── Floating formatting toolbar for text editing ────────── */}
-      {editingTextId && editingAnn && (() => {
+      {/*
+        On mobile, the FloatingToolbar is hidden entirely — its horizontal
+        layout (B/I/U/S + align + font size + color picker + lists) does
+        not fit a 390px-wide viewport cleanly, and its color popover was
+        reported as stacking vertically and taking over the top of the
+        screen. Mobile users get the MobileLongPressPopover for
+        color/size/opacity and the drawer for everything else.
+      */}
+      {!isMobile && editingTextId && editingAnn && (() => {
         const page = findAnnotationPage(editingTextId)
         if (page === null) return null
         const activeCanvas = pageRefsMap.current.get(page)?.annCanvas

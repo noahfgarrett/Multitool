@@ -12,6 +12,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.0.7',
+    date: 'PLACEHOLDER',
+    type: 'fix',
+    stats: { fixes: 5 },
+    notes: `### PDF Annotate — Polish pass
+- **No more disappearing pages on zoom** — Zooming in or out no longer blanks the page while it re-renders. The old page stays on screen until the sharper version is ready, then swaps in instantly.
+- **Focus mode really is full screen** — Turning on Focus mode now hides the app sidebar and header too, leaving just the document and the right tool drawer for maximum space.
+- **Mobile page counter doesn't squish** — "1 / 140" stays on a single line even when the peek bar is crowded.
+- **Mobile text tool doesn't take over the top** — The desktop floating format toolbar no longer pops up on mobile (it was stacking colors vertically). Color, size, and opacity still live in the long-press popover on each tool button.
+- **Eraser circle matches what actually erases** — The visible eraser cursor now lines up exactly with the erase area at every zoom level on desktop, tablet, and phone.`,
+  },
+  {
     version: '4.0.6',
     date: '2026-04-09T12:53:06Z',
     type: 'feature',

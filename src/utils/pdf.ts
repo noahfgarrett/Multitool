@@ -212,6 +212,14 @@ class StaleRenderError extends Error {
 
 /**
  * Render a PDF page to a canvas at a given scale.
+ *
+ * Uses an offscreen canvas internally so the visible canvas keeps showing
+ * its previous content (CSS-scaled by the parent transform) until the new
+ * render is fully ready. At that point the visible canvas is resized and
+ * the offscreen buffer is blitted over in a single atomic `drawImage`.
+ * Without this, re-rendering on zoom change produces a ~100–500 ms blank
+ * black frame per page while pdf.js is rasterizing.
+ *
  * Cancels any in-flight render on the same canvas before starting.
  * Throws a cancellation-shaped error if a newer call on the same canvas
  * preempts this one — callers must swallow that via isRenderingCancelled().
@@ -249,19 +257,24 @@ export async function renderPageToCanvas(
   const outputScale = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1
   const viewport = page.getViewport({ scale: scale / outputScale, rotation })
 
+  const targetWidth = Math.floor(viewport.width * outputScale)
+  const targetHeight = Math.floor(viewport.height * outputScale)
+
+  // Render into an offscreen buffer first — keeps the visible canvas
+  // displaying its old content (CSS-scaled) during the render.
   // alpha: false — canvas has a white background; disabling alpha compositing
   // gives sharper text rendering and eliminates premultiplied-alpha artifacts.
-  const ctx = canvas.getContext('2d', { alpha: false })
-  if (!ctx) throw new Error('Failed to get canvas context')
-
-  canvas.width = Math.floor(viewport.width * outputScale)
-  canvas.height = Math.floor(viewport.height * outputScale)
+  const offscreen = document.createElement('canvas')
+  offscreen.width = targetWidth
+  offscreen.height = targetHeight
+  const offCtx = offscreen.getContext('2d', { alpha: false })
+  if (!offCtx) throw new Error('Failed to get offscreen canvas context')
 
   const transform: [number, number, number, number, number, number] | undefined =
     outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : undefined
 
   const renderTask = page.render({
-    canvasContext: ctx,
+    canvasContext: offCtx,
     viewport,
     transform,
     // 'print' intent renders at full fidelity (no display-specific shortcuts),
@@ -283,6 +296,20 @@ export async function renderPageToCanvas(
       activeRenderTasks.delete(canvas)
     }
   }
+
+  // Another call may have superseded us while pdf.js was rasterizing — if
+  // so, don't touch the visible canvas; the newer call owns it.
+  if (renderGenerations.get(canvas) !== gen) throw new StaleRenderError()
+
+  // Atomic swap: resize the visible canvas (this clears it, but we
+  // immediately drawImage into it on the same frame) and copy the finished
+  // offscreen buffer over. The user never sees the blank intermediate state.
+  const ctx = canvas.getContext('2d', { alpha: false })
+  if (!ctx) throw new Error('Failed to get canvas context')
+  canvas.width = targetWidth
+  canvas.height = targetHeight
+  ctx.drawImage(offscreen, 0, 0)
+
   page.cleanup()
 }
 
