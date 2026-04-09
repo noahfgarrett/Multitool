@@ -370,6 +370,102 @@ export function isRenderingCancelled(err: unknown): boolean {
 }
 
 /**
+ * Render a sub-region (tile) of a PDF page into a tile-sized canvas.
+ *
+ * Used by the tiled-rendering path at high zoom levels — when the full
+ * page would exceed the per-canvas pixel cap, we split the page into a
+ * grid of tiles, each under the cap, and render them independently via
+ * this function.
+ *
+ * How the math works:
+ *   - Full-page viewport is computed at the effective render scale.
+ *   - `transform = [outputScale, 0, 0, outputScale, -tileX, -tileY]` is
+ *     applied BEFORE the viewport transform by pdf.js (see
+ *     `legacy/build/pdf.mjs:12714`). The `outputScale` on the diagonal
+ *     keeps HiDPI rendering intact; the `-tileX, -tileY` translation
+ *     shifts the full-page content so the tile's top-left lands at
+ *     canvas (0,0). pdf.js then draws the whole page but only pixels
+ *     inside the tile canvas bounds actually commit.
+ *
+ * Cancellation and generation tracking reuse the same WeakMaps that
+ * renderPageToCanvas uses — one WeakMap entry per canvas, and each tile
+ * canvas is its own entry.
+ *
+ * tileX, tileY, tileW, tileH are in FULL-page pixel-buffer coordinates
+ * (not CSS pixels). `scale` is the effective render scale — RENDER_SCALE
+ * * zoom typically, without any maxCanvasPixels clamping.
+ */
+export async function renderPageTile(
+  pdfFile: PDFFile,
+  pageNumber: number,
+  tileCanvas: HTMLCanvasElement,
+  scale: number,
+  rotation: number,
+  tileX: number,
+  tileY: number,
+  tileW: number,
+  tileH: number,
+): Promise<void> {
+  const gen = (renderGenerations.get(tileCanvas) ?? 0) + 1
+  renderGenerations.set(tileCanvas, gen)
+
+  const previous = activeRenderTasks.get(tileCanvas)
+  if (previous) {
+    previous.cancel()
+    activeRenderTasks.delete(tileCanvas)
+  }
+
+  const doc = await getCachedDoc(pdfFile.id, pdfFile.file)
+  if (renderGenerations.get(tileCanvas) !== gen) throw new StaleRenderError()
+
+  const page = await doc.getPage(pageNumber)
+  if (renderGenerations.get(tileCanvas) !== gen) throw new StaleRenderError()
+
+  const outputScale = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1
+  // Viewport is for the FULL page at the effective scale. We then use
+  // `transform` to both re-scale for HiDPI (outputScale on the diagonal)
+  // and shift the page content by -tileX/-tileY so the tile's top-left
+  // lands at canvas (0,0). Pdf.js draws the full page but only pixels
+  // inside the tile canvas commit — anything outside is clipped.
+  const viewport = page.getViewport({ scale: scale / outputScale, rotation })
+
+  tileCanvas.width = tileW
+  tileCanvas.height = tileH
+
+  const ctx = tileCanvas.getContext('2d', { alpha: false })
+  if (!ctx) throw new Error('Failed to get tile canvas context')
+
+  const transform: [number, number, number, number, number, number] =
+    [outputScale, 0, 0, outputScale, -tileX, -tileY]
+
+  const renderTask = page.render({
+    canvasContext: ctx,
+    viewport,
+    transform,
+    intent: 'print',
+    annotationMode: pdfjsLib.AnnotationMode.DISABLE,
+  })
+  activeRenderTasks.set(tileCanvas, renderTask)
+
+  try {
+    await renderTask.promise
+  } finally {
+    if (activeRenderTasks.get(tileCanvas) === renderTask) {
+      activeRenderTasks.delete(tileCanvas)
+    }
+  }
+
+  if (renderGenerations.get(tileCanvas) !== gen) throw new StaleRenderError()
+
+  page.cleanup()
+}
+
+/** Expose the current canvas pixel cap for callers that need to compute tile grids. */
+export function getMaxCanvasPixels(): number {
+  return MAX_CANVAS_PIXELS
+}
+
+/**
  * Extract the most likely title text from a PDF page.
  * Finds the largest-font text item on the page.
  * Returns null if no good candidate found.

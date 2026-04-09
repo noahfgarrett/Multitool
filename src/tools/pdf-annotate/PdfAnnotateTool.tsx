@@ -8,7 +8,9 @@ import { usePdfAnnotateState } from './usePdfAnnotateState.ts'
 import type { ToolPreset } from './usePdfAnnotateState.ts'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts.ts'
 import { exportAnnotatedPdf } from './exportPdf.ts'
-import { loadPDFFile, renderPageToCanvas, generateThumbnail, removePDFFromCache, getPDFBytes, extractPositionedText, getAllPageDimensions, validatePageRange, isRenderingCancelled, getMaxRenderScale } from '@/utils/pdf.ts'
+import { loadPDFFile, renderPageToCanvas, generateThumbnail, removePDFFromCache, getPDFBytes, extractPositionedText, getAllPageDimensions, validatePageRange, isRenderingCancelled, getMaxRenderScale, renderPageTile, getMaxCanvasPixels } from '@/utils/pdf.ts'
+import { buildTileGrid, teardownTileGrid } from './tileRendering.ts'
+import type { PageTile } from './tileRendering.ts'
 import Tesseract from 'tesseract.js'
 import { downloadBlob } from '@/utils/download.ts'
 import { saveSession, loadSession, clearSession, computeFileHash } from './storage.ts'
@@ -363,7 +365,7 @@ export default function PdfAnnotateTool() {
     loadingThumbs,
     pageRefsMap, pageDimsMap, renderedPagesRef,
     activePageRef, maxCanvasWidthRef, observerRef,
-    scrollRef, innerRef, zoomLayoutRef, paddedWrapperRef, zoomRef, focusModeRef, currentPageRef,
+    scrollRef, innerRef, zoomLayoutRef, paddedWrapperRef, pageTileGridsRef, zoomRef, focusModeRef, currentPageRef,
     panRef, spaceHeldRef,
     shapesDropdownRef, textDropdownRef, zoomDropdownRef,
     stampDropdownRef, contextMenuRef,
@@ -1279,6 +1281,9 @@ export default function PdfAnnotateTool() {
       setSelectTextToolbar(null)
       initialFitDoneRef.current = false
       // Clear multi-page refs
+      // Tear down any tile grids left over from the previous document.
+      for (const grid of pageTileGridsRef.current.values()) teardownTileGrid(grid)
+      pageTileGridsRef.current.clear()
       pageRefsMap.current.clear()
       renderedPagesRef.current.clear()
       pageRenderScaleRef.current.clear()
@@ -1476,40 +1481,136 @@ export default function PdfAnnotateTool() {
       // Render at zoom-aware scale so the pixel buffer is always DPR-matched at the current zoom
       const clampedZoom = Math.min(Math.max(zoomRef.current, 0.25), 4)
       const requestedRs = RENDER_SCALE * clampedZoom
-      // Cap the render scale so the pixel buffer fits within the browser's
-      // canvas size limit. On iOS/Android this is ~5 MP — beyond that the
-      // canvas goes blank at high zoom. The capped raster gets CSS-stretched
-      // to the intended visual size, trading sharpness for visibility.
       const dims = pageDimsMap.current.get(pageNum)
       const maxRs = dims ? getMaxRenderScale(dims.width, dims.height) : requestedRs
-      const rs = Math.min(requestedRs, maxRs)
-      await renderPageToCanvas(pdfFile, pageNum, refs.pdfCanvas, rs, rotation)
-      // CSS display size matches pageDimsMap (scale=1, CSS-pixel space);
-      // zoom is applied via CSS transform on the parent.
-      if (dims) {
-        refs.pdfCanvas.style.width = dims.width + 'px'
-        refs.pdfCanvas.style.height = dims.height + 'px'
-      }
-      // Sync annotation canvas to same pixel buffer dimensions
-      refs.annCanvas.width = refs.pdfCanvas.width
-      refs.annCanvas.height = refs.pdfCanvas.height
-      if (dims) {
-        refs.annCanvas.style.width = dims.width + 'px'
-        refs.annCanvas.style.height = dims.height + 'px'
-      }
-      // Sync active canvas (in-progress drawing overlay)
-      if (refs.activeCanvas) {
-        refs.activeCanvas.width = refs.pdfCanvas.width
-        refs.activeCanvas.height = refs.pdfCanvas.height
-        if (dims) {
-          refs.activeCanvas.style.width = dims.width + 'px'
-          refs.activeCanvas.style.height = dims.height + 'px'
+      // If the requested render scale would make a single canvas exceed
+      // the browser's per-canvas pixel cap, switch to tiled rendering —
+      // split the page into a grid of smaller canvases, each under the
+      // cap, and render only visible tiles via an IntersectionObserver.
+      // This keeps the PDF crystal clear at any zoom level. Annotation
+      // and active canvases stay at cap resolution (slight blur at
+      // extreme zoom is acceptable since users perceive their own markup
+      // differently from the source drawing).
+      const needsTiling = !!dims && requestedRs > maxRs * 1.02
+      if (needsTiling && dims) {
+        // Tear down any previous grid that was built at a different scale
+        // or rotation. Same-scale grids are reused so we don't thrash.
+        const existing = pageTileGridsRef.current.get(pageNum)
+        const reuse = existing && existing.scale === requestedRs && existing.rotation === rotation
+        if (existing && !reuse) {
+          teardownTileGrid(existing)
+          pageTileGridsRef.current.delete(pageNum)
         }
-        // Invalidate cached context since dimensions changed
-        activeCtxCacheRef.current.delete(pageNum)
+
+        if (!reuse) {
+          // Annotation layers stay at the cap. Size them now so hit
+          // testing and drawing see stable buffer dimensions.
+          const annRs = maxRs
+          const annW = Math.max(1, Math.floor(dims.width * annRs))
+          const annH = Math.max(1, Math.floor(dims.height * annRs))
+          refs.pdfCanvas.style.display = 'none'
+          refs.annCanvas.width = annW
+          refs.annCanvas.height = annH
+          refs.annCanvas.style.width = dims.width + 'px'
+          refs.annCanvas.style.height = dims.height + 'px'
+          if (refs.activeCanvas) {
+            refs.activeCanvas.width = annW
+            refs.activeCanvas.height = annH
+            refs.activeCanvas.style.width = dims.width + 'px'
+            refs.activeCanvas.style.height = dims.height + 'px'
+            activeCtxCacheRef.current.delete(pageNum)
+          }
+
+          const grid = buildTileGrid({
+            pageNum,
+            pageContainer: refs.container,
+            naturalWidth: dims.width,
+            naturalHeight: dims.height,
+            scale: requestedRs,
+            rotation,
+            maxCanvasPixels: getMaxCanvasPixels(),
+            insertBefore: refs.pdfCanvas,
+          })
+
+          // Per-tile IntersectionObserver — tiles render as the user
+          // scrolls near them. rootMargin gives a bit of prefetch so
+          // tiles pop in before they're visible.
+          const scrollEl = scrollRef.current
+          if (scrollEl) {
+            const obs = new IntersectionObserver(
+              entries => {
+                for (const entry of entries) {
+                  if (!entry.isIntersecting) continue
+                  const el = entry.target as HTMLCanvasElement
+                  const tile = grid.tiles.find((t: PageTile) => t.canvas === el)
+                  if (!tile || tile.rendered) continue
+                  renderPageTile(
+                    pdfFile, pageNum, tile.canvas,
+                    requestedRs, rotation,
+                    tile.x, tile.y, tile.w, tile.h,
+                  ).then(() => { tile.rendered = true })
+                    .catch((err: unknown) => {
+                      if (!isRenderingCancelled(err)) {
+                        // Any non-cancellation error — leave unrendered,
+                        // the intersection observer may retry on next scroll.
+                      }
+                    })
+                }
+              },
+              { root: scrollEl, rootMargin: '500px' },
+            )
+            grid.observer = obs
+            for (const tile of grid.tiles) obs.observe(tile.canvas)
+          }
+
+          pageTileGridsRef.current.set(pageNum, grid)
+          // Store the ANN canvas scale so hit-testing math (which
+          // reads ann-canvas.width / storedRs to get doc-space coords)
+          // stays consistent.
+          pageRenderScaleRef.current.set(pageNum, annRs)
+          redrawPage(pageNum)
+        } else {
+          // Reusing an existing grid at the same scale — just make sure
+          // the pdf-canvas stays hidden and redraw annotations.
+          refs.pdfCanvas.style.display = 'none'
+          redrawPage(pageNum)
+        }
+      } else {
+        // SINGLE-CANVAS PATH (unchanged from v4.0.9).
+        // First tear down any tile grid left over from a higher zoom.
+        const existing = pageTileGridsRef.current.get(pageNum)
+        if (existing) {
+          teardownTileGrid(existing)
+          pageTileGridsRef.current.delete(pageNum)
+        }
+        refs.pdfCanvas.style.display = ''
+
+        const rs = Math.min(requestedRs, maxRs)
+        await renderPageToCanvas(pdfFile, pageNum, refs.pdfCanvas, rs, rotation)
+        // CSS display size matches pageDimsMap (scale=1, CSS-pixel space);
+        // zoom is applied via CSS transform on the parent.
+        if (dims) {
+          refs.pdfCanvas.style.width = dims.width + 'px'
+          refs.pdfCanvas.style.height = dims.height + 'px'
+        }
+        refs.annCanvas.width = refs.pdfCanvas.width
+        refs.annCanvas.height = refs.pdfCanvas.height
+        if (dims) {
+          refs.annCanvas.style.width = dims.width + 'px'
+          refs.annCanvas.style.height = dims.height + 'px'
+        }
+        if (refs.activeCanvas) {
+          refs.activeCanvas.width = refs.pdfCanvas.width
+          refs.activeCanvas.height = refs.pdfCanvas.height
+          if (dims) {
+            refs.activeCanvas.style.width = dims.width + 'px'
+            refs.activeCanvas.style.height = dims.height + 'px'
+          }
+          activeCtxCacheRef.current.delete(pageNum)
+        }
+        pageRenderScaleRef.current.set(pageNum, rs)
+        redrawPage(pageNum)
       }
-      pageRenderScaleRef.current.set(pageNum, rs)
-      redrawPage(pageNum)
     } catch (err: unknown) {
       // A newer renderSinglePage call cancelled this one via renderPageToCanvas —
       // leave renderedPagesRef alone so the new call keeps its entry, and skip
@@ -1584,18 +1685,35 @@ export default function PdfAnnotateTool() {
     const timer = setTimeout(() => {
       const clampedZoom = Math.min(Math.max(zoomRef.current, 0.25), 4)
       const requestedRs = RENDER_SCALE * clampedZoom
-      // Only re-render pages whose stored scale differs enough from the new
-      // target. Compare against the CAPPED target (same cap renderSinglePage
-      // will apply) so pages already rendered at the cap don't get
-      // re-rendered for no reason when zoom climbs further.
+      // Work out which pages need a re-render at the new zoom. Four
+      // transitions matter:
+      //   1. single → single at a different scale (sharpen normally)
+      //   2. single → tile (zoomed past the cap threshold)
+      //   3. tile → single (zoomed back down below the threshold)
+      //   4. tile → tile at a different scale (rebuild grid)
       const pagesToRerender: number[] = []
       for (const pageNum of renderedPagesRef.current) {
-        const currentRs = pageRenderScaleRef.current.get(pageNum)
         const dims = pageDimsMap.current.get(pageNum)
-        const maxRs = dims ? getMaxRenderScale(dims.width, dims.height) : requestedRs
-        const targetRs = Math.min(requestedRs, maxRs)
-        if (!currentRs || Math.abs(currentRs - targetRs) / targetRs > 0.05) {
-          pagesToRerender.push(pageNum)
+        if (!dims) continue
+        const maxRs = getMaxRenderScale(dims.width, dims.height)
+        const needsTiling = requestedRs > maxRs * 1.02
+        const grid = pageTileGridsRef.current.get(pageNum)
+
+        if (needsTiling) {
+          // Want tile mode. Rebuild if we don't have a grid yet, or if
+          // its scale is noticeably off from the new target.
+          if (!grid || Math.abs(grid.scale - requestedRs) / requestedRs > 0.05) {
+            pagesToRerender.push(pageNum)
+          }
+        } else {
+          // Want single-canvas mode. Rebuild if we currently have a
+          // tile grid (need to tear it down + render single canvas) or
+          // if the stored single-canvas scale is noticeably off.
+          const currentRs = pageRenderScaleRef.current.get(pageNum)
+          const targetRs = Math.min(requestedRs, maxRs)
+          if (grid || !currentRs || Math.abs(currentRs - targetRs) / targetRs > 0.05) {
+            pagesToRerender.push(pageNum)
+          }
         }
       }
       for (const pageNum of pagesToRerender) {

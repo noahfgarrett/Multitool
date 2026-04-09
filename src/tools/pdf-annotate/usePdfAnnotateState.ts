@@ -348,6 +348,9 @@ export function usePdfAnnotateState() {
   const observerRef = useRef<IntersectionObserver | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
+  // Tiled PDF rendering — populated when a page's render scale would
+  // exceed the per-canvas cap. One entry per page with an active tile grid.
+  const pageTileGridsRef = useRef<Map<number, import('./tileRendering.ts').PageTileGrid>>(new Map())
   // Zoom-scaled layout wrapper (explicit width+height = scaled) and its
   // parent padded wrapper (for imperatively recomputing centering padding).
   // These exist so the pinch handler can keep layout in sync with the
@@ -601,7 +604,7 @@ export function usePdfAnnotateState() {
     // Refs
     pageRefsMap, pageDimsMap, renderedPagesRef,
     activePageRef, maxCanvasWidthRef, observerRef,
-    scrollRef, innerRef, zoomLayoutRef, paddedWrapperRef, zoomRef, focusModeRef, currentPageRef,
+    scrollRef, innerRef, zoomLayoutRef, paddedWrapperRef, pageTileGridsRef, zoomRef, focusModeRef, currentPageRef,
     panRef, spaceHeldRef,
     shapesDropdownRef, textDropdownRef, zoomDropdownRef,
     stampDropdownRef, contextMenuRef,
