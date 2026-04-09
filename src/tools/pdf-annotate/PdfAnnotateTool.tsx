@@ -8,7 +8,7 @@ import { usePdfAnnotateState } from './usePdfAnnotateState.ts'
 import type { ToolPreset } from './usePdfAnnotateState.ts'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts.ts'
 import { exportAnnotatedPdf } from './exportPdf.ts'
-import { loadPDFFile, renderPageToCanvas, generateThumbnail, removePDFFromCache, getPDFBytes, extractPositionedText, getAllPageDimensions, validatePageRange, isRenderingCancelled } from '@/utils/pdf.ts'
+import { loadPDFFile, renderPageToCanvas, generateThumbnail, removePDFFromCache, getPDFBytes, extractPositionedText, getAllPageDimensions, validatePageRange, isRenderingCancelled, getMaxRenderScale } from '@/utils/pdf.ts'
 import Tesseract from 'tesseract.js'
 import { downloadBlob } from '@/utils/download.ts'
 import { saveSession, loadSession, clearSession, computeFileHash } from './storage.ts'
@@ -1475,11 +1475,17 @@ export default function PdfAnnotateTool() {
       const rotation = pageRotationsRef.current[pageNum] || 0
       // Render at zoom-aware scale so the pixel buffer is always DPR-matched at the current zoom
       const clampedZoom = Math.min(Math.max(zoomRef.current, 0.25), 4)
-      const rs = RENDER_SCALE * clampedZoom
+      const requestedRs = RENDER_SCALE * clampedZoom
+      // Cap the render scale so the pixel buffer fits within the browser's
+      // canvas size limit. On iOS/Android this is ~5 MP — beyond that the
+      // canvas goes blank at high zoom. The capped raster gets CSS-stretched
+      // to the intended visual size, trading sharpness for visibility.
+      const dims = pageDimsMap.current.get(pageNum)
+      const maxRs = dims ? getMaxRenderScale(dims.width, dims.height) : requestedRs
+      const rs = Math.min(requestedRs, maxRs)
       await renderPageToCanvas(pdfFile, pageNum, refs.pdfCanvas, rs, rotation)
       // CSS display size matches pageDimsMap (scale=1, CSS-pixel space);
       // zoom is applied via CSS transform on the parent.
-      const dims = pageDimsMap.current.get(pageNum)
       if (dims) {
         refs.pdfCanvas.style.width = dims.width + 'px'
         refs.pdfCanvas.style.height = dims.height + 'px'
@@ -1577,12 +1583,18 @@ export default function PdfAnnotateTool() {
     if (!pdfFile) return
     const timer = setTimeout(() => {
       const clampedZoom = Math.min(Math.max(zoomRef.current, 0.25), 4)
-      const rs = RENDER_SCALE * clampedZoom
-      // Only re-render pages whose stored scale differs enough from the new target
+      const requestedRs = RENDER_SCALE * clampedZoom
+      // Only re-render pages whose stored scale differs enough from the new
+      // target. Compare against the CAPPED target (same cap renderSinglePage
+      // will apply) so pages already rendered at the cap don't get
+      // re-rendered for no reason when zoom climbs further.
       const pagesToRerender: number[] = []
       for (const pageNum of renderedPagesRef.current) {
         const currentRs = pageRenderScaleRef.current.get(pageNum)
-        if (!currentRs || Math.abs(currentRs - rs) / rs > 0.05) {
+        const dims = pageDimsMap.current.get(pageNum)
+        const maxRs = dims ? getMaxRenderScale(dims.width, dims.height) : requestedRs
+        const targetRs = Math.min(requestedRs, maxRs)
+        if (!currentRs || Math.abs(currentRs - targetRs) / targetRs > 0.05) {
           pagesToRerender.push(pageNum)
         }
       }

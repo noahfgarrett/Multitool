@@ -200,6 +200,46 @@ const activeRenderTasks = new WeakMap<HTMLCanvasElement, RenderTask>()
 const renderGenerations = new WeakMap<HTMLCanvasElement, number>()
 
 /**
+ * Maximum total canvas pixel area for a single rendered page.
+ *
+ * Mirrors Mozilla's own pdf.js viewer behaviour (see
+ * `pdfjs-dist/web/pdf_viewer.mjs` — `compatParams.set("maxCanvasPixels",
+ * 5242880)`): iOS/Android WebKit caps a single `<canvas>` at ~5 MP before
+ * the canvas becomes unusable. On iPad at high zoom the contents vanish
+ * entirely without this cap.
+ *
+ * When a requested render scale would exceed the cap, we clamp the scale
+ * down so the pixel buffer fits the limit. The CSS layout still shows the
+ * content at the requested visual size — the clamped raster just gets
+ * stretched by the parent `transform: scale(zoom)`. Text becomes
+ * progressively blurrier at very high zoom instead of disappearing, which
+ * is the exact tradeoff pdf.js's own viewer makes.
+ */
+const IS_IOS_OR_ANDROID = (() => {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  const platform = navigator.platform || ''
+  const maxTouch = navigator.maxTouchPoints || 1
+  const isIOS = /\b(iPad|iPhone|iPod)(?=;)/.test(ua)
+    || (platform === 'MacIntel' && maxTouch > 1)
+  const isAndroid = /Android/.test(ua)
+  return isIOS || isAndroid
+})()
+const MAX_CANVAS_PIXELS = IS_IOS_OR_ANDROID ? 5_242_880 : 16_777_216
+
+/**
+ * Returns the largest render scale that will keep a page's pixel buffer
+ * under MAX_CANVAS_PIXELS. Callers should clamp their requested scale with
+ * this value so downstream coordinate math (stored in pageRenderScaleRef,
+ * used by hit-testing and drawing) agrees with what was actually rendered.
+ */
+export function getMaxRenderScale(naturalWidth: number, naturalHeight: number): number {
+  const area = naturalWidth * naturalHeight
+  if (area <= 0) return Infinity
+  return Math.sqrt(MAX_CANVAS_PIXELS / area)
+}
+
+/**
  * Matches pdf.js's RenderingCancelledException shape so the shared
  * isRenderingCancelled() check catches both.
  */
@@ -255,7 +295,18 @@ export async function renderPageToCanvas(
   // transform matrix to handle HiDPI. This keeps viewport dimensions in
   // CSS-pixel space and multiplies the pixel buffer by outputScale.
   const outputScale = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1
-  const viewport = page.getViewport({ scale: scale / outputScale, rotation })
+
+  // Clamp the render scale so the resulting canvas fits within
+  // MAX_CANVAS_PIXELS. Compute the base (scale=1) dimensions first, then
+  // cap the requested scale if the pixel area would exceed the limit.
+  // This is exactly the algorithm pdf.js's own viewer uses — see
+  // `pdf_viewer.mjs` around the `maxCanvasPixels` branch.
+  const baseViewport = page.getViewport({ scale: 1, rotation })
+  const basePixels = baseViewport.width * baseViewport.height
+  const maxAllowedScale = Math.sqrt(MAX_CANVAS_PIXELS / basePixels)
+  const effectiveScale = Math.min(scale, maxAllowedScale)
+
+  const viewport = page.getViewport({ scale: effectiveScale / outputScale, rotation })
 
   const targetWidth = Math.floor(viewport.width * outputScale)
   const targetHeight = Math.floor(viewport.height * outputScale)

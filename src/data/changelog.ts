@@ -12,6 +12,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.0.9',
+    date: 'PLACEHOLDER',
+    type: 'fix',
+    stats: { fixes: 1 },
+    notes: `### PDF Annotate
+- Large documents no longer disappear at high zoom on iPad`,
+  },
+  {
     version: '4.0.8',
     date: '2026-04-09T14:36:09Z',
     type: 'fix',
