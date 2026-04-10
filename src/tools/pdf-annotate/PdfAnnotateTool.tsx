@@ -2297,81 +2297,70 @@ export default function PdfAnnotateTool() {
     const el = scrollRef.current
     if (!el) return
 
-    const preventGesture = (ev: Event): void => { ev.preventDefault() }
-    document.addEventListener('gesturestart', preventGesture, { passive: false } as EventListenerOptions)
-    document.addEventListener('gesturechange', preventGesture, { passive: false } as EventListenerOptions)
-    document.addEventListener('gestureend', preventGesture, { passive: false } as EventListenerOptions)
+    // ── Safari GestureEvent-based pinch ──────────────────
+    // Safari (iOS + macOS) fires proprietary GestureEvent with a
+    // precomputed `scale` property. This is FAR more reliable than
+    // touch events on iOS Safari, which has numerous quirks around
+    // passive listeners, touch-action, and touchstart preventDefault.
+    // For non-Safari browsers, we fall back to touch events below.
+    //
+    // The pattern: prevent default on gesturestart/change/end (stops
+    // native page zoom) and read `ev.scale` for our custom zoom.
+    interface SafariGestureEvent extends Event {
+      scale: number
+      clientX: number
+      clientY: number
+    }
+    const isSafariGesture = 'GestureEvent' in window
 
-    const onTouchStart = (ev: TouchEvent): void => {
-      if (ev.touches.length === 2) {
-        // Do NOT preventDefault here — iOS Safari may cancel the entire
-        // touch sequence if touchstart is prevented, killing subsequent
-        // touchmove events. The touchmove handler prevents default
-        // instead (which is what pdf.js and Leaflet do).
-        const t0 = ev.touches[0], t1 = ev.touches[1]
-        const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
-        const midX = (t0.clientX + t1.clientX) / 2
-        const midY = (t0.clientY + t1.clientY) / 2
+    let gestureStartZoom = 1
+    let gestureOrigin = { x: 0, y: 0 }
+    let gestureStartScroll = { left: 0, top: 0 }
+    let gestureContainerRect = { left: 0, top: 0 }
 
-        pinchActiveRef.current = true
-        pinchZoomUnlockedRef.current = false
-        pinchStartZoomRef.current = zoomRef.current
-        pinchLocalZoomRef.current = zoomRef.current
-        pinchStartDistRef.current = dist
-        pinchMidClientRef.current = { x: midX, y: midY }
-        pinchStartMidClientRef.current = { x: midX, y: midY }
-        pinchStartScrollRef.current = { left: el.scrollLeft, top: el.scrollTop }
+    const onGestureStart = (ev: Event): void => {
+      ev.preventDefault()
+      const ge = ev as SafariGestureEvent
+      pinchActiveRef.current = true
+      gestureStartZoom = zoomRef.current
+      pinchStartZoomRef.current = gestureStartZoom
+      gestureStartScroll = { left: el.scrollLeft, top: el.scrollTop }
+      pinchStartScrollRef.current = gestureStartScroll
 
-        // Compute pinch origin in content-space (relative to
-        // gestureTransformRef). This is where transformOrigin is set —
-        // the browser handles the anchor math automatically.
-        const rect = el.getBoundingClientRect()
-        pinchContainerRectRef.current = { left: rect.left, top: rect.top }
-        const padded = paddedWrapperRef.current
-        const cs = padded ? getComputedStyle(padded) : null
-        const padL = cs ? (parseFloat(cs.paddingLeft) || 24) : 24
-        const padT = cs ? (parseFloat(cs.paddingTop) || 24) : 24
-        pinchOriginRef.current = {
-          x: el.scrollLeft + (midX - rect.left) - padL,
-          y: el.scrollTop + (midY - rect.top) - padT,
-        }
+      const rect = el.getBoundingClientRect()
+      gestureContainerRect = { left: rect.left, top: rect.top }
+      pinchContainerRectRef.current = gestureContainerRect
 
-        // Cancel any in-progress drawing from the first finger
-        if (isDrawingRef.current) {
-          isDrawingRef.current = false
-          currentPtsRef.current = []
-          currentPressureRef.current = []
-        }
+      // Compute origin in content-space for transformOrigin
+      const padded = paddedWrapperRef.current
+      const cs = padded ? getComputedStyle(padded) : null
+      const padL = cs ? (parseFloat(cs.paddingLeft) || 24) : 24
+      const padT = cs ? (parseFloat(cs.paddingTop) || 24) : 24
+      gestureOrigin = {
+        x: el.scrollLeft + (ge.clientX - rect.left) - padL,
+        y: el.scrollTop + (ge.clientY - rect.top) - padT,
+      }
+      pinchOriginRef.current = gestureOrigin
+      pinchMidClientRef.current = { x: ge.clientX, y: ge.clientY }
+      pinchStartMidClientRef.current = { x: ge.clientX, y: ge.clientY }
+
+      // Cancel drawing
+      if (isDrawingRef.current) {
+        isDrawingRef.current = false
+        currentPtsRef.current = []
+        currentPressureRef.current = []
       }
     }
 
-    const onTouchMove = (ev: TouchEvent): void => {
-      // Prevent ALL multi-touch native gestures (scroll, zoom) — even
-      // before pinchActiveRef is set. This catches the window between
-      // the first finger's touchstart and the second finger's touchstart
-      // where the browser might start a native gesture.
-      if (ev.touches.length >= 2) ev.preventDefault()
-      if (!pinchActiveRef.current || ev.touches.length < 2) return
-
-      const t0 = ev.touches[0], t1 = ev.touches[1]
-      const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
-      const midX = (t0.clientX + t1.clientX) / 2
-      const midY = (t0.clientY + t1.clientY) / 2
-
-      // Ratcheted deadzone
-      const PINCH_ZOOM_DEADZONE = 0.03
-      const ratio = dist / pinchStartDistRef.current
-      if (!pinchZoomUnlockedRef.current && Math.abs(ratio - 1) > PINCH_ZOOM_DEADZONE) {
-        pinchZoomUnlockedRef.current = true
-      }
-      const effectiveRatio = pinchZoomUnlockedRef.current ? ratio : 1
-      const targetZoom = Math.min(4.0, Math.max(0.25, pinchStartZoomRef.current * effectiveRatio))
-
+    const onGestureChange = (ev: Event): void => {
+      ev.preventDefault()
+      const ge = ev as SafariGestureEvent
+      const targetZoom = Math.min(4.0, Math.max(0.25, gestureStartZoom * ge.scale))
       pinchLocalZoomRef.current = targetZoom
-      pinchMidClientRef.current = { x: midX, y: midY }
-      pinchPendingRef.current = { zoom: targetZoom, midX, midY }
+      pinchMidClientRef.current = { x: ge.clientX, y: ge.clientY }
 
-      // rAF coalescing — one CSS transform + scroll write per frame
+      // rAF-coalesced CSS transform + scroll write
+      pinchPendingRef.current = { zoom: targetZoom, midX: ge.clientX, midY: ge.clientY }
       if (pinchRafIdRef.current === null) {
         pinchRafIdRef.current = requestAnimationFrame(() => {
           pinchRafIdRef.current = null
@@ -2382,15 +2371,77 @@ export default function PdfAnnotateTool() {
           const gestureEl = gestureTransformRef.current
           if (!gestureEl) return
 
-          // CSS transform with transformOrigin at the pinch midpoint —
-          // the browser handles the visual anchoring automatically.
-          const scale = pending.zoom / pinchStartZoomRef.current
-          const ox = pinchOriginRef.current.x
-          const oy = pinchOriginRef.current.y
-          gestureEl.style.transformOrigin = `${ox}px ${oy}px`
+          const scale = pending.zoom / gestureStartZoom
+          gestureEl.style.transformOrigin = `${gestureOrigin.x}px ${gestureOrigin.y}px`
           gestureEl.style.transform = `scale(${scale})`
 
-          // 2-finger pan: shift scroll by the midpoint delta
+          // Pan: shift scroll by midpoint delta
+          const panDx = pending.midX - pinchStartMidClientRef.current.x
+          const panDy = pending.midY - pinchStartMidClientRef.current.y
+          el.scrollLeft = gestureStartScroll.left - panDx
+          el.scrollTop = gestureStartScroll.top - panDy
+        })
+      }
+    }
+
+    const onGestureEnd = (ev: Event): void => {
+      ev.preventDefault()
+      pinchActiveRef.current = false
+      if (pinchRafIdRef.current !== null) {
+        cancelAnimationFrame(pinchRafIdRef.current)
+        pinchRafIdRef.current = null
+      }
+      pinchPendingRef.current = null
+
+      const gestureEl = gestureTransformRef.current
+      if (gestureEl) {
+        gestureEl.style.transform = ''
+        gestureEl.style.transformOrigin = '0 0'
+      }
+
+      const finalZoom = Math.round(Math.min(4.0, Math.max(0.25, pinchLocalZoomRef.current)) * 100) / 100
+      if (finalZoom !== zoomRef.current) {
+        const ratio = finalZoom / gestureStartZoom
+        const mid = pinchMidClientRef.current
+        pinchCommitRef.current = {
+          ratio,
+          originX: mid.x - gestureContainerRect.left,
+          originY: mid.y - gestureContainerRect.top,
+          scrollLeft: el.scrollLeft,
+          scrollTop: el.scrollTop,
+        }
+        setZoom(finalZoom)
+      }
+    }
+
+    // ── Touch-event fallback (non-Safari browsers) ──────
+    const onTouchMove = (ev: TouchEvent): void => {
+      // Suppress native gestures for multi-touch on non-Safari
+      if (ev.touches.length >= 2) ev.preventDefault()
+      if (!pinchActiveRef.current || ev.touches.length < 2) return
+
+      const t0 = ev.touches[0], t1 = ev.touches[1]
+      const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
+      const midX = (t0.clientX + t1.clientX) / 2
+      const midY = (t0.clientY + t1.clientY) / 2
+      const ratio = dist / pinchStartDistRef.current
+      const targetZoom = Math.min(4.0, Math.max(0.25, pinchStartZoomRef.current * ratio))
+
+      pinchLocalZoomRef.current = targetZoom
+      pinchMidClientRef.current = { x: midX, y: midY }
+      pinchPendingRef.current = { zoom: targetZoom, midX, midY }
+
+      if (pinchRafIdRef.current === null) {
+        pinchRafIdRef.current = requestAnimationFrame(() => {
+          pinchRafIdRef.current = null
+          const pending = pinchPendingRef.current
+          if (!pending) return
+          pinchPendingRef.current = null
+          const gestureEl = gestureTransformRef.current
+          if (!gestureEl) return
+          const scale = pending.zoom / pinchStartZoomRef.current
+          gestureEl.style.transformOrigin = `${pinchOriginRef.current.x}px ${pinchOriginRef.current.y}px`
+          gestureEl.style.transform = `scale(${scale})`
           const panDx = pending.midX - pinchStartMidClientRef.current.x
           const panDy = pending.midY - pinchStartMidClientRef.current.y
           el.scrollLeft = pinchStartScrollRef.current.left - panDx
@@ -2399,41 +2450,61 @@ export default function PdfAnnotateTool() {
       }
     }
 
-    const onTouchEnd = (ev: TouchEvent): void => {
-      if (!pinchActiveRef.current) return
-      if (ev.touches.length >= 2) return // still have 2+ fingers
+    const onTouchStart = (ev: TouchEvent): void => {
+      if (isSafariGesture) return // Safari uses GestureEvent instead
+      if (ev.touches.length === 2) {
+        const t0 = ev.touches[0], t1 = ev.touches[1]
+        const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
+        const midX = (t0.clientX + t1.clientX) / 2
+        const midY = (t0.clientY + t1.clientY) / 2
+        pinchActiveRef.current = true
+        pinchStartZoomRef.current = zoomRef.current
+        pinchLocalZoomRef.current = zoomRef.current
+        pinchStartDistRef.current = dist
+        pinchMidClientRef.current = { x: midX, y: midY }
+        pinchStartMidClientRef.current = { x: midX, y: midY }
+        pinchStartScrollRef.current = { left: el.scrollLeft, top: el.scrollTop }
+        const rect = el.getBoundingClientRect()
+        pinchContainerRectRef.current = { left: rect.left, top: rect.top }
+        const padded = paddedWrapperRef.current
+        const cs = padded ? getComputedStyle(padded) : null
+        const padL = cs ? (parseFloat(cs.paddingLeft) || 24) : 24
+        const padT = cs ? (parseFloat(cs.paddingTop) || 24) : 24
+        pinchOriginRef.current = {
+          x: el.scrollLeft + (midX - rect.left) - padL,
+          y: el.scrollTop + (midY - rect.top) - padT,
+        }
+        if (isDrawingRef.current) {
+          isDrawingRef.current = false
+          currentPtsRef.current = []
+          currentPressureRef.current = []
+        }
+      }
+    }
 
+    const onTouchEnd = (ev: TouchEvent): void => {
+      if (isSafariGesture) return // Safari uses GestureEvent instead
+      if (!pinchActiveRef.current || ev.touches.length >= 2) return
       pinchActiveRef.current = false
       if (pinchRafIdRef.current !== null) {
         cancelAnimationFrame(pinchRafIdRef.current)
         pinchRafIdRef.current = null
       }
       pinchPendingRef.current = null
-
-      // Clear the CSS transform preview
       const gestureEl = gestureTransformRef.current
       if (gestureEl) {
         gestureEl.style.transform = ''
         gestureEl.style.transformOrigin = '0 0'
       }
-
-      // Commit zoom
-      const finalZoom = pinchZoomUnlockedRef.current
-        ? Math.round(pinchLocalZoomRef.current * 100) / 100
-        : pinchStartZoomRef.current
-      pinchZoomUnlockedRef.current = false
-
+      const finalZoom = Math.round(pinchLocalZoomRef.current * 100) / 100
       if (finalZoom !== zoomRef.current) {
-        // Anchor scroll formula: (scrollPos + viewportOrigin) * ratio - viewportOrigin
         const ratio = finalZoom / pinchStartZoomRef.current
         const mid = pinchMidClientRef.current
         const rect = pinchContainerRectRef.current
-        const originX = mid.x - rect.left
-        const originY = mid.y - rect.top
         pinchCommitRef.current = {
           ratio,
-          originX,
-          originY,
+          originX: mid.x - rect.left,
+          originY: mid.y - rect.top,
           scrollLeft: el.scrollLeft,
           scrollTop: el.scrollTop,
         }
@@ -2441,15 +2512,24 @@ export default function PdfAnnotateTool() {
       }
     }
 
+    // Attach gesture events on the scroll container (Safari)
+    if (isSafariGesture) {
+      el.addEventListener('gesturestart', onGestureStart, { passive: false } as EventListenerOptions)
+      el.addEventListener('gesturechange', onGestureChange, { passive: false } as EventListenerOptions)
+      el.addEventListener('gestureend', onGestureEnd, { passive: false } as EventListenerOptions)
+    }
+    // Always attach touch events (fallback for non-Safari + multi-touch prevention)
     el.addEventListener('touchstart', onTouchStart, { passive: false })
     el.addEventListener('touchmove', onTouchMove, { passive: false })
     el.addEventListener('touchend', onTouchEnd)
     el.addEventListener('touchcancel', onTouchEnd)
+    // Prevent native gesture zoom on the document (belt-and-suspenders)
+    document.addEventListener('gesturestart', (e: Event) => e.preventDefault(), { passive: false } as EventListenerOptions)
 
     return () => {
-      document.removeEventListener('gesturestart', preventGesture)
-      document.removeEventListener('gesturechange', preventGesture)
-      document.removeEventListener('gestureend', preventGesture)
+      el.removeEventListener('gesturestart', onGestureStart)
+      el.removeEventListener('gesturechange', onGestureChange)
+      el.removeEventListener('gestureend', onGestureEnd)
       el.removeEventListener('touchstart', onTouchStart)
       el.removeEventListener('touchmove', onTouchMove)
       el.removeEventListener('touchend', onTouchEnd)
