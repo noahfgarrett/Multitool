@@ -6,7 +6,7 @@
  * uses a simple network-first strategy without body comparison —
  * the old approach read 2 x 9 MB strings and could OOM on iPad.
  */
-const CACHE_NAME = 'multitool-v4.0.26';
+const CACHE_NAME = 'multitool-v4.0.27';
 const APP_URLS = [
   '/Multitool/',
   '/Multitool/index.html',
