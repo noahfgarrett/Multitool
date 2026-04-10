@@ -20,10 +20,9 @@ export const CHANGELOG: ChangelogEntry[] = [
 - Smooth pinch-to-zoom on large construction drawings
 - Full clarity at any zoom level via tiled rendering
 - No more white flash when zooming
-- Two-finger pan and zoom stay locked to your fingers
+- Pinch zoom and pan stay locked to your fingers
 - Freehand pencil strokes stay freehand
-- Tool dropdowns work on tablet in all modes
-- Improved touch gesture handling`,
+- Tool dropdowns work on tablet in all modes`,
   },
   {
     version: '4.0.8',
