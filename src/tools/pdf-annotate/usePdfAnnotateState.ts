@@ -481,6 +481,12 @@ export function usePdfAnnotateState() {
   // the point of the CSS-transform-only gesture path.
   const pinchStartNaturalSizeRef = useRef({ width: 0, height: 0 })
   const pinchStartClientSizeRef = useRef({ width: 0, height: 0 })
+  // Last midpoint (viewport coords) that the rAF callback actually
+  // applied as a CSS transform. Move events fire many times per frame
+  // but the rAF only runs once — on finger-lift we must compute the
+  // commit scroll from the APPLIED midpoint, not the latest move
+  // event's midpoint, otherwise the content jumps by the rAF lag.
+  const pinchLastAppliedMidRef = useRef<{ x: number; y: number } | null>(null)
 
   // Active canvas drawing pipeline (iPad perf overhaul)
   const pointBufferRef = useRef<{ x: number; y: number; pressure: number }[]>([])
@@ -671,6 +677,7 @@ export function usePdfAnnotateState() {
     pinchRafIdRef, pinchPendingRef, pinchZoomUnlockedRef,
     pinchStartMidViewportRef, pinchStartPaddingRef,
     pinchStartNaturalSizeRef, pinchStartClientSizeRef,
+    pinchLastAppliedMidRef,
     // Active canvas pipeline
     pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     // Memos

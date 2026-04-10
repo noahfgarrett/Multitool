@@ -12,6 +12,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.0.14',
+    date: 'PLACEHOLDER',
+    type: 'fix',
+    stats: { fixes: 3 },
+    notes: `### PDF Annotate
+- Two-finger pan no longer jumps on release
+- Freehand pencil strokes stay freehand
+- Tool dropdowns work on tablet outside focus mode`,
+  },
+  {
     version: '4.0.13',
     date: '2026-04-09T20:47:00Z',
     type: 'fix',

@@ -67,7 +67,6 @@ import { generateMarkupReport, generateMarkupCSV } from './markupReport.ts'
 import MarkupsList from './MarkupsList.tsx'
 import { CompareMode } from './CompareMode.tsx'
 import { StampLibrary } from './StampLibrary.tsx'
-import { recognizeShape } from './shapeRecognizer.ts'
 // getUserProfile and UserProfile are used in usePdfAnnotateState
 import FloatingToolbar from './FloatingToolbar.tsx'
 import {
@@ -389,6 +388,7 @@ export default function PdfAnnotateTool() {
     pinchRafIdRef, pinchPendingRef, pinchZoomUnlockedRef,
     pinchStartMidViewportRef, pinchStartPaddingRef,
     pinchStartNaturalSizeRef, pinchStartClientSizeRef,
+    pinchLastAppliedMidRef,
     pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     annPageMap, totalAnnotationCount,
   } = S
@@ -3324,6 +3324,11 @@ export default function PdfAnnotateTool() {
             const ty = tyUnclamped + deltaY
 
             wrapper.style.transform = `translate(${tx}px, ${ty}px) scale(${r})`
+            // Track the midpoint that was actually applied visually so
+            // handlePointerUp can compute commit scroll from the SAME
+            // midpoint the user last saw — not a newer move event's
+            // midpoint that the rAF hasn't rendered yet.
+            pinchLastAppliedMidRef.current = { x: pending.midX, y: pending.midY }
           })
         }
         return
@@ -3771,11 +3776,17 @@ export default function PdfAnnotateTool() {
       // reconcile + debounced page re-render happens exactly once at the
       // end of the gesture, not on every frame during it.
       if (activeTouchIdsRef.current.size < 2) {
-        // Capture the last mid-point BEFORE clearing it so the release
-        // re-anchor math has something to read.
-        const lastMidBeforeClear = prevPinchMidRef.current
+        // Use the midpoint from the LAST APPLIED rAF transform — not
+        // the latest move event's midpoint. Move events fire many times
+        // per frame; the rAF only runs once. Using the latest move
+        // midpoint would compute a commit scroll that doesn't match the
+        // visual preview the user last saw, causing a visible jump.
+        // Falls back to prevPinchMidRef if the rAF never ran (ultra-
+        // short gesture where no frame was painted).
+        const lastMidBeforeClear = pinchLastAppliedMidRef.current ?? prevPinchMidRef.current
         prevPinchDistRef.current = null
         prevPinchMidRef.current = null
+        pinchLastAppliedMidRef.current = null
         if (pinchActiveRef.current) {
           pinchActiveRef.current = false
           if (pinchRafIdRef.current !== null) {
@@ -4162,35 +4173,6 @@ export default function PdfAnnotateTool() {
     currentPtsRef.current = []
     currentPressureRef.current = []
     commitAnnotation(ann)
-
-    // Ink-to-shape recognition for pencil strokes
-    if (activeTool === 'pencil' && finalPts.length >= 10 && finalPts.length <= 80) {
-      const recognized = recognizeShape(finalPts)
-      if (recognized && recognized.score >= 0.75) {
-        const { name, bounds } = recognized
-        // Replace the freehand annotation with a clean shape
-        const shapeAnn: Annotation = {
-          ...ann,
-          id: genId(),
-          type: name === 'circle' ? 'circle' : name === 'line' ? 'line' : name === 'arrow' ? 'arrow' : 'rectangle',
-          points: name === 'circle'
-            ? [{ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }, { x: bounds.x + bounds.width, y: bounds.y + bounds.height }]
-            : [{ x: bounds.x, y: bounds.y }, { x: bounds.x + bounds.width, y: bounds.y + bounds.height }],
-          smooth: undefined,
-          pressure: undefined,
-        }
-        // Remove the freehand and add the clean shape
-        const pageAnns = annotations[ap] || []
-        const withoutFreehand = pageAnns.filter(a => a.id !== ann.id)
-        const next = { ...annotations, [ap]: [...withoutFreehand, shapeAnn] }
-        setAnnotations(next)
-        pushHistory(next)
-        setSelectedAnnId(shapeAnn.id)
-        addToast({ type: 'info', message: `Converted to ${name}` })
-        redrawPage(ap)
-        return
-      }
-    }
 
     // Auto-select shapes/arrows/lines after drawing; skip pencil & highlighter
     if (activeTool !== 'pencil' && activeTool !== 'highlighter') {
@@ -5314,8 +5296,8 @@ export default function PdfAnnotateTool() {
         </div>
 
         {/* ── Right Tool Panel ── */}
-        {(focusMode && isTouchDevice) || isMobile ? (
-          /* ── DRAWER MODE (tablet focus + all mobile) ── */
+        {isTouchDevice || isMobile ? (
+          /* ── DRAWER MODE (tablet + all mobile) ── */
           <>
             {/* Handle tab at right edge */}
             {!drawerOpen && (
