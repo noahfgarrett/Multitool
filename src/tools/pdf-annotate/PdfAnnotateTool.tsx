@@ -2423,8 +2423,8 @@ export default function PdfAnnotateTool() {
     // ── Touch-event fallback (non-Safari browsers) ──────
     const onTouchMove = (ev: TouchEvent): void => {
       if (ev.touches.length >= 2) {
-        debugLog(`touchMove touches=${ev.touches.length} active=${pinchActiveRef.current}`)
         ev.preventDefault()
+        debugLog(`touchMove t=${ev.touches.length} active=${pinchActiveRef.current} z=${pinchLocalZoomRef.current.toFixed(2)}`)
       }
       if (!pinchActiveRef.current || ev.touches.length < 2) return
 
@@ -2459,8 +2459,7 @@ export default function PdfAnnotateTool() {
     }
 
     const onTouchStart = (ev: TouchEvent): void => {
-      debugLog(`touchStart touches=${ev.touches.length} safari=${isSafariGesture}`)
-      if (isSafariGesture) return // Safari uses GestureEvent instead
+      debugLog(`touchStart touches=${ev.touches.length}`)
       if (ev.touches.length === 2) {
         const t0 = ev.touches[0], t1 = ev.touches[1]
         const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
@@ -2492,7 +2491,6 @@ export default function PdfAnnotateTool() {
     }
 
     const onTouchEnd = (ev: TouchEvent): void => {
-      if (isSafariGesture) return // Safari uses GestureEvent instead
       if (!pinchActiveRef.current || ev.touches.length >= 2) return
       pinchActiveRef.current = false
       if (pinchRafIdRef.current !== null) {
