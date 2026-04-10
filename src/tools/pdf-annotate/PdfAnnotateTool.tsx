@@ -1740,6 +1740,15 @@ export default function PdfAnnotateTool() {
     if (!commit) return
     pinchCommitRef.current = null
 
+    // Clear the gesture transform FIRST — React has already committed
+    // the new zoom layout. Clearing here (before paint) means the user
+    // never sees the intermediate double-scaled state.
+    const gestureEl = gestureTransformRef.current
+    if (gestureEl) {
+      gestureEl.style.transform = ''
+      gestureEl.style.transformOrigin = '0 0'
+    }
+
     const el = scrollRef.current
     if (!el) return
 
@@ -2294,16 +2303,6 @@ export default function PdfAnnotateTool() {
   // native scroll during a pinch on iOS Safari, which ignores
   // touch-action: none. Gesture prevention is on the document level
   // because Safari's GestureEvent can bypass element-level handlers.
-  // ── DEBUG: visible touch/gesture diagnostic ──────────
-  // Shows which events actually fire on the iPad. Remove after debugging.
-  const debugRef = useRef<HTMLDivElement>(null)
-  const debugLog = useCallback((msg: string) => {
-    if (debugRef.current) {
-      debugRef.current.textContent = msg
-      debugRef.current.style.display = 'block'
-    }
-  }, [])
-
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
@@ -2314,7 +2313,6 @@ export default function PdfAnnotateTool() {
       clientY: number
     }
     const isSafariGesture = 'GestureEvent' in window
-    debugLog(`init: el=${!!el} safari=${isSafariGesture} UA=${navigator.userAgent.slice(0, 60)}`)
 
     let gestureStartZoom = 1
     let gestureOrigin = { x: 0, y: 0 }
@@ -2324,7 +2322,7 @@ export default function PdfAnnotateTool() {
     const onGestureStart = (ev: Event): void => {
       ev.preventDefault()
       const ge = ev as SafariGestureEvent
-      debugLog(`gestureStart scale=${ge.scale?.toFixed(2)} x=${ge.clientX?.toFixed(0)}`)
+
       pinchActiveRef.current = true
       gestureStartZoom = zoomRef.current
       pinchStartZoomRef.current = gestureStartZoom
@@ -2359,7 +2357,7 @@ export default function PdfAnnotateTool() {
     const onGestureChange = (ev: Event): void => {
       ev.preventDefault()
       const ge = ev as SafariGestureEvent
-      debugLog(`gestureChange scale=${ge.scale?.toFixed(2)} zoom=${pinchLocalZoomRef.current.toFixed(2)}`)
+
       const targetZoom = Math.min(4.0, Math.max(0.25, gestureStartZoom * ge.scale))
       pinchLocalZoomRef.current = targetZoom
       pinchMidClientRef.current = { x: ge.clientX, y: ge.clientY }
@@ -2391,7 +2389,7 @@ export default function PdfAnnotateTool() {
 
     const onGestureEnd = (ev: Event): void => {
       ev.preventDefault()
-      debugLog(`gestureEnd final=${pinchLocalZoomRef.current.toFixed(2)}`)
+
       pinchActiveRef.current = false
       if (pinchRafIdRef.current !== null) {
         cancelAnimationFrame(pinchRafIdRef.current)
@@ -2424,7 +2422,7 @@ export default function PdfAnnotateTool() {
     const onTouchMove = (ev: TouchEvent): void => {
       if (ev.touches.length >= 2) {
         ev.preventDefault()
-        debugLog(`touchMove t=${ev.touches.length} active=${pinchActiveRef.current} z=${pinchLocalZoomRef.current.toFixed(2)}`)
+
       }
       if (!pinchActiveRef.current || ev.touches.length < 2) return
 
@@ -2459,7 +2457,25 @@ export default function PdfAnnotateTool() {
     }
 
     const onTouchStart = (ev: TouchEvent): void => {
-      debugLog(`touchStart touches=${ev.touches.length}`)
+      // Safety reset: if pinchActive is stuck from a missed touchend
+      // (e.g. memory pressure killed the previous gesture), clean up
+      // before starting a new one. This prevents the "stops zooming
+      // on large documents" bug.
+      if (ev.touches.length === 2 && pinchActiveRef.current) {
+        // Reset leftover state from previous gesture
+        if (pinchRafIdRef.current !== null) {
+          cancelAnimationFrame(pinchRafIdRef.current)
+          pinchRafIdRef.current = null
+        }
+        pinchPendingRef.current = null
+        const gestureEl = gestureTransformRef.current
+        if (gestureEl) {
+          gestureEl.style.transform = ''
+          gestureEl.style.transformOrigin = '0 0'
+        }
+        pinchActiveRef.current = false
+      }
+
       if (ev.touches.length === 2) {
         const t0 = ev.touches[0], t1 = ev.touches[1]
         const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
@@ -2498,11 +2514,11 @@ export default function PdfAnnotateTool() {
         pinchRafIdRef.current = null
       }
       pinchPendingRef.current = null
-      const gestureEl = gestureTransformRef.current
-      if (gestureEl) {
-        gestureEl.style.transform = ''
-        gestureEl.style.transformOrigin = '0 0'
-      }
+
+      // Do NOT clear the CSS transform here — that would show one
+      // frame at the old zoom before React commits the new layout.
+      // Instead, the useLayoutEffect clears it after React commits
+      // but before the browser paints. Zero visual intermediate state.
       const finalZoom = Math.round(pinchLocalZoomRef.current * 100) / 100
       if (finalZoom !== zoomRef.current) {
         const ratio = finalZoom / pinchStartZoomRef.current
@@ -2516,6 +2532,14 @@ export default function PdfAnnotateTool() {
           scrollTop: el.scrollTop,
         }
         setZoom(finalZoom)
+      } else {
+        // Zoom didn't change (pure pan) — clear transform immediately
+        // since there's no React re-render to trigger useLayoutEffect.
+        const gestureEl = gestureTransformRef.current
+        if (gestureEl) {
+          gestureEl.style.transform = ''
+          gestureEl.style.transformOrigin = '0 0'
+        }
       }
     }
 
@@ -2533,7 +2557,6 @@ export default function PdfAnnotateTool() {
     // Prevent native gesture zoom on the document (belt-and-suspenders)
     document.addEventListener('gesturestart', (e: Event) => e.preventDefault(), { passive: false } as EventListenerOptions)
 
-    debugLog(`listeners attached to scrollRef`)
 
     return () => {
       el.removeEventListener('gesturestart', onGestureStart)
@@ -5232,17 +5255,6 @@ export default function PdfAnnotateTool() {
               <Minimize2 size={14} />
             </button>
           )}
-
-          {/* DEBUG: visible diagnostic overlay — remove after fixing pinch */}
-          <div
-            ref={debugRef}
-            style={{
-              position: 'absolute', top: 0, left: 0, right: 0, zIndex: 9999,
-              background: 'rgba(0,0,0,0.85)', color: '#0f0', padding: '4px 8px',
-              fontSize: 11, fontFamily: 'monospace', whiteSpace: 'nowrap',
-              pointerEvents: 'none', display: 'none',
-            }}
-          />
 
           {/* Drag-to-delete trash zone — appears when dragging an annotation.
               Fixed to the bottom-right of the scroll container so it's always
