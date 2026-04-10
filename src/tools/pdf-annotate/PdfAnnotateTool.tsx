@@ -2304,10 +2304,10 @@ export default function PdfAnnotateTool() {
 
     const onTouchStart = (ev: TouchEvent): void => {
       if (ev.touches.length === 2) {
-        // Prevent the browser from initiating a native pinch-zoom gesture.
-        // iOS Safari ignores touch-action: none AND user-scalable=no,
-        // so preventDefault on touchstart is the nuclear option.
-        ev.preventDefault()
+        // Do NOT preventDefault here — iOS Safari may cancel the entire
+        // touch sequence if touchstart is prevented, killing subsequent
+        // touchmove events. The touchmove handler prevents default
+        // instead (which is what pdf.js and Leaflet do).
         const t0 = ev.touches[0], t1 = ev.touches[1]
         const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
         const midX = (t0.clientX + t1.clientX) / 2
