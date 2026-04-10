@@ -2533,6 +2533,8 @@ export default function PdfAnnotateTool() {
     // Prevent native gesture zoom on the document (belt-and-suspenders)
     document.addEventListener('gesturestart', (e: Event) => e.preventDefault(), { passive: false } as EventListenerOptions)
 
+    debugLog(`listeners attached to scrollRef`)
+
     return () => {
       el.removeEventListener('gesturestart', onGestureStart)
       el.removeEventListener('gesturechange', onGestureChange)
@@ -2542,8 +2544,11 @@ export default function PdfAnnotateTool() {
       el.removeEventListener('touchend', onTouchEnd)
       el.removeEventListener('touchcancel', onTouchEnd)
     }
+  // Re-run when pdfFile changes — the scroll container doesn't exist
+  // until a PDF is loaded (the component returns early with a file
+  // upload screen when pdfFile is null).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [pdfFile])
 
   // ── Mobile edge-swipe + 3-finger gestures ───────────
   // Runs only when the mobile layout is active. Native touch listeners on
