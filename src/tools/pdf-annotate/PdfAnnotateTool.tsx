@@ -327,6 +327,7 @@ export default function PdfAnnotateTool() {
     editingTextIdRef, textOverlayTick, setTextOverlayTick,
     escapeCommittedRef, preHighlightRef, dblClickRef,
     textDragRef, generalDragRef,
+    isDraggingAnn, setIsDraggingAnn, isOverTrash, setIsOverTrash, trashZoneRef,
     calloutArrowDragRef, selectedArrowIdx, setSelectedArrowIdx,
     cloudPreviewRef, cloudLastClickRef,
     measurements, setMeasurements,
@@ -3548,6 +3549,15 @@ export default function PdfAnnotateTool() {
         ),
       }))
       redrawPage(ap)
+      // Drag-to-delete: track whether pointer is over trash zone
+      if (!isDraggingAnn) setIsDraggingAnn(true)
+      const tz = trashZoneRef.current
+      if (tz) {
+        const tzRect = tz.getBoundingClientRect()
+        const over = e.clientX >= tzRect.left && e.clientX <= tzRect.right &&
+                     e.clientY >= tzRect.top && e.clientY <= tzRect.bottom
+        if (over !== isOverTrash) setIsOverTrash(over)
+      }
       return
     }
 
@@ -3558,6 +3568,15 @@ export default function PdfAnnotateTool() {
       const dy = pt.y - drag.startPt.y
       if (drag.mode === 'move') {
         setCanvasCursor('grabbing')
+        // Drag-to-delete tracking for text/callout moves
+        if (!isDraggingAnn) setIsDraggingAnn(true)
+        const tz = trashZoneRef.current
+        if (tz) {
+          const tzRect = tz.getBoundingClientRect()
+          const over = e.clientX >= tzRect.left && e.clientX <= tzRect.right &&
+                       e.clientY >= tzRect.top && e.clientY <= tzRect.bottom
+          if (over !== isOverTrash) setIsOverTrash(over)
+        }
         const movedArrows = drag.origArrows?.map(p => ({ x: p.x + dx, y: p.y + dy }))
         setAnnotations(prev => ({
           ...prev,
@@ -3860,8 +3879,25 @@ export default function PdfAnnotateTool() {
 
     // General drag (select tool: moving shapes)
     if (generalDragRef.current) {
-      pushHistory(structuredClone(annotations))
+      const dragId = generalDragRef.current.annId
+      if (isOverTrash) {
+        // Drag-to-delete: revert position to original, then remove
+        const origPts = generalDragRef.current.origPoints
+        setAnnotations(prev => ({
+          ...prev,
+          [ap]: (prev[ap] || []).map(a =>
+            a.id === dragId ? { ...a, points: origPts } : a
+          ),
+        }))
+        removeAnnotation(dragId)
+        setSelectedAnnId(null)
+        addToast({ type: 'info', message: 'Annotation deleted' })
+      } else {
+        pushHistory(structuredClone(annotations))
+      }
       generalDragRef.current = null
+      setIsDraggingAnn(false)
+      setIsOverTrash(false)
       return
     }
 
@@ -3870,6 +3906,23 @@ export default function PdfAnnotateTool() {
       if (textDragRef.current) {
         const drag = textDragRef.current
         const ann = (annotations[ap] || []).find(a => a.id === drag.annId)
+        // Drag-to-delete for text/callout move
+        if (isOverTrash && drag.mode === 'move') {
+          // Revert to original position then delete
+          setAnnotations(prev => ({
+            ...prev,
+            [ap]: (prev[ap] || []).map(a =>
+              a.id === drag.annId ? { ...a, points: [...drag.origPoints], width: drag.origWidth, height: drag.origHeight } : a
+            ),
+          }))
+          removeAnnotation(drag.annId)
+          setSelectedAnnId(null)
+          addToast({ type: 'info', message: 'Annotation deleted' })
+          textDragRef.current = null
+          setIsDraggingAnn(false)
+          setIsOverTrash(false)
+          return
+        }
         // Detect click (no significant movement) → enter edit mode for text/callout
         if (ann && drag.mode === 'move' && (ann.type === 'text' || ann.type === 'callout')) {
           const moved = Math.hypot(ann.points[0].x - drag.origPoints[0].x, ann.points[0].y - drag.origPoints[0].y)
@@ -3878,11 +3931,15 @@ export default function PdfAnnotateTool() {
             textDragRef.current = null
             setActiveTool(ann.type === 'callout' ? 'callout' : 'text')
             enterEditMode(ann.id)
+            setIsDraggingAnn(false)
+            setIsOverTrash(false)
             return
           }
         }
         pushHistory(structuredClone(annotations))
         textDragRef.current = null
+        setIsDraggingAnn(false)
+        setIsOverTrash(false)
         return
       }
       if (selectTextStartRef.current) {
@@ -5164,6 +5221,26 @@ export default function PdfAnnotateTool() {
               <Minimize2 size={14} />
             </button>
           )}
+
+          {/* Drag-to-delete trash zone — appears when dragging an annotation.
+              Fixed to the bottom-right of the scroll container so it's always
+              reachable regardless of scroll position or zoom level. */}
+          <div
+            ref={trashZoneRef}
+            className={`absolute bottom-4 right-4 z-30 flex items-center justify-center rounded-2xl transition-all duration-200 pointer-events-none ${
+              isDraggingAnn
+                ? isOverTrash
+                  ? 'w-20 h-20 bg-red-500/30 border-2 border-red-400 scale-110'
+                  : 'w-16 h-16 bg-black/30 backdrop-blur-sm border border-white/20'
+                : 'w-0 h-0 opacity-0'
+            }`}
+          >
+            <Trash2
+              size={isDraggingAnn ? (isOverTrash ? 28 : 22) : 0}
+              className={`transition-all duration-200 ${isOverTrash ? 'text-red-300' : 'text-white/50'}`}
+            />
+          </div>
+
           <div ref={paddedWrapperRef} style={{
             display: 'inline-block',
             minWidth: '100%',

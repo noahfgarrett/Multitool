@@ -285,6 +285,14 @@ export function usePdfAnnotateState() {
   const dblClickRef = useRef<{ time: number; pt: Point }>({ time: 0, pt: { x: 0, y: 0 } })
   const textDragRef = useRef<TextDragState | null>(null)
   const generalDragRef = useRef<GeneralDragState | null>(null)
+  // Drag-to-delete trash zone: tracks whether a drag is in progress
+  // and whether the pointer is currently over the trash zone. The
+  // trash zone UI reads isDragging to show/hide, and isOverTrash to
+  // highlight. handlePointerUp checks isOverTrash to delete instead
+  // of committing the move.
+  const [isDraggingAnn, setIsDraggingAnn] = useState(false)
+  const [isOverTrash, setIsOverTrash] = useState(false)
+  const trashZoneRef = useRef<HTMLDivElement>(null)
 
   // Callout arrow drag
   const calloutArrowDragRef = useRef<CalloutArrowDragState | null>(null)
@@ -585,6 +593,7 @@ export function usePdfAnnotateState() {
     editingTextIdRef, textOverlayTick, setTextOverlayTick,
     escapeCommittedRef, preHighlightRef, dblClickRef,
     textDragRef, generalDragRef,
+    isDraggingAnn, setIsDraggingAnn, isOverTrash, setIsOverTrash, trashZoneRef,
     // Callout
     calloutArrowDragRef, selectedArrowIdx, setSelectedArrowIdx,
     // Cloud
