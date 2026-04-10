@@ -2294,25 +2294,27 @@ export default function PdfAnnotateTool() {
   // native scroll during a pinch on iOS Safari, which ignores
   // touch-action: none. Gesture prevention is on the document level
   // because Safari's GestureEvent can bypass element-level handlers.
+  // ── DEBUG: visible touch/gesture diagnostic ──────────
+  // Shows which events actually fire on the iPad. Remove after debugging.
+  const debugRef = useRef<HTMLDivElement>(null)
+  const debugLog = useCallback((msg: string) => {
+    if (debugRef.current) {
+      debugRef.current.textContent = msg
+      debugRef.current.style.display = 'block'
+    }
+  }, [])
+
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
 
-    // ── Safari GestureEvent-based pinch ──────────────────
-    // Safari (iOS + macOS) fires proprietary GestureEvent with a
-    // precomputed `scale` property. This is FAR more reliable than
-    // touch events on iOS Safari, which has numerous quirks around
-    // passive listeners, touch-action, and touchstart preventDefault.
-    // For non-Safari browsers, we fall back to touch events below.
-    //
-    // The pattern: prevent default on gesturestart/change/end (stops
-    // native page zoom) and read `ev.scale` for our custom zoom.
     interface SafariGestureEvent extends Event {
       scale: number
       clientX: number
       clientY: number
     }
     const isSafariGesture = 'GestureEvent' in window
+    debugLog(`init: el=${!!el} safari=${isSafariGesture} UA=${navigator.userAgent.slice(0, 60)}`)
 
     let gestureStartZoom = 1
     let gestureOrigin = { x: 0, y: 0 }
@@ -2322,6 +2324,7 @@ export default function PdfAnnotateTool() {
     const onGestureStart = (ev: Event): void => {
       ev.preventDefault()
       const ge = ev as SafariGestureEvent
+      debugLog(`gestureStart scale=${ge.scale?.toFixed(2)} x=${ge.clientX?.toFixed(0)}`)
       pinchActiveRef.current = true
       gestureStartZoom = zoomRef.current
       pinchStartZoomRef.current = gestureStartZoom
@@ -2356,6 +2359,7 @@ export default function PdfAnnotateTool() {
     const onGestureChange = (ev: Event): void => {
       ev.preventDefault()
       const ge = ev as SafariGestureEvent
+      debugLog(`gestureChange scale=${ge.scale?.toFixed(2)} zoom=${pinchLocalZoomRef.current.toFixed(2)}`)
       const targetZoom = Math.min(4.0, Math.max(0.25, gestureStartZoom * ge.scale))
       pinchLocalZoomRef.current = targetZoom
       pinchMidClientRef.current = { x: ge.clientX, y: ge.clientY }
@@ -2387,6 +2391,7 @@ export default function PdfAnnotateTool() {
 
     const onGestureEnd = (ev: Event): void => {
       ev.preventDefault()
+      debugLog(`gestureEnd final=${pinchLocalZoomRef.current.toFixed(2)}`)
       pinchActiveRef.current = false
       if (pinchRafIdRef.current !== null) {
         cancelAnimationFrame(pinchRafIdRef.current)
@@ -2417,8 +2422,10 @@ export default function PdfAnnotateTool() {
 
     // ── Touch-event fallback (non-Safari browsers) ──────
     const onTouchMove = (ev: TouchEvent): void => {
-      // Suppress native gestures for multi-touch on non-Safari
-      if (ev.touches.length >= 2) ev.preventDefault()
+      if (ev.touches.length >= 2) {
+        debugLog(`touchMove touches=${ev.touches.length} active=${pinchActiveRef.current}`)
+        ev.preventDefault()
+      }
       if (!pinchActiveRef.current || ev.touches.length < 2) return
 
       const t0 = ev.touches[0], t1 = ev.touches[1]
@@ -2452,6 +2459,7 @@ export default function PdfAnnotateTool() {
     }
 
     const onTouchStart = (ev: TouchEvent): void => {
+      debugLog(`touchStart touches=${ev.touches.length} safari=${isSafariGesture}`)
       if (isSafariGesture) return // Safari uses GestureEvent instead
       if (ev.touches.length === 2) {
         const t0 = ev.touches[0], t1 = ev.touches[1]
@@ -5221,6 +5229,17 @@ export default function PdfAnnotateTool() {
               <Minimize2 size={14} />
             </button>
           )}
+
+          {/* DEBUG: visible diagnostic overlay — remove after fixing pinch */}
+          <div
+            ref={debugRef}
+            style={{
+              position: 'absolute', top: 0, left: 0, right: 0, zIndex: 9999,
+              background: 'rgba(0,0,0,0.85)', color: '#0f0', padding: '4px 8px',
+              fontSize: 11, fontFamily: 'monospace', whiteSpace: 'nowrap',
+              pointerEvents: 'none', display: 'none',
+            }}
+          />
 
           {/* Drag-to-delete trash zone — appears when dragging an annotation.
               Fixed to the bottom-right of the scroll container so it's always
