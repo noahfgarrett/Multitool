@@ -369,11 +369,15 @@ export function usePdfAnnotateState() {
   // useLayoutEffect immediately after setZoom commits, so the user
   // never sees an intermediate state.
   const gestureTransformRef = useRef<HTMLDivElement>(null)
-  // Stashed anchor midpoint bridging the pinch release handler and the
-  // post-setZoom useLayoutEffect that finalises scroll + transform.
-  // The commit reads the gesture transform matrix from the DOM at
-  // commit time — it only needs to know WHERE to anchor.
-  const pinchCommitRef = useRef<{ midX: number; midY: number } | null>(null)
+  // Stashed anchor data bridging the pinch touchend handler and the
+  // post-setZoom useLayoutEffect that adjusts scroll.
+  const pinchCommitRef = useRef<{
+    ratio: number
+    originX: number
+    originY: number
+    scrollLeft: number
+    scrollTop: number
+  } | null>(null)
   const zoomRef = useRef(zoom)
   const focusModeRef = useRef(focusMode)
   focusModeRef.current = focusMode
@@ -446,49 +450,27 @@ export function usePdfAnnotateState() {
   // Touch / pinch tracking
   const activeTouchIdsRef = useRef(new Set<number>())
   const touchPositionsRef = useRef(new Map<number, { x: number; y: number }>())
-  const prevPinchDistRef = useRef<number | null>(null)
-  const prevPinchMidRef = useRef<{ x: number; y: number } | null>(null)
 
-  // Pinch gesture: during a 2-finger gesture, we bypass React state and
-  // drive the zoom/scroll imperatively via rAF to avoid reconciling the
-  // entire PdfAnnotateTool tree per pointer move. The final zoom is
-  // committed to React state on gesture end.
+  // ── Pinch gesture (touch-event based) ──────────────────
+  // Pinch detection uses touch events on the scroll container (not
+  // pointer events on the canvas). iOS Safari ignores touch-action:
+  // none, so calling preventDefault() on touchmove is the only
+  // reliable way to suppress native scroll during a pinch.
   const pinchActiveRef = useRef(false)
   const pinchStartZoomRef = useRef(1)
   const pinchStartDistRef = useRef(0)
-  const pinchStartScrollRef = useRef({ left: 0, top: 0 })
-  const pinchStartMidContentRef = useRef({ x: 0, y: 0 })
   const pinchLocalZoomRef = useRef(1)
-  const pinchScrollRectRef = useRef({ left: 0, top: 0 })
   const pinchRafIdRef = useRef<number | null>(null)
   const pinchPendingRef = useRef<{ zoom: number; midX: number; midY: number } | null>(null)
-  // Ratcheted zoom deadzone: pinch gestures start as pure pan and only
-  // "unlock" into zoom mode once the finger distance has diverged from
-  // the start distance by more than PINCH_ZOOM_DEADZONE (3%). Once
-  // unlocked, the gesture stays in zoom mode until all fingers lift.
-  // Prevents finger jitter during a 2-finger pan from committing a
-  // spurious zoom change on release.
   const pinchZoomUnlockedRef = useRef(false)
-  // Pinch midpoint in VIEWPORT (window) coordinates at gesture start.
-  // Used by the CSS-transform-only gesture preview to keep the anchor
-  // locked under the user's fingers without touching scroll or layout.
-  const pinchStartMidViewportRef = useRef({ x: 0, y: 0 })
-  // Scroll container padding at gesture start — captured once so the
-  // gesture math doesn't have to read getComputedStyle every frame.
-  const pinchStartPaddingRef = useRef({ left: 24, top: 24 })
-  // Unscaled doc dimensions and scroll container size at gesture start.
-  // Captured once so the pinch preview + commit clamp can compute the
-  // target scroll bounds without reading layout (getBoundingClientRect /
-  // clientWidth) on every frame — that would force reflow and defeat
-  // the point of the CSS-transform-only gesture path.
-  const pinchStartNaturalSizeRef = useRef({ width: 0, height: 0 })
-  const pinchStartClientSizeRef = useRef({ width: 0, height: 0 })
-  // Last midpoint (viewport coords) that the rAF callback actually
-  // applied as a CSS transform. Move events fire many times per frame
-  // but the rAF only runs once — on finger-lift we must compute the
-  // commit scroll from the APPLIED midpoint, not the latest move
-  // event's midpoint, otherwise the content jumps by the rAF lag.
-  const pinchLastAppliedMidRef = useRef<{ x: number; y: number } | null>(null)
+  // Content-space transform origin (relative to gestureTransformRef)
+  const pinchOriginRef = useRef({ x: 0, y: 0 })
+  // Midpoint in viewport/client coords — current and at gesture start
+  const pinchMidClientRef = useRef({ x: 0, y: 0 })
+  const pinchStartMidClientRef = useRef({ x: 0, y: 0 })
+  // Scroll + container rect at gesture start
+  const pinchStartScrollRef = useRef({ left: 0, top: 0 })
+  const pinchContainerRectRef = useRef({ left: 0, top: 0 })
 
   // Active canvas drawing pipeline (iPad perf overhaul)
   const pointBufferRef = useRef<{ x: number; y: number; pressure: number }[]>([])
@@ -672,14 +654,12 @@ export function usePdfAnnotateState() {
     // Find
     findCommittedQuery, setFindCommittedQuery,
     // Touch
-    activeTouchIdsRef, touchPositionsRef, prevPinchDistRef, prevPinchMidRef,
-    // Pinch gesture (imperative, bypasses React state)
-    pinchActiveRef, pinchStartZoomRef, pinchStartDistRef, pinchStartScrollRef,
-    pinchStartMidContentRef, pinchLocalZoomRef, pinchScrollRectRef,
-    pinchRafIdRef, pinchPendingRef, pinchZoomUnlockedRef,
-    pinchStartMidViewportRef, pinchStartPaddingRef,
-    pinchStartNaturalSizeRef, pinchStartClientSizeRef,
-    pinchLastAppliedMidRef,
+    activeTouchIdsRef, touchPositionsRef,
+    // Pinch gesture (touch-event based)
+    pinchActiveRef, pinchStartZoomRef, pinchStartDistRef,
+    pinchLocalZoomRef, pinchRafIdRef, pinchPendingRef, pinchZoomUnlockedRef,
+    pinchOriginRef, pinchMidClientRef, pinchStartMidClientRef,
+    pinchStartScrollRef, pinchContainerRectRef,
     // Active canvas pipeline
     pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     // Memos

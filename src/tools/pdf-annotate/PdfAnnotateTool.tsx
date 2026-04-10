@@ -382,13 +382,11 @@ export default function PdfAnnotateTool() {
     historyRef, historyIdxRef, forceRender,
     canUndo, canRedo, isDrawTool, isTextTool, currentRotation,
     findCommittedQuery, setFindCommittedQuery,
-    activeTouchIdsRef, touchPositionsRef, prevPinchDistRef, prevPinchMidRef,
-    pinchActiveRef, pinchStartZoomRef, pinchStartDistRef, pinchStartScrollRef,
-    pinchStartMidContentRef, pinchLocalZoomRef, pinchScrollRectRef,
-    pinchRafIdRef, pinchPendingRef, pinchZoomUnlockedRef,
-    pinchStartMidViewportRef, pinchStartPaddingRef,
-    pinchStartNaturalSizeRef, pinchStartClientSizeRef,
-    pinchLastAppliedMidRef,
+    activeTouchIdsRef, touchPositionsRef,
+    pinchActiveRef, pinchStartZoomRef, pinchStartDistRef,
+    pinchLocalZoomRef, pinchRafIdRef, pinchPendingRef, pinchZoomUnlockedRef,
+    pinchOriginRef, pinchMidClientRef, pinchStartMidClientRef,
+    pinchStartScrollRef, pinchContainerRectRef,
     pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     annPageMap, totalAnnotationCount,
   } = S
@@ -1737,32 +1735,18 @@ export default function PdfAnnotateTool() {
   // so the user never sees an intermediate state between the CSS
   // transform preview and the React-owned final layout.
   useLayoutEffect(() => {
-    // After React commits the new zoom, the layout should already
-    // match what we set imperatively in handlePointerUp — the
-    // direct-layout approach means there's no transform to clear.
-    // This effect is just a safety re-anchor: if React's CSS calc
-    // padding differs from our JS Math.max by a sub-pixel, nudge
-    // scroll to match.
     const commit = pinchCommitRef.current
     if (!commit) return
     pinchCommitRef.current = null
 
     const el = scrollRef.current
-    const padEl = paddedWrapperRef.current
-    if (!el || !padEl) return
+    if (!el) return
 
-    const cs = getComputedStyle(padEl)
-    const padLeft = parseFloat(cs.paddingLeft) || 24
-    const padTop = parseFloat(cs.paddingTop) || 24
-    const rect = pinchScrollRectRef.current
-    const midX = commit.midX - rect.left
-    const midY = commit.midY - rect.top
-    const contentX = pinchStartMidContentRef.current.x
-    const contentY = pinchStartMidContentRef.current.y
-    const z = zoomRef.current
-    el.scrollLeft = Math.max(0, contentX * z + padLeft - midX)
-    el.scrollTop = Math.max(0, contentY * z + padTop - midY)
-
+    // Anchor formula: the content point that was at viewport position
+    // (originX, originY) before the zoom stays at that position after.
+    // scrollPos_new = (scrollPos_old + origin) * ratio - origin
+    el.scrollLeft = Math.max(0, (commit.scrollLeft + commit.originX) * commit.ratio - commit.originX)
+    el.scrollTop = Math.max(0, (commit.scrollTop + commit.originY) * commit.ratio - commit.originY)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoom])
 
@@ -2303,24 +2287,167 @@ export default function PdfAnnotateTool() {
     return () => el.removeEventListener('scroll', handler)
   }, [selectTextToolbar, redrawAll])
 
-  // ── Prevent Safari native pinch-zoom / gesture interference ──
+  // ── Touch-based pinch-to-zoom + Safari gesture prevention ──
+  // Uses native touch events (not pointer events) with passive: false
+  // so we can call preventDefault() — the ONLY reliable way to suppress
+  // native scroll during a pinch on iOS Safari, which ignores
+  // touch-action: none. Gesture prevention is on the document level
+  // because Safari's GestureEvent can bypass element-level handlers.
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
+
     const preventGesture = (ev: Event): void => { ev.preventDefault() }
-    const preventMultiTouch = (ev: Event): void => {
-      if ((ev as TouchEvent).touches?.length >= 2) ev.preventDefault()
+    document.addEventListener('gesturestart', preventGesture, { passive: false } as EventListenerOptions)
+    document.addEventListener('gesturechange', preventGesture, { passive: false } as EventListenerOptions)
+    document.addEventListener('gestureend', preventGesture, { passive: false } as EventListenerOptions)
+
+    const onTouchStart = (ev: TouchEvent): void => {
+      if (ev.touches.length === 2) {
+        const t0 = ev.touches[0], t1 = ev.touches[1]
+        const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
+        const midX = (t0.clientX + t1.clientX) / 2
+        const midY = (t0.clientY + t1.clientY) / 2
+
+        pinchActiveRef.current = true
+        pinchZoomUnlockedRef.current = false
+        pinchStartZoomRef.current = zoomRef.current
+        pinchLocalZoomRef.current = zoomRef.current
+        pinchStartDistRef.current = dist
+        pinchMidClientRef.current = { x: midX, y: midY }
+        pinchStartMidClientRef.current = { x: midX, y: midY }
+        pinchStartScrollRef.current = { left: el.scrollLeft, top: el.scrollTop }
+
+        // Compute pinch origin in content-space (relative to
+        // gestureTransformRef). This is where transformOrigin is set —
+        // the browser handles the anchor math automatically.
+        const rect = el.getBoundingClientRect()
+        pinchContainerRectRef.current = { left: rect.left, top: rect.top }
+        const padded = paddedWrapperRef.current
+        const cs = padded ? getComputedStyle(padded) : null
+        const padL = cs ? (parseFloat(cs.paddingLeft) || 24) : 24
+        const padT = cs ? (parseFloat(cs.paddingTop) || 24) : 24
+        pinchOriginRef.current = {
+          x: el.scrollLeft + (midX - rect.left) - padL,
+          y: el.scrollTop + (midY - rect.top) - padT,
+        }
+
+        // Cancel any in-progress drawing from the first finger
+        if (isDrawingRef.current) {
+          isDrawingRef.current = false
+          currentPtsRef.current = []
+          currentPressureRef.current = []
+        }
+      }
     }
-    el.addEventListener('gesturestart', preventGesture, { passive: false })
-    el.addEventListener('gesturechange', preventGesture, { passive: false })
-    el.addEventListener('gestureend', preventGesture, { passive: false })
-    el.addEventListener('touchmove', preventMultiTouch, { passive: false })
+
+    const onTouchMove = (ev: TouchEvent): void => {
+      if (!pinchActiveRef.current || ev.touches.length < 2) return
+      ev.preventDefault() // suppress native scroll — the key fix for iOS
+
+      const t0 = ev.touches[0], t1 = ev.touches[1]
+      const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
+      const midX = (t0.clientX + t1.clientX) / 2
+      const midY = (t0.clientY + t1.clientY) / 2
+
+      // Ratcheted deadzone
+      const PINCH_ZOOM_DEADZONE = 0.03
+      const ratio = dist / pinchStartDistRef.current
+      if (!pinchZoomUnlockedRef.current && Math.abs(ratio - 1) > PINCH_ZOOM_DEADZONE) {
+        pinchZoomUnlockedRef.current = true
+      }
+      const effectiveRatio = pinchZoomUnlockedRef.current ? ratio : 1
+      const targetZoom = Math.min(4.0, Math.max(0.25, pinchStartZoomRef.current * effectiveRatio))
+
+      pinchLocalZoomRef.current = targetZoom
+      pinchMidClientRef.current = { x: midX, y: midY }
+      pinchPendingRef.current = { zoom: targetZoom, midX, midY }
+
+      // rAF coalescing — one CSS transform + scroll write per frame
+      if (pinchRafIdRef.current === null) {
+        pinchRafIdRef.current = requestAnimationFrame(() => {
+          pinchRafIdRef.current = null
+          const pending = pinchPendingRef.current
+          if (!pending) return
+          pinchPendingRef.current = null
+
+          const gestureEl = gestureTransformRef.current
+          if (!gestureEl) return
+
+          // CSS transform with transformOrigin at the pinch midpoint —
+          // the browser handles the visual anchoring automatically.
+          const scale = pending.zoom / pinchStartZoomRef.current
+          const ox = pinchOriginRef.current.x
+          const oy = pinchOriginRef.current.y
+          gestureEl.style.transformOrigin = `${ox}px ${oy}px`
+          gestureEl.style.transform = `scale(${scale})`
+
+          // 2-finger pan: shift scroll by the midpoint delta
+          const panDx = pending.midX - pinchStartMidClientRef.current.x
+          const panDy = pending.midY - pinchStartMidClientRef.current.y
+          el.scrollLeft = pinchStartScrollRef.current.left - panDx
+          el.scrollTop = pinchStartScrollRef.current.top - panDy
+        })
+      }
+    }
+
+    const onTouchEnd = (ev: TouchEvent): void => {
+      if (!pinchActiveRef.current) return
+      if (ev.touches.length >= 2) return // still have 2+ fingers
+
+      pinchActiveRef.current = false
+      if (pinchRafIdRef.current !== null) {
+        cancelAnimationFrame(pinchRafIdRef.current)
+        pinchRafIdRef.current = null
+      }
+      pinchPendingRef.current = null
+
+      // Clear the CSS transform preview
+      const gestureEl = gestureTransformRef.current
+      if (gestureEl) {
+        gestureEl.style.transform = ''
+        gestureEl.style.transformOrigin = '0 0'
+      }
+
+      // Commit zoom
+      const finalZoom = pinchZoomUnlockedRef.current
+        ? Math.round(pinchLocalZoomRef.current * 100) / 100
+        : pinchStartZoomRef.current
+      pinchZoomUnlockedRef.current = false
+
+      if (finalZoom !== zoomRef.current) {
+        // Anchor scroll formula: (scrollPos + viewportOrigin) * ratio - viewportOrigin
+        const ratio = finalZoom / pinchStartZoomRef.current
+        const mid = pinchMidClientRef.current
+        const rect = pinchContainerRectRef.current
+        const originX = mid.x - rect.left
+        const originY = mid.y - rect.top
+        pinchCommitRef.current = {
+          ratio,
+          originX,
+          originY,
+          scrollLeft: el.scrollLeft,
+          scrollTop: el.scrollTop,
+        }
+        setZoom(finalZoom)
+      }
+    }
+
+    el.addEventListener('touchstart', onTouchStart, { passive: false })
+    el.addEventListener('touchmove', onTouchMove, { passive: false })
+    el.addEventListener('touchend', onTouchEnd)
+    el.addEventListener('touchcancel', onTouchEnd)
+
     return () => {
-      el.removeEventListener('gesturestart', preventGesture)
-      el.removeEventListener('gesturechange', preventGesture)
-      el.removeEventListener('gestureend', preventGesture)
-      el.removeEventListener('touchmove', preventMultiTouch)
+      document.removeEventListener('gesturestart', preventGesture)
+      document.removeEventListener('gesturechange', preventGesture)
+      document.removeEventListener('gestureend', preventGesture)
+      el.removeEventListener('touchstart', onTouchStart)
+      el.removeEventListener('touchmove', onTouchMove)
+      el.removeEventListener('touchend', onTouchEnd)
+      el.removeEventListener('touchcancel', onTouchEnd)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // ── Mobile edge-swipe + 3-finger gestures ───────────
@@ -2460,78 +2587,9 @@ export default function PdfAnnotateTool() {
       activeTouchIdsRef.current.add(e.pointerId)
       touchPositionsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
 
-      // Initialize pinch gesture state when the second finger lands.
-      // We capture everything we need for the entire gesture here — no
-      // getBoundingClientRect() calls during the hot move loop.
-      if (activeTouchIdsRef.current.size === 2) {
-        const positions = Array.from(touchPositionsRef.current.values())
-        if (positions.length >= 2) {
-          const dist = Math.hypot(
-            positions[1].x - positions[0].x,
-            positions[1].y - positions[0].y,
-          )
-          const midX = (positions[0].x + positions[1].x) / 2
-          const midY = (positions[0].y + positions[1].y) / 2
-          prevPinchDistRef.current = dist
-          prevPinchMidRef.current = { x: midX, y: midY }
-
-          const el = scrollRef.current
-          const paddedEl = paddedWrapperRef.current
-          if (el) {
-            const rect = el.getBoundingClientRect()
-            const currentZoom = zoomRef.current
-            pinchActiveRef.current = true
-            pinchZoomUnlockedRef.current = false
-            pinchStartZoomRef.current = currentZoom
-            pinchLocalZoomRef.current = currentZoom
-            pinchStartDistRef.current = dist
-            pinchStartScrollRef.current = { left: el.scrollLeft, top: el.scrollTop }
-            pinchScrollRectRef.current = { left: rect.left, top: rect.top }
-            // Viewport-space midpoint RELATIVE to the scroll container,
-            // not to the window. The gesture transform math in
-            // handlePointerMove works in scroll-container coordinates.
-            pinchStartMidViewportRef.current = {
-              x: midX - rect.left,
-              y: midY - rect.top,
-            }
-            // Capture padding once so the per-frame transform math
-            // doesn't pay for getComputedStyle on every move.
-            const cs = paddedEl ? getComputedStyle(paddedEl) : null
-            pinchStartPaddingRef.current = {
-              left: cs ? (parseFloat(cs.paddingLeft) || 24) : 24,
-              top: cs ? (parseFloat(cs.paddingTop) || 24) : 24,
-            }
-            // Also store the anchor in UNSCALED doc coords for the
-            // release commit formula (which still needs doc-space to
-            // project to the committed zoom's layout).
-            pinchStartMidContentRef.current = {
-              x: (el.scrollLeft + (midX - rect.left) - pinchStartPaddingRef.current.left) / currentZoom,
-              y: (el.scrollTop + (midY - rect.top) - pinchStartPaddingRef.current.top) / currentZoom,
-            }
-            // Capture unscaled doc dims and scroll container size so the
-            // pinch preview + commit clamp can compute the target scroll
-            // bounds cheaply, without forcing a layout read per frame.
-            // Height is recomputed from the ref here (not the closure
-            // variable) so it stays fresh across multi-page doc loads.
-            let totalDocH = 0
-            if (pdfFile) {
-              for (let p = 1; p <= pdfFile.pageCount; p++) {
-                const d = pageDimsMap.current.get(p)
-                if (d) totalDocH += d.height
-              }
-              totalDocH += Math.max(0, pdfFile.pageCount - 1) * 24
-            }
-            pinchStartNaturalSizeRef.current = {
-              width: maxCanvasWidthRef.current,
-              height: totalDocH,
-            }
-            pinchStartClientSizeRef.current = {
-              width: el.clientWidth,
-              height: el.clientHeight,
-            }
-          }
-        }
-      }
+      // Pinch init is now handled by the touch event listener on the
+      // scroll container — see the useEffect above. Pointer events
+      // here just track touches and cancel drawing for 2+ fingers.
 
       // pencilOnlyMode: ALL touch = pan/zoom, never draw
       if (pencilOnlyMode) {
@@ -3243,92 +3301,15 @@ export default function PdfAnnotateTool() {
       tooltipDivRef.current.style.left = `${e.clientX + 14}px`
       tooltipDivRef.current.style.top = `${e.clientY - 28}px`
     }
-    // Touch handling: pinch-to-zoom + two-finger pan + pencilOnlyMode single-finger pan
+    // Touch handling: pinch is handled by the touch event listener on
+    // the scroll container. Pointer events here just handle drawing
+    // and pencilOnlyMode pan.
     if (e.pointerType === 'touch') {
       touchPositionsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
 
-      // Two-finger pinch-to-zoom + pan — imperative + rAF-coalesced.
-      // Crucially, we do NOT call setZoom / setState anywhere in this hot
-      // path; the whole component tree would reconcile 60–120 times per
-      // second otherwise. We mutate the inner container's CSS transform and
-      // the scroll element directly, and commit the final zoom to React
-      // state only on gesture end.
-      if (pinchActiveRef.current && activeTouchIdsRef.current.size === 2 && touchPositionsRef.current.size >= 2) {
-        const positions = Array.from(touchPositionsRef.current.values())
-        const dist = Math.hypot(positions[1].x - positions[0].x, positions[1].y - positions[0].y)
-        const midX = (positions[0].x + positions[1].x) / 2
-        const midY = (positions[0].y + positions[1].y) / 2
-
-        // Ratcheted zoom deadzone: until the finger distance has
-        // changed by more than 3% from the start, treat the gesture as
-        // pure pan. Once unlocked, stay in zoom mode for the rest of
-        // the gesture.
-        const PINCH_ZOOM_DEADZONE = 0.03
-        const ratio = dist / pinchStartDistRef.current
-        if (!pinchZoomUnlockedRef.current && Math.abs(ratio - 1) > PINCH_ZOOM_DEADZONE) {
-          pinchZoomUnlockedRef.current = true
-        }
-        const effectiveRatio = pinchZoomUnlockedRef.current ? ratio : 1
-        const targetZoom = Math.min(
-          4.0,
-          Math.max(0.25, pinchStartZoomRef.current * effectiveRatio),
-        )
-        // The real ratio after clamping, which the transform should use
-        // so rubber-banding at min/max zoom stays consistent.
-        const clampedRatio = targetZoom / pinchStartZoomRef.current
-        pinchPendingRef.current = { zoom: targetZoom, midX, midY }
-        pinchLocalZoomRef.current = targetZoom
-        prevPinchDistRef.current = dist
-        prevPinchMidRef.current = { x: midX, y: midY }
-
-        // Direct layout + scroll per frame — NO CSS transform wrapper.
-        // This eliminates the transform↔scroll coordinate transition
-        // that caused the "page jump on release" bug across v4.0.11–16.
-        // Setting layout + scroll in one rAF is a fast reflow on modern
-        // iPads (< 1ms) and means release is just setZoom() — the
-        // layout is already in its final state.
-        if (pinchRafIdRef.current === null) {
-          pinchRafIdRef.current = requestAnimationFrame(() => {
-            pinchRafIdRef.current = null
-            const pending = pinchPendingRef.current
-            if (!pending) return
-            pinchPendingRef.current = null
-            const el = scrollRef.current
-            const layout = zoomLayoutRef.current
-            const inner = innerRef.current
-            const padded = paddedWrapperRef.current
-            if (!el || !layout || !inner || !padded) return
-
-            const newZoom = pending.zoom
-            const natW = pinchStartNaturalSizeRef.current.width
-            const natH = pinchStartNaturalSizeRef.current.height
-            const clientW = pinchStartClientSizeRef.current.width
-
-            // Update layout dimensions + inner scale directly
-            const newW = natW * newZoom
-            const newH = natH * newZoom
-            layout.style.width = `${newW}px`
-            layout.style.height = `${newH}px`
-            inner.style.transform = `scale(${newZoom})`
-            const newPad = Math.max(24, (clientW - newW) / 2)
-            padded.style.paddingLeft = `${newPad}px`
-            padded.style.paddingRight = `${newPad}px`
-
-            // Anchor scroll: keep the content point that was under the
-            // midpoint at gesture start locked under the current midpoint.
-            const rect = pinchScrollRectRef.current
-            const midX = pending.midX - rect.left
-            const midY = pending.midY - rect.top
-            const contentX = pinchStartMidContentRef.current.x
-            const contentY = pinchStartMidContentRef.current.y
-            el.scrollLeft = Math.max(0, contentX * newZoom + newPad - midX)
-            el.scrollTop = Math.max(0, contentY * newZoom + 24 - midY)
-
-            pinchLastAppliedMidRef.current = { x: pending.midX, y: pending.midY }
-          })
-        }
-        return
-      }
+      // If a pinch is active (handled by touch events), skip all
+      // pointer-event processing — the touch handler owns the gesture.
+      if (pinchActiveRef.current) return
 
       // pencilOnlyMode: single-finger pan
       if (pencilOnlyMode && activeTouchIdsRef.current.size === 1 && panRef.current) {
@@ -3767,90 +3748,8 @@ export default function PdfAnnotateTool() {
     if (e?.pointerType === 'touch') {
       activeTouchIdsRef.current.delete(e.pointerId)
       touchPositionsRef.current.delete(e.pointerId)
-      // Reset pinch state when fewer than 2 touches remain — commit the
-      // final zoom to React state here (and only here) so the expensive
-      // reconcile + debounced page re-render happens exactly once at the
-      // end of the gesture, not on every frame during it.
-      if (activeTouchIdsRef.current.size < 2) {
-        // Use the midpoint from the LAST APPLIED rAF transform — not
-        // the latest move event's midpoint. Move events fire many times
-        // per frame; the rAF only runs once. Using the latest move
-        // midpoint would compute a commit scroll that doesn't match the
-        // visual preview the user last saw, causing a visible jump.
-        // Falls back to prevPinchMidRef if the rAF never ran (ultra-
-        // short gesture where no frame was painted).
-        const lastMidBeforeClear = pinchLastAppliedMidRef.current ?? prevPinchMidRef.current
-        prevPinchDistRef.current = null
-        prevPinchMidRef.current = null
-        pinchLastAppliedMidRef.current = null
-        if (pinchActiveRef.current) {
-          pinchActiveRef.current = false
-          if (pinchRafIdRef.current !== null) {
-            cancelAnimationFrame(pinchRafIdRef.current)
-            pinchRafIdRef.current = null
-          }
-          // Capture any unrealized pending state BEFORE nulling it —
-          // the release commit uses this if the rAF hadn't run yet.
-          const unrealizedPending = pinchPendingRef.current
-          pinchPendingRef.current = null
-          // Pure-pan gestures (never crossed the deadzone) commit the
-          // start zoom EXACTLY — no rounding, no spurious zoom change.
-          const finalZoom = pinchZoomUnlockedRef.current
-            ? Math.round(pinchLocalZoomRef.current * 100) / 100
-            : pinchStartZoomRef.current
-          pinchZoomUnlockedRef.current = false
-
-          // Layout + scroll are ALREADY set by the last rAF frame.
-          // Apply any final rounding and commit zoom to React state.
-          // No transform to clear — the new approach writes directly
-          // to layout + scroll, so there is no coordinate transition.
-          const el = scrollRef.current
-
-          // Resolve the last midpoint: prefer unrealized pending data
-          // (rAF hadn't run), fall back to the last applied rAF mid.
-          let finalMid: { x: number; y: number } | null =
-            pinchLastAppliedMidRef.current ?? lastMidBeforeClear
-          if (unrealizedPending) {
-            finalMid = { x: unrealizedPending.midX, y: unrealizedPending.midY }
-          }
-
-          if (el && finalMid) {
-            const layout = zoomLayoutRef.current
-            const inner = innerRef.current
-            const padded = paddedWrapperRef.current
-            if (layout && inner && padded) {
-              const natW = pinchStartNaturalSizeRef.current.width
-              const natH = pinchStartNaturalSizeRef.current.height
-              const clientW = pinchStartClientSizeRef.current.width
-              const newW = natW * finalZoom
-              const newH = natH * finalZoom
-              layout.style.width = `${newW}px`
-              layout.style.height = `${newH}px`
-              inner.style.transform = `scale(${finalZoom})`
-              const newPad = Math.max(24, (clientW - newW) / 2)
-              padded.style.paddingLeft = `${newPad}px`
-              padded.style.paddingRight = `${newPad}px`
-              const rect = pinchScrollRectRef.current
-              const midX = finalMid.x - rect.left
-              const midY = finalMid.y - rect.top
-              const contentX = pinchStartMidContentRef.current.x
-              const contentY = pinchStartMidContentRef.current.y
-              el.scrollLeft = Math.max(0, contentX * finalZoom + newPad - midX)
-              el.scrollTop = Math.max(0, contentY * finalZoom + 24 - midY)
-            }
-          }
-
-          // Commit to React — layout already matches so this is
-          // visually a no-op. The debounced zoom-change effect will
-          // re-render pages at the new scale for sharpness.
-          if (finalZoom !== zoomRef.current) {
-            if (finalMid) {
-              pinchCommitRef.current = { midX: finalMid.x, midY: finalMid.y }
-            }
-            setZoom(finalZoom)
-          }
-        }
-      }
+      // Pinch commit is now handled by the touchend listener on the
+      // scroll container. The pointer event just cleans up tracking.
       // Reset single-finger pan for pencilOnlyMode
       if (pencilOnlyMode && activeTouchIdsRef.current.size === 0) {
         panRef.current = null
@@ -5184,13 +5083,8 @@ export default function PdfAnnotateTool() {
             boxSizing: 'border-box',
             paddingTop: 24,
             paddingBottom: 24,
-            // During a pinch, padding/layout/scale are set imperatively
-            // by the rAF callback. Skip React-owned values so re-renders
-            // from other state changes don't reset our imperative writes.
-            ...(pinchActiveRef.current ? {} : {
-              paddingLeft: innerScaledW ? `max(24px, calc((100% - ${innerScaledW}px) / 2))` : 24,
-              paddingRight: innerScaledW ? `max(24px, calc((100% - ${innerScaledW}px) / 2))` : 24,
-            }),
+            paddingLeft: innerScaledW ? `max(24px, calc((100% - ${innerScaledW}px) / 2))` : 24,
+            paddingRight: innerScaledW ? `max(24px, calc((100% - ${innerScaledW}px) / 2))` : 24,
           }}>
           <div
             ref={gestureTransformRef}
@@ -5199,10 +5093,8 @@ export default function PdfAnnotateTool() {
           <div
             ref={zoomLayoutRef}
             style={{
-              ...(pinchActiveRef.current ? {} : {
                 width: innerScaledW || undefined,
-                height: innerScaledH || undefined,
-              }),
+              height: innerScaledH || undefined,
               position: 'relative',
             }}
           >
@@ -5211,9 +5103,7 @@ export default function PdfAnnotateTool() {
             top: 0,
             left: 0,
             width: naturalW || undefined,
-            ...(pinchActiveRef.current ? {} : {
-              transform: `scale(${zoom})`,
-            }),
+            transform: `scale(${zoom})`,
             transformOrigin: '0 0',
           }} className="flex flex-col items-center gap-6">
             {Array.from({ length: pdfFile.pageCount }, (_, i) => i + 1).map(pageNum => {
@@ -5253,7 +5143,7 @@ export default function PdfAnnotateTool() {
                     className="active-canvas absolute top-0 left-0"
                     width={dims?.width ?? 0}
                     height={dims?.height ?? 0}
-                    style={{ touchAction: 'none', cursor: canvasCursor || (activeTool === 'select' && selectedAnnId ? 'default' : CURSOR_MAP[activeTool]) }}
+                    style={{ touchAction: 'manipulation', cursor: canvasCursor || (activeTool === 'select' && selectedAnnId ? 'default' : CURSOR_MAP[activeTool]) }}
                     onPointerDown={e => handlePointerDown(e, pageNum)}
                     onPointerMove={e => handlePointerMove(e, pageNum)}
                     onPointerUp={handlePointerUp}
