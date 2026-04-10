@@ -2304,6 +2304,10 @@ export default function PdfAnnotateTool() {
 
     const onTouchStart = (ev: TouchEvent): void => {
       if (ev.touches.length === 2) {
+        // Prevent the browser from initiating a native pinch-zoom gesture.
+        // iOS Safari ignores touch-action: none AND user-scalable=no,
+        // so preventDefault on touchstart is the nuclear option.
+        ev.preventDefault()
         const t0 = ev.touches[0], t1 = ev.touches[1]
         const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
         const midX = (t0.clientX + t1.clientX) / 2
@@ -2342,8 +2346,12 @@ export default function PdfAnnotateTool() {
     }
 
     const onTouchMove = (ev: TouchEvent): void => {
+      // Prevent ALL multi-touch native gestures (scroll, zoom) — even
+      // before pinchActiveRef is set. This catches the window between
+      // the first finger's touchstart and the second finger's touchstart
+      // where the browser might start a native gesture.
+      if (ev.touches.length >= 2) ev.preventDefault()
       if (!pinchActiveRef.current || ev.touches.length < 2) return
-      ev.preventDefault() // suppress native scroll — the key fix for iOS
 
       const t0 = ev.touches[0], t1 = ev.touches[1]
       const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
@@ -5143,7 +5151,7 @@ export default function PdfAnnotateTool() {
                     className="active-canvas absolute top-0 left-0"
                     width={dims?.width ?? 0}
                     height={dims?.height ?? 0}
-                    style={{ touchAction: 'manipulation', cursor: canvasCursor || (activeTool === 'select' && selectedAnnId ? 'default' : CURSOR_MAP[activeTool]) }}
+                    style={{ touchAction: 'none', cursor: canvasCursor || (activeTool === 'select' && selectedAnnId ? 'default' : CURSOR_MAP[activeTool]) }}
                     onPointerDown={e => handlePointerDown(e, pageNum)}
                     onPointerMove={e => handlePointerMove(e, pageNum)}
                     onPointerUp={handlePointerUp}
