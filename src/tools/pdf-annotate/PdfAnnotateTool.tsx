@@ -1740,13 +1740,23 @@ export default function PdfAnnotateTool() {
     const commit = pinchCommitRef.current
     if (!commit) return
     pinchCommitRef.current = null
-    const el = scrollRef.current
-    if (el) {
-      el.scrollLeft = commit.scrollLeft
-      el.scrollTop = commit.scrollTop
-    }
+    // ORDER MATTERS: clear the gesture transform FIRST so the browser
+    // evaluates scroll bounds against the FINAL layout — not the
+    // intermediate layout where React's new zoom is MULTIPLIED by the
+    // gesture transform's scale. When zooming out the intermediate
+    // layout is smaller than the final layout; setting scroll first
+    // would clamp the committed value to the intermediate max, and
+    // clearing the transform afterwards wouldn't unclamped it.
     if (gestureTransformRef.current) {
       gestureTransformRef.current.style.transform = ''
+    }
+    const el = scrollRef.current
+    if (el) {
+      // Force synchronous layout so scrollWidth/Height reflect the
+      // transform-cleared state before we set scroll.
+      void el.scrollHeight
+      el.scrollLeft = commit.scrollLeft
+      el.scrollTop = commit.scrollTop
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoom])
@@ -2528,7 +2538,16 @@ export default function PdfAnnotateTool() {
         return
       }
 
-      // Normal mode: 2+ simultaneous touches = pan/zoom, not draw
+      // Normal mode: 2+ simultaneous touches = pan/zoom, not draw.
+      // Cancel any drawing the first finger started — the gesture is now
+      // a pinch/pan, and leftover isDrawingRef would cause the drawing
+      // commit path to fire on pointer-up (wasting work + potential
+      // jank from redrawPage during the pinch commit).
+      if (activeTouchIdsRef.current.size >= 2 && isDrawingRef.current) {
+        isDrawingRef.current = false
+        currentPtsRef.current = []
+        currentPressureRef.current = []
+      }
       if (activeTouchIdsRef.current.size >= 2) {
         const el = scrollRef.current
         if (el) {
@@ -3845,14 +3864,17 @@ export default function PdfAnnotateTool() {
           } else {
             // Zoom didn't change — the layout effect won't fire
             // through a state update, so run the commit inline here.
+            // Same order as the useLayoutEffect: clear transform FIRST
+            // so scroll bounds reflect the final layout.
+            if (gestureTransformRef.current) {
+              gestureTransformRef.current.style.transform = ''
+            }
             const commit = pinchCommitRef.current
             pinchCommitRef.current = null
             if (commit && el) {
+              void el.scrollHeight
               el.scrollLeft = commit.scrollLeft
               el.scrollTop = commit.scrollTop
-            }
-            if (gestureTransformRef.current) {
-              gestureTransformRef.current.style.transform = ''
             }
           }
         }
