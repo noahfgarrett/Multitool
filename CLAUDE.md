@@ -148,6 +148,18 @@ When the user says "push a new release", "push to GitHub", or "release vX.Y.Z", 
    git commit -m "fix: patch changelog timestamp for vX.Y.Z" && git push
    ```
    This ensures the changelog displays the exact date and time the release was published.
+10. **Deploy to GitHub Pages (PWA)** — The PWA at `noahfgarrett.github.io/Multitool/` is served from the `gh-pages` branch. Copy the built HTML there and push:
+    ```bash
+    git worktree add /tmp/multitool-ghpages origin/gh-pages
+    cp dist/Multitool.html /tmp/multitool-ghpages/index.html
+    cd /tmp/multitool-ghpages
+    git add index.html
+    git commit -m "Deploy vX.Y.Z to GitHub Pages"
+    git push origin gh-pages
+    cd -
+    git worktree remove /tmp/multitool-ghpages
+    ```
+    The `gh-pages` branch also contains `manifest.json`, `sw.js`, and icon PNGs — don't touch those unless updating the PWA config.
 
 ### Why `target_commitish` Matters
 GitHub's `/releases/latest` endpoint sorts by `created_at`, which is the **tag's target commit date** — NOT when the release was published. If you create a release against an old commit, it gets a stale `created_at` and may not be returned as "latest". Always pass `target_commitish` with the current HEAD SHA to guarantee a fresh timestamp.
