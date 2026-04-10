@@ -12,65 +12,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '4.0.15',
-    date: '2026-04-10T13:04:03Z',
-    type: 'fix',
-    stats: { fixes: 1 },
-    notes: `### PDF Annotate
-- Pinch zoom no longer jumps on release`,
-  },
-  {
-    version: '4.0.14',
-    date: '2026-04-10T11:58:00Z',
-    type: 'fix',
-    stats: { fixes: 3 },
-    notes: `### PDF Annotate
-- Two-finger pan no longer jumps on release
-- Freehand pencil strokes stay freehand
-- Tool dropdowns work on tablet outside focus mode`,
-  },
-  {
-    version: '4.0.13',
-    date: '2026-04-09T20:47:00Z',
-    type: 'fix',
-    stats: { fixes: 3 },
-    notes: `### PDF Annotate
-- No more white flash when zooming on tablet
-- Two-finger pan stays locked to your fingers
-- Smoother zoom on large documents`,
-  },
-  {
-    version: '4.0.12',
-    date: '2026-04-09T18:18:44Z',
-    type: 'fix',
-    stats: { fixes: 1 },
-    notes: `### PDF Annotate
-- Updated pinch-to-zoom settings`,
-  },
-  {
-    version: '4.0.11',
-    date: '2026-04-09T17:28:58Z',
-    type: 'fix',
-    stats: { fixes: 2 },
-    notes: `### PDF Annotate
+    version: '4.0.16',
+    date: 'PLACEHOLDER',
+    type: 'feature',
+    stats: { features: 3, fixes: 5 },
+    notes: `### PDF Annotate — iPad Overhaul
+- Smooth pinch-to-zoom on large construction drawings
+- Full clarity at any zoom level via tiled rendering
 - No more white flash when zooming
-- Two-finger pan no longer jumps to a different spot on release`,
-  },
-  {
-    version: '4.0.10',
-    date: '2026-04-09T17:08:50Z',
-    type: 'fix',
-    stats: { fixes: 1 },
-    notes: `### PDF Annotate
-- Full clarity at any zoom level, on iPad and desktop`,
-  },
-  {
-    version: '4.0.9',
-    date: '2026-04-09T15:30:59Z',
-    type: 'fix',
-    stats: { fixes: 1 },
-    notes: `### PDF Annotate
-- Large documents no longer disappear at high zoom on iPad`,
+- Two-finger pan and zoom stay locked to your fingers
+- Freehand pencil strokes stay freehand
+- Tool dropdowns work on tablet in all modes
+- Improved touch gesture handling`,
   },
   {
     version: '4.0.8',

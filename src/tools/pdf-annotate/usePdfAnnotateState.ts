@@ -369,9 +369,11 @@ export function usePdfAnnotateState() {
   // useLayoutEffect immediately after setZoom commits, so the user
   // never sees an intermediate state.
   const gestureTransformRef = useRef<HTMLDivElement>(null)
-  // Stashed scroll target bridging the pinch release handler and the
+  // Stashed anchor midpoint bridging the pinch release handler and the
   // post-setZoom useLayoutEffect that finalises scroll + transform.
-  const pinchCommitRef = useRef<{ scrollLeft: number; scrollTop: number } | null>(null)
+  // The commit reads the gesture transform matrix from the DOM at
+  // commit time — it only needs to know WHERE to anchor.
+  const pinchCommitRef = useRef<{ midX: number; midY: number } | null>(null)
   const zoomRef = useRef(zoom)
   const focusModeRef = useRef(focusMode)
   focusModeRef.current = focusMode

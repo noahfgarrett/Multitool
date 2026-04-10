@@ -1740,24 +1740,48 @@ export default function PdfAnnotateTool() {
     const commit = pinchCommitRef.current
     if (!commit) return
     pinchCommitRef.current = null
-    // ORDER MATTERS: clear the gesture transform FIRST so the browser
-    // evaluates scroll bounds against the FINAL layout — not the
-    // intermediate layout where React's new zoom is MULTIPLIED by the
-    // gesture transform's scale. When zooming out the intermediate
-    // layout is smaller than the final layout; setting scroll first
-    // would clamp the committed value to the intermediate max, and
-    // clearing the transform afterwards wouldn't unclamped it.
-    if (gestureTransformRef.current) {
-      gestureTransformRef.current.style.transform = ''
-    }
+
+    const wrapper = gestureTransformRef.current
     const el = scrollRef.current
-    if (el) {
-      // Force synchronous layout so scrollWidth/Height reflect the
-      // transform-cleared state before we set scroll.
-      void el.scrollHeight
-      el.scrollLeft = commit.scrollLeft
-      el.scrollTop = commit.scrollTop
-    }
+    const padEl = paddedWrapperRef.current
+    if (!wrapper || !el) return
+
+    // Read the ACTUAL gesture transform matrix from the DOM — this
+    // captures the exact visual state the user saw, including any
+    // scroll drift from native momentum. Computing scroll from the
+    // live matrix eliminates every "captured state goes stale" bug.
+    const matrix = new DOMMatrix(getComputedStyle(wrapper).transform || 'none')
+    const r = matrix.a || 1   // scale factor
+    const tx = matrix.e       // translateX
+    const ty = matrix.f       // translateY
+
+    // Anchor midpoint in scroll-container coords
+    const rect = pinchScrollRectRef.current
+    const midX = commit.midX - rect.left
+    const midY = commit.midY - rect.top
+
+    // Current padding (from React's committed layout, which has
+    // the new zoom baked in)
+    const cs = padEl ? getComputedStyle(padEl) : null
+    const padLeft = cs ? (parseFloat(cs.paddingLeft) || 24) : 24
+    const padTop = cs ? (parseFloat(cs.paddingTop) || 24) : 24
+
+    // Map the midpoint through the inverse of the gesture transform
+    // to find which zoomLayout-space point is under the user's
+    // fingers. This point must stay at the midpoint after we clear
+    // the transform.
+    const contentX = (midX + el.scrollLeft - padLeft - tx) / r
+    const contentY = (midY + el.scrollTop - padTop - ty) / r
+
+    // Clear transform FIRST — layout reverts to React's committed
+    // zoom dimensions (no double-scale).
+    wrapper.style.transform = ''
+    // Force synchronous layout so scroll bounds are correct.
+    void el.scrollHeight
+    // Set scroll so the content point stays at the midpoint.
+    el.scrollLeft = Math.max(0, padLeft + contentX - midX)
+    el.scrollTop = Math.max(0, padTop + contentY - midY)
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoom])
 
@@ -3820,61 +3844,47 @@ export default function PdfAnnotateTool() {
             : pinchStartZoomRef.current
           pinchZoomUnlockedRef.current = false
 
-          // Compute the target scroll position at the committed zoom so
-          // the content under the last pinch midpoint stays there when
-          // we tear down the gesture transform and reflow to the new
-          // React-owned layout.
+          // Stash the anchor midpoint — the useLayoutEffect (or
+          // inline path below) reads the LIVE gesture transform matrix
+          // from the DOM and computes the correct scroll from it.
+          // This "read the DOM" approach eliminates every stale-state
+          // bug: native scroll drift, rAF coalescing, padding
+          // rounding — none of it matters because we read the actual
+          // visual state at commit time.
           const el = scrollRef.current
-          if (el) {
-            const rect = pinchScrollRectRef.current
-            const lastMid = lastMidBeforeClear
-              ?? { x: rect.left + el.clientWidth / 2, y: rect.top + el.clientHeight / 2 }
-            const vpX = lastMid.x - rect.left
-            const vpY = lastMid.y - rect.top
-            const clientW = pinchStartClientSizeRef.current.width
-            const clientH = pinchStartClientSizeRef.current.height
-            const natW = pinchStartNaturalSizeRef.current.width
-            const natH = pinchStartNaturalSizeRef.current.height
-            const newPad = Math.max(24, (clientW - natW * finalZoom) / 2)
-            const rawLeft = pinchStartMidContentRef.current.x * finalZoom + newPad - vpX
-            const rawTop = pinchStartMidContentRef.current.y * finalZoom + 24 - vpY
-            // Clamp to the scrollable area at the committed zoom. Without
-            // this, the browser silently clamps on scroll assignment and
-            // the content visibly jumps by the clamp delta on release.
-            // The gesture preview was already clamped to match, so the
-            // commit lands exactly where the user saw it.
-            const contentW = natW * finalZoom + 2 * newPad
-            const contentH = natH * finalZoom + 48
-            const maxScrollLeft = Math.max(0, contentW - clientW)
-            const maxScrollTop = Math.max(0, contentH - clientH)
-            pinchCommitRef.current = {
-              scrollLeft: Math.max(0, Math.min(maxScrollLeft, rawLeft)),
-              scrollTop: Math.max(0, Math.min(maxScrollTop, rawTop)),
-            }
-          }
+          const rect = pinchScrollRectRef.current
+          const lastMid = lastMidBeforeClear
+            ?? { x: rect.left + (el?.clientWidth ?? 0) / 2,
+                 y: rect.top + (el?.clientHeight ?? 0) / 2 }
+          pinchCommitRef.current = { midX: lastMid.x, midY: lastMid.y }
 
-          // Commit the zoom. React will re-render the layout wrapper /
-          // inner transform / padding via JSX, THEN the pinchCommit
-          // layout effect (below) runs — still before the browser
-          // paints — and finalises scroll and clears the gesture
-          // transform in the same frame. No intermediate visible
-          // state.
           if (finalZoom !== zoomRef.current) {
             setZoom(finalZoom)
           } else {
-            // Zoom didn't change — the layout effect won't fire
-            // through a state update, so run the commit inline here.
-            // Same order as the useLayoutEffect: clear transform FIRST
-            // so scroll bounds reflect the final layout.
-            if (gestureTransformRef.current) {
-              gestureTransformRef.current.style.transform = ''
-            }
-            const commit = pinchCommitRef.current
-            pinchCommitRef.current = null
-            if (commit && el) {
-              void el.scrollHeight
-              el.scrollLeft = commit.scrollLeft
-              el.scrollTop = commit.scrollTop
+            // Zoom didn't change — run the commit inline (same logic
+            // as the useLayoutEffect but without the React re-render).
+            const wrapper = gestureTransformRef.current
+            if (wrapper && el) {
+              const commit = pinchCommitRef.current
+              pinchCommitRef.current = null
+              if (commit) {
+                const matrix = new DOMMatrix(getComputedStyle(wrapper).transform || 'none')
+                const r = matrix.a || 1
+                const tx = matrix.e
+                const ty = matrix.f
+                const midX = commit.midX - rect.left
+                const midY = commit.midY - rect.top
+                const padEl = paddedWrapperRef.current
+                const cs = padEl ? getComputedStyle(padEl) : null
+                const padLeft = cs ? (parseFloat(cs.paddingLeft) || 24) : 24
+                const padTop = cs ? (parseFloat(cs.paddingTop) || 24) : 24
+                const contentX = (midX + el.scrollLeft - padLeft - tx) / r
+                const contentY = (midY + el.scrollTop - padTop - ty) / r
+                wrapper.style.transform = ''
+                void el.scrollHeight
+                el.scrollLeft = Math.max(0, padLeft + contentX - midX)
+                el.scrollTop = Math.max(0, padTop + contentY - midY)
+              }
             }
           }
         }
