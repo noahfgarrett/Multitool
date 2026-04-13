@@ -15,7 +15,13 @@ function isLegendPosition(v: string): v is LegendPosition {
   return v === 'top-left' || v === 'top-right' || v === 'bottom-left' || v === 'bottom-right'
 }
 
-function upgradeSnapshot(snapshot: unknown): OrgChartState {
+// `upgradeSnapshot` validates the outer shape of a version snapshot and repairs
+// missing top-level fields with defaults. Array contents (nodes[], connections[])
+// are trusted to be well-formed because localStorage is same-origin and written
+// only by this app; downstream code (getConnectorType fallback, renderer skip
+// for missing node refs) provides safety nets for stale/corrupt entries. Exported
+// for direct unit testing from e2e page.evaluate hooks.
+export function upgradeSnapshot(snapshot: unknown): OrgChartState {
   // Old shape: snapshot was OrgNode[] directly
   if (Array.isArray(snapshot)) {
     return {
