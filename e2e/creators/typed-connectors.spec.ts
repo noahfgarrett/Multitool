@@ -42,7 +42,7 @@ test.describe('Org Chart — Typed Connectors (pure function tests)', () => {
       ])
     })
     expect(result[0].label).toBe('Custom')
-    expect(result[0].color).toBe('#e5e7eb')  // fell back to default
+    expect(result[0].color).toBe('#272730')  // fell back to default
   })
 
   test('mergeWithDefaults on null/empty/malformed returns all defaults', async ({ page }) => {
