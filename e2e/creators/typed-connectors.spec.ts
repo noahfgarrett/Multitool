@@ -44,18 +44,21 @@ async function getNodes(page: Page): Promise<StoreNode[]> {
   })
 }
 
-async function dispatchStore<TResult>(
+// Fires a store action and awaits completion. Return value is intentionally
+// void — callers read state back via the getConnections/getNodes helpers
+// instead of trying to thread typed return values through page.evaluate.
+async function dispatchStore(
   page: Page,
   fn: string,
   args: unknown[],
-): Promise<TResult> {
-  return await page.evaluate(({ fn, args }) => {
+): Promise<void> {
+  await page.evaluate(({ fn, args }) => {
     const s = window.__orgChartTest?.getStore?.() as Record<string, unknown> | undefined
     if (!s) throw new Error('Store not registered')
     const action = s[fn]
     if (typeof action !== 'function') throw new Error(`Store action "${fn}" not found`)
-    return (action as (...a: unknown[]) => unknown)(...args)
-  }, { fn, args }) as TResult
+    ;(action as (...a: unknown[]) => unknown)(...args)
+  }, { fn, args })
 }
 
 test.describe('Org Chart — Typed Connectors (pure function tests)', () => {
@@ -436,11 +439,14 @@ test.describe('Org Chart — Typed Connectors (JSON round-trip)', () => {
 
 test.describe('Org Chart — Typed Connectors (Matrix template)', () => {
   test('Matrix Organization template loads 8 nodes and 3 connections', async ({ page }) => {
-    // Load via the Templates modal → "Matrix Organization" button
-    await page.locator('button').filter({ hasText: 'Templates' }).first().click()
-    await page.waitForTimeout(300)
-    await page.locator('button').filter({ hasText: /Matrix Organization/ }).first().click()
-    await page.waitForTimeout(300)
+    // data-testid selectors + auto-retry assertions (no hardcoded waits)
+    await page.getByTestId('org-chart-templates-btn').click()
+    const matrixCard = page.getByTestId('template-matrix-organization')
+    await expect(matrixCard).toBeVisible()
+    await matrixCard.click()
+
+    // Wait for the store to reflect the template load via auto-retry
+    await expect.poll(() => getNodes(page).then(n => n.length)).toBe(8)
 
     const nodes = await getNodes(page)
     const connections = await getConnections(page)

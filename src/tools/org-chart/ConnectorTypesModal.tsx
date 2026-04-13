@@ -14,6 +14,16 @@ const STYLE_CAPTIONS: Record<ConnectorTypeId, string> = {
   'collaborates': 'Double · peer collaboration',
 }
 
+// Module-level default snapshot — referenced by isDefaultType(). Cheaper than
+// re-allocating a fresh array on every render of the modal (which was also
+// defeating the isDefault useCallback's memoization in v4.1.0).
+const DEFAULT_TYPES = createDefaultConnectorTypes()
+
+function isDefaultType(type: ConnectorType): boolean {
+  const def = DEFAULT_TYPES.find(d => d.id === type.id)
+  return def ? def.label === type.label && def.color === type.color : false
+}
+
 function LineSample({ type }: { type: ConnectorType }): React.ReactElement {
   const ref = useRef<HTMLCanvasElement>(null)
 
@@ -53,16 +63,29 @@ function ConnectorTypeRow({
 }): React.ReactElement {
   const [labelValue, setLabelValue] = useState(type.label)
   const [labelError, setLabelError] = useState(false)
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Keep the input synced if the underlying type changes externally (reset all, undo)
   useEffect(() => { setLabelValue(type.label) }, [type.label])
+
+  // Clear any pending red-flash timer on unmount so React doesn't warn about
+  // setState on an unmounted component if the modal closes mid-flash.
+  useEffect(() => {
+    return () => {
+      if (errorTimerRef.current !== null) clearTimeout(errorTimerRef.current)
+    }
+  }, [])
 
   const commitLabel = useCallback(() => {
     const trimmed = labelValue.trim()
     if (trimmed === '') {
       setLabelError(true)
       setLabelValue(type.label)
-      setTimeout(() => setLabelError(false), 800)
+      if (errorTimerRef.current !== null) clearTimeout(errorTimerRef.current)
+      errorTimerRef.current = setTimeout(() => {
+        setLabelError(false)
+        errorTimerRef.current = null
+      }, 800)
       return
     }
     if (trimmed !== type.label) {
@@ -132,13 +155,6 @@ export function ConnectorTypesModal({
   isOpen: boolean
   onClose: () => void
 }): React.ReactElement {
-  const defaults = createDefaultConnectorTypes()
-
-  const isDefault = useCallback((type: ConnectorType): boolean => {
-    const def = defaults.find(d => d.id === type.id)
-    return def ? def.label === type.label && def.color === type.color : false
-  }, [defaults])
-
   const handleResetAll = (): void => {
     if (window.confirm('Reset all connector types to defaults?')) {
       store.resetAllConnectorTypes()
@@ -157,7 +173,7 @@ export function ConnectorTypesModal({
             <ConnectorTypeRow
               key={type.id}
               type={type}
-              isDefault={isDefault(type)}
+              isDefault={isDefaultType(type)}
               onUpdate={updates => store.updateConnectorType(type.id, updates)}
               onReset={() => store.resetConnectorType(type.id)}
             />

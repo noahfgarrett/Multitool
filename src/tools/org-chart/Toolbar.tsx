@@ -141,6 +141,7 @@ export function Toolbar({
         </button>
         <button
           onClick={onTemplates}
+          data-testid="org-chart-templates-btn"
           className="px-2.5 py-1 text-[10px] font-medium text-white/50 hover:text-white hover:bg-white/[0.06] rounded transition-colors flex items-center gap-1"
         >
           <LayoutGrid size={12} />

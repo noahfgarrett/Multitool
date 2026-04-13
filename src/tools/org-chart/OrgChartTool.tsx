@@ -417,9 +417,12 @@ function TemplateCard({
   nodeCount: number
   onClick: () => void
 }) {
+  // Slug from the name so e2e can target a specific card deterministically.
+  const testId = `template-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
   return (
     <button
       onClick={onClick}
+      data-testid={testId}
       className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left hover:bg-white/[0.04] transition-colors"
     >
       <div className="w-8 h-8 rounded-lg bg-[#14B8A6]/10 flex items-center justify-center flex-shrink-0">

@@ -12,6 +12,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.1.1',
+    date: 'PLACEHOLDER',
+    type: 'fix',
+    stats: { fixes: 4 },
+    notes: `### Org Chart
+- Connector Types modal cleans up its internal timer on close
+- More robust Matrix Organization template test wiring`,
+  },
+  {
     version: '4.1.0',
     date: '2026-04-13T22:54:35Z',
     type: 'feature',
