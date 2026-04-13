@@ -127,4 +127,31 @@ export const TEMPLATES: OrgTemplate[] = [
         createNode({ name: 'IT Support', title: 'IT Support Specialist', reportsTo: 'admin-head', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
       ]),
   },
+  {
+    name: 'Matrix Organization',
+    description: 'Cross-functional reporting with dotted-line and support relationships',
+    nodeCount: 8,
+    build: () => ({
+      nodes: [
+        // Engineering chain
+        createNode({ id: 'mx-vp-eng',   name: 'Pat Chen',        title: 'VP Engineering',         reportsTo: '',            department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering, sectionTitle: 'Engineering' }),
+        createNode({ id: 'mx-eng-mgr1', name: 'Jordan Ramirez',  title: 'Platform Manager',       reportsTo: 'mx-vp-eng',   department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
+        createNode({ id: 'mx-eng-mgr2', name: 'Sam Okoye',       title: 'Mobile Manager',         reportsTo: 'mx-vp-eng',   department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
+        createNode({ id: 'mx-eng-1',    name: 'Taylor Kim',      title: 'Senior Engineer',        reportsTo: 'mx-eng-mgr1', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
+        createNode({ id: 'mx-eng-2',    name: 'Morgan Rivera',   title: 'Engineer',               reportsTo: 'mx-eng-mgr2', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
+
+        // Product chain
+        createNode({ id: 'mx-vp-prod',  name: 'Alex Johansson',  title: 'VP Product',             reportsTo: '',            department: 'Design',     nodeColor: DEPARTMENT_COLORS.Design, sectionTitle: 'Product' }),
+        createNode({ id: 'mx-pm-1',     name: 'Jamie Park',      title: 'Senior Product Manager', reportsTo: 'mx-vp-prod',  department: 'Design',     nodeColor: DEPARTMENT_COLORS.Design }),
+        createNode({ id: 'mx-pm-2',     name: 'Dana Williams',   title: 'Product Manager',        reportsTo: 'mx-vp-prod',  department: 'Design',     nodeColor: DEPARTMENT_COLORS.Design }),
+      ],
+      connections: [
+        { id: 'mx-conn-1', fromId: 'mx-eng-1', toId: 'mx-pm-1', typeId: 'dotted-line' },
+        { id: 'mx-conn-2', fromId: 'mx-eng-2', toId: 'mx-pm-2', typeId: 'supports' },
+        { id: 'mx-conn-3', fromId: 'mx-vp-eng', toId: 'mx-vp-prod', typeId: 'collaborates' },
+      ],
+      connectorTypes: createDefaultConnectorTypes(),
+      legend: { position: 'bottom-right' },
+    }),
+  },
 ]

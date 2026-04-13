@@ -982,8 +982,11 @@ export function importJSON(json: string): OrgChartState {
 
 // ── Export as CSV ────────────────────────────────────────────
 
-export function exportCSV(nodes: OrgNode[], filename = 'org-chart.csv'): void {
+export function exportCSV(state: OrgChartState, filename = 'org-chart.csv'): void {
+  const { nodes, connections, connectorTypes } = state
+
   const nameMap = new Map(nodes.map(n => [n.id, n.name]))
+  const typeMap = new Map(connectorTypes.map(t => [t.id, t.label]))
 
   // Build a map from node id to its root's sectionTitle
   const sectionMap = new Map<string, string>()
@@ -997,7 +1000,23 @@ export function exportCSV(nodes: OrgNode[], filename = 'org-chart.csv'): void {
     sectionMap.set(n.id, current.sectionTitle || '')
   }
 
-  const header = ['Name', 'Title', 'Department', 'Section', 'Reports To', 'Email', 'Phone', 'Location']
+  // Build outgoing secondary relationships per source node.
+  // Uses human-readable type labels so Excel users can read without a key.
+  const outgoing = new Map<string, string[]>()
+  for (const conn of connections) {
+    const targetName = nameMap.get(conn.toId)
+    if (!targetName) continue
+    const typeLabel = typeMap.get(conn.typeId) ?? conn.typeId
+    const formatted = `${targetName} (${typeLabel})`
+    const existing = outgoing.get(conn.fromId) ?? []
+    existing.push(formatted)
+    outgoing.set(conn.fromId, existing)
+  }
+
+  const header = [
+    'Name', 'Title', 'Department', 'Section', 'Reports To',
+    'Email', 'Phone', 'Location', 'Secondary Relationships',
+  ]
   const rows = nodes.map(n => [
     csvEscape(n.name),
     csvEscape(n.title),
@@ -1007,6 +1026,7 @@ export function exportCSV(nodes: OrgNode[], filename = 'org-chart.csv'): void {
     csvEscape(n.email),
     csvEscape(n.phone),
     csvEscape(n.location),
+    csvEscape((outgoing.get(n.id) ?? []).join('; ')),
   ].join(','))
 
   const csv = [header.join(','), ...rows].join('\n')

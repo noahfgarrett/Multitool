@@ -108,13 +108,13 @@ export default function OrgChartTool() {
 
   const handleExportCSV = useCallback(() => {
     try {
-      exportCSV(store.nodes)
+      exportCSV(getFullState())
       addToast({ type: 'success', message: 'CSV exported successfully' })
     } catch (err) {
       addToast({ type: 'error', message: err instanceof Error ? err.message : 'Export failed' })
     }
     setShowExport(false)
-  }, [store.nodes, addToast])
+  }, [getFullState, addToast])
 
   // ── Import JSON handler ───────────────────────────────────
   const handleImportJSON = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
