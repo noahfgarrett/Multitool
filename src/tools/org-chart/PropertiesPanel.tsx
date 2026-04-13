@@ -1,6 +1,6 @@
 import { useMemo, useRef, useCallback } from 'react'
 import type { OrgChartStore } from './orgChartStore.ts'
-import type { OrgNode } from './types.ts'
+import type { ConnectorTypeId, OrgNode } from './types.ts'
 import { DEPARTMENT_COLORS } from './types.ts'
 import { ColorPicker } from '@/components/common/ColorPicker.tsx'
 import { readFileAsDataURL } from '@/utils/fileReader.ts'
@@ -70,6 +70,75 @@ export function PropertiesPanel({ store }: { store: OrgChartStore }) {
 
     e.target.value = ''
   }, [selectedNode, updateNode])
+
+  // ── Connection editor (Task 18) ──────────────────────────
+  // When a secondary connection is selected, show the connection
+  // properties panel instead of the node editor. Connection and
+  // node selection are mutually exclusive in the store.
+  const { selectedConnectionId, connections, connectorTypes, updateConnection, removeConnection } = store
+  const selectedConnection = selectedConnectionId
+    ? connections.find(c => c.id === selectedConnectionId) ?? null
+    : null
+
+  if (selectedConnection) {
+    const fromNode = nodes.find(n => n.id === selectedConnection.fromId)
+    const toNode = nodes.find(n => n.id === selectedConnection.toId)
+
+    return (
+      <div
+        data-testid="connection-properties-panel"
+        className="w-[260px] flex-shrink-0 border-l border-white/[0.06] bg-dark-elevated overflow-y-auto"
+      >
+        <div className="px-3 py-2 text-[10px] font-semibold text-white/30 uppercase tracking-wider border-b border-white/[0.06]">
+          Connection
+        </div>
+
+        <div className="p-3 space-y-4">
+          {/* From / To summary */}
+          <div className="space-y-1.5">
+            <div className="text-[10px] font-medium text-white/40 uppercase tracking-wider">Endpoints</div>
+            <div className="text-[11px] text-white/80">
+              <span className="text-white/40">From:</span>{' '}
+              <span className="text-white/90">{fromNode?.name ?? 'Unknown'}</span>
+            </div>
+            <div className="text-[11px] text-white/80">
+              <span className="text-white/40">To:</span>{' '}
+              <span className="text-white/90">{toNode?.name ?? 'Unknown'}</span>
+            </div>
+          </div>
+
+          {/* Type dropdown */}
+          <PropSection label="Type">
+            <select
+              value={selectedConnection.typeId}
+              onChange={e => updateConnection(selectedConnection.id, {
+                typeId: e.target.value as ConnectorTypeId,
+              })}
+              data-testid="connection-type-select"
+              className="w-full px-2 py-1.5 text-xs bg-dark-surface border border-white/[0.1] rounded text-white focus:outline-none focus:border-[#14B8A6]/40"
+            >
+              {connectorTypes.map(t => (
+                <option key={t.id} value={t.id}>{t.label}</option>
+              ))}
+            </select>
+          </PropSection>
+
+          {/* Delete */}
+          <div className="pt-2 border-t border-white/[0.06]">
+            <button
+              type="button"
+              onClick={() => removeConnection(selectedConnection.id)}
+              data-testid="delete-connection"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs text-red-400/70 hover:text-red-400 bg-red-500/[0.04] hover:bg-red-500/[0.08] rounded-lg transition-colors"
+            >
+              <Trash2 size={13} />
+              Delete Connection
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (!selectedNode) {
     return (

@@ -7,7 +7,7 @@ import {
   SECTION_TITLE_HEIGHT, SECTION_GAP,
   getConnectorType,
 } from './types.ts'
-import { drawStyledLine, routeSecondaryEdge } from './connectorStyle.ts'
+import { drawStyledLine, routeSecondaryEdge, hitTestPath } from './connectorStyle.ts'
 import { loadImage } from '@/utils/imageProcessing.ts'
 
 // ── Constants ───────────────────────────────────────────────
@@ -75,6 +75,22 @@ export function Canvas({ store }: { store: OrgChartStore }) {
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null)
   const [editingTitleValue, setEditingTitleValue] = useState('')
 
+  // ── Shift-drag bypass (Task 17) ───────────────────────────
+  interface ShiftDragState {
+    sourceId: string
+    currentX: number  // canvas coords
+    currentY: number
+  }
+  const [shiftDrag, setShiftDrag] = useState<ShiftDragState | null>(null)
+  const shiftDragRef = useRef<ShiftDragState | null>(null)
+  shiftDragRef.current = shiftDrag
+
+  // Mouse position in canvas coords — used for the ghost edge during
+  // connect-mode `awaiting-target`. Lives in a ref so re-renders don't
+  // thrash React state on every pointermove.
+  const mousePosRef = useRef<[number, number] | null>(null)
+  const hoveredTargetIdRef = useRef<string | null>(null)
+
   // ── Space key for pan mode ────────────────────────────────
   const spaceHeldRef = useRef(false)
   const [spaceHeld, setSpaceHeld] = useState(false)
@@ -87,6 +103,10 @@ export function Canvas({ store }: { store: OrgChartStore }) {
         e.preventDefault()
         spaceHeldRef.current = true
         setSpaceHeld(true)
+      }
+      // Escape cancels an active Shift-drag without closing anything else.
+      if (e.key === 'Escape' && shiftDragRef.current) {
+        setShiftDrag(null)
       }
     }
     const onKeyUp = (e: KeyboardEvent) => {
@@ -192,6 +212,43 @@ export function Canvas({ store }: { store: OrgChartStore }) {
       return
     }
 
+    // ── Connect mode intercept (Task 16) ──────────────────
+    // Runs BEFORE any drag/marquee/move logic so normal pointer
+    // handling is fully short-circuited while connect mode is active.
+    if (store.connectMode.state !== 'off') {
+      const cmPt = screenToCanvas(e.clientX, e.clientY)
+      const clickedNode = hitTestNode(cmPt)
+
+      if (store.connectMode.state === 'awaiting-source') {
+        if (clickedNode) store.setConnectSource(clickedNode.id)
+        return
+      }
+
+      if (store.connectMode.state === 'awaiting-target') {
+        if (clickedNode && clickedNode.id !== store.connectMode.sourceId) {
+          store.setConnectTarget(clickedNode.id, [e.clientX, e.clientY])
+        }
+        return
+      }
+
+      // picking-type: popover handles it — ignore canvas clicks
+      return
+    }
+
+    // ── Shift-drag bypass (Task 17) ───────────────────────
+    // Shift + click on a node starts a shift-drag that opens the
+    // type picker at the release point. Shift + click on empty space
+    // still falls through to the existing additive marquee logic.
+    if (e.shiftKey) {
+      const sdPt = screenToCanvas(e.clientX, e.clientY)
+      const sdNode = hitTestNode(sdPt)
+      if (sdNode) {
+        setShiftDrag({ sourceId: sdNode.id, currentX: sdPt.x, currentY: sdPt.y })
+        return
+      }
+      // Shift + empty: fall through to existing additive marquee path
+    }
+
     const pt = screenToCanvas(e.clientX, e.clientY)
 
     // Check add button first
@@ -202,7 +259,42 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     }
 
     const hit = hitTestNode(pt)
+
+    // ── Connection hit-test (Task 18) ─────────────────────
+    // Only for empty-space clicks (no node hit), no shift held,
+    // and only when connect mode is off. If a connection is hit we
+    // select it and return early; otherwise we fall through to the
+    // existing drag/marquee path so plain empty clicks still work.
+    if (!hit && !e.shiftKey) {
+      const tolerance = 6 / store.viewport.zoom
+      const nodeById = new Map<string, LayoutNode>()
+      for (const n of flatLayoutRef.current) nodeById.set(n.id, n)
+
+      let connHit = false
+      for (const conn of store.connections) {
+        const from = nodeById.get(conn.fromId)
+        const to = nodeById.get(conn.toId)
+        if (!from || !to) continue
+        const path = routeSecondaryEdge(from, to)
+        if (path.length === 0) continue
+        if (hitTestPath(pt.x, pt.y, path, tolerance)) {
+          store.selectConnection(conn.id)
+          connHit = true
+          break
+        }
+      }
+
+      if (connHit) return
+      if (store.selectedConnectionId !== null) {
+        store.selectConnection(null)
+      }
+    }
     if (hit) {
+      // Selecting a node implicitly deselects any selected connection
+      // (mirrors the store's reverse behavior for selectConnection).
+      if (store.selectedConnectionId !== null) {
+        store.selectConnection(null)
+      }
       // Select the hit node (shift for multi-select toggle)
       if (e.shiftKey) {
         store.selectNode(hit.id, true)
@@ -251,6 +343,37 @@ export function Canvas({ store }: { store: OrgChartStore }) {
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     const pt = screenToCanvas(e.clientX, e.clientY)
+
+    // ── Track mouse for connect-mode ghost edge (Task 16) ──
+    if (store.connectMode.state === 'awaiting-target') {
+      mousePosRef.current = [pt.x, pt.y]
+      const hoveredNode = hitTestNode(pt)
+      hoveredTargetIdRef.current = hoveredNode && hoveredNode.id !== store.connectMode.sourceId
+        ? hoveredNode.id
+        : null
+      // Trigger a re-render so the ghost edge / green ring repaint.
+      forceUpdate(v => v + 1)
+      setHoveredNodeId(hoveredNode?.id ?? null)
+      return
+    }
+
+    // ── Track Shift-drag cursor (Task 17) ──────────────────
+    if (shiftDragRef.current) {
+      setShiftDrag({ ...shiftDragRef.current, currentX: pt.x, currentY: pt.y })
+      // Also refresh the hovered node highlight so the user sees the
+      // card under the cursor as a potential target.
+      const hoveredNode = hitTestNode(pt)
+      setHoveredNodeId(
+        hoveredNode && hoveredNode.id !== shiftDragRef.current.sourceId ? hoveredNode.id : null,
+      )
+      return
+    }
+
+    // ── Short-circuit while connect mode is active ────────
+    if (store.connectMode.state !== 'off') {
+      return
+    }
+
     const hit = hitTestNode(pt)
     const addBtn = hitTestAddButton(pt)
     setHoveredNodeId(hit?.id ?? addBtn ?? null)
@@ -364,7 +487,31 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     }
   }, [screenToCanvas, hitTestNode, hitTestAddButton, store])
 
-  const handlePointerUp = useCallback(() => {
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    // ── Shift-drag release (Task 17) ─────────────────────
+    if (shiftDragRef.current) {
+      const sourceId = shiftDragRef.current.sourceId
+      // On pointerleave, cancel silently; only pointerup triggers the
+      // target hit test and opens the type picker.
+      if (e.type !== 'pointerup') {
+        setShiftDrag(null)
+        return
+      }
+      const pt = screenToCanvas(e.clientX, e.clientY)
+      const target = hitTestNode(pt)
+      setShiftDrag(null)
+
+      if (target && target.id !== sourceId) {
+        store.setConnectModeDirect({
+          state: 'picking-type',
+          sourceId,
+          targetId: target.id,
+          anchorScreenXY: [e.clientX, e.clientY],
+        })
+      }
+      return
+    }
+
     const d = dragRef.current
 
     if (d?.type === 'move' && d.moved) {
@@ -385,7 +532,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     guidesRef.current = []
     setDrag(null)
     setReparentTarget(null)
-  }, [store, reparentTarget])
+  }, [store, reparentTarget, screenToCanvas, hitTestNode])
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault()
@@ -548,6 +695,87 @@ export function Canvas({ store }: { store: OrgChartStore }) {
       }
     }
 
+    // ── Selection halo for the selected connection (Task 18) ──
+    // Drawn AFTER secondary edges and BEFORE nodes so the node
+    // cards visually cover the endpoints cleanly.
+    if (store.selectedConnectionId) {
+      const conn = store.connections.find(c => c.id === store.selectedConnectionId)
+      if (conn) {
+        const fromNode = flatLayoutRef.current.find(n => n.id === conn.fromId)
+        const toNode = flatLayoutRef.current.find(n => n.id === conn.toId)
+        if (fromNode && toNode) {
+          const path = routeSecondaryEdge(fromNode, toNode)
+          if (path.length > 0) {
+            ctx.save()
+            ctx.strokeStyle = '#3B82F6'
+            ctx.lineWidth = 4 / store.viewport.zoom
+            ctx.globalAlpha = 0.4
+            ctx.lineCap = 'round'
+            ctx.lineJoin = 'round'
+            ctx.beginPath()
+            ctx.moveTo(path[0][0], path[0][1])
+            for (let i = 1; i < path.length; i++) ctx.lineTo(path[i][0], path[i][1])
+            ctx.stroke()
+            ctx.restore()
+          }
+        }
+      }
+    }
+
+    // ── Ghost preview edge — connect mode awaiting-target (Task 16) ──
+    if (store.connectMode.state === 'awaiting-target' && mousePosRef.current) {
+      const sourceId = store.connectMode.sourceId
+      const source = flatLayoutRef.current.find(n => n.id === sourceId)
+      if (source) {
+        const sourceCx = source.x + source.width / 2
+        const sourceCy = source.y + source.height / 2
+        const [mx, my] = mousePosRef.current
+        ctx.save()
+        ctx.globalAlpha = 0.5
+        ctx.strokeStyle = '#60a5fa'
+        ctx.lineWidth = 1.5 / store.viewport.zoom
+        ctx.setLineDash([6 / store.viewport.zoom, 4 / store.viewport.zoom])
+        ctx.beginPath()
+        ctx.moveTo(sourceCx, sourceCy)
+        ctx.lineTo(mx, my)
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.restore()
+      }
+    }
+
+    // ── Ghost preview edge — Shift-drag (Task 17) ────────────
+    if (shiftDrag) {
+      const source = flatLayoutRef.current.find(n => n.id === shiftDrag.sourceId)
+      if (source) {
+        const sourceCx = source.x + source.width / 2
+        const sourceCy = source.y + source.height / 2
+        ctx.save()
+        ctx.globalAlpha = 0.5
+        ctx.strokeStyle = '#60a5fa'
+        ctx.lineWidth = 1.5 / store.viewport.zoom
+        ctx.setLineDash([6 / store.viewport.zoom, 4 / store.viewport.zoom])
+        ctx.beginPath()
+        ctx.moveTo(sourceCx, sourceCy)
+        ctx.lineTo(shiftDrag.currentX, shiftDrag.currentY)
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.restore()
+      }
+    }
+
+    // ── Green hover ring on connect-mode target (Task 16) ────
+    if (store.connectMode.state === 'awaiting-target' && hoveredTargetIdRef.current) {
+      const target = flatLayoutRef.current.find(n => n.id === hoveredTargetIdRef.current)
+      if (target) {
+        ctx.save()
+        ctx.strokeStyle = '#22C55E'
+        ctx.lineWidth = 2.5 / store.viewport.zoom
+        ctx.strokeRect(target.x - 2, target.y - 2, target.width + 4, target.height + 4)
+        ctx.restore()
+      }
+    }
+
     // Draw section titles and dividers
     const rootNodes = allFlat.filter(n => !n.reportsTo)
     rootNodes.forEach((root, idx) => {
@@ -652,7 +880,12 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     }
 
     ctx.restore()
-  }, [store.nodes, store.connections, store.connectorTypes, store.viewport, store.selectedNodeIds, store.layoutDirection, hoveredNodeId, reparentTarget, drag, imageCacheVer, screenToCanvas])
+  }, [
+    store.nodes, store.connections, store.connectorTypes, store.viewport,
+    store.selectedNodeIds, store.selectedConnectionId, store.layoutDirection,
+    store.connectMode, shiftDrag,
+    hoveredNodeId, reparentTarget, drag, imageCacheVer, screenToCanvas,
+  ])
 
   // ── Resize observer ─────────────────────────────────────
 
@@ -681,6 +914,8 @@ export function Canvas({ store }: { store: OrgChartStore }) {
   else if (drag?.type === 'move' && drag.moved) cursor = 'grabbing'
   else if (drag?.type === 'marquee') cursor = 'crosshair'
   else if (spaceHeld) cursor = 'grab'
+  else if (shiftDrag) cursor = 'crosshair'
+  else if (store.connectMode.state !== 'off') cursor = 'crosshair'
   else if (hoveredNodeId) cursor = 'pointer'
 
   return (

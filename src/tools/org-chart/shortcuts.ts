@@ -43,6 +43,11 @@ export function attachShortcuts(
 
     // ── Delete selected: Delete or Backspace ───
     if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (store.selectedConnectionId) {
+        e.preventDefault()
+        store.removeConnection(store.selectedConnectionId)
+        return
+      }
       if (store.selectedNodeIds.size > 0) {
         e.preventDefault()
         store.removeSelectedNodes()
@@ -60,6 +65,7 @@ export function attachShortcuts(
     // ── Escape: deselect ──────────────────────
     if (e.key === 'Escape') {
       store.selectNode(null)
+      if (store.selectedConnectionId) store.selectConnection(null)
       return
     }
 
