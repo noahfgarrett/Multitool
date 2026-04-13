@@ -296,8 +296,6 @@ function drawConnector(
   ctx.save()
   ctx.strokeStyle = primaryType.color
   ctx.lineWidth = primaryType.lineWidth
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
 
   ctx.beginPath()
   if (Math.abs(cx - px) < 1) {
