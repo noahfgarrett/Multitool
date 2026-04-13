@@ -6,6 +6,7 @@ import { PropertiesPanel } from './PropertiesPanel.tsx'
 import { attachShortcuts } from './shortcuts.ts'
 import { exportPNG, exportSVG, exportJSON, exportCSV, importJSON, copyPNGToClipboard } from './export.ts'
 import { TEMPLATES } from './templates.ts'
+import type { OrgChartState } from './types.ts'
 import { Modal } from '@/components/common/Modal.tsx'
 import { useAppStore } from '@/stores/appStore.ts'
 import {
@@ -53,50 +54,53 @@ export default function OrgChartTool() {
   )
 
   // ── Export handlers ────────────────────────────────────────
+  // Centralize full-state snapshot so every export sees the same fields.
+  const getFullState = useCallback((): OrgChartState => ({
+    nodes: store.nodes,
+    connections: store.connections,
+    connectorTypes: store.connectorTypes,
+    legend: store.legend,
+  }), [store.nodes, store.connections, store.connectorTypes, store.legend])
+
   const handleExportPNG = useCallback(async () => {
     try {
-      await exportPNG(store.nodes)
+      await exportPNG(getFullState())
       addToast({ type: 'success', message: 'PNG exported successfully' })
     } catch (err) {
       addToast({ type: 'error', message: err instanceof Error ? err.message : 'Export failed' })
     }
     setShowExport(false)
-  }, [store.nodes, addToast])
+  }, [getFullState, addToast])
 
   const handleCopyPNG = useCallback(async () => {
     try {
-      await copyPNGToClipboard(store.nodes)
+      await copyPNGToClipboard(getFullState())
       addToast({ type: 'success', message: 'Copied to clipboard' })
     } catch (err) {
       addToast({ type: 'error', message: err instanceof Error ? err.message : 'Copy failed' })
     }
     setShowExport(false)
-  }, [store.nodes, addToast])
+  }, [getFullState, addToast])
 
   const handleExportSVG = useCallback(async () => {
     try {
-      await exportSVG(store.nodes)
+      await exportSVG(getFullState())
       addToast({ type: 'success', message: 'SVG exported successfully' })
     } catch (err) {
       addToast({ type: 'error', message: err instanceof Error ? err.message : 'Export failed' })
     }
     setShowExport(false)
-  }, [store.nodes, addToast])
+  }, [getFullState, addToast])
 
   const handleExportJSON = useCallback(() => {
     try {
-      exportJSON({
-        nodes: store.nodes,
-        connections: store.connections,
-        connectorTypes: store.connectorTypes,
-        legend: store.legend,
-      })
+      exportJSON(getFullState())
       addToast({ type: 'success', message: 'JSON saved successfully' })
     } catch (err) {
       addToast({ type: 'error', message: err instanceof Error ? err.message : 'Export failed' })
     }
     setShowExport(false)
-  }, [store.nodes, store.connections, store.connectorTypes, store.legend, addToast])
+  }, [getFullState, addToast])
 
   const handleExportCSV = useCallback(() => {
     try {

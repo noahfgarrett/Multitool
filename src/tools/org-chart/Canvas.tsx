@@ -1,11 +1,13 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import type { OrgChartStore } from './orgChartStore.ts'
-import type { OrgNode, LayoutNode, LayoutDirection } from './types.ts'
+import type { OrgNode, LayoutNode, LayoutDirection, ConnectorType, Connection } from './types.ts'
 import {
   NODE_WIDTH, NODE_HEIGHT, H_SPACING, V_SPACING,
   AVATAR_SIZE, CONNECTOR_RADIUS, MIN_ZOOM, MAX_ZOOM,
   SECTION_TITLE_HEIGHT, SECTION_GAP,
+  getConnectorType,
 } from './types.ts'
+import { drawStyledLine, routeSecondaryEdge } from './connectorStyle.ts'
 import { loadImage } from '@/utils/imageProcessing.ts'
 
 // ── Constants ───────────────────────────────────────────────
@@ -443,6 +445,24 @@ export function Canvas({ store }: { store: OrgChartStore }) {
       maxY = Math.max(maxY, n.y + n.height)
     }
 
+    // Include secondary edge anchor points so fit-to-content captures diagonals
+    if (store.connections.length > 0) {
+      const byId = new Map<string, LayoutNode>()
+      for (const n of flat) byId.set(n.id, n)
+      for (const conn of store.connections) {
+        const from = byId.get(conn.fromId)
+        const to = byId.get(conn.toId)
+        if (!from || !to) continue
+        const path = routeSecondaryEdge(from, to)
+        for (const [px, py] of path) {
+          minX = Math.min(minX, px)
+          minY = Math.min(minY, py)
+          maxX = Math.max(maxX, px)
+          maxY = Math.max(maxY, py)
+        }
+      }
+    }
+
     const container = containerRef.current
     const cw = container.clientWidth
     const ch = container.clientHeight
@@ -507,8 +527,25 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     const imageCache = imageCacheRef.current
 
     // Draw connectors for each tree
+    const primaryType = getConnectorType(store.connectorTypes, 'primary')
     for (const tree of trees) {
-      drawConnectors(ctx, tree)
+      drawConnectors(ctx, tree, primaryType)
+    }
+
+    // Draw secondary edges (store.connections)
+    if (store.connections.length > 0) {
+      const nodeById = new Map<string, LayoutNode>()
+      for (const n of flatLayoutRef.current) nodeById.set(n.id, n)
+
+      for (const conn of store.connections) {
+        const from = nodeById.get(conn.fromId)
+        const to = nodeById.get(conn.toId)
+        if (!from || !to) continue
+        const path = routeSecondaryEdge(from, to)
+        if (path.length === 0) continue
+        const type = getConnectorType(store.connectorTypes, conn.typeId)
+        drawStyledLine(ctx, path, type, store.viewport.zoom)
+      }
     }
 
     // Draw section titles and dividers
@@ -615,7 +652,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     }
 
     ctx.restore()
-  }, [store.nodes, store.viewport, store.selectedNodeIds, store.layoutDirection, hoveredNodeId, reparentTarget, drag, imageCacheVer, screenToCanvas])
+  }, [store.nodes, store.connections, store.connectorTypes, store.viewport, store.selectedNodeIds, store.layoutDirection, hoveredNodeId, reparentTarget, drag, imageCacheVer, screenToCanvas])
 
   // ── Resize observer ─────────────────────────────────────
 
@@ -932,14 +969,19 @@ function getSectionNodes(root: LayoutNode, allFlat: LayoutNode[]): LayoutNode[] 
 
 // ── Drawing functions ───────────────────────────────────────
 
-function drawConnectors(ctx: CanvasRenderingContext2D, node: LayoutNode) {
+function drawConnectors(ctx: CanvasRenderingContext2D, node: LayoutNode, primaryType: ConnectorType) {
   for (const child of node.children) {
-    drawConnector(ctx, node, child)
-    drawConnectors(ctx, child)
+    drawConnector(ctx, node, child, primaryType)
+    drawConnectors(ctx, child, primaryType)
   }
 }
 
-function drawConnector(ctx: CanvasRenderingContext2D, parent: LayoutNode, child: LayoutNode) {
+function drawConnector(
+  ctx: CanvasRenderingContext2D,
+  parent: LayoutNode,
+  child: LayoutNode,
+  primaryType: ConnectorType,
+) {
   const px = parent.x + parent.width / 2
   const py = parent.y + parent.height
   const cx = child.x + child.width / 2
@@ -947,10 +989,13 @@ function drawConnector(ctx: CanvasRenderingContext2D, parent: LayoutNode, child:
   const midY = (py + cy) / 2
   const r = Math.min(CONNECTOR_RADIUS, Math.abs(midY - py), Math.abs(cx - px) / 2 || CONNECTOR_RADIUS)
 
-  ctx.beginPath()
-  ctx.strokeStyle = CONNECTOR_COLOR
-  ctx.lineWidth = 1.5
+  ctx.save()
+  ctx.strokeStyle = primaryType.color
+  ctx.lineWidth = primaryType.lineWidth
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
 
+  ctx.beginPath()
   if (Math.abs(cx - px) < 1) {
     // Straight vertical line
     ctx.moveTo(px, py)
@@ -973,6 +1018,7 @@ function drawConnector(ctx: CanvasRenderingContext2D, parent: LayoutNode, child:
   }
 
   ctx.stroke()
+  ctx.restore()
 }
 
 function drawNode(

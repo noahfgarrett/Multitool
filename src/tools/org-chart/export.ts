@@ -7,7 +7,9 @@ import {
   AVATAR_SIZE, CONNECTOR_RADIUS,
   SECTION_TITLE_HEIGHT, SECTION_GAP,
   createDefaultConnectorTypes, createDefaultLegend, mergeWithDefaults,
+  getConnectorType,
 } from './types.ts'
+import { drawStyledLine, routeSecondaryEdge } from './connectorStyle.ts'
 import { downloadBlob, downloadText } from '@/utils/download.ts'
 import { loadImage } from '@/utils/imageProcessing.ts'
 
@@ -23,7 +25,7 @@ interface LayoutNode extends OrgNode {
 
 // ── Bounds ──────────────────────────────────────────────────
 
-function calcBounds(flat: LayoutNode[]) {
+function calcBounds(flat: LayoutNode[], connections: Connection[] = []) {
   if (flat.length === 0) return { minX: 0, minY: 0, maxX: 800, maxY: 600 }
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
   for (const n of flat) {
@@ -32,6 +34,25 @@ function calcBounds(flat: LayoutNode[]) {
     maxX = Math.max(maxX, n.x + n.width)
     maxY = Math.max(maxY, n.y + n.height)
   }
+
+  // Include secondary edge anchor points so fit-to-content captures diagonals
+  if (connections.length > 0) {
+    const byId = new Map<string, LayoutNode>()
+    for (const n of flat) byId.set(n.id, n)
+    for (const conn of connections) {
+      const from = byId.get(conn.fromId)
+      const to = byId.get(conn.toId)
+      if (!from || !to) continue
+      const path = routeSecondaryEdge(from, to)
+      for (const [px, py] of path) {
+        minX = Math.min(minX, px)
+        minY = Math.min(minY, py)
+        maxX = Math.max(maxX, px)
+        maxY = Math.max(maxY, py)
+      }
+    }
+  }
+
   return { minX: minX - 50, minY: minY - 50, maxX: maxX + 50, maxY: maxY + 50 }
 }
 
@@ -139,13 +160,14 @@ async function preloadImages(nodes: OrgNode[]): Promise<Map<string, HTMLImageEle
 
 // ── Render to offscreen canvas ──────────────────────────────
 
-async function renderToCanvas(nodes: OrgNode[]): Promise<HTMLCanvasElement> {
+async function renderToCanvas(state: OrgChartState): Promise<HTMLCanvasElement> {
+  const { nodes, connections, connectorTypes } = state
   const flat = buildLayout(nodes)
   const imageCache = await preloadImages(nodes)
   const roots = flat.filter(n => !n.reportsTo)
 
-  // Expand bounds to include section titles
-  const { minX, minY: rawMinY, maxX, maxY } = calcBounds(flat)
+  // Expand bounds to include section titles AND secondary edge anchors
+  const { minX, minY: rawMinY, maxX, maxY } = calcBounds(flat, connections)
   const hasTitles = roots.some(r => r.sectionTitle)
   const minY = hasTitles ? rawMinY - SECTION_TITLE_HEIGHT : rawMinY
   const w = maxX - minX
@@ -164,7 +186,8 @@ async function renderToCanvas(nodes: OrgNode[]): Promise<HTMLCanvasElement> {
   ctx.fillStyle = '#0a0a14'
   ctx.fillRect(minX, minY, w, h)
 
-  // Draw connectors
+  // Draw primary connectors (tree edges)
+  const primaryType = getConnectorType(connectorTypes, 'primary')
   const childMap = new Map<string, LayoutNode[]>()
   for (const n of flat) {
     if (n.reportsTo) {
@@ -176,7 +199,23 @@ async function renderToCanvas(nodes: OrgNode[]): Promise<HTMLCanvasElement> {
   for (const parent of flat) {
     const children = childMap.get(parent.id) ?? []
     for (const child of children) {
-      drawConnector(ctx, parent, child)
+      drawConnector(ctx, parent, child, primaryType)
+    }
+  }
+
+  // Draw secondary edges
+  if (connections.length > 0) {
+    const nodeById = new Map<string, LayoutNode>()
+    for (const n of flat) nodeById.set(n.id, n)
+
+    for (const conn of connections) {
+      const from = nodeById.get(conn.fromId)
+      const to = nodeById.get(conn.toId)
+      if (!from || !to) continue
+      const path = routeSecondaryEdge(from, to)
+      if (path.length === 0) continue
+      const type = getConnectorType(connectorTypes, conn.typeId)
+      drawStyledLine(ctx, path, type, 1) // native scale, no zoom dash adjustment
     }
   }
 
@@ -241,7 +280,12 @@ function getSectionNodesFlat(root: LayoutNode, allFlat: LayoutNode[]): LayoutNod
 
 // ── Drawing helpers ─────────────────────────────────────────
 
-function drawConnector(ctx: CanvasRenderingContext2D, parent: LayoutNode, child: LayoutNode) {
+function drawConnector(
+  ctx: CanvasRenderingContext2D,
+  parent: LayoutNode,
+  child: LayoutNode,
+  primaryType: ConnectorType,
+) {
   const px = parent.x + parent.width / 2
   const py = parent.y + parent.height
   const cx = child.x + child.width / 2
@@ -249,10 +293,13 @@ function drawConnector(ctx: CanvasRenderingContext2D, parent: LayoutNode, child:
   const midY = (py + cy) / 2
   const r = Math.min(CONNECTOR_RADIUS, Math.abs(midY - py), Math.abs(cx - px) / 2 || CONNECTOR_RADIUS)
 
-  ctx.beginPath()
-  ctx.strokeStyle = 'rgba(255,255,255,0.12)'
-  ctx.lineWidth = 1.5
+  ctx.save()
+  ctx.strokeStyle = primaryType.color
+  ctx.lineWidth = primaryType.lineWidth
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
 
+  ctx.beginPath()
   if (Math.abs(cx - px) < 1) {
     ctx.moveTo(px, py)
     ctx.lineTo(cx, cy)
@@ -271,6 +318,7 @@ function drawConnector(ctx: CanvasRenderingContext2D, parent: LayoutNode, child:
     ctx.lineTo(cx, cy)
   }
   ctx.stroke()
+  ctx.restore()
 }
 
 function drawNodeCard(ctx: CanvasRenderingContext2D, node: LayoutNode, imageCache: Map<string, HTMLImageElement>) {
@@ -386,8 +434,8 @@ function truncateText(ctx: CanvasRenderingContext2D, text: string, maxWidth: num
 
 // ── Export as PNG ────────────────────────────────────────────
 
-export async function exportPNG(nodes: OrgNode[], filename = 'org-chart.png'): Promise<void> {
-  const canvas = await renderToCanvas(nodes)
+export async function exportPNG(state: OrgChartState, filename = 'org-chart.png'): Promise<void> {
+  const canvas = await renderToCanvas(state)
   return new Promise<void>((resolve, reject) => {
     canvas.toBlob(blob => {
       if (blob) {
@@ -404,8 +452,8 @@ export async function exportPNG(nodes: OrgNode[], filename = 'org-chart.png'): P
 
 // ── Copy as PNG to clipboard ────────────────────────────────
 
-export async function copyPNGToClipboard(nodes: OrgNode[]): Promise<void> {
-  const canvas = await renderToCanvas(nodes)
+export async function copyPNGToClipboard(state: OrgChartState): Promise<void> {
+  const canvas = await renderToCanvas(state)
   return new Promise<void>((resolve, reject) => {
     canvas.toBlob(async blob => {
       if (!blob) {
@@ -433,10 +481,11 @@ export async function copyPNGToClipboard(nodes: OrgNode[]): Promise<void> {
 
 // ── Export as SVG ────────────────────────────────────────────
 
-export async function exportSVG(nodes: OrgNode[], filename = 'org-chart.svg'): Promise<void> {
+export async function exportSVG(state: OrgChartState, filename = 'org-chart.svg'): Promise<void> {
+  const { nodes, connections, connectorTypes } = state
   const flat = buildLayout(nodes)
   const roots = flat.filter(n => !n.reportsTo)
-  const { minX, minY: rawMinY, maxX, maxY } = calcBounds(flat)
+  const { minX, minY: rawMinY, maxX, maxY } = calcBounds(flat, connections)
   const hasTitles = roots.some(r => r.sectionTitle)
   const minY = hasTitles ? rawMinY - SECTION_TITLE_HEIGHT : rawMinY
   const w = maxX - minX
@@ -465,7 +514,8 @@ export async function exportSVG(nodes: OrgNode[], filename = 'org-chart.svg'): P
   }
   parts.push(`</defs>`)
 
-  // Connectors
+  // Primary connectors (tree edges)
+  const primaryType = getConnectorType(connectorTypes, 'primary')
   for (const parent of flat) {
     const children = childMap.get(parent.id) ?? []
     for (const child of children) {
@@ -474,7 +524,50 @@ export async function exportSVG(nodes: OrgNode[], filename = 'org-chart.svg'): P
       const cx = child.x + child.width / 2
       const cy = child.y
       const midY = (py + cy) / 2
-      parts.push(`<path d="M${px},${py} L${px},${midY} L${cx},${midY} L${cx},${cy}" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/>`)
+      parts.push(`<path d="M${px},${py} L${px},${midY} L${cx},${midY} L${cx},${cy}" fill="none" stroke="${primaryType.color}" stroke-width="${primaryType.lineWidth}"/>`)
+    }
+  }
+
+  // Secondary edges
+  if (connections.length > 0) {
+    const nodeByIdSvg = new Map<string, LayoutNode>()
+    for (const n of flat) nodeByIdSvg.set(n.id, n)
+
+    for (const conn of connections) {
+      const from = nodeByIdSvg.get(conn.fromId)
+      const to = nodeByIdSvg.get(conn.toId)
+      if (!from || !to) continue
+      const path = routeSecondaryEdge(from, to)
+      if (path.length === 0) continue
+      const type = getConnectorType(connectorTypes, conn.typeId)
+
+      const dashAttr = (() => {
+        switch (type.style) {
+          case 'solid':  return ''
+          case 'dashed': return ' stroke-dasharray="8,5"'
+          case 'dotted': return ' stroke-dasharray="2,3"'
+          case 'double': return '' // handled below with two parallel paths
+        }
+      })()
+
+      const [sx, sy] = path[0]
+      const [ex, ey] = path[1]
+
+      if (type.style === 'double') {
+        // Offset two parallel strokes perpendicular to the line
+        const dx = ex - sx
+        const dy = ey - sy
+        const len = Math.hypot(dx, dy) || 1
+        const nx = -dy / len * 2
+        const ny = dx / len * 2
+        const halfW = Math.max(1, type.lineWidth * 0.6)
+        parts.push(`<g stroke="${type.color}" stroke-width="${halfW}" stroke-linecap="round" fill="none">`)
+        parts.push(`  <path d="M${sx + nx},${sy + ny} L${ex + nx},${ey + ny}"/>`)
+        parts.push(`  <path d="M${sx - nx},${sy - ny} L${ex - nx},${ey - ny}"/>`)
+        parts.push(`</g>`)
+      } else {
+        parts.push(`<path d="M${sx},${sy} L${ex},${ey}" fill="none" stroke="${type.color}" stroke-width="${type.lineWidth}" stroke-linecap="round"${dashAttr}/>`)
+      }
     }
   }
 
