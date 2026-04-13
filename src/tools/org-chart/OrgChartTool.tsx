@@ -28,6 +28,11 @@ export default function OrgChartTool() {
   const store = useOrgChartStore()
   const { addToast } = useAppStore()
 
+  // ── Dev-only test hooks (tree-shaken out of production) ──
+  useEffect(() => {
+    void import('./testHooks.ts').then(({ installTestHooks }) => installTestHooks())
+  }, [])
+
   // ── Keyboard shortcuts ──────────────────────────────────
   useEffect(() => {
     return attachShortcuts(store, () => setShowExport(true))
