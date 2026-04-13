@@ -1,5 +1,14 @@
-import type { OrgChartState } from './types.ts'
-import { createNode, DEPARTMENT_COLORS } from './types.ts'
+import type { OrgChartState, OrgNode } from './types.ts'
+import { createNode, createDefaultConnectorTypes, createDefaultLegend, DEPARTMENT_COLORS } from './types.ts'
+
+function withDefaults(nodes: OrgNode[]): OrgChartState {
+  return {
+    nodes,
+    connections: [],
+    connectorTypes: createDefaultConnectorTypes(),
+    legend: createDefaultLegend(),
+  }
+}
 
 export interface OrgTemplate {
   name: string
@@ -13,18 +22,15 @@ export const TEMPLATES: OrgTemplate[] = [
     name: 'Blank',
     description: 'A single root node to start from scratch',
     nodeCount: 1,
-    build: () => ({
-      nodes: [
+    build: () => withDefaults([
         createNode({ id: 'root', name: 'CEO', title: 'Chief Executive Officer', reportsTo: '', department: 'Executive', nodeColor: '#14B8A6' }),
-      ],
-    }),
+      ]),
   },
   {
     name: 'Startup',
     description: 'CEO with 3 VPs, each having 2 direct reports',
     nodeCount: 10,
-    build: () => ({
-      nodes: [
+    build: () => withDefaults([
         createNode({ id: 't-ceo', name: 'Alex Chen', title: 'CEO & Co-Founder', reportsTo: '', department: 'Executive', nodeColor: '#14B8A6' }),
 
         createNode({ id: 't-vpe', name: 'Sarah Kim', title: 'VP of Engineering', reportsTo: 't-ceo', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
@@ -39,15 +45,13 @@ export const TEMPLATES: OrgTemplate[] = [
 
         createNode({ id: 't-sal1', name: 'AE Lead', title: 'Account Executive', reportsTo: 't-vps', department: 'Sales', nodeColor: DEPARTMENT_COLORS.Sales }),
         createNode({ id: 't-sal2', name: 'SDR Lead', title: 'Sales Development', reportsTo: 't-vps', department: 'Sales', nodeColor: DEPARTMENT_COLORS.Sales }),
-      ],
-    }),
+      ]),
   },
   {
     name: 'Corporate',
     description: 'CEO, C-suite, Directors, and Managers — 4 levels',
     nodeCount: 18,
-    build: () => ({
-      nodes: [
+    build: () => withDefaults([
         createNode({ id: 'c-ceo', name: 'James Wilson', title: 'Chief Executive Officer', reportsTo: '', department: 'Executive', nodeColor: '#14B8A6' }),
 
         createNode({ id: 'c-cto', name: 'Lisa Zhang', title: 'Chief Technology Officer', reportsTo: 'c-ceo', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
@@ -75,15 +79,13 @@ export const TEMPLATES: OrgTemplate[] = [
 
         createNode({ id: 'c-mgr5', name: 'East Region', title: 'Sales Manager', reportsTo: 'c-dir-sal', department: 'Sales', nodeColor: DEPARTMENT_COLORS.Sales }),
         createNode({ id: 'c-mgr6', name: 'West Region', title: 'Sales Manager', reportsTo: 'c-dir-sal', department: 'Sales', nodeColor: DEPARTMENT_COLORS.Sales }),
-      ],
-    }),
+      ]),
   },
   {
     name: 'Department',
     description: 'Director with 3 Managers, each with 2 individual contributors',
     nodeCount: 10,
-    build: () => ({
-      nodes: [
+    build: () => withDefaults([
         createNode({ id: 'd-dir', name: 'Engineering Director', title: 'Director of Engineering', reportsTo: '', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
 
         createNode({ id: 'd-mgr1', name: 'Platform Manager', title: 'Engineering Manager', reportsTo: 'd-dir', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
@@ -98,15 +100,13 @@ export const TEMPLATES: OrgTemplate[] = [
 
         createNode({ id: 'd-ic5', name: 'DevOps Lead', title: 'Senior SRE', reportsTo: 'd-mgr3', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
         createNode({ id: 'd-ic6', name: 'Cloud Engineer', title: 'Software Engineer', reportsTo: 'd-mgr3', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
-      ],
-    }),
+      ]),
   },
   {
     name: 'Multi-Department',
     description: '3 independent departments with section headers',
     nodeCount: 15,
-    build: () => ({
-      nodes: [
+    build: () => withDefaults([
         // Operations section
         createNode({ id: 'ops-head', name: 'Operations Director', title: 'Director of Operations', reportsTo: '', department: 'Operations', nodeColor: DEPARTMENT_COLORS.Operations, sectionTitle: 'Operations' }),
         createNode({ name: 'Site Manager', title: 'Site Manager', reportsTo: 'ops-head', department: 'Operations', nodeColor: DEPARTMENT_COLORS.Operations }),
@@ -125,7 +125,6 @@ export const TEMPLATES: OrgTemplate[] = [
         createNode({ name: 'Office Manager', title: 'Office Manager', reportsTo: 'admin-head', department: 'HR', nodeColor: DEPARTMENT_COLORS.HR }),
         createNode({ name: 'Accountant', title: 'Senior Accountant', reportsTo: 'admin-head', department: 'Finance', nodeColor: DEPARTMENT_COLORS.Finance }),
         createNode({ name: 'IT Support', title: 'IT Support Specialist', reportsTo: 'admin-head', department: 'Engineering', nodeColor: DEPARTMENT_COLORS.Engineering }),
-      ],
-    }),
+      ]),
   },
 ]
