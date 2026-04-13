@@ -1,10 +1,62 @@
 import { test, expect } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { navigateToTool } from '../helpers/navigation'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
   await navigateToTool(page, 'org-chart')
 })
+
+// ── Store-backed integration test helpers ─────────────────────
+// These run inside page.evaluate() and pull live store state from
+// window.__orgChartTest.getStore(), which is registered from
+// OrgChartTool.tsx's test-hooks effect.
+
+interface StoreConnection { id: string; fromId: string; toId: string; typeId: string }
+interface StoreConnectorType { id: string; label: string; color: string; style: string; lineWidth: number }
+interface StoreNode { id: string; name: string; reportsTo: string }
+
+async function getConnections(page: Page): Promise<StoreConnection[]> {
+  return await page.evaluate(() => {
+    const s = window.__orgChartTest?.getStore?.() as { connections?: unknown } | undefined
+    return Array.isArray(s?.connections) ? (s!.connections as StoreConnection[]) : []
+  })
+}
+
+async function getConnectorTypes(page: Page): Promise<StoreConnectorType[]> {
+  return await page.evaluate(() => {
+    const s = window.__orgChartTest?.getStore?.() as { connectorTypes?: unknown } | undefined
+    return Array.isArray(s?.connectorTypes) ? (s!.connectorTypes as StoreConnectorType[]) : []
+  })
+}
+
+async function getLegendPosition(page: Page): Promise<string> {
+  return await page.evaluate(() => {
+    const s = window.__orgChartTest?.getStore?.() as { legend?: { position?: unknown } } | undefined
+    return typeof s?.legend?.position === 'string' ? (s!.legend!.position as string) : ''
+  })
+}
+
+async function getNodes(page: Page): Promise<StoreNode[]> {
+  return await page.evaluate(() => {
+    const s = window.__orgChartTest?.getStore?.() as { nodes?: unknown } | undefined
+    return Array.isArray(s?.nodes) ? (s!.nodes as StoreNode[]) : []
+  })
+}
+
+async function dispatchStore<TResult>(
+  page: Page,
+  fn: string,
+  args: unknown[],
+): Promise<TResult> {
+  return await page.evaluate(({ fn, args }) => {
+    const s = window.__orgChartTest?.getStore?.() as Record<string, unknown> | undefined
+    if (!s) throw new Error('Store not registered')
+    const action = s[fn]
+    if (typeof action !== 'function') throw new Error(`Store action "${fn}" not found`)
+    return (action as (...a: unknown[]) => unknown)(...args)
+  }, { fn, args }) as TResult
+}
 
 test.describe('Org Chart — Typed Connectors (pure function tests)', () => {
   test('createDefaultConnectorTypes returns 4 types in stable order', async ({ page }) => {
@@ -173,5 +225,230 @@ test.describe('Org Chart — Typed Connectors (pure function tests)', () => {
     })
     expect(results.empty).toBe(false)
     expect(results.single).toBe(false)
+  })
+})
+
+// ── Store-backed integration tests ───────────────────────────
+
+test.describe('Org Chart — Typed Connectors (store-backed integration)', () => {
+  test('createConnection adds a connection and rejects duplicates + self-loops', async ({ page }) => {
+    // Start from a known state: 2-node chart with no connections
+    const defaultTypes = await page.evaluate(() =>
+      window.__orgChartTest!.createDefaultConnectorTypes(),
+    )
+    await dispatchStore(page, 'loadDiagram', [{
+      nodes: [
+        { id: 'a', name: 'Alice', title: 'CEO', reportsTo: '', department: '', email: '', phone: '', location: '', imageDataUrl: null, nodeColor: '#14B8A6', offsetX: 0, offsetY: 0, sectionTitle: '' },
+        { id: 'b', name: 'Bob', title: 'CTO', reportsTo: 'a', department: '', email: '', phone: '', location: '', imageDataUrl: null, nodeColor: '#14B8A6', offsetX: 0, offsetY: 0, sectionTitle: '' },
+      ],
+      connections: [],
+      connectorTypes: defaultTypes,
+      legend: { position: 'bottom-right' },
+    }])
+
+    // Create a dotted-line connection
+    await dispatchStore(page, 'createConnection', ['a', 'b', 'dotted-line'])
+    let connections = await getConnections(page)
+    expect(connections).toHaveLength(1)
+    expect(connections[0].fromId).toBe('a')
+    expect(connections[0].toId).toBe('b')
+    expect(connections[0].typeId).toBe('dotted-line')
+
+    // Duplicate attempt (same from/to/type) should be rejected
+    await dispatchStore(page, 'createConnection', ['a', 'b', 'dotted-line'])
+    connections = await getConnections(page)
+    expect(connections).toHaveLength(1)
+
+    // Self-loop should be silently rejected
+    await dispatchStore(page, 'createConnection', ['a', 'a', 'supports'])
+    connections = await getConnections(page)
+    expect(connections).toHaveLength(1)
+
+    // Different type (a -> b with supports) IS allowed — it's not a duplicate
+    await dispatchStore(page, 'createConnection', ['a', 'b', 'supports'])
+    connections = await getConnections(page)
+    expect(connections).toHaveLength(2)
+  })
+
+  test('removeConnection removes the connection and clears selection if selected', async ({ page }) => {
+    const defaultTypes = await page.evaluate(() =>
+      window.__orgChartTest!.createDefaultConnectorTypes(),
+    )
+    await dispatchStore(page, 'loadDiagram', [{
+      nodes: [
+        { id: 'a', name: 'Alice', title: 'CEO', reportsTo: '', department: '', email: '', phone: '', location: '', imageDataUrl: null, nodeColor: '#14B8A6', offsetX: 0, offsetY: 0, sectionTitle: '' },
+        { id: 'b', name: 'Bob', title: 'CTO', reportsTo: 'a', department: '', email: '', phone: '', location: '', imageDataUrl: null, nodeColor: '#14B8A6', offsetX: 0, offsetY: 0, sectionTitle: '' },
+      ],
+      connections: [],
+      connectorTypes: defaultTypes,
+      legend: { position: 'bottom-right' },
+    }])
+    await dispatchStore(page, 'createConnection', ['a', 'b', 'dotted-line'])
+    const connections = await getConnections(page)
+    expect(connections).toHaveLength(1)
+    const connId = connections[0].id
+
+    await dispatchStore(page, 'selectConnection', [connId])
+    await dispatchStore(page, 'removeConnection', [connId])
+
+    expect(await getConnections(page)).toHaveLength(0)
+  })
+
+  test('deleting a node cascades to orphan connections', async ({ page }) => {
+    // Load a 3-node setup, then create a connection between 2 of them
+    const defaultTypes = await page.evaluate(() =>
+      window.__orgChartTest!.createDefaultConnectorTypes(),
+    )
+    await dispatchStore(page, 'loadDiagram', [{
+      nodes: [
+        { id: 'a', name: 'Alice', title: 'CEO', reportsTo: '', department: '', email: '', phone: '', location: '', imageDataUrl: null, nodeColor: '#14B8A6', offsetX: 0, offsetY: 0, sectionTitle: '' },
+        { id: 'b', name: 'Bob', title: 'CTO', reportsTo: 'a', department: '', email: '', phone: '', location: '', imageDataUrl: null, nodeColor: '#14B8A6', offsetX: 0, offsetY: 0, sectionTitle: '' },
+        { id: 'c', name: 'Carol', title: 'CFO', reportsTo: 'a', department: '', email: '', phone: '', location: '', imageDataUrl: null, nodeColor: '#14B8A6', offsetX: 0, offsetY: 0, sectionTitle: '' },
+      ],
+      connections: [],
+      connectorTypes: defaultTypes,
+      legend: { position: 'bottom-right' },
+    }])
+    await dispatchStore(page, 'createConnection', ['b', 'c', 'supports'])
+    expect(await getConnections(page)).toHaveLength(1)
+
+    // Delete node 'c' (non-root) — its inbound connection should be swept
+    await dispatchStore(page, 'removeNode', ['c'])
+    expect(await getConnections(page)).toHaveLength(0)
+    expect(await getNodes(page)).toHaveLength(2)
+  })
+})
+
+test.describe('Org Chart — Typed Connectors (Connector Types editing)', () => {
+  test('updateConnectorType changes label and color', async ({ page }) => {
+    await dispatchStore(page, 'updateConnectorType', ['dotted-line', { label: 'Functional', color: '#ff00ff' }])
+    const types = await getConnectorTypes(page)
+    const dottedLine = types.find(t => t.id === 'dotted-line')
+    expect(dottedLine?.label).toBe('Functional')
+    expect(dottedLine?.color).toBe('#ff00ff')
+  })
+
+  test('resetConnectorType reverts a single type to defaults', async ({ page }) => {
+    await dispatchStore(page, 'updateConnectorType', ['primary', { label: 'Line Manager', color: '#000000' }])
+    await dispatchStore(page, 'resetConnectorType', ['primary'])
+    const types = await getConnectorTypes(page)
+    const primary = types.find(t => t.id === 'primary')
+    expect(primary?.label).toBe('Reports to')
+    // Default is #272730 per types.ts
+    expect(primary?.color).toBe('#272730')
+  })
+
+  test('resetAllConnectorTypes reverts every type', async ({ page }) => {
+    await dispatchStore(page, 'updateConnectorType', ['primary', { label: 'X' }])
+    await dispatchStore(page, 'updateConnectorType', ['dotted-line', { label: 'Y' }])
+    await dispatchStore(page, 'resetAllConnectorTypes', [])
+    const types = await getConnectorTypes(page)
+    expect(types.find(t => t.id === 'primary')?.label).toBe('Reports to')
+    expect(types.find(t => t.id === 'dotted-line')?.label).toBe('Dotted-line')
+  })
+})
+
+test.describe('Org Chart — Typed Connectors (legend position)', () => {
+  test('setLegendPosition cycles through all 4 corners', async ({ page }) => {
+    const positions: Array<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'> = [
+      'top-left', 'top-right', 'bottom-left', 'bottom-right',
+    ]
+    for (const pos of positions) {
+      await dispatchStore(page, 'setLegendPosition', [pos])
+      expect(await getLegendPosition(page)).toBe(pos)
+    }
+  })
+})
+
+test.describe('Org Chart — Typed Connectors (JSON round-trip)', () => {
+  test('importJSON backward compat accepts old {nodes}-only file', async ({ page }) => {
+    const oldFormat = JSON.stringify({
+      nodes: [
+        { id: 'a', name: 'Alice', title: 'CEO', reportsTo: '', department: '', email: '', phone: '', location: '', imageDataUrl: null, nodeColor: '#14B8A6', offsetX: 0, offsetY: 0 },
+        { id: 'b', name: 'Bob', title: 'CTO', reportsTo: 'a', department: '', email: '', phone: '', location: '', imageDataUrl: null, nodeColor: '#14B8A6', offsetX: 0, offsetY: 0 },
+      ],
+    })
+
+    const result = await page.evaluate((raw) => {
+      return window.__orgChartTest!.importJSON(raw)
+    }, oldFormat)
+
+    expect(result.nodes).toHaveLength(2)
+    expect(result.connections).toEqual([])
+    expect(result.connectorTypes).toHaveLength(4)
+    expect(result.legend.position).toBe('bottom-right')
+  })
+
+  test('importJSON sweeps orphan connections', async ({ page }) => {
+    const withOrphan = JSON.stringify({
+      nodes: [
+        { id: 'a', name: 'Alice', title: 'CEO', reportsTo: '', department: '', email: '', phone: '', location: '', imageDataUrl: null, nodeColor: '#14B8A6', offsetX: 0, offsetY: 0, sectionTitle: '' },
+      ],
+      connections: [
+        { id: 'c1', fromId: 'a', toId: 'missing-target', typeId: 'dotted-line' },
+        { id: 'c2', fromId: 'nonexistent', toId: 'a', typeId: 'supports' },
+      ],
+    })
+
+    const result = await page.evaluate((raw) => {
+      return window.__orgChartTest!.importJSON(raw)
+    }, withOrphan)
+
+    expect(result.connections).toHaveLength(0)
+  })
+
+  test('importJSON preserves renamed connector types and legend position', async ({ page }) => {
+    const customized = JSON.stringify({
+      nodes: [
+        { id: 'a', name: 'Alice', title: 'CEO', reportsTo: '', department: '', email: '', phone: '', location: '', imageDataUrl: null, nodeColor: '#14B8A6', offsetX: 0, offsetY: 0, sectionTitle: '' },
+      ],
+      connections: [],
+      connectorTypes: [
+        { id: 'primary', label: 'Manager', color: '#abcdef', style: 'solid', lineWidth: 1.5 },
+        { id: 'dotted-line', label: 'Functional', color: '#123456', style: 'dashed', lineWidth: 1.75 },
+        { id: 'supports', label: 'Helper', color: '#fedcba', style: 'dotted', lineWidth: 1.75 },
+        { id: 'collaborates', label: 'Peer', color: '#654321', style: 'double', lineWidth: 2 },
+      ],
+      legend: { position: 'top-left' },
+    })
+
+    const result = await page.evaluate((raw) => {
+      return window.__orgChartTest!.importJSON(raw)
+    }, customized)
+
+    const primary = result.connectorTypes.find(t => t.id === 'primary')
+    expect(primary?.label).toBe('Manager')
+    expect(primary?.color).toBe('#abcdef')
+    expect(result.legend.position).toBe('top-left')
+  })
+
+  test('importJSON rejects invalid legend position and falls back to default', async ({ page }) => {
+    const invalid = JSON.stringify({
+      nodes: [{ id: 'a', name: 'Alice', reportsTo: '' }],
+      legend: { position: 'middle' },
+    })
+    const result = await page.evaluate((raw) => {
+      return window.__orgChartTest!.importJSON(raw)
+    }, invalid)
+    expect(result.legend.position).toBe('bottom-right')
+  })
+})
+
+test.describe('Org Chart — Typed Connectors (Matrix template)', () => {
+  test('Matrix Organization template loads 8 nodes and 3 connections', async ({ page }) => {
+    // Load via the Templates modal → "Matrix Organization" button
+    await page.locator('button').filter({ hasText: 'Templates' }).first().click()
+    await page.waitForTimeout(300)
+    await page.locator('button').filter({ hasText: /Matrix Organization/ }).first().click()
+    await page.waitForTimeout(300)
+
+    const nodes = await getNodes(page)
+    const connections = await getConnections(page)
+    expect(nodes).toHaveLength(8)
+    expect(connections).toHaveLength(3)
+
+    // All 3 non-primary types should be represented
+    const typeIds = connections.map(c => c.typeId).sort()
+    expect(typeIds).toEqual(['collaborates', 'dotted-line', 'supports'])
   })
 })

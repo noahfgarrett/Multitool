@@ -33,8 +33,15 @@ export default function OrgChartTool() {
   const { addToast } = useAppStore()
 
   // ── Dev-only test hooks (tree-shaken out of production) ──
+  // storeRef is updated synchronously every render so registerStore can
+  // expose a live getter — e2e tests always see the latest store snapshot.
+  const storeRef = useRef(store)
+  storeRef.current = store
   useEffect(() => {
-    void import('./testHooks.ts').then(({ installTestHooks }) => installTestHooks())
+    void import('./testHooks.ts').then(({ installTestHooks, registerStore }) => {
+      installTestHooks()
+      registerStore(() => storeRef.current)
+    })
   }, [])
 
   // ── Keyboard shortcuts ──────────────────────────────────

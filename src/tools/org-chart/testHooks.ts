@@ -17,6 +17,12 @@ import {
   routeSecondaryEdge,
   hitTestPath,
 } from './connectorStyle.ts'
+import { importJSON } from './export.ts'
+
+// Live getter for the current store reference. Updated from OrgChartTool on
+// mount (and on every render via the effect dep array) so that e2e tests can
+// always read the latest store snapshot without caching staleness.
+let storeGetter: (() => unknown) | null = null
 
 interface OrgChartTestHooks {
   createDefaultConnectorTypes: typeof createDefaultConnectorTypes
@@ -26,6 +32,8 @@ interface OrgChartTestHooks {
   getDashPattern: typeof getDashPattern
   routeSecondaryEdge: typeof routeSecondaryEdge
   hitTestPath: typeof hitTestPath
+  importJSON: typeof importJSON
+  getStore: () => unknown
 }
 
 declare global {
@@ -45,5 +53,12 @@ export function installTestHooks(): void {
     getDashPattern,
     routeSecondaryEdge,
     hitTestPath,
+    importJSON,
+    getStore: () => (storeGetter ? storeGetter() : null),
   }
+}
+
+export function registerStore(getter: () => unknown): void {
+  if (!import.meta.env.DEV) return
+  storeGetter = getter
 }
