@@ -110,6 +110,7 @@ export function useOrgChartStore() {
   const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>('top-down')
   const [connectMode, setConnectMode] = useState<ConnectMode>(CONNECT_MODE_OFF)
   const [connectFlash, setConnectFlash] = useState<string | null>(null)
+  const connectFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Derived: first selected node ID for backward compat (PropertiesPanel)
   const selectedNodeId = selectedNodeIds.size > 0 ? [...selectedNodeIds][0] : null
@@ -441,7 +442,11 @@ export function useOrgChartStore() {
     )
     if (existing) {
       setConnectFlash('Connection already exists')
-      setTimeout(() => setConnectFlash(null), 2000)
+      if (connectFlashTimerRef.current !== null) clearTimeout(connectFlashTimerRef.current)
+      connectFlashTimerRef.current = setTimeout(() => {
+        setConnectFlash(null)
+        connectFlashTimerRef.current = null
+      }, 2000)
       return null
     }
 
