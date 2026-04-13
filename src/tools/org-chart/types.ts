@@ -26,6 +26,9 @@ export interface LayoutNode extends OrgNode {
 
 export interface OrgChartState {
   nodes: OrgNode[]
+  connections: Connection[]
+  connectorTypes: ConnectorType[]
+  legend: LegendConfig
 }
 
 export interface OrgChartVersion {
@@ -33,7 +36,7 @@ export interface OrgChartVersion {
   name: string
   timestamp: number
   nodeCount: number
-  snapshot: OrgNode[]
+  snapshot: OrgChartState
 }
 
 export const MAX_VERSIONS = 20
@@ -55,6 +58,46 @@ export const MAX_ZOOM = 4
 // ── Layout ──────────────────────────────────────────────────
 
 export type LayoutDirection = 'top-down' | 'left-right'
+
+// ── Connector types ─────────────────────────────────────────
+
+export type ConnectorTypeId = 'primary' | 'dotted-line' | 'supports' | 'collaborates'
+export type ConnectorStyle = 'solid' | 'dashed' | 'dotted' | 'double'
+
+export interface ConnectorType {
+  id: ConnectorTypeId
+  label: string
+  color: string
+  style: ConnectorStyle
+  lineWidth: number
+}
+
+export interface Connection {
+  id: string
+  fromId: string
+  toId: string
+  typeId: ConnectorTypeId
+}
+
+export type LegendPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+
+export const LEGEND_POSITIONS: readonly LegendPosition[] = [
+  'top-left', 'top-right', 'bottom-left', 'bottom-right',
+] as const
+
+export interface LegendConfig {
+  position: LegendPosition
+}
+
+// ── Legend layout constants ─────────────────────────────────
+
+export const LEGEND_PADDING = 14
+export const LEGEND_TITLE_HEIGHT = 16
+export const LEGEND_UNDERLINE_GAP = 6
+export const LEGEND_ROW_HEIGHT = 18
+export const LEGEND_LINE_SAMPLE_WIDTH = 42
+export const LEGEND_LINE_LABEL_GAP = 10
+export const LEGEND_MARGIN = 20
 
 // ── Constants ───────────────────────────────────────────────
 
@@ -101,4 +144,64 @@ export function createNode(overrides: Partial<OrgNode> = {}): OrgNode {
     sectionTitle: '',
     ...overrides,
   }
+}
+
+// ── Connector type defaults ─────────────────────────────────
+
+export function createDefaultConnectorTypes(): ConnectorType[] {
+  return [
+    { id: 'primary',      label: 'Reports to',   color: '#e5e7eb', style: 'solid',  lineWidth: 1.5 },
+    { id: 'dotted-line',  label: 'Dotted-line',  color: '#60a5fa', style: 'dashed', lineWidth: 1.75 },
+    { id: 'supports',     label: 'Supports',     color: '#fbbf24', style: 'dotted', lineWidth: 1.75 },
+    { id: 'collaborates', label: 'Collaborates', color: '#a78bfa', style: 'double', lineWidth: 2 },
+  ]
+}
+
+export function createDefaultLegend(): LegendConfig {
+  return { position: 'bottom-right' }
+}
+
+/** Repairs a potentially malformed connectorTypes array. Always returns exactly 4 types in stable order.
+ *  Missing ids get defaults; extra/unknown ids are dropped; malformed entries are replaced with defaults. */
+export function mergeWithDefaults(partial: unknown): ConnectorType[] {
+  const defaults = createDefaultConnectorTypes()
+  if (!Array.isArray(partial)) return defaults
+
+  const byId = new Map<ConnectorTypeId, ConnectorType>()
+  for (const item of partial) {
+    if (!item || typeof item !== 'object') continue
+    const candidate = item as Record<string, unknown>
+    const id = candidate.id
+    if (id !== 'primary' && id !== 'dotted-line' && id !== 'supports' && id !== 'collaborates') continue
+
+    const defaultForId = defaults.find(d => d.id === id)
+    if (!defaultForId) continue
+
+    byId.set(id, {
+      id,
+      label: typeof candidate.label === 'string' && candidate.label.trim().length > 0
+        ? candidate.label.slice(0, 40)
+        : defaultForId.label,
+      color: typeof candidate.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(candidate.color)
+        ? candidate.color
+        : defaultForId.color,
+      style: defaultForId.style,       // fixed, never repaired from input
+      lineWidth: defaultForId.lineWidth, // fixed
+    })
+  }
+
+  // Assemble in stable order, filling missing entries from defaults
+  return defaults.map(d => byId.get(d.id) ?? d)
+}
+
+/** Safe lookup with fallback to built-in defaults. */
+export function getConnectorType(
+  types: ConnectorType[],
+  id: ConnectorTypeId,
+): ConnectorType {
+  const match = types.find(t => t.id === id)
+  if (match) return match
+  const fallback = createDefaultConnectorTypes().find(t => t.id === id)
+  if (!fallback) throw new Error(`Unknown connector type id: ${id}`)
+  return fallback
 }
