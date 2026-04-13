@@ -1,8 +1,12 @@
-import type { OrgNode, OrgChartState } from './types.ts'
+import type {
+  OrgNode, OrgChartState,
+  Connection, ConnectorType, ConnectorTypeId, LegendConfig, LegendPosition,
+} from './types.ts'
 import {
   NODE_WIDTH, NODE_HEIGHT, H_SPACING, V_SPACING,
   AVATAR_SIZE, CONNECTOR_RADIUS,
   SECTION_TITLE_HEIGHT, SECTION_GAP,
+  createDefaultConnectorTypes, createDefaultLegend, mergeWithDefaults,
 } from './types.ts'
 import { downloadBlob, downloadText } from '@/utils/download.ts'
 import { loadImage } from '@/utils/imageProcessing.ts'
@@ -527,9 +531,21 @@ export async function exportSVG(nodes: OrgNode[], filename = 'org-chart.svg'): P
 
 // ── Export as JSON ───────────────────────────────────────────
 
-export function exportJSON(nodes: OrgNode[], filename = 'org-chart.json'): void {
-  const state: OrgChartState = { nodes }
+export function exportJSON(state: OrgChartState, filename = 'org-chart.json'): void {
   downloadText(JSON.stringify(state, null, 2), filename, 'application/json')
+}
+
+// Local type guard — export.ts is a pure module without a dependency on
+// orgChartStore.ts, so it defines its own narrower instead of importing.
+function isLegendPosition(value: unknown): value is LegendPosition {
+  return value === 'top-left' || value === 'top-right'
+    || value === 'bottom-left' || value === 'bottom-right'
+}
+
+// Validates connection typeId against a set of known ids. Returns true if the
+// caller should keep the connection; false if it should be swept.
+function isKnownTypeId(typeId: unknown, knownIds: Set<string>): boolean {
+  return typeof typeId === 'string' && knownIds.has(typeId)
 }
 
 export function importJSON(json: string): OrgChartState {
@@ -545,22 +561,62 @@ export function importJSON(json: string): OrgChartState {
   }
 
   const obj = parsed as Record<string, unknown>
+
+  // nodes — required, must be an array of objects with id + name
   if (!Array.isArray(obj.nodes)) {
     throw new Error('Invalid org chart JSON: expected { nodes: [...] }')
   }
-
   for (const node of obj.nodes) {
     if (!node || typeof node !== 'object' || !('id' in node) || !('name' in node)) {
       throw new Error('Invalid org chart JSON: nodes must have id and name fields')
     }
-    // Backward compatibility: default sectionTitle if missing
+    // Backward compat: default sectionTitle if missing (preserves existing behavior)
     const n = node as Record<string, unknown>
-    if (!('sectionTitle' in n)) {
-      n.sectionTitle = ''
-    }
+    if (!('sectionTitle' in n)) n.sectionTitle = ''
+  }
+  const nodes = obj.nodes as OrgNode[]
+
+  // connections — default to [], shallow-validate shape
+  let connections: Connection[]
+  if (!('connections' in obj)) {
+    connections = []
+  } else if (!Array.isArray(obj.connections)) {
+    throw new Error('Invalid org chart JSON: connections must be an array')
+  } else {
+    connections = obj.connections.filter((c): c is Connection => {
+      if (!c || typeof c !== 'object') return false
+      const cc = c as Record<string, unknown>
+      return typeof cc.id === 'string'
+        && typeof cc.fromId === 'string'
+        && typeof cc.toId === 'string'
+        && typeof cc.typeId === 'string'
+    })
   }
 
-  return obj as unknown as OrgChartState
+  // connectorTypes — default or repair via mergeWithDefaults
+  const connectorTypes: ConnectorType[] = 'connectorTypes' in obj
+    ? mergeWithDefaults(obj.connectorTypes)
+    : createDefaultConnectorTypes()
+
+  // legend — default if missing or invalid
+  let legend: LegendConfig
+  const rawLegend = obj.legend
+  if (rawLegend && typeof rawLegend === 'object') {
+    const pos = (rawLegend as Record<string, unknown>).position
+    legend = isLegendPosition(pos) ? { position: pos } : createDefaultLegend()
+  } else {
+    legend = createDefaultLegend()
+  }
+
+  // Sweep orphan connections whose from/to node is missing
+  const nodeIds = new Set(nodes.map(n => n.id))
+  connections = connections.filter(c => nodeIds.has(c.fromId) && nodeIds.has(c.toId))
+
+  // Sweep connections with unknown typeIds (defensive — mergeWithDefaults guarantees 4 known ids)
+  const typeIds = new Set<string>(connectorTypes.map(t => t.id))
+  connections = connections.filter(c => isKnownTypeId(c.typeId, typeIds))
+
+  return { nodes, connections, connectorTypes, legend }
 }
 
 // ── Export as CSV ────────────────────────────────────────────

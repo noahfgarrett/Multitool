@@ -80,13 +80,18 @@ export default function OrgChartTool() {
 
   const handleExportJSON = useCallback(() => {
     try {
-      exportJSON(store.nodes)
+      exportJSON({
+        nodes: store.nodes,
+        connections: store.connections,
+        connectorTypes: store.connectorTypes,
+        legend: store.legend,
+      })
       addToast({ type: 'success', message: 'JSON saved successfully' })
     } catch (err) {
       addToast({ type: 'error', message: err instanceof Error ? err.message : 'Export failed' })
     }
     setShowExport(false)
-  }, [store.nodes, addToast])
+  }, [store.nodes, store.connections, store.connectorTypes, store.legend, addToast])
 
   const handleExportCSV = useCallback(() => {
     try {
