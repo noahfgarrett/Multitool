@@ -1,14 +1,76 @@
 import { useState, useRef, useCallback } from 'react'
-import type { OrgNode, OrgChartState, OrgChartVersion, Viewport, LayoutDirection } from './types.ts'
-import { createNode, DEFAULT_VIEWPORT, MIN_ZOOM, MAX_ZOOM, MAX_VERSIONS, genId } from './types.ts'
+import type {
+  OrgNode, OrgChartState, OrgChartVersion, Viewport, LayoutDirection,
+  Connection, ConnectorType, ConnectorTypeId, LegendConfig, LegendPosition,
+} from './types.ts'
+import {
+  createNode, createDefaultConnectorTypes, createDefaultLegend, mergeWithDefaults,
+  DEFAULT_VIEWPORT, MIN_ZOOM, MAX_ZOOM, MAX_VERSIONS, genId,
+} from './types.ts'
 
 const MAX_HISTORY = 50
 const VERSIONS_KEY = 'mt-orgchart-versions'
 
+function isLegendPosition(v: string): v is LegendPosition {
+  return v === 'top-left' || v === 'top-right' || v === 'bottom-left' || v === 'bottom-right'
+}
+
+function upgradeSnapshot(snapshot: unknown): OrgChartState {
+  // Old shape: snapshot was OrgNode[] directly
+  if (Array.isArray(snapshot)) {
+    return {
+      nodes: snapshot as OrgNode[],
+      connections: [],
+      connectorTypes: createDefaultConnectorTypes(),
+      legend: createDefaultLegend(),
+    }
+  }
+  // New shape: snapshot is already OrgChartState; repair missing fields
+  if (snapshot && typeof snapshot === 'object') {
+    const s = snapshot as Record<string, unknown>
+    const rawLegend = s.legend
+    const legendPos: LegendPosition = (
+      rawLegend
+      && typeof rawLegend === 'object'
+      && typeof (rawLegend as Record<string, unknown>).position === 'string'
+      && isLegendPosition((rawLegend as Record<string, unknown>).position as string)
+    )
+      ? ((rawLegend as Record<string, unknown>).position as LegendPosition)
+      : 'bottom-right'
+    return {
+      nodes: Array.isArray(s.nodes) ? s.nodes as OrgNode[] : [],
+      connections: Array.isArray(s.connections) ? s.connections as Connection[] : [],
+      connectorTypes: 'connectorTypes' in s
+        ? mergeWithDefaults(s.connectorTypes)
+        : createDefaultConnectorTypes(),
+      legend: { position: legendPos },
+    }
+  }
+  // Totally malformed — return empty default
+  return {
+    nodes: [],
+    connections: [],
+    connectorTypes: createDefaultConnectorTypes(),
+    legend: createDefaultLegend(),
+  }
+}
+
 function loadVersions(): OrgChartVersion[] {
   try {
     const raw = localStorage.getItem(VERSIONS_KEY)
-    return raw ? JSON.parse(raw) as OrgChartVersion[] : []
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((v: unknown) => {
+      const obj = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
+      return {
+        id: typeof obj.id === 'string' ? obj.id : genId(),
+        name: typeof obj.name === 'string' ? obj.name : 'Untitled',
+        timestamp: typeof obj.timestamp === 'number' ? obj.timestamp : Date.now(),
+        nodeCount: typeof obj.nodeCount === 'number' ? obj.nodeCount : 0,
+        snapshot: upgradeSnapshot(obj.snapshot),
+      }
+    })
   } catch { return [] }
 }
 
@@ -23,7 +85,11 @@ export function useOrgChartStore() {
   const [nodes, setNodes] = useState<OrgNode[]>(() => [
     createNode({ id: 'root', name: 'CEO', title: 'Chief Executive Officer', reportsTo: '' }),
   ])
+  const [connections, setConnections] = useState<Connection[]>([])
+  const [connectorTypes, setConnectorTypes] = useState<ConnectorType[]>(() => createDefaultConnectorTypes())
+  const [legend, setLegend] = useState<LegendConfig>(() => createDefaultLegend())
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set())
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null)
   const [viewport, setViewport] = useState<Viewport>(DEFAULT_VIEWPORT)
   const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>('top-down')
 
@@ -33,11 +99,20 @@ export function useOrgChartStore() {
   // Ref to track latest nodes for commitMove
   const nodesRef = useRef(nodes)
   nodesRef.current = nodes
+  const connectionsRef = useRef(connections)
+  connectionsRef.current = connections
+  const connectorTypesRef = useRef(connectorTypes)
+  connectorTypesRef.current = connectorTypes
+  const legendRef = useRef(legend)
+  legendRef.current = legend
 
   // ── Undo/redo (ref-based, structuredClone) ──────────────
   // Initialize history with the same root node as the initial state
   const historyRef = useRef<OrgChartState[]>([{
     nodes: [createNode({ id: 'root', name: 'CEO', title: 'Chief Executive Officer', reportsTo: '' })],
+    connections: [],
+    connectorTypes: createDefaultConnectorTypes(),
+    legend: createDefaultLegend(),
   }])
   const historyIdxRef = useRef(0)
   const [, forceRender] = useState(0)
@@ -45,9 +120,15 @@ export function useOrgChartStore() {
   const canUndo = historyIdxRef.current > 0
   const canRedo = historyIdxRef.current < historyRef.current.length - 1
 
-  const pushHistory = useCallback((nextNodes: OrgNode[]) => {
+  const pushHistory = useCallback((override?: Partial<OrgChartState>) => {
+    const state: OrgChartState = {
+      nodes: override?.nodes ?? nodesRef.current,
+      connections: override?.connections ?? connectionsRef.current,
+      connectorTypes: override?.connectorTypes ?? connectorTypesRef.current,
+      legend: override?.legend ?? legendRef.current,
+    }
     const h = historyRef.current.slice(0, historyIdxRef.current + 1)
-    h.push(structuredClone({ nodes: nextNodes }))
+    h.push(structuredClone(state))
     if (h.length > MAX_HISTORY) h.shift()
     historyRef.current = h
     historyIdxRef.current = h.length - 1
@@ -59,7 +140,11 @@ export function useOrgChartStore() {
     historyIdxRef.current--
     const state = structuredClone(historyRef.current[historyIdxRef.current])
     setNodes(state.nodes)
+    setConnections(state.connections)
+    setConnectorTypes(state.connectorTypes)
+    setLegend(state.legend)
     setSelectedNodeIds(new Set())
+    setSelectedConnectionId(null)
     forceRender(v => v + 1)
   }, [])
 
@@ -68,7 +153,11 @@ export function useOrgChartStore() {
     historyIdxRef.current++
     const state = structuredClone(historyRef.current[historyIdxRef.current])
     setNodes(state.nodes)
+    setConnections(state.connections)
+    setConnectorTypes(state.connectorTypes)
+    setLegend(state.legend)
     setSelectedNodeIds(new Set())
+    setSelectedConnectionId(null)
     forceRender(v => v + 1)
   }, [])
 
@@ -78,7 +167,7 @@ export function useOrgChartStore() {
     const node = createNode({ reportsTo: parentId, ...overrides })
     const nextNodes = [...nodes, node]
     setNodes(nextNodes)
-    pushHistory(nextNodes)
+    pushHistory({ nodes: nextNodes })
     setSelectedNodeIds(new Set([node.id]))
     return node
   }, [nodes, pushHistory])
@@ -86,7 +175,7 @@ export function useOrgChartStore() {
   const updateNode = useCallback((id: string, updates: Partial<OrgNode>) => {
     const nextNodes = nodes.map(n => n.id === id ? { ...n, ...updates } : n)
     setNodes(nextNodes)
-    pushHistory(nextNodes)
+    pushHistory({ nodes: nextNodes })
   }, [nodes, pushHistory])
 
   const removeNode = useCallback((id: string) => {
@@ -110,14 +199,16 @@ export function useOrgChartStore() {
     }
 
     const nextNodes = nodes.filter(n => !toRemove.has(n.id))
+    const nextConnections = connections.filter(c => !toRemove.has(c.fromId) && !toRemove.has(c.toId))
     setNodes(nextNodes)
-    pushHistory(nextNodes)
+    setConnections(nextConnections)
+    pushHistory({ nodes: nextNodes, connections: nextConnections })
     setSelectedNodeIds(prev => {
       const next = new Set(prev)
       for (const rid of toRemove) next.delete(rid)
       return next.size !== prev.size ? next : prev
     })
-  }, [nodes, pushHistory])
+  }, [nodes, connections, pushHistory])
 
   const removeSelectedNodes = useCallback(() => {
     const roots = nodes.filter(n => !n.reportsTo)
@@ -150,10 +241,12 @@ export function useOrgChartStore() {
     }
     if (toRemove.size === 0) return
     const nextNodes = nodes.filter(n => !toRemove.has(n.id))
+    const nextConnections = connections.filter(c => !toRemove.has(c.fromId) && !toRemove.has(c.toId))
     setNodes(nextNodes)
-    pushHistory(nextNodes)
+    setConnections(nextConnections)
+    pushHistory({ nodes: nextNodes, connections: nextConnections })
     setSelectedNodeIds(new Set())
-  }, [nodes, selectedNodeIds, pushHistory])
+  }, [nodes, connections, selectedNodeIds, pushHistory])
 
   const reparentNode = useCallback((nodeId: string, newParentId: string) => {
     // Prevent self-parenting
@@ -166,7 +259,7 @@ export function useOrgChartStore() {
       n.id === nodeId ? { ...n, reportsTo: newParentId } : n,
     )
     setNodes(nextNodes)
-    pushHistory(nextNodes)
+    pushHistory({ nodes: nextNodes })
   }, [nodes, pushHistory])
 
   /** Atomically revert drag offsets + reparent selected nodes (uses nodesRef for latest state).
@@ -215,7 +308,7 @@ export function useOrgChartStore() {
       return n
     })
     setNodes(nextNodes)
-    pushHistory(nextNodes)
+    pushHistory({ nodes: nextNodes })
     setSelectedNodeIds(draggedIds)
   }, [pushHistory])
 
@@ -255,7 +348,7 @@ export function useOrgChartStore() {
   }, [])
 
   const commitMove = useCallback(() => {
-    pushHistory(nodesRef.current)
+    pushHistory()
   }, [pushHistory])
 
   const resetLayout = useCallback(() => {
@@ -263,7 +356,7 @@ export function useOrgChartStore() {
     if (!hasOffsets) return
     const nextNodes = nodes.map(n => ({ ...n, offsetX: 0, offsetY: 0 }))
     setNodes(nextNodes)
-    pushHistory(nextNodes)
+    pushHistory({ nodes: nextNodes })
   }, [nodes, pushHistory])
 
   const hasManualOffsets = nodes.some(n => n.offsetX !== 0 || n.offsetY !== 0)
@@ -272,7 +365,11 @@ export function useOrgChartStore() {
 
   const loadDiagram = useCallback((state: OrgChartState) => {
     setNodes(state.nodes)
+    setConnections(state.connections)
+    setConnectorTypes(state.connectorTypes)
+    setLegend(state.legend)
     setSelectedNodeIds(new Set())
+    setSelectedConnectionId(null)
     historyRef.current = [structuredClone(state)]
     historyIdxRef.current = 0
     forceRender(v => v + 1)
@@ -280,7 +377,12 @@ export function useOrgChartStore() {
   }, [])
 
   const clearDiagram = useCallback(() => {
-    loadDiagram({ nodes: [createNode({ id: 'root', name: 'CEO', title: 'Chief Executive Officer', reportsTo: '' })] })
+    loadDiagram({
+      nodes: [createNode({ id: 'root', name: 'CEO', title: 'Chief Executive Officer', reportsTo: '' })],
+      connections: [],
+      connectorTypes: createDefaultConnectorTypes(),
+      legend: createDefaultLegend(),
+    })
   }, [loadDiagram])
 
   // ── Section actions ──────────────────────────────────
@@ -294,7 +396,7 @@ export function useOrgChartStore() {
     })
     const nextNodes = [...nodes, newRoot]
     setNodes(nextNodes)
-    pushHistory(nextNodes)
+    pushHistory({ nodes: nextNodes })
     setSelectedNodeIds(new Set([newRoot.id]))
   }, [nodes, pushHistory])
 
@@ -303,7 +405,7 @@ export function useOrgChartStore() {
       n.id === rootId ? { ...n, sectionTitle: title } : n,
     )
     setNodes(nextNodes)
-    pushHistory(nextNodes)
+    pushHistory({ nodes: nextNodes })
   }, [nodes, pushHistory])
 
   // ── Version control ──────────────────────────────────
@@ -320,20 +422,34 @@ export function useOrgChartStore() {
       name,
       timestamp: Date.now(),
       nodeCount: nodes.length,
-      snapshot: structuredClone(nodes),
+      snapshot: structuredClone({
+        nodes,
+        connections,
+        connectorTypes,
+        legend,
+      }),
     }
     versions.unshift(version) // newest first
     persistVersions(versions)
-  }, [nodes])
+  }, [nodes, connections, connectorTypes, legend])
 
   const restoreVersion = useCallback((versionId: string) => {
     const versions = loadVersions()
     const version = versions.find(v => v.id === versionId)
     if (!version) return
     const restored = structuredClone(version.snapshot)
-    setNodes(restored)
-    pushHistory(restored)
+    setNodes(restored.nodes)
+    setConnections(restored.connections)
+    setConnectorTypes(restored.connectorTypes)
+    setLegend(restored.legend)
+    pushHistory({
+      nodes: restored.nodes,
+      connections: restored.connections,
+      connectorTypes: restored.connectorTypes,
+      legend: restored.legend,
+    })
     setSelectedNodeIds(new Set())
+    setSelectedConnectionId(null)
   }, [pushHistory])
 
   const deleteVersion = useCallback((versionId: string) => {
@@ -392,7 +508,9 @@ export function useOrgChartStore() {
 
   return {
     // State
-    nodes, selectedNodeIds, selectedNodeId, viewport, layoutDirection,
+    nodes, connections, connectorTypes, legend,
+    selectedNodeIds, selectedNodeId, selectedConnectionId,
+    viewport, layoutDirection,
     canUndo, canRedo, hasManualOffsets,
 
     // Setters
