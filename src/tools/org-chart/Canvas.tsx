@@ -65,6 +65,10 @@ export function Canvas({ store }: { store: OrgChartStore }) {
   const layoutRef = useRef<LayoutNode[]>([])
   const flatLayoutRef = useRef<LayoutNode[]>([])
 
+  // Render tick — bumped by handlePointerMove to force re-paint of ghost
+  // previews and hover ring while cursor moves over empty canvas space.
+  const [renderTick, forceUpdate] = useState(0)
+
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null)
   const [drag, setDrag] = useState<DragState | null>(null)
   const dragRef = useRef<DragState | null>(null)
@@ -885,6 +889,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     store.selectedNodeIds, store.selectedConnectionId, store.layoutDirection,
     store.connectMode, shiftDrag,
     hoveredNodeId, reparentTarget, drag, imageCacheVer, screenToCanvas,
+    renderTick,
   ])
 
   // ── Resize observer ─────────────────────────────────────
@@ -897,7 +902,6 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     return () => ro.disconnect()
   }, [])
 
-  const [, forceUpdate] = useState(0)
 
   // Auto-fit on first load
   useEffect(() => {
