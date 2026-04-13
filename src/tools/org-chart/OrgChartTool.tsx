@@ -4,6 +4,8 @@ import { Canvas } from './Canvas.tsx'
 import { Toolbar } from './Toolbar.tsx'
 import { PropertiesPanel } from './PropertiesPanel.tsx'
 import { ConnectorTypesModal } from './ConnectorTypesModal.tsx'
+import { ConnectModeBanner } from './ConnectModeBanner.tsx'
+import { ConnectorTypePopover } from './ConnectorTypePopover.tsx'
 import { attachShortcuts } from './shortcuts.ts'
 import { exportPNG, exportSVG, exportJSON, exportCSV, importJSON, copyPNGToClipboard } from './export.ts'
 import { TEMPLATES } from './templates.ts'
@@ -165,6 +167,10 @@ export default function OrgChartTool() {
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 relative">
           <Canvas store={store} />
+
+          {/* Connect mode banner + type picker popover */}
+          <ConnectModeBanner store={store} />
+          <ConnectorTypePopover store={store} />
 
           {/* Floating zoom buttons for touch / tablet */}
           <div className="absolute bottom-3 left-3 flex items-center gap-0.5 bg-dark-elevated/80 rounded-lg border border-white/[0.06] p-0.5">

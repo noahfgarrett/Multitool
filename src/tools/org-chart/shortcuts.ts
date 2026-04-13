@@ -63,6 +63,14 @@ export function attachShortcuts(
       return
     }
 
+    // ── Connect mode: C ───────────────────────
+    if (e.key === 'c' && !isMod && !e.shiftKey && !e.altKey) {
+      e.preventDefault()
+      if (store.connectMode.state === 'off') store.enterConnectMode()
+      else store.cancelConnectMode()
+      return
+    }
+
     // ── Add person: Ctrl/Cmd+Enter ────────────
     if (isMod && e.key === 'Enter') {
       const parentId = store.selectedNodeId ?? store.nodes.find(n => !n.reportsTo)?.id

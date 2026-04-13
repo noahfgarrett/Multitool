@@ -3,7 +3,7 @@ import type { LayoutDirection } from './types.ts'
 import {
   Undo2, Redo2, ZoomIn, ZoomOut, Maximize2,
   ArrowDown, ArrowRight, UserPlus, Trash2, Download, Upload,
-  LayoutGrid, RotateCcw, LayoutPanelLeft, History, Palette,
+  LayoutGrid, RotateCcw, LayoutPanelLeft, History, Palette, Link2,
 } from 'lucide-react'
 
 // ── Component ───────────────────────────────────────────────
@@ -98,10 +98,27 @@ export function Toolbar({
 
       <ToolbarDivider />
 
-      {/* ── Add Person + Section ───────────────── */}
+      {/* ── Add Person + Section + Connect ───────────────── */}
       <ToolbarGroup>
         <ToolbarButton icon={UserPlus} label="Add Person" onClick={handleAddPerson} />
         <ToolbarButton icon={LayoutPanelLeft} label="Add Section" onClick={() => store.addSection()} />
+        <button
+          type="button"
+          onClick={() => {
+            if (store.connectMode.state === 'off') store.enterConnectMode()
+            else store.cancelConnectMode()
+          }}
+          title="Connect nodes (C)"
+          data-testid="connect-mode-btn"
+          aria-label="Connect mode"
+          className={`p-1.5 rounded transition-colors ${
+            store.connectMode.state !== 'off'
+              ? 'bg-blue-500/20 text-blue-300 border border-blue-400/40'
+              : 'text-white/40 hover:text-white hover:bg-white/[0.06]'
+          }`}
+        >
+          <Link2 size={15} />
+        </button>
       </ToolbarGroup>
 
       {/* ── Spacer ─────────────────────────────── */}

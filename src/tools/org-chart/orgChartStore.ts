@@ -84,6 +84,16 @@ function persistVersions(versions: OrgChartVersion[]): void {
   localStorage.setItem(VERSIONS_KEY, JSON.stringify(versions))
 }
 
+// ── Connect mode discriminated union ────────────────────────
+
+export type ConnectMode =
+  | { state: 'off' }
+  | { state: 'awaiting-source' }
+  | { state: 'awaiting-target'; sourceId: string }
+  | { state: 'picking-type'; sourceId: string; targetId: string; anchorScreenXY: [number, number] }
+
+export const CONNECT_MODE_OFF: ConnectMode = { state: 'off' }
+
 // ── Hook: useOrgChartStore ──────────────────────────────────
 
 export function useOrgChartStore() {
@@ -98,6 +108,8 @@ export function useOrgChartStore() {
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null)
   const [viewport, setViewport] = useState<Viewport>(DEFAULT_VIEWPORT)
   const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>('top-down')
+  const [connectMode, setConnectMode] = useState<ConnectMode>(CONNECT_MODE_OFF)
+  const [connectFlash, setConnectFlash] = useState<string | null>(null)
 
   // Derived: first selected node ID for backward compat (PropertiesPanel)
   const selectedNodeId = selectedNodeIds.size > 0 ? [...selectedNodeIds][0] : null
@@ -414,6 +426,113 @@ export function useOrgChartStore() {
     pushHistory({ nodes: nextNodes })
   }, [nodes, pushHistory])
 
+  // ── Connection CRUD ──────────────────────────────────────
+
+  const createConnection = useCallback((
+    fromId: string,
+    toId: string,
+    typeId: ConnectorTypeId,
+  ): Connection | null => {
+    if (fromId === toId) return null  // self-loop rejected silently
+
+    // Duplicate check: same from, to, AND typeId already exists
+    const existing = connections.find(c =>
+      c.fromId === fromId && c.toId === toId && c.typeId === typeId,
+    )
+    if (existing) {
+      setConnectFlash('Connection already exists')
+      setTimeout(() => setConnectFlash(null), 2000)
+      return null
+    }
+
+    const newConnection: Connection = {
+      id: genId(),
+      fromId,
+      toId,
+      typeId,
+    }
+    const nextConnections = [...connections, newConnection]
+    setConnections(nextConnections)
+    pushHistory({ connections: nextConnections })
+    return newConnection
+  }, [connections, pushHistory])
+
+  const removeConnection = useCallback((id: string) => {
+    const nextConnections = connections.filter(c => c.id !== id)
+    if (nextConnections.length === connections.length) return
+    setConnections(nextConnections)
+    pushHistory({ connections: nextConnections })
+    setSelectedConnectionId(prev => prev === id ? null : prev)
+  }, [connections, pushHistory])
+
+  const updateConnection = useCallback((id: string, updates: Partial<Omit<Connection, 'id'>>) => {
+    const nextConnections = connections.map(c =>
+      c.id === id ? { ...c, ...updates } : c,
+    )
+    setConnections(nextConnections)
+    pushHistory({ connections: nextConnections })
+  }, [connections, pushHistory])
+
+  const selectConnection = useCallback((id: string | null) => {
+    setSelectedConnectionId(id)
+    if (id !== null) setSelectedNodeIds(new Set())  // mutually exclusive
+  }, [])
+
+  // ── Connect mode actions ─────────────────────────────────
+
+  const enterConnectMode = useCallback(() => {
+    setConnectMode({ state: 'awaiting-source' })
+    setSelectedNodeIds(new Set())
+    setSelectedConnectionId(null)
+  }, [])
+
+  const setConnectSource = useCallback((id: string) => {
+    const exists = nodesRef.current.find(n => n.id === id)
+    if (!exists) return
+    setConnectMode({ state: 'awaiting-target', sourceId: id })
+  }, [])
+
+  const setConnectTarget = useCallback((id: string, screenXY: [number, number]) => {
+    setConnectMode(prev => {
+      if (prev.state !== 'awaiting-target') return prev
+      if (id === prev.sourceId) return prev  // can't target self
+      const sourceExists = nodesRef.current.find(n => n.id === prev.sourceId)
+      if (!sourceExists) return { state: 'awaiting-source' }
+      return {
+        state: 'picking-type',
+        sourceId: prev.sourceId,
+        targetId: id,
+        anchorScreenXY: screenXY,
+      }
+    })
+  }, [])
+
+  const confirmConnection = useCallback((typeId: ConnectorTypeId) => {
+    setConnectMode(prev => {
+      if (prev.state !== 'picking-type') return prev
+      createConnection(prev.sourceId, prev.targetId, typeId)
+      // Return to awaiting-source for chaining, even if creation was rejected
+      return { state: 'awaiting-source' }
+    })
+  }, [createConnection])
+
+  const cancelConnectMode = useCallback(() => {
+    setConnectMode(CONNECT_MODE_OFF)
+  }, [])
+
+  const cancelTypePicker = useCallback(() => {
+    // Step back from picking-type to awaiting-target without closing mode
+    setConnectMode(prev => {
+      if (prev.state !== 'picking-type') return prev
+      return { state: 'awaiting-target', sourceId: prev.sourceId }
+    })
+  }, [])
+
+  // Direct setter for Shift-drag bypass (Task 17 uses this)
+  const setConnectModeDirect = useCallback((mode: ConnectMode) => {
+    setConnectMode(mode)
+  }, [])
+
   // ── Connector type actions ────────────────────────────
 
   const updateConnectorType = useCallback((
@@ -556,6 +675,7 @@ export function useOrgChartStore() {
     selectedNodeIds, selectedNodeId, selectedConnectionId,
     viewport, layoutDirection,
     canUndo, canRedo, hasManualOffsets,
+    connectMode, connectFlash,
 
     // Setters
     setViewport, setLayoutDirection,
@@ -574,6 +694,13 @@ export function useOrgChartStore() {
 
     // Section actions
     addSection, updateSectionTitle,
+
+    // Connection CRUD
+    createConnection, removeConnection, updateConnection, selectConnection,
+
+    // Connect mode actions
+    enterConnectMode, setConnectSource, setConnectTarget,
+    confirmConnection, cancelConnectMode, cancelTypePicker, setConnectModeDirect,
 
     // Connector type actions
     updateConnectorType, resetConnectorType, resetAllConnectorTypes,
