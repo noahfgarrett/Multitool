@@ -15,7 +15,6 @@ import { loadImage } from '@/utils/imageProcessing.ts'
 const SELECTION_COLOR = '#3B82F6'
 const NODE_BG = '#1a1a24'
 const NODE_BORDER = 'rgba(255,255,255,0.08)'
-const CONNECTOR_COLOR = 'rgba(255,255,255,0.12)'
 const HOVER_BG = '#1e1e2a'
 const ADD_BTN_SIZE = 18
 const MOVE_THRESHOLD = 5 // px before drag starts
