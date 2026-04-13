@@ -3,7 +3,7 @@ import type { LayoutDirection } from './types.ts'
 import {
   Undo2, Redo2, ZoomIn, ZoomOut, Maximize2,
   ArrowDown, ArrowRight, UserPlus, Trash2, Download, Upload,
-  LayoutGrid, RotateCcw, LayoutPanelLeft, History,
+  LayoutGrid, RotateCcw, LayoutPanelLeft, History, Palette,
 } from 'lucide-react'
 
 // ── Component ───────────────────────────────────────────────
@@ -13,6 +13,7 @@ export function Toolbar({
   onExport,
   onImportJSON,
   onTemplates,
+  onConnectorTypes,
   showVersions,
   setShowVersions,
 }: {
@@ -20,6 +21,7 @@ export function Toolbar({
   onExport: () => void
   onImportJSON: () => void
   onTemplates: () => void
+  onConnectorTypes: () => void
   showVersions: boolean
   setShowVersions: (v: boolean) => void
 }) {
@@ -125,6 +127,15 @@ export function Toolbar({
         >
           <LayoutGrid size={12} />
           Templates
+        </button>
+        <button
+          type="button"
+          onClick={onConnectorTypes}
+          title="Connector Types"
+          data-testid="connector-types-btn"
+          className="p-1.5 rounded hover:bg-white/[0.08] text-white/60 hover:text-white/90 transition-colors"
+        >
+          <Palette size={16} />
         </button>
         <button
           onClick={onImportJSON}

@@ -3,6 +3,7 @@ import { useOrgChartStore } from './orgChartStore.ts'
 import { Canvas } from './Canvas.tsx'
 import { Toolbar } from './Toolbar.tsx'
 import { PropertiesPanel } from './PropertiesPanel.tsx'
+import { ConnectorTypesModal } from './ConnectorTypesModal.tsx'
 import { attachShortcuts } from './shortcuts.ts'
 import { exportPNG, exportSVG, exportJSON, exportCSV, importJSON, copyPNGToClipboard } from './export.ts'
 import { TEMPLATES } from './templates.ts'
@@ -42,6 +43,7 @@ export default function OrgChartTool() {
   // ── Modal state ────────────────────────────────────────────
   const [showExport, setShowExport] = useState(false)
   const [showTemplates, setShowTemplates] = useState(false)
+  const [showConnectorTypes, setShowConnectorTypes] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
   const [versionRefresh, setVersionRefresh] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -154,6 +156,7 @@ export default function OrgChartTool() {
         onExport={() => setShowExport(true)}
         onImportJSON={() => fileInputRef.current?.click()}
         onTemplates={() => setShowTemplates(true)}
+        onConnectorTypes={() => setShowConnectorTypes(true)}
         showVersions={showVersions}
         setShowVersions={setShowVersions}
       />
@@ -339,6 +342,13 @@ export default function OrgChartTool() {
           ))}
         </div>
       </Modal>
+
+      {/* ── Connector Types modal ──────────────────────── */}
+      <ConnectorTypesModal
+        store={store}
+        isOpen={showConnectorTypes}
+        onClose={() => setShowConnectorTypes(false)}
+      />
     </div>
   )
 }

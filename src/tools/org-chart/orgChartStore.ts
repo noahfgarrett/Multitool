@@ -414,6 +414,44 @@ export function useOrgChartStore() {
     pushHistory({ nodes: nextNodes })
   }, [nodes, pushHistory])
 
+  // ── Connector type actions ────────────────────────────
+
+  const updateConnectorType = useCallback((
+    id: ConnectorTypeId,
+    updates: Partial<Pick<ConnectorType, 'label' | 'color'>>,
+  ) => {
+    const nextTypes = connectorTypes.map(t =>
+      t.id === id ? { ...t, ...updates } : t,
+    )
+    setConnectorTypes(nextTypes)
+    pushHistory({ connectorTypes: nextTypes })
+  }, [connectorTypes, pushHistory])
+
+  const resetConnectorType = useCallback((id: ConnectorTypeId) => {
+    const defaults = createDefaultConnectorTypes()
+    const defaultForId = defaults.find(d => d.id === id)
+    if (!defaultForId) return
+    const nextTypes = connectorTypes.map(t =>
+      t.id === id ? defaultForId : t,
+    )
+    setConnectorTypes(nextTypes)
+    pushHistory({ connectorTypes: nextTypes })
+  }, [connectorTypes, pushHistory])
+
+  const resetAllConnectorTypes = useCallback(() => {
+    const nextTypes = createDefaultConnectorTypes()
+    setConnectorTypes(nextTypes)
+    pushHistory({ connectorTypes: nextTypes })
+  }, [pushHistory])
+
+  // ── Legend actions ────────────────────────────────────
+
+  const setLegendPosition = useCallback((position: LegendPosition) => {
+    const nextLegend: LegendConfig = { position }
+    setLegend(nextLegend)
+    pushHistory({ legend: nextLegend })
+  }, [pushHistory])
+
   // ── Version control ──────────────────────────────────
 
   const getVersions = useCallback((): OrgChartVersion[] => loadVersions(), [])
@@ -536,6 +574,12 @@ export function useOrgChartStore() {
 
     // Section actions
     addSection, updateSectionTitle,
+
+    // Connector type actions
+    updateConnectorType, resetConnectorType, resetAllConnectorTypes,
+
+    // Legend actions
+    setLegendPosition,
 
     // Version control
     getVersions, saveVersion, restoreVersion, deleteVersion, renameVersion,
