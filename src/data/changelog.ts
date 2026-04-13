@@ -12,6 +12,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.1.0',
+    date: 'PLACEHOLDER',
+    type: 'feature',
+    stats: { features: 6, tools: 1 },
+    notes: `### Org Chart
+- Typed connector lines (solid, dashed, dotted, double)
+- Matrix-style secondary connections between any two people
+- Connect mode with banner, Shift-drag shortcut, and click-to-pick type
+- Rename and recolor connector types in a new modal
+- Auto-legend with 4 corner positions, off unless secondary lines exist
+- Matrix Organization template showcasing the new line styles
+- CSV export includes a Secondary Relationships column`,
+  },
+  {
     version: '4.0.27',
     date: '2026-04-10T17:49:30Z',
     type: 'feature',
