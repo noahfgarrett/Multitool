@@ -6,6 +6,8 @@ import {
   NODE_WIDTH, NODE_HEIGHT, H_SPACING, V_SPACING,
   AVATAR_SIZE, CONNECTOR_RADIUS,
   SECTION_TITLE_HEIGHT, SECTION_GAP,
+  LEGEND_PADDING, LEGEND_TITLE_HEIGHT, LEGEND_UNDERLINE_GAP, LEGEND_ROW_HEIGHT,
+  LEGEND_LINE_SAMPLE_WIDTH, LEGEND_LINE_LABEL_GAP, LEGEND_MARGIN,
   createDefaultConnectorTypes, createDefaultLegend, mergeWithDefaults,
   getConnectorType,
 } from './types.ts'
@@ -54,6 +56,216 @@ function calcBounds(flat: LayoutNode[], connections: Connection[] = []) {
   }
 
   return { minX: minX - 50, minY: minY - 50, maxX: maxX + 50, maxY: maxY + 50 }
+}
+
+// ── Legend layout math ──────────────────────────────────────
+
+interface LegendBox { x: number; y: number; w: number; h: number }
+
+function selectLegendTypes(
+  connections: Connection[],
+  connectorTypes: ConnectorType[],
+): ConnectorType[] {
+  if (connections.length === 0) return []
+  const usedTypeIds = new Set(connections.map(c => c.typeId))
+  const primary = connectorTypes.find(t => t.id === 'primary')
+  const result: ConnectorType[] = []
+  if (primary) result.push(primary)
+  const stableOrder: ConnectorTypeId[] = ['dotted-line', 'supports', 'collaborates']
+  for (const id of stableOrder) {
+    if (!usedTypeIds.has(id)) continue
+    const t = connectorTypes.find(ct => ct.id === id)
+    if (t) result.push(t)
+  }
+  return result
+}
+
+function measureLegend(
+  ctx: CanvasRenderingContext2D,
+  types: ConnectorType[],
+): { w: number; h: number } {
+  if (types.length === 0) return { w: 0, h: 0 }
+
+  ctx.save()
+  ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif'
+  const titleWidth = ctx.measureText('LEGEND').width
+
+  ctx.font = '500 11px -apple-system, BlinkMacSystemFont, sans-serif'
+  let longestRowWidth = 0
+  for (const t of types) {
+    const labelW = ctx.measureText(t.label).width
+    const rowW = LEGEND_LINE_SAMPLE_WIDTH + LEGEND_LINE_LABEL_GAP + labelW
+    if (rowW > longestRowWidth) longestRowWidth = rowW
+  }
+  ctx.restore()
+
+  const contentWidth = Math.max(titleWidth, longestRowWidth)
+  const w = 2 * LEGEND_PADDING + contentWidth
+  const h = 2 * LEGEND_PADDING
+    + LEGEND_TITLE_HEIGHT
+    + LEGEND_UNDERLINE_GAP
+    + types.length * LEGEND_ROW_HEIGHT
+
+  return { w, h }
+}
+
+function positionLegend(
+  position: LegendPosition,
+  dims: { w: number; h: number },
+  bounds: { minX: number; minY: number; maxX: number; maxY: number },
+): LegendBox {
+  const { w, h } = dims
+  switch (position) {
+    case 'top-left':     return { x: bounds.minX + LEGEND_MARGIN,      y: bounds.minY + LEGEND_MARGIN,      w, h }
+    case 'top-right':    return { x: bounds.maxX - w - LEGEND_MARGIN,  y: bounds.minY + LEGEND_MARGIN,      w, h }
+    case 'bottom-left':  return { x: bounds.minX + LEGEND_MARGIN,      y: bounds.maxY - h - LEGEND_MARGIN,  w, h }
+    case 'bottom-right': return { x: bounds.maxX - w - LEGEND_MARGIN,  y: bounds.maxY - h - LEGEND_MARGIN,  w, h }
+  }
+}
+
+function drawLegend(
+  ctx: CanvasRenderingContext2D,
+  box: LegendBox,
+  types: ConnectorType[],
+): void {
+  if (types.length === 0) return
+
+  ctx.save()
+
+  // Background rounded rect
+  const r = 6
+  ctx.beginPath()
+  ctx.moveTo(box.x + r, box.y)
+  ctx.lineTo(box.x + box.w - r, box.y)
+  ctx.arcTo(box.x + box.w, box.y, box.x + box.w, box.y + r, r)
+  ctx.lineTo(box.x + box.w, box.y + box.h - r)
+  ctx.arcTo(box.x + box.w, box.y + box.h, box.x + box.w - r, box.y + box.h, r)
+  ctx.lineTo(box.x + r, box.y + box.h)
+  ctx.arcTo(box.x, box.y + box.h, box.x, box.y + box.h - r, r)
+  ctx.lineTo(box.x, box.y + r)
+  ctx.arcTo(box.x, box.y, box.x + r, box.y, r)
+  ctx.closePath()
+  ctx.fillStyle = 'rgba(10, 10, 20, 0.9)'
+  ctx.fill()
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'
+  ctx.lineWidth = 1
+  ctx.stroke()
+
+  // Title
+  const titleX = box.x + LEGEND_PADDING
+  const titleY = box.y + LEGEND_PADDING + LEGEND_TITLE_HEIGHT * 0.7
+  ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif'
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.55)'
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillText('LEGEND', titleX, titleY)
+
+  // Underline
+  const underlineY = box.y + LEGEND_PADDING + LEGEND_TITLE_HEIGHT + LEGEND_UNDERLINE_GAP / 2
+  ctx.beginPath()
+  ctx.moveTo(box.x + LEGEND_PADDING, underlineY)
+  ctx.lineTo(box.x + box.w - LEGEND_PADDING, underlineY)
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'
+  ctx.lineWidth = 1
+  ctx.stroke()
+
+  // Rows
+  const rowBaseY = box.y + LEGEND_PADDING + LEGEND_TITLE_HEIGHT + LEGEND_UNDERLINE_GAP
+  for (let i = 0; i < types.length; i++) {
+    const type = types[i]
+    const rowCenterY = rowBaseY + i * LEGEND_ROW_HEIGHT + LEGEND_ROW_HEIGHT / 2
+    const sampleStartX = box.x + LEGEND_PADDING
+    const sampleEndX = sampleStartX + LEGEND_LINE_SAMPLE_WIDTH
+
+    drawStyledLine(
+      ctx,
+      [[sampleStartX, rowCenterY], [sampleEndX, rowCenterY]],
+      type,
+      1,
+    )
+
+    ctx.font = '500 11px -apple-system, BlinkMacSystemFont, sans-serif'
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(type.label, sampleEndX + LEGEND_LINE_LABEL_GAP, rowCenterY)
+  }
+
+  ctx.restore()
+}
+
+function calcExportBounds(
+  flat: LayoutNode[],
+  connections: Connection[],
+  legendBox: LegendBox | null,
+  sectionTitleOffset: number,
+): { minX: number; minY: number; maxX: number; maxY: number } {
+  const base = calcBounds(flat, connections)
+  const minY = sectionTitleOffset > 0 ? base.minY - sectionTitleOffset : base.minY
+
+  if (!legendBox) {
+    return { ...base, minY }
+  }
+
+  return {
+    minX: Math.min(base.minX, legendBox.x - LEGEND_MARGIN),
+    minY: Math.min(minY, legendBox.y - LEGEND_MARGIN),
+    maxX: Math.max(base.maxX, legendBox.x + legendBox.w + LEGEND_MARGIN),
+    maxY: Math.max(base.maxY, legendBox.y + legendBox.h + LEGEND_MARGIN),
+  }
+}
+
+function emitSVGLegend(
+  parts: string[],
+  box: LegendBox,
+  types: ConnectorType[],
+): void {
+  if (types.length === 0) return
+  const { x, y, w, h } = box
+
+  parts.push(`<g data-layer="legend">`)
+  parts.push(`  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="rgba(10,10,20,0.9)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>`)
+
+  // Title
+  const titleX = x + LEGEND_PADDING
+  const titleY = y + LEGEND_PADDING + LEGEND_TITLE_HEIGHT * 0.7
+  parts.push(`  <text x="${titleX}" y="${titleY}" font-size="10" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, sans-serif" fill="rgba(255,255,255,0.55)" letter-spacing="0.8">LEGEND</text>`)
+
+  // Underline
+  const underlineY = y + LEGEND_PADDING + LEGEND_TITLE_HEIGHT + LEGEND_UNDERLINE_GAP / 2
+  parts.push(`  <line x1="${x + LEGEND_PADDING}" y1="${underlineY}" x2="${x + w - LEGEND_PADDING}" y2="${underlineY}" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>`)
+
+  // Rows
+  const rowBaseY = y + LEGEND_PADDING + LEGEND_TITLE_HEIGHT + LEGEND_UNDERLINE_GAP
+  for (let i = 0; i < types.length; i++) {
+    const type = types[i]
+    const rowY = rowBaseY + i * LEGEND_ROW_HEIGHT + LEGEND_ROW_HEIGHT / 2
+    const sampleX1 = x + LEGEND_PADDING
+    const sampleX2 = sampleX1 + LEGEND_LINE_SAMPLE_WIDTH
+
+    const dashAttr = (() => {
+      switch (type.style) {
+        case 'solid':  return ''
+        case 'dashed': return ' stroke-dasharray="8,5"'
+        case 'dotted': return ' stroke-dasharray="2,3"'
+        case 'double': return ''
+      }
+    })()
+
+    if (type.style === 'double') {
+      parts.push(`  <g stroke="${type.color}" stroke-width="${Math.max(1, type.lineWidth * 0.6)}" fill="none">`)
+      parts.push(`    <line x1="${sampleX1}" y1="${rowY - 2}" x2="${sampleX2}" y2="${rowY - 2}"/>`)
+      parts.push(`    <line x1="${sampleX1}" y1="${rowY + 2}" x2="${sampleX2}" y2="${rowY + 2}"/>`)
+      parts.push(`  </g>`)
+    } else {
+      parts.push(`  <line x1="${sampleX1}" y1="${rowY}" x2="${sampleX2}" y2="${rowY}" stroke="${type.color}" stroke-width="${type.lineWidth}" stroke-linecap="round"${dashAttr}/>`)
+    }
+
+    const labelX = sampleX2 + LEGEND_LINE_LABEL_GAP
+    parts.push(`  <text x="${labelX}" y="${rowY}" font-size="11" font-weight="500" font-family="-apple-system, BlinkMacSystemFont, sans-serif" fill="rgba(255,255,255,0.85)" dominant-baseline="central">${escapeXml(type.label)}</text>`)
+  }
+
+  parts.push(`</g>`)
 }
 
 // ── Build layout tree ───────────────────────────────────────
@@ -166,10 +378,32 @@ async function renderToCanvas(state: OrgChartState): Promise<HTMLCanvasElement> 
   const imageCache = await preloadImages(nodes)
   const roots = flat.filter(n => !n.reportsTo)
 
-  // Expand bounds to include section titles AND secondary edge anchors
-  const { minX, minY: rawMinY, maxX, maxY } = calcBounds(flat, connections)
+  // Measure legend first (temp ctx for text measurement)
+  const legendTypes = selectLegendTypes(connections, connectorTypes)
+  const tempCanvas = document.createElement('canvas')
+  const tempCtx = tempCanvas.getContext('2d')
+  const legendDims = legendTypes.length > 0 && tempCtx
+    ? measureLegend(tempCtx, legendTypes)
+    : { w: 0, h: 0 }
+
+  // Compute diagram bounds (include section title offset for tentative positioning)
+  const baseBounds = calcBounds(flat, connections)
   const hasTitles = roots.some(r => r.sectionTitle)
-  const minY = hasTitles ? rawMinY - SECTION_TITLE_HEIGHT : rawMinY
+  const sectionOffset = hasTitles ? SECTION_TITLE_HEIGHT : 0
+
+  // Tentatively position the legend against current bounds
+  const tentativeBounds = {
+    minX: baseBounds.minX,
+    minY: hasTitles ? baseBounds.minY - SECTION_TITLE_HEIGHT : baseBounds.minY,
+    maxX: baseBounds.maxX,
+    maxY: baseBounds.maxY,
+  }
+  const legendBox = legendTypes.length > 0
+    ? positionLegend(state.legend.position, legendDims, tentativeBounds)
+    : null
+
+  // Final bounds = diagram ∪ legend footprint (with margin)
+  const { minX, minY, maxX, maxY } = calcExportBounds(flat, connections, legendBox, sectionOffset)
   const w = maxX - minX
   const h = maxY - minY
   const scale = 2
@@ -258,6 +492,16 @@ async function renderToCanvas(state: OrgChartState): Promise<HTMLCanvasElement> 
     ctx.translate(node.x, node.y)
     drawNodeCard(ctx, node, imageCache)
     ctx.restore()
+  }
+
+  // Draw legend (re-positioned against final bounds for accuracy)
+  if (legendBox && legendTypes.length > 0) {
+    const finalBox = positionLegend(
+      state.legend.position,
+      legendDims,
+      { minX, minY, maxX, maxY },
+    )
+    drawLegend(ctx, finalBox, legendTypes)
   }
 
   return canvas
@@ -483,9 +727,29 @@ export async function exportSVG(state: OrgChartState, filename = 'org-chart.svg'
   const { nodes, connections, connectorTypes } = state
   const flat = buildLayout(nodes)
   const roots = flat.filter(n => !n.reportsTo)
-  const { minX, minY: rawMinY, maxX, maxY } = calcBounds(flat, connections)
+
+  // Pre-measure legend before sizing the viewport
+  const legendTypesPre = selectLegendTypes(connections, connectorTypes)
+  const tempCanvas = document.createElement('canvas')
+  const tempCtx = tempCanvas.getContext('2d')
+  const legendDimsPre = legendTypesPre.length > 0 && tempCtx
+    ? measureLegend(tempCtx, legendTypesPre)
+    : { w: 0, h: 0 }
+
+  const baseBounds = calcBounds(flat, connections)
   const hasTitles = roots.some(r => r.sectionTitle)
-  const minY = hasTitles ? rawMinY - SECTION_TITLE_HEIGHT : rawMinY
+  const sectionOffset = hasTitles ? SECTION_TITLE_HEIGHT : 0
+  const tentativeBounds = {
+    minX: baseBounds.minX,
+    minY: hasTitles ? baseBounds.minY - SECTION_TITLE_HEIGHT : baseBounds.minY,
+    maxX: baseBounds.maxX,
+    maxY: baseBounds.maxY,
+  }
+  const legendBoxPre = legendTypesPre.length > 0
+    ? positionLegend(state.legend.position, legendDimsPre, tentativeBounds)
+    : null
+
+  const { minX, minY, maxX, maxY } = calcExportBounds(flat, connections, legendBoxPre, sectionOffset)
   const w = maxX - minX
   const h = maxY - minY
 
@@ -612,6 +876,12 @@ export async function exportSVG(state: OrgChartState, filename = 'org-chart.svg'
       parts.push(`<text x="${textX}" y="${ny + 56}" fill="rgba(255,255,255,0.3)" font-size="9" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${escapeXml(node.department)}</text>`)
     }
     parts.push(`</g>`)
+  }
+
+  // Legend (after nodes so it overlays cleanly)
+  if (legendBoxPre && legendTypesPre.length > 0) {
+    const finalBox = positionLegend(state.legend.position, legendDimsPre, { minX, minY, maxX, maxY })
+    emitSVGLegend(parts, finalBox, legendTypesPre)
   }
 
   parts.push(`</svg>`)

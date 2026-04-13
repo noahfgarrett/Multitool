@@ -1,5 +1,6 @@
 import type { OrgChartStore } from './orgChartStore.ts'
 import type { LayoutDirection } from './types.ts'
+import { LegendPositionChip } from './LegendPositionChip.tsx'
 import {
   Undo2, Redo2, ZoomIn, ZoomOut, Maximize2,
   ArrowDown, ArrowRight, UserPlus, Trash2, Download, Upload,
@@ -161,6 +162,7 @@ export function Toolbar({
           <Upload size={12} />
           Import
         </button>
+        <LegendPositionChip store={store} />
         <ToolbarButton icon={Download} label="Export" onClick={onExport} />
         {canDelete && (
           <ToolbarButton
