@@ -12,6 +12,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.2.0',
+    date: 'PLACEHOLDER',
+    type: 'feature',
+    stats: { features: 3, fixes: 1 },
+    notes: `### Org Chart
+- Brighter default color for tree connector lines
+- Section dividers now stay in the empty space between sections as you drag
+- Section dividers hide when sections overlap instead of crossing nodes
+- Export modal: customize background color and tree line color for PNG, SVG, and copy-to-clipboard`,
+  },
+  {
     version: '4.1.1',
     date: '2026-04-13T23:16:37Z',
     type: 'fix',

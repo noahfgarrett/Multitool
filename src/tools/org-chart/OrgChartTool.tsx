@@ -11,10 +11,11 @@ import { exportPNG, exportSVG, exportJSON, exportCSV, importJSON, copyPNGToClipb
 import { TEMPLATES } from './templates.ts'
 import type { OrgChartState } from './types.ts'
 import { Modal } from '@/components/common/Modal.tsx'
+import { ColorPicker } from '@/components/common/ColorPicker.tsx'
 import { useAppStore } from '@/stores/appStore.ts'
 import {
   Image as ImageIcon, FileJson, FileCode, Clipboard, FileSpreadsheet, Users,
-  ZoomIn, ZoomOut,
+  ZoomIn, ZoomOut, ChevronDown, ChevronRight,
 } from 'lucide-react'
 
 // ── Helper: trigger fitToContent via window bridge ──────────
@@ -57,6 +58,14 @@ export default function OrgChartTool() {
   const [versionRefresh, setVersionRefresh] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // ── Export color overrides ────────────────────────────────
+  // Null = use the theme defaults (#0a0a14 background, primary ConnectorType
+  // color). Non-null = override applied at export time only, never mutates
+  // store state. Kept in-memory per session; not persisted across reloads.
+  const [exportCustomize, setExportCustomize] = useState(false)
+  const [exportBgColor, setExportBgColor] = useState('#0a0a14')
+  const [exportPrimaryColor, setExportPrimaryColor] = useState('#9ca3af')
+
   // Memoize versions list to re-read when panel opens or after mutations
   const versions = useMemo(
     () => showVersions ? store.getVersions() : [],
@@ -73,35 +82,44 @@ export default function OrgChartTool() {
     legend: store.legend,
   }), [store.nodes, store.connections, store.connectorTypes, store.legend])
 
+  // Build the export-options object only when the user has opted into
+  // customization. Leaving this empty falls through to the renderer's
+  // defaults so baseline exports are unchanged for users who ignore the
+  // Customize panel.
+  const getExportOptions = useCallback(() => {
+    if (!exportCustomize) return {}
+    return { bgColor: exportBgColor, primaryColor: exportPrimaryColor }
+  }, [exportCustomize, exportBgColor, exportPrimaryColor])
+
   const handleExportPNG = useCallback(async () => {
     try {
-      await exportPNG(getFullState())
+      await exportPNG(getFullState(), undefined, getExportOptions())
       addToast({ type: 'success', message: 'PNG exported successfully' })
     } catch (err) {
       addToast({ type: 'error', message: err instanceof Error ? err.message : 'Export failed' })
     }
     setShowExport(false)
-  }, [getFullState, addToast])
+  }, [getFullState, getExportOptions, addToast])
 
   const handleCopyPNG = useCallback(async () => {
     try {
-      await copyPNGToClipboard(getFullState())
+      await copyPNGToClipboard(getFullState(), getExportOptions())
       addToast({ type: 'success', message: 'Copied to clipboard' })
     } catch (err) {
       addToast({ type: 'error', message: err instanceof Error ? err.message : 'Copy failed' })
     }
     setShowExport(false)
-  }, [getFullState, addToast])
+  }, [getFullState, getExportOptions, addToast])
 
   const handleExportSVG = useCallback(async () => {
     try {
-      await exportSVG(getFullState())
+      await exportSVG(getFullState(), undefined, getExportOptions())
       addToast({ type: 'success', message: 'SVG exported successfully' })
     } catch (err) {
       addToast({ type: 'error', message: err instanceof Error ? err.message : 'Export failed' })
     }
     setShowExport(false)
-  }, [getFullState, addToast])
+  }, [getFullState, getExportOptions, addToast])
 
   const handleExportJSON = useCallback(() => {
     try {
@@ -303,6 +321,35 @@ export default function OrgChartTool() {
       {/* ── Export modal ──────────────────────────────── */}
       <Modal open={showExport} onClose={() => setShowExport(false)} title="Export Org Chart" width="sm">
         <div className="space-y-2">
+          {/* Customize colors disclosure — applies to PNG + SVG + Copy. */}
+          <button
+            type="button"
+            onClick={() => setExportCustomize(v => !v)}
+            className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-white/60 hover:text-white/90 hover:bg-white/[0.04] rounded transition-colors"
+            data-testid="export-customize-toggle"
+          >
+            {exportCustomize ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            <span>Customize colors</span>
+            {exportCustomize && (
+              <span className="ml-auto text-[9px] text-white/30 uppercase tracking-wide">Applies to PNG · Copy · SVG</span>
+            )}
+          </button>
+          {exportCustomize && (
+            <div className="px-3 pt-1 pb-3 space-y-3 bg-white/[0.02] rounded-md border border-white/[0.06]">
+              <div>
+                <label className="block text-[10px] uppercase tracking-wide text-white/50 mb-1.5">Background</label>
+                <ColorPicker value={exportBgColor} onChange={setExportBgColor} />
+              </div>
+              <div>
+                <label className="block text-[10px] uppercase tracking-wide text-white/50 mb-1.5">Primary line color</label>
+                <ColorPicker value={exportPrimaryColor} onChange={setExportPrimaryColor} />
+              </div>
+              <p className="text-[10px] text-white/40 leading-snug">
+                Secondary connector types (dotted-line, supports, collaborates) keep
+                their own colors so relationship meaning stays clear.
+              </p>
+            </div>
+          )}
           <ExportButton
             icon={ImageIcon}
             label="Export as PNG"

@@ -793,35 +793,47 @@ export function Canvas({ store }: { store: OrgChartStore }) {
         ctx.restore()
       }
 
-      // Draw vertical dashed divider between sections (not after last)
+      // Draw vertical dashed divider between sections (not after last).
+      // Divider position tracks live node positions: we compute each section's
+      // real bounding box from its flat layout (including drag offsets) and
+      // place the divider at the midpoint of the actual gap. When the two
+      // sections overlap horizontally, there is no empty space — hide the
+      // divider instead of drawing through node cards.
       if (idx < rootNodes.length - 1) {
-        // Find rightmost x of current section
-        const sectionNodes = getSectionNodes(root, allFlat)
-        let maxRight = root.x + root.width
-        for (const sn of sectionNodes) {
-          maxRight = Math.max(maxRight, sn.x + sn.width)
+        const sectionA = getSectionNodes(root, allFlat)
+        let sectionAMaxX = -Infinity
+        for (const n of sectionA) {
+          sectionAMaxX = Math.max(sectionAMaxX, n.x + n.width)
         }
         const nextRoot = rootNodes[idx + 1]
-        const dividerX = (maxRight + nextRoot.x) / 2
-
-        ctx.save()
-        ctx.strokeStyle = 'rgba(255,255,255,0.1)'
-        ctx.lineWidth = 1
-        ctx.setLineDash([6, 4])
-        ctx.beginPath()
-
-        // Find vertical extent of all nodes
-        let minY = Infinity, maxY = -Infinity
-        for (const n of allFlat) {
-          minY = Math.min(minY, n.y - SECTION_TITLE_HEIGHT)
-          maxY = Math.max(maxY, n.y + n.height + 40)
+        const sectionB = getSectionNodes(nextRoot, allFlat)
+        let sectionBMinX = Infinity
+        for (const n of sectionB) {
+          sectionBMinX = Math.min(sectionBMinX, n.x)
         }
 
-        ctx.moveTo(dividerX, minY)
-        ctx.lineTo(dividerX, maxY)
-        ctx.stroke()
-        ctx.setLineDash([])
-        ctx.restore()
+        if (sectionBMinX > sectionAMaxX) {
+          const dividerX = (sectionAMaxX + sectionBMinX) / 2
+
+          ctx.save()
+          ctx.strokeStyle = 'rgba(255,255,255,0.1)'
+          ctx.lineWidth = 1
+          ctx.setLineDash([6, 4])
+          ctx.beginPath()
+
+          // Find vertical extent of all nodes
+          let minY = Infinity, maxY = -Infinity
+          for (const n of allFlat) {
+            minY = Math.min(minY, n.y - SECTION_TITLE_HEIGHT)
+            maxY = Math.max(maxY, n.y + n.height + 40)
+          }
+
+          ctx.moveTo(dividerX, minY)
+          ctx.lineTo(dividerX, maxY)
+          ctx.stroke()
+          ctx.setLineDash([])
+          ctx.restore()
+        }
       }
     })
 

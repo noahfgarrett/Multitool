@@ -150,10 +150,10 @@ export function createNode(overrides: Partial<OrgNode> = {}): OrgNode {
 
 export function createDefaultConnectorTypes(): ConnectorType[] {
   return [
-    // #272730 approximates the legacy rgba(255,255,255,0.12) blended over the
-    // #0a0a14 canvas background — preserves the pre-feature tree edge look so
-    // old diagrams don't visually shift when they load into the new renderer.
-    { id: 'primary',      label: 'Reports to',   color: '#272730', style: 'solid',  lineWidth: 1.5 },
+    // #9ca3af (tailwind gray-400) reads clearly on both dark and light
+    // backgrounds. Existing JSON saves keep whatever color they stored, so
+    // this only affects fresh diagrams and explicit reset-to-default actions.
+    { id: 'primary',      label: 'Reports to',   color: '#9ca3af', style: 'solid',  lineWidth: 1.5 },
     { id: 'dotted-line',  label: 'Dotted-line',  color: '#60a5fa', style: 'dashed', lineWidth: 1.75 },
     { id: 'supports',     label: 'Supports',     color: '#fbbf24', style: 'dotted', lineWidth: 1.75 },
     { id: 'collaborates', label: 'Collaborates', color: '#a78bfa', style: 'double', lineWidth: 2 },

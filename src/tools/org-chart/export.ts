@@ -370,9 +370,24 @@ async function preloadImages(nodes: OrgNode[]): Promise<Map<string, HTMLImageEle
   return cache
 }
 
+// ── Export options ──────────────────────────────────────────
+
+export interface ExportOptions {
+  /** Override the dark `#0a0a14` canvas/SVG background. Pass a hex string. */
+  bgColor?: string
+  /** Override the primary connector line color. Secondary types keep their
+   *  own semantic colors so the relationship meaning is preserved. */
+  primaryColor?: string
+}
+
+const DEFAULT_EXPORT_BG = '#0a0a14'
+
 // ── Render to offscreen canvas ──────────────────────────────
 
-async function renderToCanvas(state: OrgChartState): Promise<HTMLCanvasElement> {
+async function renderToCanvas(
+  state: OrgChartState,
+  options: ExportOptions = {},
+): Promise<HTMLCanvasElement> {
   const { nodes, connections, connectorTypes } = state
   const flat = buildLayout(nodes)
   const imageCache = await preloadImages(nodes)
@@ -417,11 +432,14 @@ async function renderToCanvas(state: OrgChartState): Promise<HTMLCanvasElement> 
   ctx.translate(-minX, -minY)
 
   // Background
-  ctx.fillStyle = '#0a0a14'
+  ctx.fillStyle = options.bgColor ?? DEFAULT_EXPORT_BG
   ctx.fillRect(minX, minY, w, h)
 
   // Draw primary connectors (tree edges)
-  const primaryType = getConnectorType(connectorTypes, 'primary')
+  const basePrimary = getConnectorType(connectorTypes, 'primary')
+  const primaryType: ConnectorType = options.primaryColor
+    ? { ...basePrimary, color: options.primaryColor }
+    : basePrimary
   const childMap = new Map<string, LayoutNode[]>()
   for (const n of flat) {
     if (n.reportsTo) {
@@ -467,22 +485,30 @@ async function renderToCanvas(state: OrgChartState): Promise<HTMLCanvasElement> 
     }
 
     if (idx < roots.length - 1) {
-      const sectionNodes = getSectionNodesFlat(root, flat)
-      let maxRight = root.x + root.width
-      for (const sn of sectionNodes) maxRight = Math.max(maxRight, sn.x + sn.width)
+      // Dynamic divider: midpoint of the real gap between this section's
+      // rightmost node and the next section's leftmost node. Skip drawing
+      // when the sections overlap horizontally (no empty space to occupy).
+      const sectionA = getSectionNodesFlat(root, flat)
+      let sectionAMaxX = -Infinity
+      for (const n of sectionA) sectionAMaxX = Math.max(sectionAMaxX, n.x + n.width)
       const nextRoot = roots[idx + 1]
-      const dividerX = (maxRight + nextRoot.x) / 2
+      const sectionB = getSectionNodesFlat(nextRoot, flat)
+      let sectionBMinX = Infinity
+      for (const n of sectionB) sectionBMinX = Math.min(sectionBMinX, n.x)
 
-      ctx.save()
-      ctx.strokeStyle = 'rgba(255,255,255,0.1)'
-      ctx.lineWidth = 1
-      ctx.setLineDash([6, 4])
-      ctx.beginPath()
-      ctx.moveTo(dividerX, minY)
-      ctx.lineTo(dividerX, maxY)
-      ctx.stroke()
-      ctx.setLineDash([])
-      ctx.restore()
+      if (sectionBMinX > sectionAMaxX) {
+        const dividerX = (sectionAMaxX + sectionBMinX) / 2
+        ctx.save()
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)'
+        ctx.lineWidth = 1
+        ctx.setLineDash([6, 4])
+        ctx.beginPath()
+        ctx.moveTo(dividerX, minY)
+        ctx.lineTo(dividerX, maxY)
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.restore()
+      }
     }
   })
 
@@ -676,8 +702,12 @@ function truncateText(ctx: CanvasRenderingContext2D, text: string, maxWidth: num
 
 // ── Export as PNG ────────────────────────────────────────────
 
-export async function exportPNG(state: OrgChartState, filename = 'org-chart.png'): Promise<void> {
-  const canvas = await renderToCanvas(state)
+export async function exportPNG(
+  state: OrgChartState,
+  filename = 'org-chart.png',
+  options: ExportOptions = {},
+): Promise<void> {
+  const canvas = await renderToCanvas(state, options)
   return new Promise<void>((resolve, reject) => {
     canvas.toBlob(blob => {
       if (blob) {
@@ -694,8 +724,11 @@ export async function exportPNG(state: OrgChartState, filename = 'org-chart.png'
 
 // ── Copy as PNG to clipboard ────────────────────────────────
 
-export async function copyPNGToClipboard(state: OrgChartState): Promise<void> {
-  const canvas = await renderToCanvas(state)
+export async function copyPNGToClipboard(
+  state: OrgChartState,
+  options: ExportOptions = {},
+): Promise<void> {
+  const canvas = await renderToCanvas(state, options)
   return new Promise<void>((resolve, reject) => {
     canvas.toBlob(async blob => {
       if (!blob) {
@@ -723,7 +756,11 @@ export async function copyPNGToClipboard(state: OrgChartState): Promise<void> {
 
 // ── Export as SVG ────────────────────────────────────────────
 
-export async function exportSVG(state: OrgChartState, filename = 'org-chart.svg'): Promise<void> {
+export async function exportSVG(
+  state: OrgChartState,
+  filename = 'org-chart.svg',
+  options: ExportOptions = {},
+): Promise<void> {
   const { nodes, connections, connectorTypes } = state
   const flat = buildLayout(nodes)
   const roots = flat.filter(n => !n.reportsTo)
@@ -762,9 +799,10 @@ export async function exportSVG(state: OrgChartState, filename = 'org-chart.svg'
     }
   }
 
+  const svgBg = options.bgColor ?? DEFAULT_EXPORT_BG
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${w}" height="${h}" viewBox="${minX} ${minY} ${w} ${h}">`,
-    `<rect x="${minX}" y="${minY}" width="${w}" height="${h}" fill="#0a0a14"/>`,
+    `<rect x="${minX}" y="${minY}" width="${w}" height="${h}" fill="${svgBg}"/>`,
     `<defs>`,
   ]
 
@@ -777,7 +815,10 @@ export async function exportSVG(state: OrgChartState, filename = 'org-chart.svg'
   parts.push(`</defs>`)
 
   // Primary connectors (tree edges)
-  const primaryType = getConnectorType(connectorTypes, 'primary')
+  const basePrimarySvg = getConnectorType(connectorTypes, 'primary')
+  const primaryType: ConnectorType = options.primaryColor
+    ? { ...basePrimarySvg, color: options.primaryColor }
+    : basePrimarySvg
   for (const parent of flat) {
     const children = childMap.get(parent.id) ?? []
     for (const child of children) {
@@ -842,12 +883,20 @@ export async function exportSVG(state: OrgChartState, filename = 'org-chart.svg'
     }
 
     if (idx < roots.length - 1) {
-      const sectionNodes = getSectionNodesFlat(root, flat)
-      let maxRight = root.x + root.width
-      for (const sn of sectionNodes) maxRight = Math.max(maxRight, sn.x + sn.width)
+      // Dynamic divider (same logic as renderToCanvas): midpoint of the real
+      // gap between sections, hidden when sections overlap.
+      const sectionA = getSectionNodesFlat(root, flat)
+      let sectionAMaxX = -Infinity
+      for (const n of sectionA) sectionAMaxX = Math.max(sectionAMaxX, n.x + n.width)
       const nextRoot = roots[idx + 1]
-      const dividerX = (maxRight + nextRoot.x) / 2
-      parts.push(`<line x1="${dividerX}" y1="${minY}" x2="${dividerX}" y2="${maxY}" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="6,4"/>`)
+      const sectionB = getSectionNodesFlat(nextRoot, flat)
+      let sectionBMinX = Infinity
+      for (const n of sectionB) sectionBMinX = Math.min(sectionBMinX, n.x)
+
+      if (sectionBMinX > sectionAMaxX) {
+        const dividerX = (sectionAMaxX + sectionBMinX) / 2
+        parts.push(`<line x1="${dividerX}" y1="${minY}" x2="${dividerX}" y2="${maxY}" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="6,4"/>`)
+      }
     }
   })
 

@@ -97,7 +97,7 @@ test.describe('Org Chart — Typed Connectors (pure function tests)', () => {
       ])
     })
     expect(result[0].label).toBe('Custom')
-    expect(result[0].color).toBe('#272730')  // fell back to default
+    expect(result[0].color).toBe('#9ca3af')  // fell back to default
   })
 
   test('mergeWithDefaults on null/empty/malformed returns all defaults', async ({ page }) => {
@@ -337,8 +337,8 @@ test.describe('Org Chart — Typed Connectors (Connector Types editing)', () => 
     const types = await getConnectorTypes(page)
     const primary = types.find(t => t.id === 'primary')
     expect(primary?.label).toBe('Reports to')
-    // Default is #272730 per types.ts
-    expect(primary?.color).toBe('#272730')
+    // Default is #9ca3af per types.ts (tailwind gray-400)
+    expect(primary?.color).toBe('#9ca3af')
   })
 
   test('resetAllConnectorTypes reverts every type', async ({ page }) => {
