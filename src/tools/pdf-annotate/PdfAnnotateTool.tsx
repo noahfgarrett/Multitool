@@ -763,7 +763,7 @@ export default function PdfAnnotateTool() {
         ctx.restore()
       }
     }
-  }, [annotations, selectedAnnId, measurements, calibration, selectedMeasureId, selectedArrowIdx, hoveredAnnId, getAnnotation, findMatches, findIdx, cropRegions, polyMeasurements, countGroups, stickyNotes, commentThreads, chatBubbleTarget, layers])
+  }, [annotations, selectedAnnId, selectedAnnIds, measurements, calibration, selectedMeasureId, selectedArrowIdx, hoveredAnnId, getAnnotation, findMatches, findIdx, cropRegions, polyMeasurements, countGroups, stickyNotes, commentThreads, chatBubbleTarget, layers])
 
   const redrawAll = useCallback(() => {
     for (const pageNum of renderedPagesRef.current) {
@@ -2061,7 +2061,7 @@ export default function PdfAnnotateTool() {
 
   // Scoped redraw for selection/hover changes (only affects active page)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { redrawPage(activePageRef.current) }, [selectedAnnId, selectedMeasureId, selectedArrowIdx, selectTextToolbar, hoveredAnnId])
+  useEffect(() => { redrawPage(activePageRef.current) }, [selectedAnnId, selectedAnnIds, selectedMeasureId, selectedArrowIdx, selectTextToolbar, hoveredAnnId])
 
   // Redraw all when find matches change (they span all pages)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3555,8 +3555,8 @@ export default function PdfAnnotateTool() {
           // Open chat bubble
           if (noteRefs) {
             const rect = noteRefs.annCanvas.getBoundingClientRect()
-            const screenX = rect.left + (note.point.x / noteRs) * zoom
-            const screenY = rect.top + (note.point.y / noteRs) * zoom
+            const screenX = rect.left + note.point.x * zoom
+            const screenY = rect.top + note.point.y * zoom
             setChatBubbleTarget({ annotationId: note.id, position: { x: screenX, y: screenY } })
           }
           redrawPage(pageNum)
@@ -3613,8 +3613,8 @@ export default function PdfAnnotateTool() {
         if (hitTestStickyNote(pt, note, selectRs)) {
           if (selectRefs) {
             const rect = selectRefs.annCanvas.getBoundingClientRect()
-            const screenX = rect.left + (note.point.x / selectRs) * zoom
-            const screenY = rect.top + (note.point.y / selectRs) * zoom
+            const screenX = rect.left + note.point.x * zoom
+            const screenY = rect.top + note.point.y * zoom
             setChatBubbleTarget({ annotationId: note.id, position: { x: screenX, y: screenY } })
           }
           return
@@ -3710,7 +3710,8 @@ export default function PdfAnnotateTool() {
   }, [getPointForPage, activeTool, annotations, editingTextId, selectedAnnId, selectTextToolbar,
       commitTextEditing, commitAnnotation, getAnnotation, findTextAnnotationAt, findCalloutAt, findAnnotationAt, redrawPage, scheduleRender,
       eraserRadius, eraserMode, zoom, color, strokeWidth, fontSize, opacity, fontFamily, bold, italic, underline, textAlign,
-      activeStampPreset, pencilOnlyMode, selectedAnnIds])
+      activeStampPreset, pencilOnlyMode, selectedAnnIds, measureMode, measurements, stickyNotes, activeStickyColor, fillColor, dashPattern,
+      edgeSnappingEnabled, precisionSnapMode])
 
   const handlePointerMove = useCallback((e: React.PointerEvent, pageNum: number) => {
     // Track cursor position for hover tooltip — update DOM directly to avoid re-renders on every move
@@ -4404,7 +4405,8 @@ export default function PdfAnnotateTool() {
       currentPtsRef.current = [p0, p1]
       scheduleRender()
     }
-  }, [getPointForPage, activeTool, annotations, redrawPage, eraserRadius, eraserMode, zoom, straightLineMode, selectedAnnId, selectedAnnIds, findAnnotationAt, zoomAtCenter, zoomAtPoint, pencilOnlyMode, scheduleRender])
+  }, [getPointForPage, activeTool, annotations, redrawPage, eraserRadius, eraserMode, zoom, straightLineMode, selectedAnnId, selectedAnnIds, findAnnotationAt, zoomAtCenter, zoomAtPoint, pencilOnlyMode, scheduleRender,
+      measureMode, edgeSnappingEnabled, precisionSnapMode])
 
   const handlePointerUp = useCallback((e?: React.PointerEvent) => {
     // Clean up touch tracking
@@ -4891,7 +4893,9 @@ export default function PdfAnnotateTool() {
       setSelectedAnnId(ann.id)
     }
   }, [activeTool, color, strokeWidth, opacity, fontSize, fillColor, cornerRadius, dashPattern, arrowStart, commitAnnotation, smoothingLevel,
-      pushHistory, redrawPage, annotations, getAnnotation, updateAnnotation, selectedAnnId, addToast, getActiveCtx, pencilOnlyMode])
+      pushHistory, redrawPage, annotations, getAnnotation, updateAnnotation, selectedAnnId, addToast, getActiveCtx, pencilOnlyMode,
+      fontFamily, bold, italic, underline, strikethrough, textAlign, superscript, subscript, listType, textBgColor, lineSpacing,
+      activeLayerId, layers, pageRotations])
 
   // ── Comment & Sticky Note Management ─────────────────
 
@@ -4934,7 +4938,7 @@ export default function PdfAnnotateTool() {
     if (scrollContainer) {
       const pageContainer = scrollContainer.querySelector(`[data-page="${page}"]`)
       if (pageContainer) {
-        pageContainer.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        pageContainer.scrollIntoView({ behavior: 'instant', block: 'center' })
       }
     }
     // Find the annotation/sticky note position to anchor the chat bubble
@@ -4944,9 +4948,8 @@ export default function PdfAnnotateTool() {
       const refs = pageRefsMap.current.get(page)
       if (refs) {
         const rect = refs.annCanvas.getBoundingClientRect()
-        const rs = pageRenderScaleRef.current.get(page) ?? RENDER_SCALE
-        const screenX = rect.left + (ann.points[0].x / rs) * zoom
-        const screenY = rect.top + (ann.points[0].y / rs) * zoom
+        const screenX = rect.left + ann.points[0].x * zoom
+        const screenY = rect.top + ann.points[0].y * zoom
         setChatBubbleTarget({ annotationId, position: { x: screenX, y: screenY } })
       }
     }
@@ -4957,9 +4960,8 @@ export default function PdfAnnotateTool() {
       const refs = pageRefsMap.current.get(page)
       if (refs) {
         const rect = refs.annCanvas.getBoundingClientRect()
-        const rs = pageRenderScaleRef.current.get(page) ?? RENDER_SCALE
-        const screenX = rect.left + (note.point.x / rs) * zoom
-        const screenY = rect.top + (note.point.y / rs) * zoom
+        const screenX = rect.left + note.point.x * zoom
+        const screenY = rect.top + note.point.y * zoom
         setChatBubbleTarget({ annotationId, position: { x: screenX, y: screenY } })
       }
     }
@@ -5192,7 +5194,7 @@ export default function PdfAnnotateTool() {
   const showPropsForSelection = activeTool === 'select' && selectedAnn
   const showTextProps = (isTextAnnSelected && activeTool === 'select') || activeTool === 'text' || activeTool === 'callout'
   const showStrokeWidth = (isShapeAnnSelected && activeTool === 'select') ||
-    (activeTool !== 'select' && activeTool !== 'text' && activeTool !== 'callout' && activeTool !== 'eraser' && activeTool !== 'measure' && activeTool !== 'textHighlight' && activeTool !== 'textStrikethrough' && activeTool !== 'stamp' && activeTool !== 'crop' && activeTool !== 'note' && activeTool !== 'ocrRegion')
+    (activeTool !== 'select' && activeTool !== 'text' && activeTool !== 'callout' && activeTool !== 'eraser' && activeTool !== 'measure' && activeTool !== 'textHighlight' && activeTool !== 'textStrikethrough' && activeTool !== 'stamp' && activeTool !== 'imageStamp' && activeTool !== 'crop' && activeTool !== 'note' && activeTool !== 'ocrRegion')
   const showOpacity = showPropsForTool || (activeTool === 'select' && selectedAnn != null)
   const showColorPicker = showPropsForTool || showPropsForSelection
   const showEraserControls = activeTool === 'eraser'
@@ -6207,7 +6209,7 @@ export default function PdfAnnotateTool() {
                       if (!ann) return
                       setSelectedAnnId(ann.id)
                       // Clamp to viewport so menu doesn't go off-screen
-                      const menuW = 168, menuH = 200
+                      const menuW = 168, menuH = 340
                       const cx = Math.min(e.clientX, window.innerWidth - menuW - 8)
                       const cy = Math.min(e.clientY, window.innerHeight - menuH - 8)
                       setContextMenu({ x: cx, y: cy, annId: ann.id, pageNum })
@@ -7609,10 +7611,9 @@ export default function PdfAnnotateTool() {
             <button onClick={() => doAction(() => {
               const refs = pageRefsMap.current.get(cmPageNum)
               if (!refs || !cmAnn.points[0]) return
-              const rsL = pageRenderScaleRef.current.get(cmPageNum) ?? RENDER_SCALE
               const rect = refs.annCanvas.getBoundingClientRect()
-              const sx = rect.left + (cmAnn.points[0].x / rsL) * zoom
-              const sy = rect.top + (cmAnn.points[0].y / rsL) * zoom
+              const sx = rect.left + cmAnn.points[0].x * zoom
+              const sy = rect.top + cmAnn.points[0].y * zoom
               setChatBubbleTarget({ annotationId: annId, position: { x: sx, y: sy } })
             })} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-white/70 hover:text-white hover:bg-white/[0.06]">
               <MessageCircle size={11} />
@@ -8073,9 +8074,9 @@ export default function PdfAnnotateTool() {
             setStrokeWidth(w)
             if (selectedAnnId && isShapeAnnSelected) updateAnnotation(selectedAnnId, { strokeWidth: w })
           }}
-          opacity={opacity}
+          opacity={opacity / 100}
           onChangeOpacity={o => {
-            setOpacity(o)
+            setOpacity(Math.round(o * 100))
             if (selectedAnnId) updateAnnotation(selectedAnnId, { opacity: o })
           }}
           onClose={() => setMobileLongPressPopover(null)}

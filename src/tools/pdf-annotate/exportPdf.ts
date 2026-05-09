@@ -391,7 +391,7 @@ export async function buildAnnotatedPdfBytes(params: BuildAnnotatedPdfParams): P
               for (let i = 0; i < cLines.length; i++) {
                 let cxOff = 4
                 if (cAlign !== 'left') {
-                  const ctw = calloutFont.widthOfTextAtSize(cLines[i], cfs)
+                  const ctw = calloutFont.widthOfTextAtSize(cLines[i], effectiveCfs)
                   if (cAlign === 'center') cxOff = 4 + (ann.width - 8 - ctw) / 2
                   else if (cAlign === 'right') cxOff = ann.width - 4 - ctw
                 }
@@ -401,18 +401,18 @@ export async function buildAnnotatedPdfBytes(params: BuildAnnotatedPdfParams): P
                   size: effectiveCfs, font: calloutFont, color: c, opacity: 1,
                 })
                 if (ann.underline) {
-                  const ctw = calloutFont.widthOfTextAtSize(cLines[i], cfs)
-                  const culY = boxPt.y + 4 + cfs * (ann.lineHeight || 1.3) * i + cfs + cfs * 0.15
+                  const ctw = calloutFont.widthOfTextAtSize(cLines[i], effectiveCfs)
+                  const culY = boxPt.y + 4 + effectiveCfs * (ann.lineHeight || 1.3) * i + effectiveCfs + effectiveCfs * 0.15
                   const culStart = toPC({ x: boxPt.x + cxOff, y: culY })
                   const culEnd = toPC({ x: boxPt.x + cxOff + ctw, y: culY })
-                  page.drawLine({ start: culStart, end: culEnd, thickness: Math.max(0.5, cfs * 0.05), color: c, opacity: 1 })
+                  page.drawLine({ start: culStart, end: culEnd, thickness: Math.max(0.5, effectiveCfs * 0.05), color: c, opacity: 1 })
                 }
                 if (ann.strikethrough) {
-                  const ctw = calloutFont.widthOfTextAtSize(cLines[i], cfs)
-                  const cstY = boxPt.y + 4 + cfs * (ann.lineHeight || 1.3) * i + cfs - cfs * 0.35
+                  const ctw = calloutFont.widthOfTextAtSize(cLines[i], effectiveCfs)
+                  const cstY = boxPt.y + 4 + effectiveCfs * (ann.lineHeight || 1.3) * i + effectiveCfs - effectiveCfs * 0.35
                   const cstStart = toPC({ x: boxPt.x + cxOff, y: cstY })
                   const cstEnd = toPC({ x: boxPt.x + cxOff + ctw, y: cstY })
-                  page.drawLine({ start: cstStart, end: cstEnd, thickness: Math.max(0.5, cfs * 0.05), color: c, opacity: 1 })
+                  page.drawLine({ start: cstStart, end: cstEnd, thickness: Math.max(0.5, effectiveCfs * 0.05), color: c, opacity: 1 })
                 }
               }
             }
