@@ -78,26 +78,40 @@ function drawLabel(
   isActive: boolean,
 ): void {
   ctx.save()
-  ctx.font = '600 11px system-ui, sans-serif'
+  ctx.font = '600 12px system-ui, sans-serif'
 
   const metrics = ctx.measureText(text)
-  const padX = 6
-  const padY = 3
+  const padX = 8
+  const padY = 4
   const tw = metrics.width + padX * 2
-  const th = 16 + padY * 2
+  const th = 17 + padY * 2
   const radius = th / 2
+  const rx = x - tw / 2
+  const ry = y - th / 2
+
+  // Drop shadow
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.35)'
+  ctx.shadowBlur = 6
+  ctx.shadowOffsetX = 0
+  ctx.shadowOffsetY = 2
 
   // Dark background pill
-  ctx.fillStyle = isActive ? 'rgba(6, 182, 212, 0.95)' : 'rgba(0, 40, 50, 0.85)'
+  ctx.fillStyle = isActive ? 'rgba(6, 182, 212, 0.95)' : 'rgba(0, 30, 40, 0.88)'
   ctx.beginPath()
-  ctx.roundRect(x - tw / 2, y - th / 2, tw, th, radius)
+  ctx.roundRect(rx, ry, tw, th, radius)
   ctx.fill()
 
+  // Reset shadow for border and text
+  ctx.shadowColor = 'transparent'
+  ctx.shadowBlur = 0
+  ctx.shadowOffsetX = 0
+  ctx.shadowOffsetY = 0
+
   // Cyan border
-  ctx.strokeStyle = isActive ? '#06B6D4' : '#22D3EE'
-  ctx.lineWidth = 1
+  ctx.strokeStyle = isActive ? 'rgba(255, 255, 255, 0.4)' : '#22D3EE'
+  ctx.lineWidth = 1.2
   ctx.beginPath()
-  ctx.roundRect(x - tw / 2, y - th / 2, tw, th, radius)
+  ctx.roundRect(rx, ry, tw, th, radius)
   ctx.stroke()
 
   // Text
@@ -252,6 +266,103 @@ export function drawAreaPolygon(
       const volLabel = `V: ${formatVolume(area, depth, calibration)}`
       drawLabel(ctx, volLabel, cx, cy + 38, isActive)
     }
+  }
+
+  ctx.restore()
+}
+
+// ── Angle measurement drawing ─────────────────────────────
+
+/** Compute angle at vertex B formed by rays B→A and B→C, in degrees (0–360). */
+export function computeAngleDegrees(a: Point, b: Point, c: Point): number {
+  const angleA = Math.atan2(a.y - b.y, a.x - b.x)
+  const angleC = Math.atan2(c.y - b.y, c.x - b.x)
+  let diff = angleA - angleC
+  // Normalize to [0, 2π)
+  if (diff < 0) diff += 2 * Math.PI
+  // Convert to degrees
+  return diff * (180 / Math.PI)
+}
+
+export function drawAngleMeasurement(
+  ctx: CanvasRenderingContext2D,
+  points: Point[],
+  scale: number,
+  isActive: boolean,
+): void {
+  if (points.length < 2) return
+
+  const a = points[0]
+  const b = points[1] // vertex
+  const c = points.length >= 3 ? points[2] : null
+
+  ctx.save()
+
+  const strokeColor = isActive ? '#06B6D4' : '#22D3EE'
+
+  // Draw ray B→A
+  ctx.strokeStyle = strokeColor
+  ctx.lineWidth = isActive ? 2.5 : 1.5
+  ctx.setLineDash([6, 4])
+  ctx.beginPath()
+  ctx.moveTo(b.x * scale, b.y * scale)
+  ctx.lineTo(a.x * scale, a.y * scale)
+  ctx.stroke()
+
+  // Draw ray B→C if we have the third point
+  if (c) {
+    ctx.beginPath()
+    ctx.moveTo(b.x * scale, b.y * scale)
+    ctx.lineTo(c.x * scale, c.y * scale)
+    ctx.stroke()
+  }
+  ctx.setLineDash([])
+
+  // Draw vertex circles
+  ctx.fillStyle = strokeColor
+  const dotRadius = isActive ? 5 : 4
+  for (const p of points) {
+    ctx.beginPath()
+    ctx.arc(p.x * scale, p.y * scale, dotRadius, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  // Draw arc and degree label if all three points are placed
+  if (c) {
+    const angleA = Math.atan2(a.y - b.y, a.x - b.x)
+    const angleC = Math.atan2(c.y - b.y, c.x - b.x)
+    let sweep = angleA - angleC
+    if (sweep < 0) sweep += 2 * Math.PI
+
+    const degrees = sweep * (180 / Math.PI)
+
+    // Arc radius proportional to shortest ray but clamped
+    const rayLenA = Math.hypot(a.x - b.x, a.y - b.y) * scale
+    const rayLenC = Math.hypot(c.x - b.x, c.y - b.y) * scale
+    const arcRadius = Math.max(20, Math.min(40, Math.min(rayLenA, rayLenC) * 0.3))
+
+    // Draw arc from angleC to angleA (counterclockwise = false for the swept angle)
+    ctx.strokeStyle = strokeColor
+    ctx.lineWidth = isActive ? 2 : 1.5
+    ctx.beginPath()
+    ctx.arc(b.x * scale, b.y * scale, arcRadius, angleC, angleA, sweep > Math.PI)
+    ctx.stroke()
+
+    // Fill arc region with semi-transparent color
+    ctx.fillStyle = isActive ? 'rgba(6, 182, 212, 0.12)' : 'rgba(34, 211, 238, 0.12)'
+    ctx.beginPath()
+    ctx.moveTo(b.x * scale, b.y * scale)
+    ctx.arc(b.x * scale, b.y * scale, arcRadius, angleC, angleA, sweep > Math.PI)
+    ctx.closePath()
+    ctx.fill()
+
+    // Label at the midpoint of the arc
+    const midAngle = angleC + (sweep > Math.PI ? -(2 * Math.PI - sweep) / 2 : sweep / 2)
+    const labelRadius = arcRadius + 16
+    const lx = b.x * scale + Math.cos(midAngle) * labelRadius
+    const ly = b.y * scale + Math.sin(midAngle) * labelRadius
+
+    drawLabel(ctx, `${degrees.toFixed(1)}°`, lx, ly, isActive)
   }
 
   ctx.restore()

@@ -80,6 +80,7 @@ function measureModeLabel(mode: string): string {
     polylength: 'Polylength',
     area: 'Area',
     count: 'Count',
+    angle: 'Angle',
   }
   return map[mode] ?? mode
 }
@@ -150,6 +151,18 @@ function computePolyValue(
     area = Math.abs(area) / 2
     const scaledArea = area / (scale * scale)
     return { value: scaledArea.toFixed(2), unit: `${unit}\u00B2` }
+  }
+
+  if (pm.mode === 'angle' && pm.points.length >= 3) {
+    const a = pm.points[0]
+    const b = pm.points[1]
+    const c = pm.points[2]
+    const angleA = Math.atan2(a.y - b.y, a.x - b.x)
+    const angleC = Math.atan2(c.y - b.y, c.x - b.x)
+    let diff = angleA - angleC
+    if (diff < 0) diff += 2 * Math.PI
+    const degrees = diff * (180 / Math.PI)
+    return { value: degrees.toFixed(1), unit: '°' }
   }
 
   if (pm.mode === 'count') {
@@ -426,6 +439,22 @@ export async function generateMarkupReport(
         value: cv.value,
         unit: cv.unit,
       })
+      // Add volume row for area measurements with depth
+      if (pm.mode === 'area' && pm.depth && pm.depth > 0 && pm.points.length >= 3) {
+        const ppu = calibration.pixelsPerUnit
+        const scl = ppu !== null && ppu > 0 ? ppu : 1
+        let area = 0
+        for (let i = 0; i < pm.points.length; i++) {
+          const j = (i + 1) % pm.points.length
+          area += pm.points[i].x * pm.points[j].y
+          area -= pm.points[j].x * pm.points[i].y
+        }
+        area = Math.abs(area) / 2
+        const calibratedArea = area / (scl * scl)
+        const volume = calibratedArea * pm.depth
+        const volUnit = ppu !== null && ppu > 0 ? `${calibration.unit}³` : 'px³'
+        allMeas.push({ type: 'Volume', value: volume.toFixed(2), unit: volUnit })
+      }
     }
 
     if (allMeas.length > 0) {
@@ -721,6 +750,33 @@ export function generateMarkupCSV(
         '',
         '',
       ])
+      // Volume row for area measurements with depth
+      if (pm.mode === 'area' && pm.depth && pm.depth > 0 && pm.points.length >= 3) {
+        const ppu = calibration.pixelsPerUnit
+        const scl = ppu !== null && ppu > 0 ? ppu : 1
+        let area = 0
+        for (let i = 0; i < pm.points.length; i++) {
+          const j = (i + 1) % pm.points.length
+          area += pm.points[i].x * pm.points[j].y
+          area -= pm.points[j].x * pm.points[i].y
+        }
+        area = Math.abs(area) / 2
+        const calibratedArea = area / (scl * scl)
+        const volume = calibratedArea * pm.depth
+        const volUnit = ppu !== null && ppu > 0 ? `${calibration.unit}³` : 'px³'
+        rows.push([
+          String(page),
+          'Measurement',
+          'Volume',
+          pm.label ? `${pm.label} (volume)` : '',
+          volume.toFixed(2),
+          volUnit,
+          '',
+          '',
+          '',
+          '',
+        ])
+      }
     }
 
     // Count groups
