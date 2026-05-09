@@ -28,6 +28,9 @@ import {
   MessageCircle, Mail, FileText, ScanText, Layers, ImagePlus, Eye, EyeOff, Plus, Trash2,
   Copy, BookOpen, Blend, Star, MoreHorizontal, ChevronsLeft, ChevronsRight,
   Maximize2, Minimize2, Pin, Check,
+  AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
+  AlignStartVertical, AlignCenterVertical, AlignEndVertical,
+  AlignHorizontalSpaceBetween, AlignVerticalSpaceBetween,
 } from 'lucide-react'
 
 // ── Extracted modules ─────────────────────────────────
@@ -47,8 +50,9 @@ import {
   pathHitsCircle, splitPathByEraser, shapeToPolyline, getAnnotationBounds,
   snapToContent, rotatePoint,
   isPointInAnyTextItem, findIntersectingTextItems, flowSelectTextItems,
-  hitTestMeasurementLabel,
+  hitTestMeasurementLabel, alignAnnotations,
 } from './geometry.ts'
+import type { AlignmentType } from './geometry.ts'
 import {
   drawCloudEdge, drawAnnotation, drawSelectionUI, drawMeasurement, renderFreehandStroke,
 } from './drawing.ts'
@@ -337,7 +341,7 @@ export default function PdfAnnotateTool() {
     textareaRef, blurTimeoutRef, lastCommittedTextRef,
     editingTextIdRef, textOverlayTick, setTextOverlayTick,
     escapeCommittedRef, preHighlightRef, dblClickRef,
-    textDragRef, generalDragRef,
+    textDragRef, generalDragRef, rotationDragRef,
     isDraggingAnn, setIsDraggingAnn, isOverTrash, setIsOverTrash, trashZoneRef,
     calloutArrowDragRef, selectedArrowIdx, setSelectedArrowIdx,
     cloudPreviewRef, cloudLastClickRef,
@@ -407,6 +411,9 @@ export default function PdfAnnotateTool() {
 
   // Alignment snap guides (visual-only, no position snapping)
   const snapGuidesRef = useRef<SnapGuide[]>([])
+
+  // Rubber band (marquee) selection ref
+  const rubberBandRef = useRef<{ startPt: Point; currentPt: Point } | null>(null)
 
   // Font picker dropdown state
   const [fontPickerOpen, setFontPickerOpen] = useState(false)
@@ -1038,6 +1045,26 @@ export default function PdfAnnotateTool() {
       actCtx.setLineDash([])
       actCtx.restore()
     }
+
+    // Rubber band (marquee) selection rectangle
+    if (rubberBandRef.current && pageNum === activePageRef.current) {
+      const rb = rubberBandRef.current
+      const x = Math.min(rb.startPt.x, rb.currentPt.x) * rs
+      const y = Math.min(rb.startPt.y, rb.currentPt.y) * rs
+      const w = Math.abs(rb.currentPt.x - rb.startPt.x) * rs
+      const h = Math.abs(rb.currentPt.y - rb.startPt.y) * rs
+      if (w > 1 || h > 1) {
+        actCtx.save()
+        actCtx.strokeStyle = 'rgba(34, 211, 238, 0.6)'
+        actCtx.fillStyle = 'rgba(34, 211, 238, 0.08)'
+        actCtx.lineWidth = 1
+        actCtx.setLineDash([4, 4])
+        actCtx.strokeRect(x, y, w, h)
+        actCtx.fillRect(x, y, w, h)
+        actCtx.setLineDash([])
+        actCtx.restore()
+      }
+    }
   }, [getActiveCtx, activeTool, color, strokeWidth, opacity, fontSize, fillColor, cornerRadius, dashPattern, arrowStart, selectedAnnId, getAnnotation, selectTextToolbar, measureMode, calibration])
 
   // ── rAF batching ──────────────────────────────────────
@@ -1126,6 +1153,21 @@ export default function PdfAnnotateTool() {
     setEditingTextId(null)
     requestAnimationFrame(() => redrawAll())
   }, [redrawAll])
+
+  // ── Alignment & distribution ────────────────────────
+
+  const handleAlign = useCallback((alignment: AlignmentType) => {
+    if (selectedAnnIds.size < 2) return
+    if (alignment === 'distributeH' || alignment === 'distributeV') {
+      if (selectedAnnIds.size < 3) return
+    }
+    // Push current state to history before mutating
+    const page = activePageRef.current
+    const next = alignAnnotations(selectedAnnIds, annotations, page, alignment)
+    setAnnotations(next)
+    pushHistory(next)
+    requestAnimationFrame(() => redrawAll())
+  }, [selectedAnnIds, annotations, pushHistory, redrawAll])
 
   // ── Text editing ─────────────────────────────────────
 
@@ -2070,6 +2112,7 @@ export default function PdfAnnotateTool() {
     measureStartRef, measurePreviewRef, polyPointsRef, polyPreviewRef,
     currentPtsRef, cloudPreviewRef, ocrAbortRef,
     selectTextStartRef, selectTextRectsRef, clipboardRef,
+    rubberBandRef, isDrawingRef,
     pdfFileRef, focusModeRef, findInputRef,
     setBold, setItalic, setUnderline, setStrikethrough,
     setFindOpen, setFindIdx, setFindQuery, setFindCommittedQuery,
@@ -2162,6 +2205,8 @@ export default function PdfAnnotateTool() {
     eraserModsRef.current = { removed: new Set(), added: [] }
     calloutArrowDragRef.current = null
     generalDragRef.current = null
+    rotationDragRef.current = null
+    rubberBandRef.current = null
     snapGuidesRef.current = []
     cloudPreviewRef.current = null
     cloudLastClickRef.current = { time: 0, pt: { x: 0, y: 0 } }
@@ -2979,6 +3024,33 @@ export default function PdfAnnotateTool() {
       // If editing text, commit first
       if (editingTextId) commitTextEditing()
 
+      // Check rotation handle on any selected annotation
+      if (selectedAnnId) {
+        const selAnn = getAnnotation(selectedAnnId)
+        if (selAnn) {
+          const rotBounds = getAnnotationBounds(selAnn)
+          if (rotBounds) {
+            const rs = pageRenderScaleRef.current.get(pageNum) ?? RENDER_SCALE
+            const rotLineLenDoc = 24 / rs  // 24 canvas-px converted to doc coords
+            const topCenterX = rotBounds.x + rotBounds.w / 2
+            const rotHandleY = rotBounds.y - rotLineLenDoc
+            const rotDist = Math.hypot(pt.x - topCenterX, pt.y - rotHandleY)
+            if (rotDist < 10 / rs + 4) {  // generous hit area
+              pushHistory(structuredClone(annotations))
+              isDrawingRef.current = true
+              rotationDragRef.current = {
+                annId: selAnn.id,
+                centerX: rotBounds.x + rotBounds.w / 2,
+                centerY: rotBounds.y + rotBounds.h / 2,
+                startAngle: Math.atan2(pt.y - (rotBounds.y + rotBounds.h / 2), pt.x - (rotBounds.x + rotBounds.w / 2)),
+                origRotation: selAnn.rotation || 0,
+              }
+              return
+            }
+          }
+        }
+      }
+
       // Check resize handles or body click on selected text/callout
       if (selectedAnnId) {
         const ann = getAnnotation(selectedAnnId)
@@ -3010,6 +3082,20 @@ export default function PdfAnnotateTool() {
 
       // Hit-test all annotations
       const hitAnn = findAnnotationAt(pt)
+
+      // Ctrl+click (Cmd on Mac): toggle annotation in/out of multi-selection
+      if (hitAnn && (e.ctrlKey || e.metaKey)) {
+        const newIds = new Set(selectedAnnIds)
+        if (newIds.has(hitAnn.id)) {
+          newIds.delete(hitAnn.id)
+        } else {
+          newIds.add(hitAnn.id)
+        }
+        setSelectedAnnIds(newIds)
+        setSelectedAnnId(newIds.size > 0 ? [...newIds][newIds.size - 1] : null)
+        return // don't start a drag
+      }
+
       if (hitAnn) {
         setSelectedAnnId(hitAnn.id)
         setSelectedAnnIds(new Set())
@@ -3072,9 +3158,9 @@ export default function PdfAnnotateTool() {
         return
       }
 
-      // Click empty space -> deselect
-      setSelectedAnnId(null)
-      setSelectedAnnIds(new Set())
+      // Empty space: start rubber band selection (or click-to-deselect on pointer up)
+      rubberBandRef.current = { startPt: pt, currentPt: pt }
+      isDrawingRef.current = true
       return
     }
 
@@ -3635,6 +3721,22 @@ export default function PdfAnnotateTool() {
     // ── Cursor tracking for select tool handles/annotations/text ──
     if (!isDrawingRef.current && activeTool === 'select') {
       const hoverPt = getPointForPage(pageNum, e)
+      // 0. Check rotation handle on selected annotation
+      if (selectedAnnId) {
+        const rotSelAnn = (annotations[ap] || []).find(a => a.id === selectedAnnId)
+        if (rotSelAnn) {
+          const rotBounds = getAnnotationBounds(rotSelAnn)
+          if (rotBounds) {
+            const rs = pageRenderScaleRef.current.get(ap) ?? RENDER_SCALE
+            const rotLineLenDoc = 24 / rs
+            const topCenterX = rotBounds.x + rotBounds.w / 2
+            const rotHandleY = rotBounds.y - rotLineLenDoc
+            if (Math.hypot(hoverPt.x - topCenterX, hoverPt.y - rotHandleY) < 10 / rs + 4) {
+              setCanvasCursor('grab'); return
+            }
+          }
+        }
+      }
       // 1. Check resize handles on selected annotation
       if (selectedAnnId) {
         const selAnn = (annotations[ap] || []).find(a => a.id === selectedAnnId)
@@ -3674,6 +3776,34 @@ export default function PdfAnnotateTool() {
 
     if (!isDrawingRef.current) return
     const pt = getPointForPage(ap, e)
+
+    // Rubber band selection: update current point and redraw overlay
+    if (activeTool === 'select' && rubberBandRef.current) {
+      rubberBandRef.current.currentPt = pt
+      setCanvasCursor('crosshair')
+      scheduleRender()
+      return
+    }
+
+    // Rotation drag: compute angle delta and update annotation
+    if (rotationDragRef.current) {
+      const drag = rotationDragRef.current
+      const currentAngle = Math.atan2(pt.y - drag.centerY, pt.x - drag.centerX)
+      const deltaAngle = (currentAngle - drag.startAngle) * (180 / Math.PI)
+      const newRotation = drag.origRotation + deltaAngle
+      const finalRotation = e.shiftKey
+        ? Math.round(newRotation / 15) * 15
+        : Math.round(newRotation)
+      setAnnotations(prev => ({
+        ...prev,
+        [ap]: (prev[ap] || []).map(a =>
+          a.id === drag.annId ? { ...a, rotation: ((finalRotation % 360) + 360) % 360 } : a
+        ),
+      }))
+      setCanvasCursor('grabbing')
+      redrawPage(ap)
+      return
+    }
 
     // General drag (select tool: moving shapes)
     if (generalDragRef.current) {
@@ -4147,6 +4277,12 @@ export default function PdfAnnotateTool() {
     clearSnapGuides()
     redrawPage(ap)
 
+    // Rotation drag: history was pushed at start, just clean up
+    if (rotationDragRef.current) {
+      rotationDragRef.current = null
+      return
+    }
+
     // General drag (select tool: moving shapes)
     if (generalDragRef.current) {
       const dragId = generalDragRef.current.annId
@@ -4168,6 +4304,50 @@ export default function PdfAnnotateTool() {
       generalDragRef.current = null
       setIsDraggingAnn(false)
       setIsOverTrash(false)
+      return
+    }
+
+    // Rubber band selection: finalize on pointer up
+    if (activeTool === 'select' && rubberBandRef.current) {
+      const rb = rubberBandRef.current
+      const rbLeft = Math.min(rb.startPt.x, rb.currentPt.x)
+      const rbTop = Math.min(rb.startPt.y, rb.currentPt.y)
+      const rbRight = Math.max(rb.startPt.x, rb.currentPt.x)
+      const rbBottom = Math.max(rb.startPt.y, rb.currentPt.y)
+
+      // If drag was very small (< 5px in doc coords), treat as click-to-deselect
+      if (Math.abs(rb.currentPt.x - rb.startPt.x) < 5 && Math.abs(rb.currentPt.y - rb.startPt.y) < 5) {
+        setSelectedAnnId(null)
+        setSelectedAnnIds(new Set())
+      } else {
+        // Find all visible annotations whose bounding box intersects the rubber band
+        const hiddenLayerIds = new Set(layers.filter(l => !l.visible).map(l => l.id))
+        const pageAnns = (annotations[ap] || []).filter(a => !a.layerId || !hiddenLayerIds.has(a.layerId))
+        const hitIds = new Set<string>()
+        for (const ann of pageAnns) {
+          const bounds = getAnnotationBounds(ann)
+          if (!bounds) continue
+          const aLeft = bounds.x
+          const aTop = bounds.y
+          const aRight = bounds.x + bounds.w
+          const aBottom = bounds.y + bounds.h
+          // AABB intersection test
+          if (rbLeft < aRight && rbRight > aLeft && rbTop < aBottom && rbBottom > aTop) {
+            hitIds.add(ann.id)
+          }
+        }
+        if (hitIds.size > 0) {
+          setSelectedAnnIds(hitIds)
+          setSelectedAnnId([...hitIds][hitIds.size - 1])
+        } else {
+          setSelectedAnnId(null)
+          setSelectedAnnIds(new Set())
+        }
+      }
+      rubberBandRef.current = null
+      isDrawingRef.current = false
+      setCanvasCursor(null)
+      scheduleRender()
       return
     }
 
@@ -5536,6 +5716,45 @@ export default function PdfAnnotateTool() {
             >
               <Minimize2 size={14} />
             </button>
+          )}
+
+          {/* ── Alignment toolbar — shown when 2+ annotations selected ── */}
+          {selectedAnnIds.size >= 2 && !editingTextId && (
+            <div className="sticky top-2 z-40 flex justify-center pointer-events-none" style={{ marginBottom: -32 }}>
+              <div className="pointer-events-auto flex items-center gap-0.5 px-2 py-1 bg-[#1a1a2e]/95 backdrop-blur border border-white/[0.1] rounded-lg shadow-xl">
+                <span className="text-[9px] text-white/40 mr-1 select-none">{selectedAnnIds.size} sel</span>
+                <button onClick={() => handleAlign('left')} title="Align Left" className="p-1 hover:bg-white/10 rounded transition-colors">
+                  <AlignStartVertical size={14} className="text-white/70" />
+                </button>
+                <button onClick={() => handleAlign('center')} title="Align Center Horizontally" className="p-1 hover:bg-white/10 rounded transition-colors">
+                  <AlignCenterVertical size={14} className="text-white/70" />
+                </button>
+                <button onClick={() => handleAlign('right')} title="Align Right" className="p-1 hover:bg-white/10 rounded transition-colors">
+                  <AlignEndVertical size={14} className="text-white/70" />
+                </button>
+                <div className="w-px h-4 bg-white/10 mx-0.5" />
+                <button onClick={() => handleAlign('top')} title="Align Top" className="p-1 hover:bg-white/10 rounded transition-colors">
+                  <AlignStartHorizontal size={14} className="text-white/70" />
+                </button>
+                <button onClick={() => handleAlign('middle')} title="Align Middle Vertically" className="p-1 hover:bg-white/10 rounded transition-colors">
+                  <AlignCenterHorizontal size={14} className="text-white/70" />
+                </button>
+                <button onClick={() => handleAlign('bottom')} title="Align Bottom" className="p-1 hover:bg-white/10 rounded transition-colors">
+                  <AlignEndHorizontal size={14} className="text-white/70" />
+                </button>
+                {selectedAnnIds.size >= 3 && (
+                  <>
+                    <div className="w-px h-4 bg-white/10 mx-0.5" />
+                    <button onClick={() => handleAlign('distributeH')} title="Distribute Horizontally" className="p-1 hover:bg-white/10 rounded transition-colors">
+                      <AlignHorizontalSpaceBetween size={14} className="text-white/70" />
+                    </button>
+                    <button onClick={() => handleAlign('distributeV')} title="Distribute Vertically" className="p-1 hover:bg-white/10 rounded transition-colors">
+                      <AlignVerticalSpaceBetween size={14} className="text-white/70" />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
           )}
 
           {/* Drag-to-delete trash zone — appears when dragging an annotation.

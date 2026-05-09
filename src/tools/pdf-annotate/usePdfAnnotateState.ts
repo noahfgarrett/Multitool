@@ -79,6 +79,14 @@ export interface CalloutArrowDragState {
   arrowIdx?: number
 }
 
+export interface RotationDragState {
+  annId: string
+  centerX: number
+  centerY: number
+  startAngle: number
+  origRotation: number
+}
+
 export interface BookmarkEntry {
   title: string
   pageNum: number
@@ -286,6 +294,7 @@ export function usePdfAnnotateState() {
   const dblClickRef = useRef<{ time: number; pt: Point }>({ time: 0, pt: { x: 0, y: 0 } })
   const textDragRef = useRef<TextDragState | null>(null)
   const generalDragRef = useRef<GeneralDragState | null>(null)
+  const rotationDragRef = useRef<RotationDragState | null>(null)
   // Drag-to-delete trash zone: tracks whether a drag is in progress
   // and whether the pointer is currently over the trash zone. The
   // trash zone UI reads isDragging to show/hide, and isOverTrash to
@@ -594,7 +603,7 @@ export function usePdfAnnotateState() {
     textareaRef, blurTimeoutRef, lastCommittedTextRef,
     editingTextIdRef, textOverlayTick, setTextOverlayTick,
     escapeCommittedRef, preHighlightRef, dblClickRef,
-    textDragRef, generalDragRef,
+    textDragRef, generalDragRef, rotationDragRef,
     isDraggingAnn, setIsDraggingAnn, isOverTrash, setIsOverTrash, trashZoneRef,
     // Callout
     calloutArrowDragRef, selectedArrowIdx, setSelectedArrowIdx,

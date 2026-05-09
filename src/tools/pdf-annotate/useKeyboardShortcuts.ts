@@ -37,6 +37,8 @@ export interface KeyboardShortcutsParams {
   selectTextStartRef: React.MutableRefObject<Point | null>
   selectTextRectsRef: React.MutableRefObject<{ x: number; y: number; w: number; h: number }[]>
   clipboardRef: React.MutableRefObject<Annotation | null>
+  rubberBandRef: React.MutableRefObject<{ startPt: Point; currentPt: Point } | null>
+  isDrawingRef: React.MutableRefObject<boolean>
   pdfFileRef: React.RefObject<{ pageCount: number } | null>
   focusModeRef: React.RefObject<boolean>
   findInputRef: React.RefObject<HTMLInputElement | null>
@@ -94,6 +96,7 @@ export function useKeyboardShortcuts(params: KeyboardShortcutsParams): void {
     measureStartRef, measurePreviewRef, polyPointsRef, polyPreviewRef,
     currentPtsRef, cloudPreviewRef, ocrAbortRef,
     selectTextStartRef, selectTextRectsRef, clipboardRef,
+    rubberBandRef, isDrawingRef,
     pdfFileRef, focusModeRef, findInputRef,
     setBold, setItalic, setUnderline, setStrikethrough,
     setFindOpen, setFindIdx, setFindQuery, setFindCommittedQuery,
@@ -178,6 +181,9 @@ export function useKeyboardShortcuts(params: KeyboardShortcutsParams): void {
         }
         if ((activeTool === 'cloud' || activeTool === 'polygon') && currentPtsRef.current.length > 0) {
           currentPtsRef.current = []; cloudPreviewRef.current = null; redrawAll(); return
+        }
+        if (rubberBandRef.current) {
+          rubberBandRef.current = null; isDrawingRef.current = false; redrawAll(); return
         }
         if (selectedAnnIds.size > 0) { setSelectedAnnIds(new Set()); setSelectedAnnId(null); return }
         if (selectedAnnId) { setSelectedAnnId(null); return }

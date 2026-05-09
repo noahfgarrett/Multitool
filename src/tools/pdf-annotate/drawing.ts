@@ -132,6 +132,21 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, ann: Annotation, s
   if (ann.dashPattern === 'dashed') ctx.setLineDash([ann.strokeWidth * scale * 3, ann.strokeWidth * scale * 2])
   else if (ann.dashPattern === 'dotted') ctx.setLineDash([ann.strokeWidth * scale, ann.strokeWidth * scale * 2])
 
+  // Apply rotation transform for non-text/callout types (those types handle rotation internally)
+  let appliedGeneralRotation = false
+  if (ann.rotation && ann.type !== 'text' && ann.type !== 'callout') {
+    const rBounds = getAnnotationBounds(ann)
+    if (rBounds) {
+      const cx = (rBounds.x + rBounds.w / 2) * scale
+      const cy = (rBounds.y + rBounds.h / 2) * scale
+      ctx.save()
+      ctx.translate(cx, cy)
+      ctx.rotate((ann.rotation * Math.PI) / 180)
+      ctx.translate(-cx, -cy)
+      appliedGeneralRotation = true
+    }
+  }
+
   switch (ann.type) {
     case 'highlighter': {
       // Text-selection-based highlights (rects) — use multiply to blend with PDF text
@@ -597,6 +612,7 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, ann: Annotation, s
       break
     }
   }
+  if (appliedGeneralRotation) ctx.restore()
   ctx.restore()
 }
 
@@ -637,6 +653,30 @@ export function drawSelectionUI(ctx: CanvasRenderingContext2D, ann: Annotation, 
         ctx.stroke()
       }
     }
+
+    // Rotation handle — circle above top-center connected by a thin line
+    const rotTopCenterX = sx + sw / 2
+    const ROT_LINE_LEN = 24    // fixed canvas pixels
+    const ROT_HANDLE_R = 5     // fixed canvas pixels
+    const rotHandleY = sy - ROT_LINE_LEN
+
+    // Connecting line
+    ctx.beginPath()
+    ctx.moveTo(rotTopCenterX, sy)
+    ctx.lineTo(rotTopCenterX, rotHandleY)
+    ctx.strokeStyle = 'rgba(34, 211, 238, 0.6)'
+    ctx.lineWidth = 1
+    ctx.setLineDash([])
+    ctx.stroke()
+
+    // Circle handle
+    ctx.beginPath()
+    ctx.arc(rotTopCenterX, rotHandleY, ROT_HANDLE_R, 0, Math.PI * 2)
+    ctx.fillStyle = 'rgba(34, 211, 238, 0.8)'
+    ctx.fill()
+    ctx.strokeStyle = 'white'
+    ctx.lineWidth = 1
+    ctx.stroke()
   }
   ctx.restore()
 }
