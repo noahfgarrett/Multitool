@@ -273,6 +273,7 @@ export function usePdfAnnotateState() {
 
   // Text tool
   const [selectedAnnId, setSelectedAnnId] = useState<string | null>(null)
+  const [selectedAnnIds, setSelectedAnnIds] = useState<Set<string>>(new Set())
   const [editingTextId, setEditingTextId] = useState<string | null>(null)
   const [editingTextValue, setEditingTextValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -587,6 +588,7 @@ export function usePdfAnnotateState() {
     pageRotations, setPageRotations,
     // Text tool
     selectedAnnId, setSelectedAnnId,
+    selectedAnnIds, setSelectedAnnIds,
     editingTextId, setEditingTextId,
     editingTextValue, setEditingTextValue,
     textareaRef, blurTimeoutRef, lastCommittedTextRef,

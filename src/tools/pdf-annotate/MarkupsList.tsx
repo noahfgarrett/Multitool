@@ -146,7 +146,7 @@ export default function MarkupsList({
           layerId: lid,
           layerName: layerNameMap.get(lid) ?? 'Default',
           status: thread?.status ?? 'none',
-          date: Date.now() - (counter * 60000), // relative ordering fallback
+          date: ann.createdAt ?? 0,
         })
       }
     }
@@ -429,7 +429,7 @@ export default function MarkupsList({
                           )}
                         </td>
                         <td className="px-3 py-1.5 text-white/40">
-                          {formatDate(row.date)}
+                          {row.date ? formatDate(row.date) : '—'}
                         </td>
                         <td className="px-3 py-1.5">
                           <button

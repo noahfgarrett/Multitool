@@ -7,8 +7,8 @@ import { useAppStore } from '@/stores/appStore.ts'
 import { usePdfAnnotateState } from './usePdfAnnotateState.ts'
 import type { ToolPreset } from './usePdfAnnotateState.ts'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts.ts'
-import { exportAnnotatedPdf } from './exportPdf.ts'
-import { loadPDFFile, renderPageToCanvas, generateThumbnail, removePDFFromCache, getPDFBytes, extractPositionedText, getAllPageDimensions, validatePageRange, isRenderingCancelled, getMaxRenderScale, renderPageTile, getMaxCanvasPixels } from '@/utils/pdf.ts'
+import { exportAnnotatedPdf, buildAnnotatedPdfBytes } from './exportPdf.ts'
+import { loadPDFFile, renderPageToCanvas, generateThumbnail, removePDFFromCache, extractPositionedText, getAllPageDimensions, validatePageRange, isRenderingCancelled, getMaxRenderScale, renderPageTile, getMaxCanvasPixels } from '@/utils/pdf.ts'
 import { buildTileGrid, teardownTileGrid } from './tileRendering.ts'
 import type { PageTile } from './tileRendering.ts'
 import Tesseract from 'tesseract.js'
@@ -17,7 +17,6 @@ import { saveSession, loadSession, clearSession, computeFileHash } from './stora
 import type { PdfAnnotateSession } from './storage.ts'
 import { formatFileSize } from '@/utils/fileReader.ts'
 // PDFFile type used in usePdfAnnotateState
-import { PDFDocument } from 'pdf-lib'
 import {
   Download, RotateCcw, RotateCw, Undo2, Redo2,
   Eraser, Highlighter,
@@ -40,6 +39,7 @@ import {
   FONT_FAMILIES, PDF_FONT_MAP, CURSOR_MAP, HANDLE_CURSOR_MAP,
   genId,
   MEASURE_MODES, STICKY_NOTE_COLORS, COMMENT_STATUS_COLORS,
+  saveWithPicker,
 } from './types.ts'
 import {
   wrapText, computeTextBoxHeight, nearestPointOnRect, hitTestCalloutBox,
@@ -321,6 +321,7 @@ export default function PdfAnnotateTool() {
     eraserModsRef, canvasSnapshotRef,
     pageRotations, setPageRotations,
     selectedAnnId, setSelectedAnnId,
+    selectedAnnIds, setSelectedAnnIds,
     editingTextId, setEditingTextId,
     editingTextValue, setEditingTextValue,
     textareaRef, blurTimeoutRef, lastCommittedTextRef,
@@ -513,7 +514,8 @@ export default function PdfAnnotateTool() {
         }
       }
       if (ann.id === selectedAnnId && !isBeingEdited) {
-        drawSelectionUI(ctx, ann, rs)
+        // When multi-selected, draw without handles for the primary too
+        drawSelectionUI(ctx, ann, rs, selectedAnnIds.size <= 1)
         if (ann.type === 'callout' && selectedArrowIdx !== null && ann.arrows && selectedArrowIdx < ann.arrows.length) {
           const tip = ann.arrows[selectedArrowIdx]
           const origin = nearestPointOnRect(ann.points[0].x, ann.points[0].y, ann.width!, ann.height!, tip.x, tip.y)
@@ -532,6 +534,8 @@ export default function PdfAnnotateTool() {
           ctx.fill()
           ctx.restore()
         }
+      } else if (selectedAnnIds.size > 1 && selectedAnnIds.has(ann.id) && !isBeingEdited) {
+        drawSelectionUI(ctx, ann, rs, false)
       }
     }
 
@@ -1028,6 +1032,7 @@ export default function PdfAnnotateTool() {
     setAnnotations(structuredClone(historyRef.current[historyIdxRef.current]))
     forceRender(v => v + 1)
     setSelectedAnnId(null)
+    setSelectedAnnIds(new Set())
     setEditingTextId(null)
     requestAnimationFrame(() => redrawAll())
   }, [redrawAll])
@@ -1038,6 +1043,7 @@ export default function PdfAnnotateTool() {
     setAnnotations(structuredClone(historyRef.current[historyIdxRef.current]))
     forceRender(v => v + 1)
     setSelectedAnnId(null)
+    setSelectedAnnIds(new Set())
     setEditingTextId(null)
     requestAnimationFrame(() => redrawAll())
   }, [redrawAll])
@@ -1969,7 +1975,7 @@ export default function PdfAnnotateTool() {
 
   // ── Keyboard shortcuts (extracted to useKeyboardShortcuts) ──
   useKeyboardShortcuts({
-    editingTextId, annotations, selectedAnnId, selectedMeasureId,
+    editingTextId, annotations, selectedAnnId, selectedAnnIds, selectedMeasureId,
     selectedArrowIdx, activeTool, findOpen, findMatches, contextMenu,
     selectTextToolbar, focusMode,
     activePageRef, textareaRef, zoomRef, spaceHeldRef, panRef,
@@ -1980,7 +1986,7 @@ export default function PdfAnnotateTool() {
     setBold, setItalic, setUnderline, setStrikethrough,
     setFindOpen, setFindIdx, setFindQuery, setFindCommittedQuery,
     setFindMatches, setOcrScanning, setContextMenu, setSelectTextToolbar,
-    setSelectedAnnId, setSelectedMeasureId, setSelectedArrowIdx,
+    setSelectedAnnId, setSelectedAnnIds, setSelectedMeasureId, setSelectedArrowIdx,
     setMeasurements, setPolyMeasurements, setAnnotations,
     setActiveTool, setActiveDraw, setActiveText, setActiveHighlight,
     setCanvasCursor, setFocusMode,
@@ -2078,6 +2084,7 @@ export default function PdfAnnotateTool() {
     setStraightLineMode(false)
     if (eraserCursorDivRef.current) eraserCursorDivRef.current.style.display = 'none'
     setSelectedAnnId(null)
+    setSelectedAnnIds(new Set())
     setSelectedArrowIdx(null)
     setSelectedMeasureId(null)
     textHighlightStartRef.current = null
@@ -2916,6 +2923,7 @@ export default function PdfAnnotateTool() {
       const hitAnn = findAnnotationAt(pt)
       if (hitAnn) {
         setSelectedAnnId(hitAnn.id)
+        setSelectedAnnIds(new Set())
         // Sync properties bar to selected annotation
         setColor(hitAnn.color)
         setStrokeWidth(hitAnn.strokeWidth)
@@ -2971,11 +2979,13 @@ export default function PdfAnnotateTool() {
         selectTextStartRef.current = pt
         selectTextRectsRef.current = []
         setSelectedAnnId(null)
+        setSelectedAnnIds(new Set())
         return
       }
 
       // Click empty space -> deselect
       setSelectedAnnId(null)
+      setSelectedAnnIds(new Set())
       return
     }
 
@@ -2994,6 +3004,7 @@ export default function PdfAnnotateTool() {
           const pts = [...currentPtsRef.current]
           const ann: Annotation = {
             id: genId(), type: 'cloud',
+            createdAt: Date.now(),
             points: pts, color, strokeWidth, opacity: opacity / 100, fontSize,
             ...(fillColor ? { fillColor } : {}),
             ...(dashPattern !== 'solid' ? { dashPattern } : {}),
@@ -3012,6 +3023,7 @@ export default function PdfAnnotateTool() {
         const pts = [...currentPtsRef.current]
         const ann: Annotation = {
           id: genId(), type: 'cloud',
+          createdAt: Date.now(),
           points: pts, color, strokeWidth, opacity: opacity / 100, fontSize,
           ...(fillColor ? { fillColor } : {}),
           ...(dashPattern !== 'solid' ? { dashPattern } : {}),
@@ -3194,6 +3206,7 @@ export default function PdfAnnotateTool() {
     if (activeTool === 'stamp') {
       const ann: Annotation = {
         id: genId(),
+        createdAt: Date.now(),
         type: 'stamp',
         points: [{ x: pt.x - 60, y: pt.y - 20 }],
         color: activeStampPreset.color,
@@ -3224,6 +3237,7 @@ export default function PdfAnnotateTool() {
         const docH = natH * s
         const ann: Annotation = {
           id: genId(),
+          createdAt: Date.now(),
           type: 'imageStamp',
           points: [{ x: pt.x - docW / 2, y: pt.y - docH / 2 }, { x: pt.x + docW / 2, y: pt.y + docH / 2 }],
           color: '#000000',
@@ -3331,6 +3345,7 @@ export default function PdfAnnotateTool() {
       const hitAny = findAnnotationAt(pt)
       if (hitAny) {
         setSelectedAnnId(hitAny.id)
+        setSelectedAnnIds(new Set())
         // Sync properties bar to selected annotation
         setColor(hitAny.color)
         setStrokeWidth(hitAny.strokeWidth)
@@ -3356,6 +3371,7 @@ export default function PdfAnnotateTool() {
         return
       }
       setSelectedAnnId(null)
+      setSelectedAnnIds(new Set())
     }
 
     isDrawingRef.current = true
@@ -3575,13 +3591,28 @@ export default function PdfAnnotateTool() {
       const drag = generalDragRef.current
       const dx = pt.x - drag.startPt.x
       const dy = pt.y - drag.startPt.y
-      const newPoints = drag.origPoints.map(p => ({ x: p.x + dx, y: p.y + dy }))
-      setAnnotations(prev => ({
-        ...prev,
-        [ap]: (prev[ap] || []).map(a =>
-          a.id === drag.annId ? { ...a, points: newPoints } : a
-        ),
-      }))
+      if (selectedAnnIds.size > 1 && selectedAnnIds.has(drag.annId)) {
+        // Multi-select: move all selected annotations by the same delta
+        setAnnotations(prev => ({
+          ...prev,
+          [ap]: (prev[ap] || []).map(a =>
+            selectedAnnIds.has(a.id)
+              ? { ...a, points: a.points.map(p => ({ x: p.x + dx, y: p.y + dy })) }
+              : a
+          ),
+        }))
+        // Update startPt so delta stays incremental
+        drag.startPt = pt
+        drag.origPoints = drag.origPoints.map(p => ({ x: p.x + dx, y: p.y + dy }))
+      } else {
+        const newPoints = drag.origPoints.map(p => ({ x: p.x + dx, y: p.y + dy }))
+        setAnnotations(prev => ({
+          ...prev,
+          [ap]: (prev[ap] || []).map(a =>
+            a.id === drag.annId ? { ...a, points: newPoints } : a
+          ),
+        }))
+      }
       redrawPage(ap)
       // Drag-to-delete: track whether pointer is over trash zone
       if (!isDraggingAnn) setIsDraggingAnn(true)
@@ -4041,6 +4072,7 @@ export default function PdfAnnotateTool() {
         const boxY = h > 20 ? y : pts[0].y
         const newAnn: Annotation = {
           id: genId(), type: 'callout',
+          createdAt: Date.now(),
           points: [{ x: boxX, y: boxY }],
           color, fontSize, fontFamily, strokeWidth: 1,
           opacity: 1,
@@ -4095,6 +4127,7 @@ export default function PdfAnnotateTool() {
 
         const newAnn: Annotation = {
           id: genId(), type: 'text',
+          createdAt: Date.now(),
           points: [{ x: boxX, y: boxY }],
           color, fontSize, fontFamily, strokeWidth: 1,
           opacity: opacity / 100,
@@ -4199,6 +4232,7 @@ export default function PdfAnnotateTool() {
         const isStrikethrough = activeTool === 'textStrikethrough'
         const ann: Annotation = {
           id: genId(),
+          createdAt: Date.now(),
           type: 'highlighter',
           points: [{ x: 0, y: 0 }],
           color,
@@ -4229,6 +4263,7 @@ export default function PdfAnnotateTool() {
     const finalPts = [...pts]
     const ann: Annotation = {
       id: genId(),
+      createdAt: Date.now(),
       type: activeTool as Exclude<ToolType, 'select' | 'eraser' | 'measure' | 'textHighlight' | 'textStrikethrough' | 'crop' | 'note'>,
       points: finalPts,
       color,
@@ -5467,7 +5502,7 @@ export default function PdfAnnotateTool() {
               <button
                 onClick={() => selectToolInDrawer(() => {
                   if (selectTextToolbar) {
-                    const ann: Annotation = { id: genId(), type: 'highlighter', points: [{ x: 0, y: 0 }], color: '#FFFF00', strokeWidth: 0, opacity: 0.4, fontSize, rects: [...selectTextToolbar.rects] }
+                    const ann: Annotation = { id: genId(), createdAt: Date.now(), type: 'highlighter', points: [{ x: 0, y: 0 }], color: '#FFFF00', strokeWidth: 0, opacity: 0.4, fontSize, rects: [...selectTextToolbar.rects] }
                     commitAnnotation(ann); setSelectTextToolbar(null); redrawAll()
                   } else { setActiveTool('highlighter'); setActiveHighlight('highlighter') }
                 })}
@@ -5486,7 +5521,7 @@ export default function PdfAnnotateTool() {
               <button
                 onClick={() => selectToolInDrawer(() => {
                   if (selectTextToolbar) {
-                    const ann: Annotation = { id: genId(), type: 'highlighter', points: [{ x: 0, y: 0 }], color: '#FF0000', strokeWidth: 0, opacity: 1, fontSize, rects: [...selectTextToolbar.rects], strikethrough: true }
+                    const ann: Annotation = { id: genId(), createdAt: Date.now(), type: 'highlighter', points: [{ x: 0, y: 0 }], color: '#FF0000', strokeWidth: 0, opacity: 1, fontSize, rects: [...selectTextToolbar.rects], strikethrough: true }
                     commitAnnotation(ann); setSelectTextToolbar(null); redrawAll()
                   } else { setActiveTool('textStrikethrough'); setActiveHighlight('textStrikethrough') }
                 })}
@@ -5818,7 +5853,7 @@ export default function PdfAnnotateTool() {
             <button
               onClick={() => {
                 if (selectTextToolbar) {
-                  const ann: Annotation = { id: genId(), type: 'highlighter', points: [{ x: 0, y: 0 }], color: '#FFFF00', strokeWidth: 0, opacity: 0.4, fontSize, rects: [...selectTextToolbar.rects] }
+                  const ann: Annotation = { id: genId(), createdAt: Date.now(), type: 'highlighter', points: [{ x: 0, y: 0 }], color: '#FFFF00', strokeWidth: 0, opacity: 0.4, fontSize, rects: [...selectTextToolbar.rects] }
                   commitAnnotation(ann); setSelectTextToolbar(null); redrawAll()
                 } else { setActiveTool('highlighter'); setActiveHighlight('highlighter') }
               }}
@@ -5843,7 +5878,7 @@ export default function PdfAnnotateTool() {
             <button
               onClick={() => {
                 if (selectTextToolbar) {
-                  const ann: Annotation = { id: genId(), type: 'highlighter', points: [{ x: 0, y: 0 }], color: '#FF0000', strokeWidth: 0, opacity: 1, fontSize, rects: [...selectTextToolbar.rects], strikethrough: true }
+                  const ann: Annotation = { id: genId(), createdAt: Date.now(), type: 'highlighter', points: [{ x: 0, y: 0 }], color: '#FF0000', strokeWidth: 0, opacity: 1, fontSize, rects: [...selectTextToolbar.rects], strikethrough: true }
                   commitAnnotation(ann); setSelectTextToolbar(null); redrawAll()
                 } else { setActiveTool('textStrikethrough'); setActiveHighlight('textStrikethrough') }
               }}
@@ -6343,7 +6378,7 @@ export default function PdfAnnotateTool() {
               title="Highlight"
               onClick={() => {
                 const ann: Annotation = {
-                  id: genId(), type: 'highlighter',
+                  id: genId(), createdAt: Date.now(), type: 'highlighter',
                   points: [{ x: 0, y: 0 }], color: '#FFFF00', strokeWidth: 0,
                   opacity: 0.4, fontSize, rects: [...selectTextToolbar.rects],
                 }
@@ -6359,7 +6394,7 @@ export default function PdfAnnotateTool() {
               title="Strikethrough"
               onClick={() => {
                 const ann: Annotation = {
-                  id: genId(), type: 'highlighter',
+                  id: genId(), createdAt: Date.now(), type: 'highlighter',
                   points: [{ x: 0, y: 0 }], color: '#FF0000', strokeWidth: 0,
                   opacity: 1, fontSize, rects: [...selectTextToolbar.rects],
                   strikethrough: true,
@@ -6667,7 +6702,7 @@ export default function PdfAnnotateTool() {
           setAnnotations(result); pushHistory(result)
         }
         const duplicate = () => {
-          const dup: Annotation = { ...structuredClone(cmAnn), id: genId(), points: cmAnn.points.map(p => ({ x: p.x + 20, y: p.y + 20 })), arrows: cmAnn.arrows?.map(p => ({ x: p.x + 20, y: p.y + 20 })) }
+          const dup: Annotation = { ...structuredClone(cmAnn), id: genId(), createdAt: Date.now(), points: cmAnn.points.map(p => ({ x: p.x + 20, y: p.y + 20 })), arrows: cmAnn.arrows?.map(p => ({ x: p.x + 20, y: p.y + 20 })) }
           commitAnnotation(dup); setSelectedAnnId(dup.id)
         }
         const del = () => { removeAnnotation(annId, cmPageNum); setSelectedAnnId(null) }
@@ -6774,7 +6809,7 @@ export default function PdfAnnotateTool() {
               if (pages.length === 0) return
               const next = { ...annotations }
               for (const targetPage of pages) {
-                const dup: Annotation = { ...structuredClone(cmAnn), id: genId() }
+                const dup: Annotation = { ...structuredClone(cmAnn), id: genId(), createdAt: Date.now() }
                 next[targetPage] = [...(next[targetPage] || []), dup]
               }
               setAnnotations(next); pushHistory(next)
@@ -6924,14 +6959,37 @@ export default function PdfAnnotateTool() {
           if (mode === 'final') {
             await handleExport()
           } else {
-            // For Review: export with embedded annotation data
+            // For Review: export with flattened annotations + embedded metadata
+            if (editingTextId) commitTextEditing()
             setIsExporting(true)
             setExportError(null)
             try {
-              // First do the normal export to get the PDF bytes
-              await handleExport()
-              // TODO: After export, embed metadata into the saved PDF
-              // This will be enhanced to intercept the export flow
+              // 1. Build flattened PDF with annotations baked in
+              const flatBytes = await buildAnnotatedPdfBytes({
+                pdfFile, annotations, pageRotations, measurements,
+                calibration, cropRegions,
+              })
+              // 2. Embed annotation metadata so the reviewer can re-open for editing
+              const reviewBytes = await embedAnnotationData(new Uint8Array(flatBytes), {
+                version: 1,
+                annotations,
+                measurements,
+                polyMeasurements,
+                countGroups,
+                commentThreads,
+                stickyNotes,
+                calibration,
+                pageRotations,
+              })
+              // 3. Save to disk
+              const blob = new Blob([reviewBytes], { type: 'application/pdf' })
+              const fileName = `${pdfFile.name.replace(/\.pdf$/i, '')}-review.pdf`
+              const pickerResult = await saveWithPicker(blob, fileName, {
+                description: 'PDF Document', accept: { 'application/pdf': ['.pdf'] },
+              })
+              if (pickerResult === 'cancelled') return
+              if (pickerResult === 'fallback') downloadBlob(blob, fileName)
+              addToast({ type: 'success', message: 'PDF exported for review' })
             } catch (err: unknown) {
               const msg = err instanceof Error ? err.message : 'Unknown error'
               setExportError(`Export failed: ${msg}`)
@@ -6956,11 +7014,10 @@ export default function PdfAnnotateTool() {
           // Export the PDF first, then trigger email
           setIsExporting(true)
           try {
-            const pdfBytes = await getPDFBytes(pdfFile)
-            if (!pdfBytes) return
-            const pdfDoc = await PDFDocument.load(pdfBytes)
-            // Flatten annotations onto the PDF (simplified — uses same export logic)
-            const flatBytes = await pdfDoc.save()
+            const flatBytes = await buildAnnotatedPdfBytes({
+              pdfFile, annotations, pageRotations, measurements,
+              calibration, cropRegions,
+            })
             const blob = new Blob([flatBytes], { type: 'application/pdf' })
             sendAnnotatedPDF(recipients, subject, body, blob, pdfFile.name.replace('.pdf', '-annotated.pdf'))
           } catch {

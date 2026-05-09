@@ -602,7 +602,7 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, ann: Annotation, s
 
 // ── Selection UI drawing ────────────────────────────────
 
-export function drawSelectionUI(ctx: CanvasRenderingContext2D, ann: Annotation, scale: number) {
+export function drawSelectionUI(ctx: CanvasRenderingContext2D, ann: Annotation, scale: number, showHandles = true) {
   const bounds = getAnnotationBounds(ann)
   if (!bounds) return
 
@@ -616,24 +616,26 @@ export function drawSelectionUI(ctx: CanvasRenderingContext2D, ann: Annotation, 
   ctx.strokeRect(sx, sy, sw, sh)
   ctx.setLineDash([])
 
-  if (ann.type === 'text' || ann.type === 'callout') {
-    const handles = getHandles(sx, sy, sw, sh)
-    ctx.fillStyle = '#ffffff'
-    ctx.strokeStyle = '#3B82F6'
-    ctx.lineWidth = 1.5
-    for (const h of handles) {
-      ctx.fillRect(h.x - HANDLE_SIZE / 2, h.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE)
-      ctx.strokeRect(h.x - HANDLE_SIZE / 2, h.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE)
-    }
-  } else if (ann.type === 'line' || ann.type === 'arrow') {
-    ctx.fillStyle = '#ffffff'
-    ctx.strokeStyle = '#3B82F6'
-    ctx.lineWidth = 1.5
-    for (const p of ann.points.slice(0, 2)) {
-      ctx.beginPath()
-      ctx.arc(p.x * scale, p.y * scale, HANDLE_SIZE / 2 + 1, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.stroke()
+  if (showHandles) {
+    if (ann.type === 'text' || ann.type === 'callout') {
+      const handles = getHandles(sx, sy, sw, sh)
+      ctx.fillStyle = '#ffffff'
+      ctx.strokeStyle = '#3B82F6'
+      ctx.lineWidth = 1.5
+      for (const h of handles) {
+        ctx.fillRect(h.x - HANDLE_SIZE / 2, h.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE)
+        ctx.strokeRect(h.x - HANDLE_SIZE / 2, h.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE)
+      }
+    } else if (ann.type === 'line' || ann.type === 'arrow') {
+      ctx.fillStyle = '#ffffff'
+      ctx.strokeStyle = '#3B82F6'
+      ctx.lineWidth = 1.5
+      for (const p of ann.points.slice(0, 2)) {
+        ctx.beginPath()
+        ctx.arc(p.x * scale, p.y * scale, HANDLE_SIZE / 2 + 1, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.stroke()
+      }
     }
   }
   ctx.restore()

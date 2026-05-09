@@ -22,18 +22,16 @@ export interface ExportPdfParams {
   addToast: (toast: Omit<Toast, 'id'>) => void
 }
 
-// ── Export function ──────────────────────────────────────
+// ── Build params (subset without UI callbacks) ──────────
 
-export async function exportAnnotatedPdf(params: ExportPdfParams): Promise<void> {
-  const {
-    pdfFile, annotations, pageRotations, measurements, calibration,
-    cropRegions, setIsExporting, setExportError, addToast,
-  } = params
+export type BuildAnnotatedPdfParams = Omit<ExportPdfParams, 'setIsExporting' | 'setExportError' | 'addToast'>
 
-  setIsExporting(true)
-  setExportError(null)
-  try {
-    const bytes = await getPDFBytes(pdfFile)
+// ── Build annotated PDF bytes ────────────────────────────
+
+export async function buildAnnotatedPdfBytes(params: BuildAnnotatedPdfParams): Promise<Uint8Array> {
+  const { pdfFile, annotations, pageRotations, measurements, calibration, cropRegions } = params
+
+  const bytes = await getPDFBytes(pdfFile)
     const doc = await PDFDocument.load(bytes)
     const pages = doc.getPages()
     const fontCache = new Map<StandardFonts, Awaited<ReturnType<typeof doc.embedFont>>>()
@@ -451,6 +449,42 @@ export async function exportAnnotatedPdf(params: ExportPdfParams): Promise<void>
             })
             break
           }
+          case 'imageStamp': {
+            if (!ann.imageDataUrl || ann.points.length < 2) break
+            const p0 = toPC(ann.points[0])
+            const p1 = toPC(ann.points[1])
+            const imgX = Math.min(p0.x, p1.x)
+            const imgY = Math.min(p0.y, p1.y)
+            const imgW = Math.abs(p1.x - p0.x)
+            const imgH = Math.abs(p1.y - p0.y)
+            if (imgW <= 0 || imgH <= 0) break
+
+            try {
+              const base64 = ann.imageDataUrl.split(',')[1]
+              const imgBytes = Uint8Array.from(atob(base64), c2 => c2.charCodeAt(0))
+              let embeddedImg
+              if (ann.imageDataUrl.includes('image/png')) {
+                embeddedImg = await doc.embedPng(imgBytes)
+              } else {
+                try {
+                  embeddedImg = await doc.embedJpg(imgBytes)
+                } catch {
+                  embeddedImg = await doc.embedPng(imgBytes)
+                }
+              }
+              page.drawImage(embeddedImg, {
+                x: imgX, y: imgY,
+                width: imgW, height: imgH,
+                opacity: ann.opacity,
+              })
+            } catch {
+              page.drawRectangle({
+                x: imgX, y: imgY, width: imgW, height: imgH,
+                borderColor: c, borderWidth: 1.5, opacity: ann.opacity,
+              })
+            }
+            break
+          }
         }
       }
     }
@@ -536,8 +570,23 @@ export async function exportAnnotatedPdf(params: ExportPdfParams): Promise<void>
     }
 
     const pdfBytes = await doc.save()
+    return pdfBytes
+}
+
+// ── Export function (build + save to disk) ────────────────
+
+export async function exportAnnotatedPdf(params: ExportPdfParams): Promise<void> {
+  const {
+    setIsExporting, setExportError, addToast,
+    ...buildParams
+  } = params
+
+  setIsExporting(true)
+  setExportError(null)
+  try {
+    const pdfBytes = await buildAnnotatedPdfBytes(buildParams)
     const blob = new Blob([pdfBytes], { type: 'application/pdf' })
-    const fileName = `${pdfFile.name.replace(/\.pdf$/i, '')}-annotated.pdf`
+    const fileName = `${buildParams.pdfFile.name.replace(/\.pdf$/i, '')}-annotated.pdf`
 
     const pickerResult = await saveWithPicker(blob, fileName, {
       description: 'PDF Document', accept: { 'application/pdf': ['.pdf'] },

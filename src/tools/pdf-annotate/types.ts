@@ -44,6 +44,7 @@ export interface Annotation {
   layerId?: string       // annotation layer assignment
   pressure?: number[]    // per-point pressure data for freehand (0-1)
   rotation?: number      // cumulative rotation in degrees (for text/callout — rotates content, not just position)
+  createdAt?: number     // epoch ms when annotation was created
 }
 
 export type PageAnnotations = Record<number, Annotation[]>
