@@ -44,6 +44,7 @@ export interface Annotation {
   layerId?: string       // annotation layer assignment
   pressure?: number[]    // per-point pressure data for freehand (0-1)
   rotation?: number      // cumulative rotation in degrees (for text/callout — rotates content, not just position)
+  createdAt?: number     // epoch ms when annotation was created
 }
 
 export type PageAnnotations = Record<number, Annotation[]>
@@ -67,7 +68,7 @@ export interface Measurement {
 // ── Expanded Measurement Types ──────────────────────
 
 /** Measurement modes for the expanded measurement dropdown */
-export type MeasureMode = 'distance' | 'polylength' | 'area' | 'count'
+export type MeasureMode = 'distance' | 'polylength' | 'area' | 'count' | 'angle'
 
 /** Expanded measurement type (supports distance, polylength, area, and count) */
 export interface PolyMeasurement {
@@ -193,6 +194,7 @@ export const MAX_HISTORY = 50
 export const HANDLE_SIZE = 6
 export const DEFAULT_TEXTBOX_W = 200
 export const DEFAULT_TEXTBOX_H = 50
+export const DEFAULT_FONT_SIZE = 16
 export const ANN_COLORS = ['#000000', '#FF0000', '#14B8A6', '#FFFF00', '#22C55E', '#3B82F6', '#8B5CF6', '#EC4899', '#FFFFFF']
 export const HIGHLIGHT_COLORS = ['#FFFF00', '#22C55E', '#3B82F6', '#FF69B4', '#14B8A6']
 
@@ -201,6 +203,7 @@ export const MEASURE_MODES: { mode: MeasureMode; label: string }[] = [
   { mode: 'polylength', label: 'Polylength' },
   { mode: 'area', label: 'Area / Perimeter' },
   { mode: 'count', label: 'Count' },
+  { mode: 'angle', label: 'Angle' },
 ]
 export const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0] as const
 
@@ -266,6 +269,7 @@ export const STAMP_PRESETS = [
   { label: 'REVIEWED', color: '#7c3aed', bg: '#f5f3ff' },
   { label: 'VOID', color: '#ea580c', bg: '#fff7ed' },
   { label: 'FOR REVIEW', color: '#ca8a04', bg: '#fefce8' },
+  { label: 'DATE', color: '#0d9488', bg: '#f0fdfa' },
 ]
 
 export const CURSOR_MAP: Record<ToolType, string> = {

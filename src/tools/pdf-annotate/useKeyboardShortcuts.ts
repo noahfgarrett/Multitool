@@ -11,6 +11,7 @@ export interface KeyboardShortcutsParams {
   editingTextId: string | null
   annotations: PageAnnotations
   selectedAnnId: string | null
+  selectedAnnIds: Set<string>
   selectedMeasureId: string | null
   selectedArrowIdx: number | null
   activeTool: ToolType
@@ -36,6 +37,8 @@ export interface KeyboardShortcutsParams {
   selectTextStartRef: React.MutableRefObject<Point | null>
   selectTextRectsRef: React.MutableRefObject<{ x: number; y: number; w: number; h: number }[]>
   clipboardRef: React.MutableRefObject<Annotation | null>
+  rubberBandRef: React.MutableRefObject<{ startPt: Point; currentPt: Point } | null>
+  isDrawingRef: React.MutableRefObject<boolean>
   pdfFileRef: React.RefObject<{ pageCount: number } | null>
   focusModeRef: React.RefObject<boolean>
   findInputRef: React.RefObject<HTMLInputElement | null>
@@ -54,6 +57,7 @@ export interface KeyboardShortcutsParams {
   setContextMenu: (v: ContextMenuState | null) => void
   setSelectTextToolbar: (v: SelectTextToolbar | null) => void
   setSelectedAnnId: (v: string | null) => void
+  setSelectedAnnIds: (v: Set<string>) => void
   setSelectedMeasureId: (v: string | null) => void
   setSelectedArrowIdx: (v: number | null) => void
   setMeasurements: (fn: (prev: Record<number, Measurement[]>) => Record<number, Measurement[]>) => void
@@ -85,18 +89,19 @@ export interface KeyboardShortcutsParams {
 
 export function useKeyboardShortcuts(params: KeyboardShortcutsParams): void {
   const {
-    editingTextId, annotations, selectedAnnId, selectedMeasureId,
+    editingTextId, annotations, selectedAnnId, selectedAnnIds, selectedMeasureId,
     selectedArrowIdx, activeTool, findOpen, findMatches, contextMenu,
     selectTextToolbar, focusMode,
     activePageRef, textareaRef, zoomRef, spaceHeldRef, panRef,
     measureStartRef, measurePreviewRef, polyPointsRef, polyPreviewRef,
     currentPtsRef, cloudPreviewRef, ocrAbortRef,
     selectTextStartRef, selectTextRectsRef, clipboardRef,
+    rubberBandRef, isDrawingRef,
     pdfFileRef, focusModeRef, findInputRef,
     setBold, setItalic, setUnderline, setStrikethrough,
     setFindOpen, setFindIdx, setFindQuery, setFindCommittedQuery,
     setFindMatches, setOcrScanning, setContextMenu, setSelectTextToolbar,
-    setSelectedAnnId, setSelectedMeasureId, setSelectedArrowIdx,
+    setSelectedAnnId, setSelectedAnnIds, setSelectedMeasureId, setSelectedArrowIdx,
     setMeasurements, setPolyMeasurements, setAnnotations,
     setActiveTool, setActiveDraw, setActiveText, setActiveHighlight,
     setCanvasCursor, setFocusMode,
@@ -177,6 +182,10 @@ export function useKeyboardShortcuts(params: KeyboardShortcutsParams): void {
         if ((activeTool === 'cloud' || activeTool === 'polygon') && currentPtsRef.current.length > 0) {
           currentPtsRef.current = []; cloudPreviewRef.current = null; redrawAll(); return
         }
+        if (rubberBandRef.current) {
+          rubberBandRef.current = null; isDrawingRef.current = false; redrawAll(); return
+        }
+        if (selectedAnnIds.size > 0) { setSelectedAnnIds(new Set()); setSelectedAnnId(null); return }
         if (selectedAnnId) { setSelectedAnnId(null); return }
         if (selectedMeasureId) { setSelectedMeasureId(null); return }
         return
@@ -191,6 +200,20 @@ export function useKeyboardShortcuts(params: KeyboardShortcutsParams): void {
 
       // ── Delete ──
       if (e.key === 'Delete' || e.key === 'Backspace') {
+        // Multi-select delete
+        if (selectedAnnIds.size > 1) {
+          e.preventDefault()
+          const page = activePageRef.current
+          const next = {
+            ...annotations,
+            [page]: (annotations[page] || []).filter(a => !selectedAnnIds.has(a.id)),
+          }
+          setAnnotations(next)
+          pushHistory(next)
+          setSelectedAnnIds(new Set())
+          setSelectedAnnId(null)
+          return
+        }
         if (e.key === 'Backspace' && (activeTool === 'cloud' || activeTool === 'polygon') && currentPtsRef.current.length > 0) {
           e.preventDefault()
           currentPtsRef.current.pop()
@@ -417,6 +440,7 @@ export function useKeyboardShortcuts(params: KeyboardShortcutsParams): void {
         e.preventDefault()
         const pageAnns = annotations[activePageRef.current] || []
         if (pageAnns.length > 0) {
+          setSelectedAnnIds(new Set(pageAnns.map(a => a.id)))
           setSelectedAnnId(pageAnns[pageAnns.length - 1].id)
           setActiveTool('select')
         }
@@ -470,7 +494,7 @@ export function useKeyboardShortcuts(params: KeyboardShortcutsParams): void {
     window.addEventListener('keydown', handler)
     window.addEventListener('keyup', keyUpHandler)
     return () => { window.removeEventListener('keydown', handler); window.removeEventListener('keyup', keyUpHandler) }
-  }, [undo, redo, selectedAnnId, editingTextId, removeAnnotation, activeTool, selectedMeasureId,
+  }, [undo, redo, selectedAnnId, selectedAnnIds, editingTextId, removeAnnotation, activeTool, selectedMeasureId,
       redrawAll, redrawPage, annotations, commitAnnotation, updateAnnotation, fitToWindow, selectedArrowIdx, navigateToPage, selectTextToolbar, zoomAtCenter, pushHistory, addToast,
       contextMenu, findOpen, findMatches, focusMode, setFocusMode,
       // Additional deps from params
@@ -481,7 +505,7 @@ export function useKeyboardShortcuts(params: KeyboardShortcutsParams): void {
       setBold, setItalic, setUnderline, setStrikethrough,
       setFindOpen, setFindIdx, setFindQuery, setFindCommittedQuery,
       setFindMatches, setOcrScanning, setContextMenu, setSelectTextToolbar,
-      setSelectedAnnId, setSelectedMeasureId, setSelectedArrowIdx,
+      setSelectedAnnId, setSelectedAnnIds, setSelectedMeasureId, setSelectedArrowIdx,
       setMeasurements, setPolyMeasurements, setAnnotations,
       setActiveTool, setActiveDraw, setActiveText, setActiveHighlight,
       setCanvasCursor])

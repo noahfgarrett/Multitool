@@ -22,18 +22,16 @@ export interface ExportPdfParams {
   addToast: (toast: Omit<Toast, 'id'>) => void
 }
 
-// ── Export function ──────────────────────────────────────
+// ── Build params (subset without UI callbacks) ──────────
 
-export async function exportAnnotatedPdf(params: ExportPdfParams): Promise<void> {
-  const {
-    pdfFile, annotations, pageRotations, measurements, calibration,
-    cropRegions, setIsExporting, setExportError, addToast,
-  } = params
+export type BuildAnnotatedPdfParams = Omit<ExportPdfParams, 'setIsExporting' | 'setExportError' | 'addToast'>
 
-  setIsExporting(true)
-  setExportError(null)
-  try {
-    const bytes = await getPDFBytes(pdfFile)
+// ── Build annotated PDF bytes ────────────────────────────
+
+export async function buildAnnotatedPdfBytes(params: BuildAnnotatedPdfParams): Promise<Uint8Array> {
+  const { pdfFile, annotations, pageRotations, measurements, calibration, cropRegions } = params
+
+  const bytes = await getPDFBytes(pdfFile)
     const doc = await PDFDocument.load(bytes)
     const pages = doc.getPages()
     const fontCache = new Map<StandardFonts, Awaited<ReturnType<typeof doc.embedFont>>>()
@@ -267,6 +265,29 @@ export async function exportAnnotatedPdf(params: ExportPdfParams): Promise<void>
             }
             break
           }
+          case 'polygon': {
+            if (ann.points.length < 3) break
+            const firstPoly = toPC(ann.points[0])
+            let polyPath = 'M 0 0'
+            for (let pi = 1; pi < ann.points.length; pi++) {
+              const pt = toPC(ann.points[pi])
+              polyPath += ` L ${pt.x - firstPoly.x} ${-(pt.y - firstPoly.y)}`
+            }
+            polyPath += ' Z'
+            if (ann.fillColor) {
+              const { r: fr, g: fg, b: fb } = parseHexColor(ann.fillColor)
+              page.drawSvgPath(polyPath, { x: firstPoly.x, y: firstPoly.y, color: rgb(fr, fg, fb), opacity: ann.opacity, borderWidth: 0 })
+            }
+            const polyDash = ann.dashPattern === 'dashed' ? [ann.strokeWidth * 3, ann.strokeWidth * 2]
+              : ann.dashPattern === 'dotted' ? [ann.strokeWidth, ann.strokeWidth * 2] : undefined
+            const polyOpts: Record<string, unknown> = {
+              x: firstPoly.x, y: firstPoly.y,
+              borderWidth: ann.strokeWidth, borderColor: c, borderOpacity: ann.opacity,
+            }
+            if (polyDash) polyOpts.borderDashArray = polyDash
+            page.drawSvgPath(polyPath, polyOpts as Parameters<typeof page.drawSvgPath>[1])
+            break
+          }
           case 'circle': {
             if (ann.points.length < 2) break
             const [c1, c2] = ann.points
@@ -370,7 +391,7 @@ export async function exportAnnotatedPdf(params: ExportPdfParams): Promise<void>
               for (let i = 0; i < cLines.length; i++) {
                 let cxOff = 4
                 if (cAlign !== 'left') {
-                  const ctw = calloutFont.widthOfTextAtSize(cLines[i], cfs)
+                  const ctw = calloutFont.widthOfTextAtSize(cLines[i], effectiveCfs)
                   if (cAlign === 'center') cxOff = 4 + (ann.width - 8 - ctw) / 2
                   else if (cAlign === 'right') cxOff = ann.width - 4 - ctw
                 }
@@ -380,18 +401,18 @@ export async function exportAnnotatedPdf(params: ExportPdfParams): Promise<void>
                   size: effectiveCfs, font: calloutFont, color: c, opacity: 1,
                 })
                 if (ann.underline) {
-                  const ctw = calloutFont.widthOfTextAtSize(cLines[i], cfs)
-                  const culY = boxPt.y + 4 + cfs * (ann.lineHeight || 1.3) * i + cfs + cfs * 0.15
+                  const ctw = calloutFont.widthOfTextAtSize(cLines[i], effectiveCfs)
+                  const culY = boxPt.y + 4 + effectiveCfs * (ann.lineHeight || 1.3) * i + effectiveCfs + effectiveCfs * 0.15
                   const culStart = toPC({ x: boxPt.x + cxOff, y: culY })
                   const culEnd = toPC({ x: boxPt.x + cxOff + ctw, y: culY })
-                  page.drawLine({ start: culStart, end: culEnd, thickness: Math.max(0.5, cfs * 0.05), color: c, opacity: 1 })
+                  page.drawLine({ start: culStart, end: culEnd, thickness: Math.max(0.5, effectiveCfs * 0.05), color: c, opacity: 1 })
                 }
                 if (ann.strikethrough) {
-                  const ctw = calloutFont.widthOfTextAtSize(cLines[i], cfs)
-                  const cstY = boxPt.y + 4 + cfs * (ann.lineHeight || 1.3) * i + cfs - cfs * 0.35
+                  const ctw = calloutFont.widthOfTextAtSize(cLines[i], effectiveCfs)
+                  const cstY = boxPt.y + 4 + effectiveCfs * (ann.lineHeight || 1.3) * i + effectiveCfs - effectiveCfs * 0.35
                   const cstStart = toPC({ x: boxPt.x + cxOff, y: cstY })
                   const cstEnd = toPC({ x: boxPt.x + cxOff + ctw, y: cstY })
-                  page.drawLine({ start: cstStart, end: cstEnd, thickness: Math.max(0.5, cfs * 0.05), color: c, opacity: 1 })
+                  page.drawLine({ start: cstStart, end: cstEnd, thickness: Math.max(0.5, effectiveCfs * 0.05), color: c, opacity: 1 })
                 }
               }
             }
@@ -441,7 +462,9 @@ export async function exportAnnotatedPdf(params: ExportPdfParams): Promise<void>
               borderColor: c, borderWidth: 1.5, opacity: ann.opacity,
             })
             const stampFont = await getFont(ann.fontFamily || 'Arial', true, false)
-            const stampLabel = ann.stampType || 'STAMP'
+            const stampLabel = ann.stampType === 'DATE'
+              ? (ann.text || new Date().toLocaleDateString())
+              : ann.stampType || 'STAMP'
             const stampFs = Math.min(ann.height * 0.42, 18)
             const tw = stampFont.widthOfTextAtSize(stampLabel, stampFs)
             const sp = toPC({ x: ann.points[0].x + ann.width / 2, y: ann.points[0].y + ann.height / 2 })
@@ -449,6 +472,42 @@ export async function exportAnnotatedPdf(params: ExportPdfParams): Promise<void>
               x: sp.x - tw / 2, y: sp.y - stampFs / 2,
               size: stampFs, font: stampFont, color: c, opacity: ann.opacity,
             })
+            break
+          }
+          case 'imageStamp': {
+            if (!ann.imageDataUrl || ann.points.length < 2) break
+            const p0 = toPC(ann.points[0])
+            const p1 = toPC(ann.points[1])
+            const imgX = Math.min(p0.x, p1.x)
+            const imgY = Math.min(p0.y, p1.y)
+            const imgW = Math.abs(p1.x - p0.x)
+            const imgH = Math.abs(p1.y - p0.y)
+            if (imgW <= 0 || imgH <= 0) break
+
+            try {
+              const base64 = ann.imageDataUrl.split(',')[1]
+              const imgBytes = Uint8Array.from(atob(base64), c2 => c2.charCodeAt(0))
+              let embeddedImg
+              if (ann.imageDataUrl.includes('image/png')) {
+                embeddedImg = await doc.embedPng(imgBytes)
+              } else {
+                try {
+                  embeddedImg = await doc.embedJpg(imgBytes)
+                } catch {
+                  embeddedImg = await doc.embedPng(imgBytes)
+                }
+              }
+              page.drawImage(embeddedImg, {
+                x: imgX, y: imgY,
+                width: imgW, height: imgH,
+                opacity: ann.opacity,
+              })
+            } catch {
+              page.drawRectangle({
+                x: imgX, y: imgY, width: imgW, height: imgH,
+                borderColor: c, borderWidth: 1.5, opacity: ann.opacity,
+              })
+            }
             break
           }
         }
@@ -536,8 +595,23 @@ export async function exportAnnotatedPdf(params: ExportPdfParams): Promise<void>
     }
 
     const pdfBytes = await doc.save()
+    return pdfBytes
+}
+
+// ── Export function (build + save to disk) ────────────────
+
+export async function exportAnnotatedPdf(params: ExportPdfParams): Promise<void> {
+  const {
+    setIsExporting, setExportError, addToast,
+    ...buildParams
+  } = params
+
+  setIsExporting(true)
+  setExportError(null)
+  try {
+    const pdfBytes = await buildAnnotatedPdfBytes(buildParams)
     const blob = new Blob([pdfBytes], { type: 'application/pdf' })
-    const fileName = `${pdfFile.name.replace(/\.pdf$/i, '')}-annotated.pdf`
+    const fileName = `${buildParams.pdfFile.name.replace(/\.pdf$/i, '')}-annotated.pdf`
 
     const pickerResult = await saveWithPicker(blob, fileName, {
       description: 'PDF Document', accept: { 'application/pdf': ['.pdf'] },

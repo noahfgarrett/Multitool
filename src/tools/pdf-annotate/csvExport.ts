@@ -9,6 +9,7 @@ import {
   computeSegmentLength,
   computePolylineLength,
   computePolygonArea,
+  computeAngleDegrees,
 } from './measurementDrawing.ts'
 
 // ── CSV escaping (RFC 4180) ───────────────────────────
@@ -157,6 +158,37 @@ export function gatherMeasurementData(
           label: pm.label ? `${pm.label} (perimeter)` : `Perimeter ${pm.id.slice(0, 8)}`,
           value: perimVal,
           unit: perimUnit,
+        })
+
+        // Volume (area × depth) when depth is set
+        if (pm.depth && pm.depth > 0) {
+          let volume: number
+          let volumeUnit: string
+          if (calibration.pixelsPerUnit !== null) {
+            const ppu = calibration.pixelsPerUnit
+            const calibratedArea = pxArea / (ppu * ppu)
+            volume = calibratedArea * pm.depth
+            volumeUnit = `${calibration.unit}³`
+          } else {
+            volume = pxArea * pm.depth
+            volumeUnit = 'px³'
+          }
+          rows.push({
+            page,
+            type: 'volume',
+            label: pm.label ? `${pm.label} (volume)` : `Volume ${pm.id.slice(0, 8)}`,
+            value: volume,
+            unit: volumeUnit,
+          })
+        }
+      } else if (pm.mode === 'angle' && pm.points.length >= 3) {
+        const degrees = computeAngleDegrees(pm.points[0], pm.points[1], pm.points[2])
+        rows.push({
+          page,
+          type: 'angle',
+          label: pm.label || `Angle ${pm.id.slice(0, 8)}`,
+          value: degrees,
+          unit: '°',
         })
       }
     }

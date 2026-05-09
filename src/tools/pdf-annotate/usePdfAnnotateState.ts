@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from 'react'
+import { useState, useRef, useMemo, useEffect, useCallback } from 'react'
 import { useAppStore } from '@/stores/appStore.ts'
 import type { PDFFile } from '@/types'
 import type {
@@ -7,7 +7,7 @@ import type {
   PolyMeasurement, CountGroup, CommentThread, StickyNote,
   HandleId,
 } from './types.ts'
-import { STAMP_PRESETS, STICKY_NOTE_COLORS, DRAW_TYPES, TEXT_TYPES, RENDER_SCALE } from './types.ts'
+import { STAMP_PRESETS, STICKY_NOTE_COLORS, DRAW_TYPES, TEXT_TYPES, RENDER_SCALE, DEFAULT_FONT_SIZE } from './types.ts'
 import { getUserProfile } from '@/utils/userProfile.ts'
 import type { UserProfile } from '@/utils/userProfile.ts'
 
@@ -79,6 +79,14 @@ export interface CalloutArrowDragState {
   arrowIdx?: number
 }
 
+export interface RotationDragState {
+  annId: string
+  centerX: number
+  centerY: number
+  startAngle: number
+  origRotation: number
+}
+
 export interface BookmarkEntry {
   title: string
   pageNum: number
@@ -119,7 +127,7 @@ export function usePdfAnnotateState() {
   const [color, setColor] = useState('#14B8A6')
   const [strokeWidth, setStrokeWidth] = useState(2)
   const [opacity, setOpacity] = useState(100)
-  const [fontSize, setFontSize] = useState(16)
+  const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE)
   const [zoom, setZoom] = useState(1.0)
   const [annotations, setAnnotations] = useState<PageAnnotations>({})
   const [layers, setLayers] = useState<AnnotationLayer[]>([
@@ -255,8 +263,15 @@ export function usePdfAnnotateState() {
   // Zoom presets dropdown
   const [zoomDropdownOpen, setZoomDropdownOpen] = useState(false)
 
+  // Recent colors palette
+  const [recentColors, setRecentColors] = useState<string[]>([])
+  const addRecentColor = useCallback((c: string) => {
+    setRecentColors(prev => [c, ...prev.filter(x => x !== c)].slice(0, 6))
+  }, [])
+
   // Drawing options
   const [straightLineMode, setStraightLineMode] = useState(false)
+  const [smoothingLevel, setSmoothingLevel] = useState(50)
   const [fillColor, setFillColor] = useState<string | null>(null)
   const [cornerRadius, setCornerRadius] = useState(0)
   const [dashPattern, setDashPattern] = useState<'solid' | 'dashed' | 'dotted'>('solid')
@@ -266,6 +281,7 @@ export function usePdfAnnotateState() {
   const [eraserRadius, setEraserRadius] = useState(15)
   const [eraserMode, setEraserMode] = useState<'partial' | 'object'>('partial')
   const eraserModsRef = useRef<{ removed: Set<string>; added: Annotation[] }>({ removed: new Set(), added: [] })
+  const eraserHoverIdsRef = useRef<Set<string>>(new Set())
   const canvasSnapshotRef = useRef<ImageData | null>(null)
 
   // Rotation
@@ -273,6 +289,7 @@ export function usePdfAnnotateState() {
 
   // Text tool
   const [selectedAnnId, setSelectedAnnId] = useState<string | null>(null)
+  const [selectedAnnIds, setSelectedAnnIds] = useState<Set<string>>(new Set())
   const [editingTextId, setEditingTextId] = useState<string | null>(null)
   const [editingTextValue, setEditingTextValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -285,6 +302,7 @@ export function usePdfAnnotateState() {
   const dblClickRef = useRef<{ time: number; pt: Point }>({ time: 0, pt: { x: 0, y: 0 } })
   const textDragRef = useRef<TextDragState | null>(null)
   const generalDragRef = useRef<GeneralDragState | null>(null)
+  const rotationDragRef = useRef<RotationDragState | null>(null)
   // Drag-to-delete trash zone: tracks whether a drag is in progress
   // and whether the pointer is currently over the trash zone. The
   // trash zone UI reads isDragging to show/hide, and isOverTrash to
@@ -327,6 +345,8 @@ export function usePdfAnnotateState() {
   const [countGroupColor, setCountGroupColor] = useState('#EF4444')
   const [edgeSnappingEnabled, setEdgeSnappingEnabled] = useState(true)
   const [precisionSnapMode, setPrecisionSnapMode] = useState(false)
+  /** Tracks whether the current measurement preview point was snapped to an edge */
+  const measureSnapActiveRef = useRef<Point | null>(null)
   const [isPrinting, setIsPrinting] = useState(false)
 
   // Comment & review system
@@ -470,7 +490,6 @@ export function usePdfAnnotateState() {
   const pinchLocalZoomRef = useRef(1)
   const pinchRafIdRef = useRef<number | null>(null)
   const pinchPendingRef = useRef<{ zoom: number; midX: number; midY: number } | null>(null)
-  const pinchZoomUnlockedRef = useRef(false)
   // Content-space transform origin (relative to gestureTransformRef)
   const pinchOriginRef = useRef({ x: 0, y: 0 })
   // Midpoint in viewport/client coords — current and at gesture start
@@ -576,23 +595,27 @@ export function usePdfAnnotateState() {
     exportWatermarkOpacity, setExportWatermarkOpacity,
     // Zoom
     zoomDropdownOpen, setZoomDropdownOpen,
+    // Recent colors
+    recentColors, addRecentColor,
     // Drawing options
     straightLineMode, setStraightLineMode,
+    smoothingLevel, setSmoothingLevel,
     fillColor, setFillColor, cornerRadius, setCornerRadius,
     dashPattern, setDashPattern, arrowStart, setArrowStart,
     // Eraser
     eraserRadius, setEraserRadius, eraserMode, setEraserMode,
-    eraserModsRef, canvasSnapshotRef,
+    eraserModsRef, eraserHoverIdsRef, canvasSnapshotRef,
     // Rotation
     pageRotations, setPageRotations,
     // Text tool
     selectedAnnId, setSelectedAnnId,
+    selectedAnnIds, setSelectedAnnIds,
     editingTextId, setEditingTextId,
     editingTextValue, setEditingTextValue,
     textareaRef, blurTimeoutRef, lastCommittedTextRef,
     editingTextIdRef, textOverlayTick, setTextOverlayTick,
     escapeCommittedRef, preHighlightRef, dblClickRef,
-    textDragRef, generalDragRef,
+    textDragRef, generalDragRef, rotationDragRef,
     isDraggingAnn, setIsDraggingAnn, isOverTrash, setIsOverTrash, trashZoneRef,
     // Callout
     calloutArrowDragRef, selectedArrowIdx, setSelectedArrowIdx,
@@ -620,6 +643,7 @@ export function usePdfAnnotateState() {
     countGroupColor, setCountGroupColor,
     edgeSnappingEnabled, setEdgeSnappingEnabled,
     precisionSnapMode, setPrecisionSnapMode,
+    measureSnapActiveRef,
     isPrinting, setIsPrinting,
     // Comments
     commentThreads, setCommentThreads,
@@ -666,7 +690,7 @@ export function usePdfAnnotateState() {
     activeTouchIdsRef, touchPositionsRef,
     // Pinch gesture (touch-event based)
     pinchActiveRef, pinchStartZoomRef, pinchStartDistRef,
-    pinchLocalZoomRef, pinchRafIdRef, pinchPendingRef, pinchZoomUnlockedRef,
+    pinchLocalZoomRef, pinchRafIdRef, pinchPendingRef,
     pinchOriginRef, pinchMidClientRef, pinchStartMidClientRef,
     pinchStartScrollRef, pinchContainerRectRef,
     // Active canvas pipeline

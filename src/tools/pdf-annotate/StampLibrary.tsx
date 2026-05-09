@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  X, Plus, Trash2, Download, Upload, Image as ImageIcon, Save, AlertTriangle,
+  X, Plus, Trash2, Download, Upload, Image as ImageIcon, Save, AlertTriangle, PenTool,
 } from 'lucide-react'
 import { Button } from '@/components/common/Button.tsx'
 
@@ -117,6 +117,13 @@ export function StampLibrary({ onSelectStamp, onClose }: StampLibraryProps): Rea
   const [newImageDataUrl, setNewImageDataUrl] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
+  // Signature pad state
+  const [isDrawingSignature, setIsDrawingSignature] = useState(false)
+  const [signatureName, setSignatureName] = useState('')
+  const sigCanvasRef = useRef<HTMLCanvasElement>(null)
+  const sigDrawingRef = useRef(false)
+  const [sigHasStrokes, setSigHasStrokes] = useState(false)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
 
@@ -182,6 +189,90 @@ export function StampLibrary({ onSelectStamp, onClose }: StampLibraryProps): Rea
       setIsSaving(false)
     }
   }, [newName, newImageDataUrl])
+
+  // ── Signature pad ──────────────────────────────────
+
+  const initSigCanvas = useCallback(() => {
+    const canvas = sigCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+  }, [])
+
+  useEffect(() => {
+    if (isDrawingSignature) {
+      // Wait for canvas to mount then initialize
+      requestAnimationFrame(initSigCanvas)
+    }
+  }, [isDrawingSignature, initSigCanvas])
+
+  const handleSigPointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    sigDrawingRef.current = true
+    const canvas = sigCanvasRef.current
+    if (!canvas) return
+    canvas.setPointerCapture(e.pointerId)
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const rect = canvas.getBoundingClientRect()
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width)
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height)
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.strokeStyle = '#000000'
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+  }, [])
+
+  const handleSigPointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!sigDrawingRef.current) return
+    const canvas = sigCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const rect = canvas.getBoundingClientRect()
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width)
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height)
+    ctx.lineTo(x, y)
+    ctx.stroke()
+    setSigHasStrokes(true)
+  }, [])
+
+  const handleSigPointerUp = useCallback(() => {
+    sigDrawingRef.current = false
+  }, [])
+
+  const handleSigClear = useCallback(() => {
+    initSigCanvas()
+    setSigHasStrokes(false)
+  }, [initSigCanvas])
+
+  const handleSigSave = useCallback(async () => {
+    const canvas = sigCanvasRef.current
+    if (!canvas) return
+    const name = signatureName.trim() || 'Signature'
+    const dataUrl = canvas.toDataURL('image/png')
+    setIsSaving(true)
+    setError(null)
+    try {
+      const stamp: StampItem = {
+        id: crypto.randomUUID(),
+        name,
+        imageDataUrl: dataUrl,
+        createdAt: Date.now(),
+      }
+      await addStamp(stamp)
+      setStamps((prev) => [stamp, ...prev])
+      setSignatureName('')
+      setIsDrawingSignature(false)
+    } catch {
+      setError('Failed to save signature.')
+    } finally {
+      setIsSaving(false)
+    }
+  }, [signatureName])
 
   // ── Delete stamp ───────────────────────────────────
 
@@ -401,6 +492,71 @@ export function StampLibrary({ onSelectStamp, onClose }: StampLibraryProps): Rea
                       Cancel
                     </Button>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Draw Signature */}
+          {!isDrawingSignature ? (
+            <button
+              type="button"
+              onClick={() => setIsDrawingSignature(true)}
+              className="flex items-center gap-2 mb-4 px-3 py-2 w-full rounded-lg border-2 border-dashed border-white/15 hover:border-[#14B8A6]/50 text-white/50 hover:text-[#14B8A6] transition-all"
+            >
+              <PenTool size={16} />
+              <span className="text-sm font-medium">Draw Signature</span>
+            </button>
+          ) : (
+            <div className="mb-4 p-4 rounded-lg border border-white/[0.1] bg-white/[0.03]">
+              <h3 className="text-sm font-medium text-white mb-3">Draw Signature</h3>
+              <canvas
+                ref={sigCanvasRef}
+                width={600}
+                height={300}
+                className="w-[300px] h-[150px] rounded-lg border border-white/[0.15] cursor-crosshair touch-none"
+                onPointerDown={handleSigPointerDown}
+                onPointerMove={handleSigPointerMove}
+                onPointerUp={handleSigPointerUp}
+                onPointerLeave={handleSigPointerUp}
+              />
+              <div className="mt-3 flex flex-col gap-2">
+                <div>
+                  <label className="block text-xs text-white/50 mb-1">Name (optional)</label>
+                  <input
+                    type="text"
+                    value={signatureName}
+                    onChange={(e) => setSignatureName(e.target.value)}
+                    placeholder="e.g. My Signature"
+                    className="w-full h-8 px-2 text-sm bg-white/[0.06] border border-white/[0.1] rounded-md text-white placeholder:text-white/30 focus:outline-none focus:border-[#14B8A6]/50"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    icon={<Save size={14} />}
+                    onClick={() => { void handleSigSave() }}
+                    disabled={isSaving || !sigHasStrokes}
+                  >
+                    {isSaving ? 'Saving...' : 'Save'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSigClear}
+                  >
+                    Clear
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setIsDrawingSignature(false)
+                      setSignatureName('')
+                    }}
+                  >
+                    Cancel
+                  </Button>
                 </div>
               </div>
             </div>

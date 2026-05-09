@@ -1,4 +1,4 @@
-import type { Point, Annotation, HandleId } from './types.ts'
+import type { Point, Annotation, HandleId, PageAnnotations } from './types.ts'
 import { genId } from './types.ts'
 
 // ── Text wrapping helper ─────────────────────────────
@@ -329,7 +329,8 @@ export function getAnnotationBounds(ann: Annotation): { x: number; y: number; w:
   switch (ann.type) {
     case 'text':
     case 'callout':
-    case 'stamp': {
+    case 'stamp':
+    case 'imageStamp': {
       if (!ann.width || !ann.height) return null
       return { x: pts[0].x, y: pts[0].y, w: ann.width, h: ann.height }
     }
@@ -351,7 +352,8 @@ export function getAnnotationBounds(ann: Annotation): { x: number; y: number; w:
     }
     case 'pencil':
     case 'highlighter':
-    case 'cloud': {
+    case 'cloud':
+    case 'polygon': {
       if (ann.rects && ann.rects.length > 0) {
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
         for (const r of ann.rects) {
@@ -630,4 +632,156 @@ export function decimatePoints(points: Point[], epsilon: number): Point[] {
     return [...left.slice(0, -1), ...right]
   }
   return [first, last]
+}
+
+// ── Annotation alignment & distribution ─────────────
+
+export type AlignmentType = 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom' | 'distributeH' | 'distributeV'
+
+interface AlignBounds {
+  left: number
+  top: number
+  right: number
+  bottom: number
+  centerX: number
+  centerY: number
+  w: number
+  h: number
+}
+
+function toBounds(b: { x: number; y: number; w: number; h: number }): AlignBounds {
+  return {
+    left: b.x,
+    top: b.y,
+    right: b.x + b.w,
+    bottom: b.y + b.h,
+    centerX: b.x + b.w / 2,
+    centerY: b.y + b.h / 2,
+    w: b.w,
+    h: b.h,
+  }
+}
+
+/** Shift all spatial data on an annotation by (dx, dy). */
+function shiftAnnotation(ann: Annotation, dx: number, dy: number): Annotation {
+  return {
+    ...ann,
+    points: ann.points.map(p => ({ x: p.x + dx, y: p.y + dy })),
+    ...(ann.arrows ? { arrows: ann.arrows.map(a => ({ x: a.x + dx, y: a.y + dy })) } : {}),
+    ...(ann.rects ? { rects: ann.rects.map(r => ({ ...r, x: r.x + dx, y: r.y + dy })) } : {}),
+  }
+}
+
+/**
+ * Align or distribute a set of annotations on a given page.
+ * Returns a new PageAnnotations with the selected annotations repositioned.
+ */
+export function alignAnnotations(
+  annIds: Set<string>,
+  annotations: PageAnnotations,
+  page: number,
+  alignment: AlignmentType,
+): PageAnnotations {
+  const pageAnns: Annotation[] = annotations[page] || []
+  const selected = pageAnns.filter((a: Annotation) => annIds.has(a.id))
+  if (selected.length < 2) return annotations
+
+  // Build bounds map for each selected annotation
+  const boundsMap = new Map<string, AlignBounds>()
+  for (const ann of selected) {
+    const raw = getAnnotationBounds(ann)
+    if (raw) boundsMap.set(ann.id, toBounds(raw))
+  }
+  if (boundsMap.size < 2) return annotations
+
+  const allBounds = Array.from(boundsMap.values())
+
+  // Calculate the delta for each annotation
+  const deltas = new Map<string, { dx: number; dy: number }>()
+
+  switch (alignment) {
+    case 'left': {
+      const target = Math.min(...allBounds.map(b => b.left))
+      for (const [id, b] of boundsMap) {
+        deltas.set(id, { dx: target - b.left, dy: 0 })
+      }
+      break
+    }
+    case 'center': {
+      const avg = allBounds.reduce((s, b) => s + b.centerX, 0) / allBounds.length
+      for (const [id, b] of boundsMap) {
+        deltas.set(id, { dx: avg - b.centerX, dy: 0 })
+      }
+      break
+    }
+    case 'right': {
+      const target = Math.max(...allBounds.map(b => b.right))
+      for (const [id, b] of boundsMap) {
+        deltas.set(id, { dx: target - b.right, dy: 0 })
+      }
+      break
+    }
+    case 'top': {
+      const target = Math.min(...allBounds.map(b => b.top))
+      for (const [id, b] of boundsMap) {
+        deltas.set(id, { dx: 0, dy: target - b.top })
+      }
+      break
+    }
+    case 'middle': {
+      const avg = allBounds.reduce((s, b) => s + b.centerY, 0) / allBounds.length
+      for (const [id, b] of boundsMap) {
+        deltas.set(id, { dx: 0, dy: avg - b.centerY })
+      }
+      break
+    }
+    case 'bottom': {
+      const target = Math.max(...allBounds.map(b => b.bottom))
+      for (const [id, b] of boundsMap) {
+        deltas.set(id, { dx: 0, dy: target - b.bottom })
+      }
+      break
+    }
+    case 'distributeH': {
+      if (boundsMap.size < 3) return annotations
+      // Sort by left edge
+      const sorted = [...boundsMap.entries()].sort((a, b) => a[1].left - b[1].left)
+      const first = sorted[0][1]
+      const last = sorted[sorted.length - 1][1]
+      const totalItemWidth = sorted.reduce((s, [, b]) => s + b.w, 0)
+      const totalSpan = last.right - first.left
+      const gap = (totalSpan - totalItemWidth) / (sorted.length - 1)
+      let cursor = first.left
+      for (const [id, b] of sorted) {
+        deltas.set(id, { dx: cursor - b.left, dy: 0 })
+        cursor += b.w + gap
+      }
+      break
+    }
+    case 'distributeV': {
+      if (boundsMap.size < 3) return annotations
+      // Sort by top edge
+      const sorted = [...boundsMap.entries()].sort((a, b) => a[1].top - b[1].top)
+      const first = sorted[0][1]
+      const last = sorted[sorted.length - 1][1]
+      const totalItemHeight = sorted.reduce((s, [, b]) => s + b.h, 0)
+      const totalSpan = last.bottom - first.top
+      const gap = (totalSpan - totalItemHeight) / (sorted.length - 1)
+      let cursor = first.top
+      for (const [id, b] of sorted) {
+        deltas.set(id, { dx: 0, dy: cursor - b.top })
+        cursor += b.h + gap
+      }
+      break
+    }
+  }
+
+  // Apply deltas to produce new page annotations
+  const newPageAnns = pageAnns.map((a: Annotation) => {
+    const d = deltas.get(a.id)
+    if (!d || (d.dx === 0 && d.dy === 0)) return a
+    return shiftAnnotation(a, d.dx, d.dy)
+  })
+
+  return { ...annotations, [page]: newPageAnns }
 }

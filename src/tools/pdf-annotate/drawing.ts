@@ -33,6 +33,7 @@ export function drawCloudEdge(
 // ── Catmull-Rom path smoothing ───────────────────────
 
 export function drawSmoothPath(ctx: CanvasRenderingContext2D, pts: Point[], scale: number) {
+  if (pts.length === 0) return
   if (pts.length < 3) {
     ctx.beginPath()
     ctx.moveTo(pts[0].x * scale, pts[0].y * scale)
@@ -131,6 +132,21 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, ann: Annotation, s
   // Dash pattern
   if (ann.dashPattern === 'dashed') ctx.setLineDash([ann.strokeWidth * scale * 3, ann.strokeWidth * scale * 2])
   else if (ann.dashPattern === 'dotted') ctx.setLineDash([ann.strokeWidth * scale, ann.strokeWidth * scale * 2])
+
+  // Apply rotation transform for non-text/callout types (those types handle rotation internally)
+  let appliedGeneralRotation = false
+  if (ann.rotation && ann.type !== 'text' && ann.type !== 'callout') {
+    const rBounds = getAnnotationBounds(ann)
+    if (rBounds) {
+      const cx = (rBounds.x + rBounds.w / 2) * scale
+      const cy = (rBounds.y + rBounds.h / 2) * scale
+      ctx.save()
+      ctx.translate(cx, cy)
+      ctx.rotate((ann.rotation * Math.PI) / 180)
+      ctx.translate(-cx, -cy)
+      appliedGeneralRotation = true
+    }
+  }
 
   switch (ann.type) {
     case 'highlighter': {
@@ -493,7 +509,7 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, ann: Annotation, s
         const padding = 4 * scale
         const availW = bw - padding * 2
         for (let i = 0; i < lines.length; i++) {
-          const lineY = by + padding + (cYOffset * scale) + lineH * i * scale
+          const lineY = by + padding + (cYOffset + lineH * i) * scale
           let lineX = bx + padding
 
           // Justify alignment for callout (except last line)
@@ -581,8 +597,10 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, ann: Annotation, s
       ctx.strokeRect(sx, sy, sw, sh)
       // Inner border
       ctx.strokeRect(sx + 3 * scale, sy + 3 * scale, sw - 6 * scale, sh - 6 * scale)
-      // Text label
-      const stampLabel = ann.stampType || 'STAMP'
+      // Text label — DATE stamp shows the current locale date
+      const stampLabel = ann.stampType === 'DATE'
+        ? (ann.text || new Date().toLocaleDateString())
+        : ann.stampType || 'STAMP'
       const targetFs = Math.min(sh * 0.42, 18 * scale)
       ctx.font = `bold ${targetFs}px Arial, sans-serif`
       ctx.textAlign = 'center'
@@ -597,12 +615,13 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, ann: Annotation, s
       break
     }
   }
+  if (appliedGeneralRotation) ctx.restore()
   ctx.restore()
 }
 
 // ── Selection UI drawing ────────────────────────────────
 
-export function drawSelectionUI(ctx: CanvasRenderingContext2D, ann: Annotation, scale: number) {
+export function drawSelectionUI(ctx: CanvasRenderingContext2D, ann: Annotation, scale: number, showHandles = true) {
   const bounds = getAnnotationBounds(ann)
   if (!bounds) return
 
@@ -610,31 +629,59 @@ export function drawSelectionUI(ctx: CanvasRenderingContext2D, ann: Annotation, 
   const sw = bounds.w * scale, sh = bounds.h * scale
 
   ctx.save()
-  ctx.strokeStyle = '#3B82F6'
+  ctx.strokeStyle = 'rgba(34, 211, 238, 0.6)'
   ctx.lineWidth = 1.5
   ctx.setLineDash([4, 3])
   ctx.strokeRect(sx, sy, sw, sh)
   ctx.setLineDash([])
 
-  if (ann.type === 'text' || ann.type === 'callout') {
-    const handles = getHandles(sx, sy, sw, sh)
-    ctx.fillStyle = '#ffffff'
-    ctx.strokeStyle = '#3B82F6'
-    ctx.lineWidth = 1.5
-    for (const h of handles) {
-      ctx.fillRect(h.x - HANDLE_SIZE / 2, h.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE)
-      ctx.strokeRect(h.x - HANDLE_SIZE / 2, h.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE)
+  if (showHandles) {
+    // Polished resize handles: 8x8 white squares with teal border
+    const hs = 4 // half-size = 4px → 8px total
+    if (ann.type === 'text' || ann.type === 'callout') {
+      const handles = getHandles(sx, sy, sw, sh)
+      ctx.fillStyle = '#ffffff'
+      ctx.strokeStyle = 'rgba(34, 211, 238, 0.8)'
+      ctx.lineWidth = 1.5
+      for (const h of handles) {
+        ctx.fillRect(h.x - hs, h.y - hs, hs * 2, hs * 2)
+        ctx.strokeRect(h.x - hs, h.y - hs, hs * 2, hs * 2)
+      }
+    } else if (ann.type === 'line' || ann.type === 'arrow') {
+      ctx.fillStyle = '#ffffff'
+      ctx.strokeStyle = 'rgba(34, 211, 238, 0.8)'
+      ctx.lineWidth = 1.5
+      for (const p of ann.points.slice(0, 2)) {
+        ctx.beginPath()
+        ctx.arc(p.x * scale, p.y * scale, hs + 1, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.stroke()
+      }
     }
-  } else if (ann.type === 'line' || ann.type === 'arrow') {
-    ctx.fillStyle = '#ffffff'
-    ctx.strokeStyle = '#3B82F6'
-    ctx.lineWidth = 1.5
-    for (const p of ann.points.slice(0, 2)) {
-      ctx.beginPath()
-      ctx.arc(p.x * scale, p.y * scale, HANDLE_SIZE / 2 + 1, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.stroke()
-    }
+
+    // Rotation handle — circle above top-center connected by a thin line
+    const rotTopCenterX = sx + sw / 2
+    const ROT_LINE_LEN = 24    // fixed canvas pixels
+    const ROT_HANDLE_R = 5     // fixed canvas pixels
+    const rotHandleY = sy - ROT_LINE_LEN
+
+    // Connecting line
+    ctx.beginPath()
+    ctx.moveTo(rotTopCenterX, sy)
+    ctx.lineTo(rotTopCenterX, rotHandleY)
+    ctx.strokeStyle = 'rgba(34, 211, 238, 0.6)'
+    ctx.lineWidth = 1
+    ctx.setLineDash([])
+    ctx.stroke()
+
+    // Circle handle
+    ctx.beginPath()
+    ctx.arc(rotTopCenterX, rotHandleY, ROT_HANDLE_R, 0, Math.PI * 2)
+    ctx.fillStyle = 'rgba(34, 211, 238, 0.8)'
+    ctx.fill()
+    ctx.strokeStyle = 'white'
+    ctx.lineWidth = 1
+    ctx.stroke()
   }
   ctx.restore()
 }

@@ -134,7 +134,13 @@ export async function embedAnnotationData(
     encoded = utf8ToBase64(json)
   }
 
-  const infoDict = getInfoDict(doc)
+  let infoDict: PDFDict
+  try {
+    infoDict = getInfoDict(doc)
+  } catch {
+    doc.setTitle('')
+    infoDict = getInfoDict(doc)
+  }
   infoDict.set(PDFName.of(METADATA_KEY), PDFString.of(encoded))
 
   const savedBytes = await doc.save()
