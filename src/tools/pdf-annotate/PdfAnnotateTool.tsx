@@ -426,7 +426,7 @@ export default function PdfAnnotateTool() {
     findCommittedQuery, setFindCommittedQuery,
     activeTouchIdsRef, touchPositionsRef,
     pinchActiveRef, pinchStartZoomRef, pinchStartDistRef,
-    pinchLocalZoomRef, pinchRafIdRef, pinchPendingRef, pinchZoomUnlockedRef,
+    pinchLocalZoomRef, pinchRafIdRef, pinchPendingRef,
     pinchOriginRef, pinchMidClientRef, pinchStartMidClientRef,
     pinchStartScrollRef, pinchContainerRectRef,
     pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
@@ -2017,7 +2017,7 @@ export default function PdfAnnotateTool() {
         pageRenderScaleRef.current.delete(pageNum)
         renderSinglePage(pageNum)
       }
-    }, 150)
+    }, 50)
     return () => clearTimeout(timer)
   }, [zoom, pdfFile, renderSinglePage])
 
@@ -2518,172 +2518,37 @@ export default function PdfAnnotateTool() {
     return () => el.removeEventListener('scroll', handler)
   }, [selectTextToolbar, redrawAll])
 
-  // ── Touch-based pinch-to-zoom + Safari gesture prevention ──
-  // Uses native touch events (not pointer events) with passive: false
-  // so we can call preventDefault() — the ONLY reliable way to suppress
-  // native scroll during a pinch on iOS Safari, which ignores
-  // touch-action: none. Gesture prevention is on the document level
-  // because Safari's GestureEvent can bypass element-level handlers.
+  // ── Mobile pinch-to-zoom (Google Maps style) ──────────
+  // Continuously re-derives the zoom anchor from the current finger
+  // midpoint every frame, so pinch+pan feels like zooming into a map.
+  // Only activates on mobile (isMobile). Desktop uses Ctrl+wheel zoom.
+  // Uses native touch events with passive:false to suppress iOS Safari's
+  // native zoom (which ignores touch-action: none).
   useEffect(() => {
+    if (!isMobile) return
     const el = scrollRef.current
     if (!el) return
 
-    interface SafariGestureEvent extends Event {
-      scale: number
-      clientX: number
-      clientY: number
-    }
-    const isSafariGesture = 'GestureEvent' in window
-
-    let gestureStartZoom = 1
-    let gestureOrigin = { x: 0, y: 0 }
-    let gestureStartScroll = { left: 0, top: 0 }
-    let gestureContainerRect = { left: 0, top: 0 }
-
-    const onGestureStart = (ev: Event): void => {
-      ev.preventDefault()
-      const ge = ev as SafariGestureEvent
-
-      pinchActiveRef.current = true
-      gestureStartZoom = zoomRef.current
-      pinchStartZoomRef.current = gestureStartZoom
-      gestureStartScroll = { left: el.scrollLeft, top: el.scrollTop }
-      pinchStartScrollRef.current = gestureStartScroll
-
-      const rect = el.getBoundingClientRect()
-      gestureContainerRect = { left: rect.left, top: rect.top }
-      pinchContainerRectRef.current = gestureContainerRect
-
-      // Compute origin in content-space for transformOrigin
+    const getPadding = (): { l: number; t: number } => {
       const padded = paddedWrapperRef.current
       const cs = padded ? getComputedStyle(padded) : null
-      const padL = cs ? (parseFloat(cs.paddingLeft) || 24) : 24
-      const padT = cs ? (parseFloat(cs.paddingTop) || 24) : 24
-      gestureOrigin = {
-        x: el.scrollLeft + (ge.clientX - rect.left) - padL,
-        y: el.scrollTop + (ge.clientY - rect.top) - padT,
-      }
-      pinchOriginRef.current = gestureOrigin
-      pinchMidClientRef.current = { x: ge.clientX, y: ge.clientY }
-      pinchStartMidClientRef.current = { x: ge.clientX, y: ge.clientY }
-
-      // Cancel drawing
-      if (isDrawingRef.current) {
-        isDrawingRef.current = false
-        currentPtsRef.current = []
-        currentPressureRef.current = []
+      return {
+        l: cs ? (parseFloat(cs.paddingLeft) || 24) : 24,
+        t: cs ? (parseFloat(cs.paddingTop) || 24) : 24,
       }
     }
 
-    const onGestureChange = (ev: Event): void => {
-      ev.preventDefault()
-      const ge = ev as SafariGestureEvent
-
-      const targetZoom = Math.min(4.0, Math.max(0.25, gestureStartZoom * ge.scale))
-      pinchLocalZoomRef.current = targetZoom
-      pinchMidClientRef.current = { x: ge.clientX, y: ge.clientY }
-
-      // rAF-coalesced CSS transform + scroll write
-      pinchPendingRef.current = { zoom: targetZoom, midX: ge.clientX, midY: ge.clientY }
-      if (pinchRafIdRef.current === null) {
-        pinchRafIdRef.current = requestAnimationFrame(() => {
-          pinchRafIdRef.current = null
-          const pending = pinchPendingRef.current
-          if (!pending) return
-          pinchPendingRef.current = null
-
-          const gestureEl = gestureTransformRef.current
-          if (!gestureEl) return
-
-          const scale = pending.zoom / gestureStartZoom
-          gestureEl.style.transformOrigin = `${gestureOrigin.x}px ${gestureOrigin.y}px`
-          gestureEl.style.transform = `scale(${scale})`
-
-          // Pan: shift scroll by midpoint delta
-          const panDx = pending.midX - pinchStartMidClientRef.current.x
-          const panDy = pending.midY - pinchStartMidClientRef.current.y
-          el.scrollLeft = gestureStartScroll.left - panDx
-          el.scrollTop = gestureStartScroll.top - panDy
-        })
-      }
-    }
-
-    const onGestureEnd = (ev: Event): void => {
-      ev.preventDefault()
-
-      pinchActiveRef.current = false
-      if (pinchRafIdRef.current !== null) {
-        cancelAnimationFrame(pinchRafIdRef.current)
-        pinchRafIdRef.current = null
-      }
-      pinchPendingRef.current = null
-
-      const gestureEl = gestureTransformRef.current
-      if (gestureEl) {
-        gestureEl.style.transform = ''
-        gestureEl.style.transformOrigin = '0 0'
-      }
-
-      const finalZoom = Math.round(Math.min(4.0, Math.max(0.25, pinchLocalZoomRef.current)) * 100) / 100
-      if (finalZoom !== zoomRef.current) {
-        const ratio = finalZoom / gestureStartZoom
-        const mid = pinchMidClientRef.current
-        pinchCommitRef.current = {
-          ratio,
-          originX: mid.x - gestureContainerRect.left,
-          originY: mid.y - gestureContainerRect.top,
-          scrollLeft: el.scrollLeft,
-          scrollTop: el.scrollTop,
-        }
-        setZoom(finalZoom)
-      }
-    }
-
-    // ── Touch-event fallback (non-Safari browsers) ──────
-    const onTouchMove = (ev: TouchEvent): void => {
-      if (ev.touches.length >= 2) {
-        ev.preventDefault()
-
-      }
-      if (!pinchActiveRef.current || ev.touches.length < 2) return
-
-      const t0 = ev.touches[0], t1 = ev.touches[1]
-      const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
-      const midX = (t0.clientX + t1.clientX) / 2
-      const midY = (t0.clientY + t1.clientY) / 2
-      const ratio = dist / pinchStartDistRef.current
-      const targetZoom = Math.min(4.0, Math.max(0.25, pinchStartZoomRef.current * ratio))
-
-      pinchLocalZoomRef.current = targetZoom
-      pinchMidClientRef.current = { x: midX, y: midY }
-      pinchPendingRef.current = { zoom: targetZoom, midX, midY }
-
-      if (pinchRafIdRef.current === null) {
-        pinchRafIdRef.current = requestAnimationFrame(() => {
-          pinchRafIdRef.current = null
-          const pending = pinchPendingRef.current
-          if (!pending) return
-          pinchPendingRef.current = null
-          const gestureEl = gestureTransformRef.current
-          if (!gestureEl) return
-          const scale = pending.zoom / pinchStartZoomRef.current
-          gestureEl.style.transformOrigin = `${pinchOriginRef.current.x}px ${pinchOriginRef.current.y}px`
-          gestureEl.style.transform = `scale(${scale})`
-          const panDx = pending.midX - pinchStartMidClientRef.current.x
-          const panDy = pending.midY - pinchStartMidClientRef.current.y
-          el.scrollLeft = pinchStartScrollRef.current.left - panDx
-          el.scrollTop = pinchStartScrollRef.current.top - panDy
-        })
+    const toContentSpace = (clientX: number, clientY: number): { x: number; y: number } => {
+      const rect = el.getBoundingClientRect()
+      const pad = getPadding()
+      return {
+        x: el.scrollLeft + (clientX - rect.left) - pad.l,
+        y: el.scrollTop + (clientY - rect.top) - pad.t,
       }
     }
 
     const onTouchStart = (ev: TouchEvent): void => {
-      // Safety reset: if pinchActive is stuck from a missed touchend
-      // (e.g. memory pressure killed the previous gesture), clean up
-      // before starting a new one. This prevents the "stops zooming
-      // on large documents" bug.
       if (ev.touches.length === 2 && pinchActiveRef.current) {
-        // Reset leftover state from previous gesture
         if (pinchRafIdRef.current !== null) {
           cancelAnimationFrame(pinchRafIdRef.current)
           pinchRafIdRef.current = null
@@ -2711,19 +2576,51 @@ export default function PdfAnnotateTool() {
         pinchStartScrollRef.current = { left: el.scrollLeft, top: el.scrollTop }
         const rect = el.getBoundingClientRect()
         pinchContainerRectRef.current = { left: rect.left, top: rect.top }
-        const padded = paddedWrapperRef.current
-        const cs = padded ? getComputedStyle(padded) : null
-        const padL = cs ? (parseFloat(cs.paddingLeft) || 24) : 24
-        const padT = cs ? (parseFloat(cs.paddingTop) || 24) : 24
-        pinchOriginRef.current = {
-          x: el.scrollLeft + (midX - rect.left) - padL,
-          y: el.scrollTop + (midY - rect.top) - padT,
-        }
+        pinchOriginRef.current = toContentSpace(midX, midY)
         if (isDrawingRef.current) {
           isDrawingRef.current = false
           currentPtsRef.current = []
           currentPressureRef.current = []
         }
+      }
+    }
+
+    const onTouchMove = (ev: TouchEvent): void => {
+      if (ev.touches.length >= 2) ev.preventDefault()
+      if (!pinchActiveRef.current || ev.touches.length < 2) return
+
+      const t0 = ev.touches[0], t1 = ev.touches[1]
+      const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
+      const midX = (t0.clientX + t1.clientX) / 2
+      const midY = (t0.clientY + t1.clientY) / 2
+      const ratio = dist / pinchStartDistRef.current
+      const targetZoom = Math.min(4.0, Math.max(0.25, pinchStartZoomRef.current * ratio))
+
+      pinchLocalZoomRef.current = targetZoom
+      pinchMidClientRef.current = { x: midX, y: midY }
+      pinchPendingRef.current = { zoom: targetZoom, midX, midY }
+
+      if (pinchRafIdRef.current === null) {
+        pinchRafIdRef.current = requestAnimationFrame(() => {
+          pinchRafIdRef.current = null
+          const pending = pinchPendingRef.current
+          if (!pending) return
+          pinchPendingRef.current = null
+          const gestureEl = gestureTransformRef.current
+          if (!gestureEl) return
+
+          // Re-derive the content-space anchor from the CURRENT finger
+          // midpoint every frame — this is what makes it feel like Maps.
+          const newOrigin = toContentSpace(pending.midX, pending.midY)
+          const scale = pending.zoom / zoomRef.current
+
+          gestureEl.style.transformOrigin = `${newOrigin.x}px ${newOrigin.y}px`
+          gestureEl.style.transform = `scale(${scale})`
+
+          // Scroll so the content under the midpoint stays fixed
+          el.scrollLeft = newOrigin.x * scale - (pending.midX - el.getBoundingClientRect().left - getPadding().l)
+          el.scrollTop = newOrigin.y * scale - (pending.midY - el.getBoundingClientRect().top - getPadding().t)
+        })
       }
     }
 
@@ -2736,17 +2633,12 @@ export default function PdfAnnotateTool() {
       }
       pinchPendingRef.current = null
 
-      // Do NOT clear the CSS transform here — that would show one
-      // frame at the old zoom before React commits the new layout.
-      // Instead, the useLayoutEffect clears it after React commits
-      // but before the browser paints. Zero visual intermediate state.
       const finalZoom = Math.round(pinchLocalZoomRef.current * 100) / 100
       if (finalZoom !== zoomRef.current) {
-        const ratio = finalZoom / pinchStartZoomRef.current
         const mid = pinchMidClientRef.current
         const rect = pinchContainerRectRef.current
         pinchCommitRef.current = {
-          ratio,
+          ratio: finalZoom / zoomRef.current,
           originX: mid.x - rect.left,
           originY: mid.y - rect.top,
           scrollLeft: el.scrollLeft,
@@ -2754,8 +2646,6 @@ export default function PdfAnnotateTool() {
         }
         setZoom(finalZoom)
       } else {
-        // Zoom didn't change (pure pan) — clear transform immediately
-        // since there's no React re-render to trigger useLayoutEffect.
         const gestureEl = gestureTransformRef.current
         if (gestureEl) {
           gestureEl.style.transform = ''
@@ -2764,37 +2654,22 @@ export default function PdfAnnotateTool() {
       }
     }
 
-    // Attach gesture events on the scroll container (Safari)
-    if (isSafariGesture) {
-      el.addEventListener('gesturestart', onGestureStart, { passive: false } as EventListenerOptions)
-      el.addEventListener('gesturechange', onGestureChange, { passive: false } as EventListenerOptions)
-      el.addEventListener('gestureend', onGestureEnd, { passive: false } as EventListenerOptions)
-    }
-    // Always attach touch events (fallback for non-Safari + multi-touch prevention)
     el.addEventListener('touchstart', onTouchStart, { passive: false })
     el.addEventListener('touchmove', onTouchMove, { passive: false })
     el.addEventListener('touchend', onTouchEnd)
     el.addEventListener('touchcancel', onTouchEnd)
-    // Prevent native gesture zoom on the document (belt-and-suspenders)
     const onDocGesture = (e: Event) => e.preventDefault()
     document.addEventListener('gesturestart', onDocGesture, { passive: false } as EventListenerOptions)
 
-
     return () => {
-      el.removeEventListener('gesturestart', onGestureStart)
-      el.removeEventListener('gesturechange', onGestureChange)
-      el.removeEventListener('gestureend', onGestureEnd)
       el.removeEventListener('touchstart', onTouchStart)
       el.removeEventListener('touchmove', onTouchMove)
       el.removeEventListener('touchend', onTouchEnd)
       el.removeEventListener('touchcancel', onTouchEnd)
       document.removeEventListener('gesturestart', onDocGesture)
     }
-  // Re-run when pdfFile changes — the scroll container doesn't exist
-  // until a PDF is loaded (the component returns early with a file
-  // upload screen when pdfFile is null).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pdfFile])
+  }, [pdfFile, isMobile])
 
   // ── Mobile edge-swipe + 3-finger gestures ───────────
   // Runs only when the mobile layout is active. Native touch listeners on

@@ -490,7 +490,6 @@ export function usePdfAnnotateState() {
   const pinchLocalZoomRef = useRef(1)
   const pinchRafIdRef = useRef<number | null>(null)
   const pinchPendingRef = useRef<{ zoom: number; midX: number; midY: number } | null>(null)
-  const pinchZoomUnlockedRef = useRef(false)
   // Content-space transform origin (relative to gestureTransformRef)
   const pinchOriginRef = useRef({ x: 0, y: 0 })
   // Midpoint in viewport/client coords — current and at gesture start
@@ -691,7 +690,7 @@ export function usePdfAnnotateState() {
     activeTouchIdsRef, touchPositionsRef,
     // Pinch gesture (touch-event based)
     pinchActiveRef, pinchStartZoomRef, pinchStartDistRef,
-    pinchLocalZoomRef, pinchRafIdRef, pinchPendingRef, pinchZoomUnlockedRef,
+    pinchLocalZoomRef, pinchRafIdRef, pinchPendingRef,
     pinchOriginRef, pinchMidClientRef, pinchStartMidClientRef,
     pinchStartScrollRef, pinchContainerRectRef,
     // Active canvas pipeline
