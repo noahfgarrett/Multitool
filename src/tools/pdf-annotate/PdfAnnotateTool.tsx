@@ -1535,6 +1535,26 @@ export default function PdfAnnotateTool() {
       const hash = await computeFileHash(file)
       fileHashRef.current = hash
 
+      // Check for embedded annotation metadata (from "For Review" exports)
+      try {
+        const embeddedBytes = new Uint8Array(await pdf.file.arrayBuffer())
+        const embedded = await extractAnnotationData(embeddedBytes)
+        if (embedded?.version === 1 && embedded.annotations) {
+          setAnnotations(embedded.annotations as PageAnnotations)
+          if (embedded.measurements) setMeasurements(embedded.measurements as Record<number, Measurement[]>)
+          if (embedded.pageRotations) setPageRotations(embedded.pageRotations)
+          if (embedded.calibration) setCalibration(embedded.calibration as CalibrationState)
+          if (embedded.commentThreads) setCommentThreads(embedded.commentThreads as CommentThread[])
+          if (embedded.stickyNotes) setStickyNotes(embedded.stickyNotes as Record<number, StickyNote[]>)
+          if (embedded.polyMeasurements) setPolyMeasurements(embedded.polyMeasurements as Record<number, PolyMeasurement[]>)
+          if (embedded.countGroups) setCountGroups(embedded.countGroups as Record<number, CountGroup[]>)
+          historyRef.current = [structuredClone(embedded.annotations as PageAnnotations)]
+          historyIdxRef.current = 0
+          addToast({ type: 'success', message: `Restored ${Object.values(embedded.annotations as PageAnnotations).flat().length} annotations from review PDF` })
+          return
+        }
+      } catch { /* no embedded data or parse error — fall through to session restore */ }
+
       // Restore session if file matches
       const session = loadSession()
       const hashMatch = !session?.fileHash || session.fileHash === hash
