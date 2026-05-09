@@ -194,6 +194,7 @@ export const MAX_HISTORY = 50
 export const HANDLE_SIZE = 6
 export const DEFAULT_TEXTBOX_W = 200
 export const DEFAULT_TEXTBOX_H = 50
+export const DEFAULT_FONT_SIZE = 16
 export const ANN_COLORS = ['#000000', '#FF0000', '#14B8A6', '#FFFF00', '#22C55E', '#3B82F6', '#8B5CF6', '#EC4899', '#FFFFFF']
 export const HIGHLIGHT_COLORS = ['#FFFF00', '#22C55E', '#3B82F6', '#FF69B4', '#14B8A6']
 

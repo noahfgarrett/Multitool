@@ -7,7 +7,7 @@ import type {
   PolyMeasurement, CountGroup, CommentThread, StickyNote,
   HandleId,
 } from './types.ts'
-import { STAMP_PRESETS, STICKY_NOTE_COLORS, DRAW_TYPES, TEXT_TYPES, RENDER_SCALE } from './types.ts'
+import { STAMP_PRESETS, STICKY_NOTE_COLORS, DRAW_TYPES, TEXT_TYPES, RENDER_SCALE, DEFAULT_FONT_SIZE } from './types.ts'
 import { getUserProfile } from '@/utils/userProfile.ts'
 import type { UserProfile } from '@/utils/userProfile.ts'
 
@@ -119,7 +119,7 @@ export function usePdfAnnotateState() {
   const [color, setColor] = useState('#14B8A6')
   const [strokeWidth, setStrokeWidth] = useState(2)
   const [opacity, setOpacity] = useState(100)
-  const [fontSize, setFontSize] = useState(16)
+  const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE)
   const [zoom, setZoom] = useState(1.0)
   const [annotations, setAnnotations] = useState<PageAnnotations>({})
   const [layers, setLayers] = useState<AnnotationLayer[]>([
