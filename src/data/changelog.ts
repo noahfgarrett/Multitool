@@ -12,6 +12,27 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.4.0',
+    date: 'PLACEHOLDER',
+    type: 'feature',
+    stats: { features: 12, fixes: 30 },
+    notes: `### PDF Annotate — Quality of Life Mega-Pass
+- Image stamps and cloud shapes
+- Angle measurement tool
+- Volume and perimeter measurement
+- Edge snapping and precision snap mode
+- Highlighter and eraser visual feedback
+- Super/subscript and strikethrough text formatting
+- Dash patterns for shapes and lines
+- Fill color with adjustable opacity
+- Right-click context menu on annotations
+- Arrow key nudge for selected annotations
+- Bounding-box multi-select
+- Smooth pinch-to-zoom on mobile
+- Faster canvas sharpening after zoom
+- 30+ bug fixes across all annotation tools`,
+  },
+  {
     version: '4.3.0',
     date: '2026-05-09T12:20:43Z',
     type: 'feature',
