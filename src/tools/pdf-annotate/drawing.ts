@@ -598,7 +598,7 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, ann: Annotation, s
       ctx.strokeRect(sx + 3 * scale, sy + 3 * scale, sw - 6 * scale, sh - 6 * scale)
       // Text label — DATE stamp shows the current locale date
       const stampLabel = ann.stampType === 'DATE'
-        ? new Date().toLocaleDateString()
+        ? (ann.text || new Date().toLocaleDateString())
         : ann.stampType || 'STAMP'
       const targetFs = Math.min(sh * 0.42, 18 * scale)
       ctx.font = `bold ${targetFs}px Arial, sans-serif`

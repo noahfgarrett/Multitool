@@ -265,6 +265,29 @@ export async function buildAnnotatedPdfBytes(params: BuildAnnotatedPdfParams): P
             }
             break
           }
+          case 'polygon': {
+            if (ann.points.length < 3) break
+            const firstPoly = toPC(ann.points[0])
+            let polyPath = 'M 0 0'
+            for (let pi = 1; pi < ann.points.length; pi++) {
+              const pt = toPC(ann.points[pi])
+              polyPath += ` L ${pt.x - firstPoly.x} ${-(pt.y - firstPoly.y)}`
+            }
+            polyPath += ' Z'
+            if (ann.fillColor) {
+              const { r: fr, g: fg, b: fb } = parseHexColor(ann.fillColor)
+              page.drawSvgPath(polyPath, { x: firstPoly.x, y: firstPoly.y, color: rgb(fr, fg, fb), opacity: ann.opacity, borderWidth: 0 })
+            }
+            const polyDash = ann.dashPattern === 'dashed' ? [ann.strokeWidth * 3, ann.strokeWidth * 2]
+              : ann.dashPattern === 'dotted' ? [ann.strokeWidth, ann.strokeWidth * 2] : undefined
+            const polyOpts: Record<string, unknown> = {
+              x: firstPoly.x, y: firstPoly.y,
+              borderWidth: ann.strokeWidth, borderColor: c, borderOpacity: ann.opacity,
+            }
+            if (polyDash) polyOpts.borderDashArray = polyDash
+            page.drawSvgPath(polyPath, polyOpts as Parameters<typeof page.drawSvgPath>[1])
+            break
+          }
           case 'circle': {
             if (ann.points.length < 2) break
             const [c1, c2] = ann.points
@@ -440,7 +463,7 @@ export async function buildAnnotatedPdfBytes(params: BuildAnnotatedPdfParams): P
             })
             const stampFont = await getFont(ann.fontFamily || 'Arial', true, false)
             const stampLabel = ann.stampType === 'DATE'
-              ? new Date().toLocaleDateString()
+              ? (ann.text || new Date().toLocaleDateString())
               : ann.stampType || 'STAMP'
             const stampFs = Math.min(ann.height * 0.42, 18)
             const tw = stampFont.widthOfTextAtSize(stampLabel, stampFs)

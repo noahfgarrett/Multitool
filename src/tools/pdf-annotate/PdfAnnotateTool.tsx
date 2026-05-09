@@ -166,7 +166,7 @@ function rectsOverlap(
 // ── Annotation label helper ────────────────────────────
 
 function annLabel(ann: Annotation): string {
-  if (ann.stampType === 'DATE') return `Stamp: ${new Date().toLocaleDateString()}`
+  if (ann.stampType === 'DATE') return `Stamp: ${ann.text || new Date().toLocaleDateString()}`
   if (ann.stampType) return `Stamp: ${ann.stampType}`
   if (ann.text) return ann.text.slice(0, 30).replace(/\n/g, ' ')
   return ann.type.charAt(0).toUpperCase() + ann.type.slice(1)
@@ -2756,7 +2756,8 @@ export default function PdfAnnotateTool() {
     el.addEventListener('touchend', onTouchEnd)
     el.addEventListener('touchcancel', onTouchEnd)
     // Prevent native gesture zoom on the document (belt-and-suspenders)
-    document.addEventListener('gesturestart', (e: Event) => e.preventDefault(), { passive: false } as EventListenerOptions)
+    const onDocGesture = (e: Event) => e.preventDefault()
+    document.addEventListener('gesturestart', onDocGesture, { passive: false } as EventListenerOptions)
 
 
     return () => {
@@ -2767,6 +2768,7 @@ export default function PdfAnnotateTool() {
       el.removeEventListener('touchmove', onTouchMove)
       el.removeEventListener('touchend', onTouchEnd)
       el.removeEventListener('touchcancel', onTouchEnd)
+      document.removeEventListener('gesturestart', onDocGesture)
     }
   // Re-run when pdfFile changes — the scroll container doesn't exist
   // until a PDF is loaded (the component returns early with a file
@@ -3256,7 +3258,7 @@ export default function PdfAnnotateTool() {
         if (Math.hypot(pt.x - first.x, pt.y - first.y) < closeThreshold) {
           const pts = [...currentPtsRef.current]
           const ann: Annotation = {
-            id: genId(), type: 'cloud',
+            id: genId(), type: activeTool as 'cloud' | 'polygon',
             createdAt: Date.now(),
             points: pts, color, strokeWidth, opacity: opacity / 100, fontSize,
             ...(fillColor ? { fillColor } : {}),
@@ -3275,7 +3277,7 @@ export default function PdfAnnotateTool() {
       if (isDbl && currentPtsRef.current.length >= 3) {
         const pts = [...currentPtsRef.current]
         const ann: Annotation = {
-          id: genId(), type: 'cloud',
+          id: genId(), type: activeTool as 'cloud' | 'polygon',
           createdAt: Date.now(),
           points: pts, color, strokeWidth, opacity: opacity / 100, fontSize,
           ...(fillColor ? { fillColor } : {}),
@@ -3472,6 +3474,7 @@ export default function PdfAnnotateTool() {
         height: 40,
         stampType: activeStampPreset.label,
         backgroundColor: activeStampPreset.bg,
+        ...(isDateStamp ? { text: new Date().toLocaleDateString() } : {}),
       }
       commitAnnotation(ann)
       setSelectedAnnId(ann.id)

@@ -122,6 +122,7 @@ export function StampLibrary({ onSelectStamp, onClose }: StampLibraryProps): Rea
   const [signatureName, setSignatureName] = useState('')
   const sigCanvasRef = useRef<HTMLCanvasElement>(null)
   const sigDrawingRef = useRef(false)
+  const [sigHasStrokes, setSigHasStrokes] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
@@ -236,6 +237,7 @@ export function StampLibrary({ onSelectStamp, onClose }: StampLibraryProps): Rea
     const y = (e.clientY - rect.top) * (canvas.height / rect.height)
     ctx.lineTo(x, y)
     ctx.stroke()
+    setSigHasStrokes(true)
   }, [])
 
   const handleSigPointerUp = useCallback(() => {
@@ -244,6 +246,7 @@ export function StampLibrary({ onSelectStamp, onClose }: StampLibraryProps): Rea
 
   const handleSigClear = useCallback(() => {
     initSigCanvas()
+    setSigHasStrokes(false)
   }, [initSigCanvas])
 
   const handleSigSave = useCallback(async () => {
@@ -533,7 +536,7 @@ export function StampLibrary({ onSelectStamp, onClose }: StampLibraryProps): Rea
                     size="sm"
                     icon={<Save size={14} />}
                     onClick={() => { void handleSigSave() }}
-                    disabled={isSaving}
+                    disabled={isSaving || !sigHasStrokes}
                   >
                     {isSaving ? 'Saving...' : 'Save'}
                   </Button>
