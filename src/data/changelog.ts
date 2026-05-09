@@ -12,6 +12,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.3.0',
+    date: 'PLACEHOLDER',
+    type: 'feature',
+    stats: { features: 6, fixes: 3 },
+    notes: `### Org Chart — Typed Connectors & Legend
+- Custom connector types with configurable colors and labels
+- Connect mode for drawing edges between nodes
+- Click or shift-drag to select edges on the canvas
+- Connector types modal for renaming and recoloring
+- Legend rendering in PNG and SVG exports
+- CSV secondary column support
+- New Matrix Organization template`,
+  },
+  {
     version: '4.0.27',
     date: '2026-04-10T17:49:30Z',
     type: 'feature',
