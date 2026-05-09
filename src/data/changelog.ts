@@ -12,6 +12,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.4.1',
+    date: 'PLACEHOLDER',
+    type: 'fix',
+    stats: { fixes: 2 },
+    notes: `### PDF Annotate
+- Freehand pencil strokes no longer change shape after drawing
+- Removed auto shape recognition from pencil tool`,
+  },
+  {
     version: '4.4.0',
     date: '2026-05-09T18:34:39Z',
     type: 'feature',

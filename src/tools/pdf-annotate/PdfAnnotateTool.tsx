@@ -51,7 +51,7 @@ import {
   pathHitsCircle, splitPathByEraser, shapeToPolyline, getAnnotationBounds,
   snapToContent, rotatePoint,
   isPointInAnyTextItem, findIntersectingTextItems, flowSelectTextItems,
-  hitTestMeasurementLabel, alignAnnotations, decimatePoints,
+  hitTestMeasurementLabel, alignAnnotations,
 } from './geometry.ts'
 import type { AlignmentType } from './geometry.ts'
 import {
@@ -64,7 +64,6 @@ import { drawPolylength, drawAreaPolygon, drawAngleMeasurement, drawCountMarker,
 import { printAnnotatedPDF } from './printUtil.ts'
 import { exportMeasurementsToCSV, gatherMeasurementData } from './csvExport.ts'
 import { drawStickyNotePin, drawStickyNoteExpanded, hitTestStickyNote } from './stickyNoteDrawing.ts'
-import { recognizeShape } from './shapeRecognizer.ts'
 import { ChatBubble } from './ChatBubble.tsx'
 import CommentsPanel from './CommentsPanel.tsx'
 import { ExportModal } from './ExportModal.tsx'
@@ -353,7 +352,6 @@ export default function PdfAnnotateTool() {
     zoomDropdownOpen, setZoomDropdownOpen,
     recentColors, addRecentColor,
     straightLineMode, setStraightLineMode,
-    smoothingLevel, setSmoothingLevel,
     fillColor, setFillColor, cornerRadius, setCornerRadius,
     dashPattern, setDashPattern, arrowStart, setArrowStart,
     eraserRadius, setEraserRadius, eraserMode, setEraserMode,
@@ -4704,45 +4702,7 @@ export default function PdfAnnotateTool() {
     const isHL = activeTool === 'highlighter'
     const isPencilOrHL = activeTool === 'pencil' || isHL
 
-    // Shape recognition: try to auto-convert pencil strokes into shapes
-    if (activeTool === 'pencil') {
-      const recognized = recognizeShape(pts)
-      if (recognized) {
-        const { name, bounds } = recognized
-        const shapePts: Point[] = name === 'line' || name === 'arrow'
-          ? [{ x: bounds.x, y: bounds.y + bounds.height / 2 }, { x: bounds.x + bounds.width, y: bounds.y + bounds.height / 2 }]
-          : [{ x: bounds.x, y: bounds.y }, { x: bounds.x + bounds.width, y: bounds.y + bounds.height }]
-        const shapeAnn: Annotation = {
-          id: genId(),
-          createdAt: Date.now(),
-          type: name === 'triangle' ? 'pencil' : name,
-          points: name === 'triangle' ? pts : shapePts,
-          color,
-          strokeWidth,
-          opacity: opacity / 100,
-          fontSize,
-          ...(dashPattern !== 'solid' ? { dashPattern } : {}),
-          ...(activeLayerId !== 'default' ? { layerId: activeLayerId } : {}),
-        }
-        currentPtsRef.current = []
-        currentPressureRef.current = []
-        commitAnnotation(shapeAnn)
-        setSelectedAnnId(shapeAnn.id)
-        const shapeLabel = name.charAt(0).toUpperCase() + name.slice(1)
-        addToast({ type: 'info', message: `Recognized as ${shapeLabel}`, duration: 1500 })
-        return
-      }
-    }
-
-    // Apply RDP path smoothing for pencil strokes based on smoothing level
-    // Highlighter uses raw points (no decimation) so committed path exactly matches in-progress
-    let finalPts: Point[]
-    if (activeTool === 'pencil' && smoothingLevel > 0 && pts.length > 2) {
-      const epsilon = (smoothingLevel / 100) * 3
-      finalPts = decimatePoints([...pts], epsilon)
-    } else {
-      finalPts = [...pts]
-    }
+    const finalPts = [...pts]
     const ann: Annotation = {
       id: genId(),
       createdAt: Date.now(),
@@ -4767,7 +4727,7 @@ export default function PdfAnnotateTool() {
     if (activeTool !== 'pencil' && activeTool !== 'highlighter') {
       setSelectedAnnId(ann.id)
     }
-  }, [activeTool, color, strokeWidth, opacity, fontSize, fillColor, cornerRadius, dashPattern, arrowStart, commitAnnotation, smoothingLevel,
+  }, [activeTool, color, strokeWidth, opacity, fontSize, fillColor, cornerRadius, dashPattern, arrowStart, commitAnnotation,
       pushHistory, redrawPage, annotations, getAnnotation, updateAnnotation, selectedAnnId, addToast, getActiveCtx, pencilOnlyMode,
       fontFamily, bold, italic, underline, strikethrough, textAlign, superscript, subscript, listType, textBgColor, lineSpacing,
       activeLayerId, layers, pageRotations])
@@ -5554,17 +5514,6 @@ export default function PdfAnnotateTool() {
             }`}>
             {straightLineMode ? 'Straight' : 'Free'}
           </button>
-        )}
-
-        {/* Smoothing level — pencil only */}
-        {activeTool === 'pencil' && (
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-white/40">Smooth</span>
-            <input type="range" min="0" max="100" value={smoothingLevel}
-              onChange={e => setSmoothingLevel(Number(e.target.value))}
-              className="w-16 h-1 accent-teal-400" />
-            <span className="text-[10px] text-white/40 w-6">{smoothingLevel}%</span>
-          </div>
         )}
 
         {/* Text formatting controls */}
