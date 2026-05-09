@@ -33,6 +33,7 @@ export function drawCloudEdge(
 // ── Catmull-Rom path smoothing ───────────────────────
 
 export function drawSmoothPath(ctx: CanvasRenderingContext2D, pts: Point[], scale: number) {
+  if (pts.length === 0) return
   if (pts.length < 3) {
     ctx.beginPath()
     ctx.moveTo(pts[0].x * scale, pts[0].y * scale)
@@ -508,7 +509,7 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, ann: Annotation, s
         const padding = 4 * scale
         const availW = bw - padding * 2
         for (let i = 0; i < lines.length; i++) {
-          const lineY = by + padding + (cYOffset * scale) + lineH * i * scale
+          const lineY = by + padding + (cYOffset + lineH * i) * scale
           let lineX = bx + padding
 
           // Justify alignment for callout (except last line)

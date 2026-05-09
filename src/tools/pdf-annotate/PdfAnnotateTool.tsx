@@ -2339,7 +2339,7 @@ export default function PdfAnnotateTool() {
   // ── Close dropdowns on outside click (single shared listener) ──
 
   useEffect(() => {
-    if (!shapesDropdownOpen && !textDropdownOpen && !zoomDropdownOpen && !stampDropdownOpen) return
+    if (!shapesDropdownOpen && !textDropdownOpen && !zoomDropdownOpen && !stampDropdownOpen && !measureDropdownOpen) return
     const handler = (e: PointerEvent) => {
       const t = e.target as Node
       if (shapesDropdownOpen && shapesDropdownRef.current && !shapesDropdownRef.current.contains(t)) setShapesDropdownOpen(false)
@@ -2350,7 +2350,7 @@ export default function PdfAnnotateTool() {
     }
     document.addEventListener('pointerdown', handler)
     return () => document.removeEventListener('pointerdown', handler)
-  }, [shapesDropdownOpen, textDropdownOpen, zoomDropdownOpen, stampDropdownOpen])
+  }, [shapesDropdownOpen, textDropdownOpen, zoomDropdownOpen, stampDropdownOpen, measureDropdownOpen])
 
   // ── Cache text items for text highlight and find ───────────────
   // Phase 1: extract embedded text via pdf.js. Phase 2 (OCR): if a page has
@@ -3710,7 +3710,7 @@ export default function PdfAnnotateTool() {
   }, [getPointForPage, activeTool, annotations, editingTextId, selectedAnnId, selectTextToolbar,
       commitTextEditing, commitAnnotation, getAnnotation, findTextAnnotationAt, findCalloutAt, findAnnotationAt, redrawPage, scheduleRender,
       eraserRadius, eraserMode, zoom, color, strokeWidth, fontSize, opacity, fontFamily, bold, italic, underline, textAlign,
-      activeStampPreset, pencilOnlyMode])
+      activeStampPreset, pencilOnlyMode, selectedAnnIds])
 
   const handlePointerMove = useCallback((e: React.PointerEvent, pageNum: number) => {
     // Track cursor position for hover tooltip — update DOM directly to avoid re-renders on every move
@@ -4404,7 +4404,7 @@ export default function PdfAnnotateTool() {
       currentPtsRef.current = [p0, p1]
       scheduleRender()
     }
-  }, [getPointForPage, activeTool, annotations, redrawPage, eraserRadius, eraserMode, zoom, straightLineMode, selectedAnnId, findAnnotationAt, zoomAtCenter, zoomAtPoint, pencilOnlyMode, scheduleRender])
+  }, [getPointForPage, activeTool, annotations, redrawPage, eraserRadius, eraserMode, zoom, straightLineMode, selectedAnnId, selectedAnnIds, findAnnotationAt, zoomAtCenter, zoomAtPoint, pencilOnlyMode, scheduleRender])
 
   const handlePointerUp = useCallback((e?: React.PointerEvent) => {
     // Clean up touch tracking
@@ -4730,15 +4730,15 @@ export default function PdfAnnotateTool() {
       const scanPage = ap
       setOcrRegionScanning(true)
       ;(async () => {
+        let worker: Awaited<ReturnType<typeof Tesseract.createWorker>> | null = null
         try {
           const rotation = pageRotations[scanPage] || 0
           const canvas = document.createElement('canvas')
           await renderPageToCanvas(pdfFile, scanPage, canvas, 2.0, rotation)
-          const worker = await Tesseract.createWorker('eng')
+          worker = await Tesseract.createWorker('eng')
           const result = await worker.recognize(canvas, {
             rectangle: { left: Math.round(scanRegion.x * 2), top: Math.round(scanRegion.y * 2), width: Math.round(scanRegion.w * 2), height: Math.round(scanRegion.h * 2) },
           }, { text: true })
-          await worker.terminate()
           canvas.width = 0
           canvas.height = 0
           const text = (result.data.text ?? '').trim()
@@ -4754,6 +4754,7 @@ export default function PdfAnnotateTool() {
           ocrRegionPreviewRef.current = null
           redrawPage(scanPage)
         } finally {
+          await worker?.terminate()
           setOcrRegionScanning(false)
         }
       })()
@@ -5095,6 +5096,10 @@ export default function PdfAnnotateTool() {
     setCommentsPanelOpen(false)
     setExportModalOpen(false)
     setEmailModalOpen(false)
+    setLayers([{ id: 'default', name: 'Default', visible: true, color: '#6B7280' }])
+    setActiveLayerId('default')
+    setLayersPanelOpen(false)
+    setSelectedAnnIds(new Set())
   }, [])
 
   // ── Render ───────────────────────────────────────────
@@ -5228,16 +5233,6 @@ export default function PdfAnnotateTool() {
           the document + right drawer + corner exit button are visible). */}
       {!isMobile && !focusMode && (
       <div className="flex items-center gap-1 px-3 py-1 border-b border-white/[0.06] flex-shrink-0">
-        {focusMode && (
-          <button
-            onClick={() => { setFocusMode(false); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}) }}
-            className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs text-white/50 hover:text-white/80 hover:bg-white/[0.06] mr-1"
-            title="Exit focus mode"
-          >
-            <Minimize2 size={12} />
-            <span>Exit</span>
-          </button>
-        )}
         {/* Sidebar toggle */}
         {pdfFile.pageCount > 1 && (
           <>
@@ -5425,14 +5420,18 @@ export default function PdfAnnotateTool() {
           {isPrinting ? 'Printing...' : 'Print'}
         </Button>
         <Button variant="ghost" size="sm" onClick={async () => {
-          const reportBytes = await generateMarkupReport({
-            fileName: pdfFile.name,
-            pageCount: pdfFile.pageCount,
-            pageRefsMap: pageRefsMap.current,
-            annotations, measurements, polyMeasurements, countGroups,
-            commentThreads, stickyNotes, calibration,
-          })
-          downloadBlob(new Blob([reportBytes], { type: 'application/pdf' }), `report-${pdfFile.name}`)
+          try {
+            const reportBytes = await generateMarkupReport({
+              fileName: pdfFile.name,
+              pageCount: pdfFile.pageCount,
+              pageRefsMap: pageRefsMap.current,
+              annotations, measurements, polyMeasurements, countGroups,
+              commentThreads, stickyNotes, calibration,
+            })
+            downloadBlob(new Blob([reportBytes], { type: 'application/pdf' }), `report-${pdfFile.name}`)
+          } catch {
+            addToast({ type: 'error', message: 'Report generation failed' })
+          }
         }} icon={<FileText size={12} />}>
           Report
         </Button>
@@ -5606,9 +5605,10 @@ export default function PdfAnnotateTool() {
               <label className="w-5 h-5 rounded cursor-pointer border border-white/[0.1] overflow-hidden flex-shrink-0" style={{ backgroundColor: fillColor }}>
                 <input type="color" value={fillColor.slice(0, 7)}
                   onChange={e => {
-                    setFillColor(e.target.value)
+                    const fc = e.target.value + fillColor.slice(7)
+                    setFillColor(fc)
                     addRecentColor(e.target.value)
-                    if (selectedAnnId) updateAnnotation(selectedAnnId, { fillColor: e.target.value })
+                    if (selectedAnnId) updateAnnotation(selectedAnnId, { fillColor: fc })
                   }}
                   className="opacity-0 w-0 h-0"
                 />
@@ -7727,7 +7727,11 @@ export default function PdfAnnotateTool() {
             <span className="text-xs font-semibold text-white/70">Layers</span>
             <button onClick={() => {
               const id = crypto.randomUUID()
-              const name = `Layer ${layers.length}`
+              const maxNum = layers.reduce((max, l) => {
+                const m = l.name.match(/^Layer (\d+)$/)
+                return m ? Math.max(max, parseInt(m[1], 10)) : max
+              }, 0)
+              const name = `Layer ${maxNum + 1}`
               setLayers(prev => [...prev, { id, name, visible: true, color: '#3B82F6' }])
             }} className="p-0.5 text-white/40 hover:text-white rounded" title="Add layer">
               <Plus size={12} />
@@ -8011,14 +8015,7 @@ export default function PdfAnnotateTool() {
               addToast({ type: 'error', message: 'Report failed' })
             }
           }}
-          onNew={() => {
-            if (confirm('Discard all annotations and start over?')) {
-              setPdfFile(null)
-              setAnnotations({})
-              setMeasurements({})
-              clearSession()
-            }
-          }}
+          onNew={handleReset}
           onExport={() => setExportModalOpen(true)}
           focusMode={focusMode}
           onToggleFocus={() => {
