@@ -6,6 +6,7 @@ interface ColorPickerProps {
   onChange: (color: string) => void
   label?: string
   presets?: string[]
+  recentColors?: string[]
 }
 
 const defaultPresets = [
@@ -22,6 +23,7 @@ export const ColorPicker = memo(function ColorPicker({
   onChange,
   label,
   presets = defaultPresets,
+  recentColors,
 }: ColorPickerProps) {
   const [showHex, setShowHex] = useState(false)
 
@@ -94,6 +96,26 @@ export const ColorPicker = memo(function ColorPicker({
           {showHex ? value : '#'}
         </button>
       </div>
+
+      {/* Recent colors */}
+      {recentColors && recentColors.length > 0 && (
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9px] flex-shrink-0" style={{ color: 'var(--text-disabled)' }}>Recent</span>
+          {recentColors.map(rc => (
+            <button
+              key={rc}
+              onClick={() => onChange(rc)}
+              className="w-4 h-4 rounded-full transition-all duration-150"
+              style={{
+                backgroundColor: rc,
+                border: value === rc ? '1.5px solid var(--text-muted)' : '1px solid var(--border-subtle)',
+                transform: value === rc ? 'scale(1.15)' : undefined,
+              }}
+              title={rc}
+            />
+          ))}
+        </div>
+      )}
 
       {showHex && (
         <input
