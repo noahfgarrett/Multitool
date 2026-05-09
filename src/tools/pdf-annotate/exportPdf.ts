@@ -439,7 +439,9 @@ export async function buildAnnotatedPdfBytes(params: BuildAnnotatedPdfParams): P
               borderColor: c, borderWidth: 1.5, opacity: ann.opacity,
             })
             const stampFont = await getFont(ann.fontFamily || 'Arial', true, false)
-            const stampLabel = ann.stampType || 'STAMP'
+            const stampLabel = ann.stampType === 'DATE'
+              ? new Date().toLocaleDateString()
+              : ann.stampType || 'STAMP'
             const stampFs = Math.min(ann.height * 0.42, 18)
             const tw = stampFont.widthOfTextAtSize(stampLabel, stampFs)
             const sp = toPC({ x: ann.points[0].x + ann.width / 2, y: ann.points[0].y + ann.height / 2 })

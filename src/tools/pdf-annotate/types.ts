@@ -68,7 +68,7 @@ export interface Measurement {
 // ── Expanded Measurement Types ──────────────────────
 
 /** Measurement modes for the expanded measurement dropdown */
-export type MeasureMode = 'distance' | 'polylength' | 'area' | 'count'
+export type MeasureMode = 'distance' | 'polylength' | 'area' | 'count' | 'angle'
 
 /** Expanded measurement type (supports distance, polylength, area, and count) */
 export interface PolyMeasurement {
@@ -203,6 +203,7 @@ export const MEASURE_MODES: { mode: MeasureMode; label: string }[] = [
   { mode: 'polylength', label: 'Polylength' },
   { mode: 'area', label: 'Area / Perimeter' },
   { mode: 'count', label: 'Count' },
+  { mode: 'angle', label: 'Angle' },
 ]
 export const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0] as const
 
@@ -268,6 +269,7 @@ export const STAMP_PRESETS = [
   { label: 'REVIEWED', color: '#7c3aed', bg: '#f5f3ff' },
   { label: 'VOID', color: '#ea580c', bg: '#fff7ed' },
   { label: 'FOR REVIEW', color: '#ca8a04', bg: '#fefce8' },
+  { label: 'DATE', color: '#0d9488', bg: '#f0fdfa' },
 ]
 
 export const CURSOR_MAP: Record<ToolType, string> = {

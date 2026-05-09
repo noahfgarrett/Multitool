@@ -596,8 +596,10 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, ann: Annotation, s
       ctx.strokeRect(sx, sy, sw, sh)
       // Inner border
       ctx.strokeRect(sx + 3 * scale, sy + 3 * scale, sw - 6 * scale, sh - 6 * scale)
-      // Text label
-      const stampLabel = ann.stampType || 'STAMP'
+      // Text label — DATE stamp shows the current locale date
+      const stampLabel = ann.stampType === 'DATE'
+        ? new Date().toLocaleDateString()
+        : ann.stampType || 'STAMP'
       const targetFs = Math.min(sh * 0.42, 18 * scale)
       ctx.font = `bold ${targetFs}px Arial, sans-serif`
       ctx.textAlign = 'center'
@@ -626,29 +628,31 @@ export function drawSelectionUI(ctx: CanvasRenderingContext2D, ann: Annotation, 
   const sw = bounds.w * scale, sh = bounds.h * scale
 
   ctx.save()
-  ctx.strokeStyle = '#3B82F6'
+  ctx.strokeStyle = 'rgba(34, 211, 238, 0.6)'
   ctx.lineWidth = 1.5
   ctx.setLineDash([4, 3])
   ctx.strokeRect(sx, sy, sw, sh)
   ctx.setLineDash([])
 
   if (showHandles) {
+    // Polished resize handles: 8x8 white squares with teal border
+    const hs = 4 // half-size = 4px → 8px total
     if (ann.type === 'text' || ann.type === 'callout') {
       const handles = getHandles(sx, sy, sw, sh)
       ctx.fillStyle = '#ffffff'
-      ctx.strokeStyle = '#3B82F6'
+      ctx.strokeStyle = 'rgba(34, 211, 238, 0.8)'
       ctx.lineWidth = 1.5
       for (const h of handles) {
-        ctx.fillRect(h.x - HANDLE_SIZE / 2, h.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE)
-        ctx.strokeRect(h.x - HANDLE_SIZE / 2, h.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE)
+        ctx.fillRect(h.x - hs, h.y - hs, hs * 2, hs * 2)
+        ctx.strokeRect(h.x - hs, h.y - hs, hs * 2, hs * 2)
       }
     } else if (ann.type === 'line' || ann.type === 'arrow') {
       ctx.fillStyle = '#ffffff'
-      ctx.strokeStyle = '#3B82F6'
+      ctx.strokeStyle = 'rgba(34, 211, 238, 0.8)'
       ctx.lineWidth = 1.5
       for (const p of ann.points.slice(0, 2)) {
         ctx.beginPath()
-        ctx.arc(p.x * scale, p.y * scale, HANDLE_SIZE / 2 + 1, 0, Math.PI * 2)
+        ctx.arc(p.x * scale, p.y * scale, hs + 1, 0, Math.PI * 2)
         ctx.fill()
         ctx.stroke()
       }

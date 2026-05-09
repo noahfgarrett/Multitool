@@ -31,6 +31,7 @@ import {
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignHorizontalSpaceBetween, AlignVerticalSpaceBetween,
+  Save, FolderOpen,
 } from 'lucide-react'
 
 // ── Extracted modules ─────────────────────────────────
@@ -50,7 +51,7 @@ import {
   pathHitsCircle, splitPathByEraser, shapeToPolyline, getAnnotationBounds,
   snapToContent, rotatePoint,
   isPointInAnyTextItem, findIntersectingTextItems, flowSelectTextItems,
-  hitTestMeasurementLabel, alignAnnotations,
+  hitTestMeasurementLabel, alignAnnotations, decimatePoints,
 } from './geometry.ts'
 import type { AlignmentType } from './geometry.ts'
 import {
@@ -59,10 +60,11 @@ import {
 import { snapToEdge } from './edgeSnapping.ts'
 import { computeSnapGuides, boundsFromRect } from './snapGuides.ts'
 import type { SnapGuide } from './snapGuides.ts'
-import { drawPolylength, drawAreaPolygon, drawCountMarker, drawCountGroupSummary } from './measurementDrawing.ts'
+import { drawPolylength, drawAreaPolygon, drawAngleMeasurement, drawCountMarker, drawCountGroupSummary } from './measurementDrawing.ts'
 import { printAnnotatedPDF } from './printUtil.ts'
 import { exportMeasurementsToCSV, gatherMeasurementData } from './csvExport.ts'
 import { drawStickyNotePin, drawStickyNoteExpanded, hitTestStickyNote } from './stickyNoteDrawing.ts'
+import { recognizeShape } from './shapeRecognizer.ts'
 import { ChatBubble } from './ChatBubble.tsx'
 import CommentsPanel from './CommentsPanel.tsx'
 import { ExportModal } from './ExportModal.tsx'
@@ -141,9 +143,30 @@ const ThumbnailItem = memo(function ThumbnailItem({ pageNum, thumbnail, isCurren
   )
 })
 
+// ── Highlight rect overlap test ───────────────────────
+
+type HlRect = { x: number; y: number; w: number; h: number }
+
+function twoRectsOverlap(a: HlRect, b: HlRect): boolean {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y
+}
+
+function rectsOverlap(
+  existingRects: HlRect[],
+  newRects: HlRect[],
+): boolean {
+  for (const nr of newRects) {
+    for (const er of existingRects) {
+      if (twoRectsOverlap(nr, er)) return true
+    }
+  }
+  return false
+}
+
 // ── Annotation label helper ────────────────────────────
 
 function annLabel(ann: Annotation): string {
+  if (ann.stampType === 'DATE') return `Stamp: ${new Date().toLocaleDateString()}`
   if (ann.stampType) return `Stamp: ${ann.stampType}`
   if (ann.text) return ann.text.slice(0, 30).replace(/\n/g, ' ')
   return ann.type.charAt(0).toUpperCase() + ann.type.slice(1)
@@ -328,11 +351,13 @@ export default function PdfAnnotateTool() {
     exportWatermark, setExportWatermark,
     exportWatermarkOpacity, setExportWatermarkOpacity,
     zoomDropdownOpen, setZoomDropdownOpen,
+    recentColors, addRecentColor,
     straightLineMode, setStraightLineMode,
+    smoothingLevel, setSmoothingLevel,
     fillColor, setFillColor, cornerRadius, setCornerRadius,
     dashPattern, setDashPattern, arrowStart, setArrowStart,
     eraserRadius, setEraserRadius, eraserMode, setEraserMode,
-    eraserModsRef, canvasSnapshotRef,
+    eraserModsRef, eraserHoverIdsRef, canvasSnapshotRef,
     pageRotations, setPageRotations,
     selectedAnnId, setSelectedAnnId,
     selectedAnnIds, setSelectedAnnIds,
@@ -365,6 +390,7 @@ export default function PdfAnnotateTool() {
     countGroupColor, setCountGroupColor,
     edgeSnappingEnabled, setEdgeSnappingEnabled,
     precisionSnapMode, setPrecisionSnapMode,
+    measureSnapActiveRef,
     isPrinting, setIsPrinting,
     commentThreads, setCommentThreads,
     stickyNotes, setStickyNotes,
@@ -549,11 +575,20 @@ export default function PdfAnnotateTool() {
     const pageAnns = (annotations[pageNum] || [])
       .filter(a => !isActive || !mods.removed.has(a.id))
       .filter(a => !a.layerId || !hiddenLayerIds.has(a.layerId))
+    const eraserHovering = activeTool === 'eraser' && eraserHoverIdsRef.current.size > 0
     for (const ann of pageAnns) {
       // Hide canvas-drawn text/callout while textarea overlay is active (Konva.js pattern)
       const isBeingEdited = ann.id === editingTextIdRef.current && (ann.type === 'text' || ann.type === 'callout')
       if (!isBeingEdited) {
+        // Dim annotations under the eraser cursor
+        if (eraserHovering && eraserHoverIdsRef.current.has(ann.id)) {
+          ctx.save()
+          ctx.globalAlpha = 0.3
+        }
         drawAnnotation(ctx, ann, rs)
+        if (eraserHovering && eraserHoverIdsRef.current.has(ann.id)) {
+          ctx.restore()
+        }
         // Render image stamp content (drawAnnotation only draws placeholder border)
         if (ann.type === 'imageStamp' && ann.imageDataUrl && ann.points.length >= 2) {
           let img = imageStampCacheRef.current.get(ann.id)
@@ -676,6 +711,8 @@ export default function PdfAnnotateTool() {
         drawPolylength(ctx, pm.points, rs, calibration, isActive)
       } else if (pm.mode === 'area') {
         drawAreaPolygon(ctx, pm.points, rs, calibration, pm.closed ?? true, isActive, pm.depth)
+      } else if (pm.mode === 'angle') {
+        drawAngleMeasurement(ctx, pm.points, rs, isActive)
       }
     }
 
@@ -1012,6 +1049,26 @@ export default function PdfAnnotateTool() {
       if (polyPreviewRef.current) pts.push(polyPreviewRef.current)
       drawAreaPolygon(actCtx, pts, rs, calibration, false, false)
     }
+    // In-progress angle preview
+    if (activeTool === 'measure' && measureMode === 'angle' && polyPointsRef.current.length > 0) {
+      const pts = [...polyPointsRef.current]
+      if (polyPreviewRef.current) pts.push(polyPreviewRef.current)
+      drawAngleMeasurement(actCtx, pts, rs, false)
+    }
+
+    // Edge snap visual indicator (teal dot at snap point during measurement preview)
+    if (activeTool === 'measure' && measureSnapActiveRef.current) {
+      const sp = measureSnapActiveRef.current
+      actCtx.save()
+      actCtx.beginPath()
+      actCtx.arc(sp.x * rs, sp.y * rs, 4, 0, Math.PI * 2)
+      actCtx.fillStyle = 'rgba(34, 211, 238, 0.8)'
+      actCtx.fill()
+      actCtx.strokeStyle = 'white'
+      actCtx.lineWidth = 1.2
+      actCtx.stroke()
+      actCtx.restore()
+    }
 
     // OCR Region in-progress preview
     if (activeTool === 'ocrRegion' && ocrRegionPreviewRef.current) {
@@ -1141,7 +1198,8 @@ export default function PdfAnnotateTool() {
     setSelectedAnnIds(new Set())
     setEditingTextId(null)
     requestAnimationFrame(() => redrawAll())
-  }, [redrawAll])
+    addToast({ type: 'info', message: 'Undone', duration: 1000 })
+  }, [redrawAll, addToast])
 
   const redo = useCallback(() => {
     if (historyIdxRef.current >= historyRef.current.length - 1) return
@@ -1152,7 +1210,8 @@ export default function PdfAnnotateTool() {
     setSelectedAnnIds(new Set())
     setEditingTextId(null)
     requestAnimationFrame(() => redrawAll())
-  }, [redrawAll])
+    addToast({ type: 'info', message: 'Redone', duration: 1000 })
+  }, [redrawAll, addToast])
 
   // ── Alignment & distribution ────────────────────────
 
@@ -2217,6 +2276,7 @@ export default function PdfAnnotateTool() {
     setMeasureDropdownOpen(false)
     setStraightLineMode(false)
     if (eraserCursorDivRef.current) eraserCursorDivRef.current.style.display = 'none'
+    eraserHoverIdsRef.current = new Set()
     setSelectedAnnId(null)
     setSelectedAnnIds(new Set())
     setSelectedArrowIdx(null)
@@ -3002,6 +3062,24 @@ export default function PdfAnnotateTool() {
         return
       }
 
+      // ── Angle mode (three clicks: A, B=vertex, C) ──
+      if (measureMode === 'angle') {
+        const pts = polyPointsRef.current
+        if (pts.length >= 2) {
+          // Third click: commit the angle measurement
+          const pm: PolyMeasurement = { id: crypto.randomUUID(), mode: 'angle', points: [pts[0], pts[1], snappedPt], page: pageNum }
+          setPolyMeasurements(prev => ({ ...prev, [pageNum]: [...(prev[pageNum] || []), pm] }))
+          polyPointsRef.current = []
+          polyPreviewRef.current = null
+          setSelectedMeasureId(pm.id)
+          redrawPage(pageNum)
+          return
+        }
+        pts.push(snappedPt)
+        redrawPage(pageNum)
+        return
+      }
+
       // ── Count mode ──
       if (measureMode === 'count') {
         if (!activeCountGroup) {
@@ -3379,16 +3457,18 @@ export default function PdfAnnotateTool() {
 
     // ── Stamp tool: click to place ──
     if (activeTool === 'stamp') {
+      const isDateStamp = activeStampPreset.label === 'DATE'
+      const stampW = isDateStamp ? 150 : 120
       const ann: Annotation = {
         id: genId(),
         createdAt: Date.now(),
         type: 'stamp',
-        points: [{ x: pt.x - 60, y: pt.y - 20 }],
+        points: [{ x: pt.x - stampW / 2, y: pt.y - 20 }],
         color: activeStampPreset.color,
         strokeWidth: 2,
         opacity: opacity / 100,
         fontSize: 16,
-        width: 120,
+        width: stampW,
         height: 40,
         stampType: activeStampPreset.label,
         backgroundColor: activeStampPreset.bg,
@@ -3558,6 +3638,7 @@ export default function PdfAnnotateTool() {
 
     if (activeTool === 'eraser') {
       eraserModsRef.current = { removed: new Set(), added: [] }
+      eraserHoverIdsRef.current = new Set()
       // eraserRadius is the visual cursor radius in VIEWPORT CSS pixels.
       // The document renders inside a CSS `transform: scale(zoom)` wrapper,
       // so 1 viewport CSS pixel = 1/zoom doc CSS pixels. The old formula
@@ -3655,17 +3736,65 @@ export default function PdfAnnotateTool() {
       style.top = `${e.clientY - eraserRadius}px`
       style.width = `${size}px`
       style.height = `${size}px`
+
+      // Eraser hover feedback: hit-test annotations under cursor when not actively erasing
+      if (!isDrawingRef.current) {
+        const hoverPt = getPointForPage(ap, e)
+        const docRadius = eraserRadius / zoom
+        const pageAnns = annotations[ap] || []
+        const newHoverIds = new Set<string>()
+        for (const ann of pageAnns) {
+          if ((ann.type === 'pencil' || ann.type === 'highlighter') && !ann.rects) {
+            const effectiveR = docRadius + ann.strokeWidth / 2
+            if (pathHitsCircle(ann.points, hoverPt, effectiveR)) newHoverIds.add(ann.id)
+          } else if (hitTest(hoverPt, ann, docRadius)) {
+            newHoverIds.add(ann.id)
+          }
+        }
+        // Only redraw if the hover set changed
+        const prev = eraserHoverIdsRef.current
+        if (newHoverIds.size !== prev.size || [...newHoverIds].some(id => !prev.has(id))) {
+          eraserHoverIdsRef.current = newHoverIds
+          redrawPage(ap)
+        }
+      }
     }
 
-    // Measure tool: track cursor for preview line
+    // Measure tool: track cursor for preview line (apply edge snapping to preview)
     if (activeTool === 'measure') {
       if (measureMode === 'distance' && measureStartRef.current) {
-        measurePreviewRef.current = getPointForPage(ap, e)
+        let previewPt = getPointForPage(ap, e)
+        measureSnapActiveRef.current = null
+        if (edgeSnappingEnabled) {
+          const pdfCanvas = pageRefsMap.current.get(ap)?.pdfCanvas
+          if (pdfCanvas) {
+            const rs = pageRenderScaleRef.current.get(ap) ?? RENDER_SCALE
+            const snapResult = snapToEdge(pdfCanvas, previewPt, rs, precisionSnapMode)
+            if (snapResult.snapped) {
+              previewPt = snapResult.point
+              measureSnapActiveRef.current = previewPt
+            }
+          }
+        }
+        measurePreviewRef.current = previewPt
         scheduleRender()
         return
       }
-      if ((measureMode === 'polylength' || measureMode === 'area') && polyPointsRef.current.length > 0) {
-        polyPreviewRef.current = getPointForPage(ap, e)
+      if ((measureMode === 'polylength' || measureMode === 'area' || measureMode === 'angle') && polyPointsRef.current.length > 0) {
+        let previewPt = getPointForPage(ap, e)
+        measureSnapActiveRef.current = null
+        if (edgeSnappingEnabled) {
+          const pdfCanvas = pageRefsMap.current.get(ap)?.pdfCanvas
+          if (pdfCanvas) {
+            const rs = pageRenderScaleRef.current.get(ap) ?? RENDER_SCALE
+            const snapResult = snapToEdge(pdfCanvas, previewPt, rs, precisionSnapMode)
+            if (snapResult.snapped) {
+              previewPt = snapResult.point
+              measureSnapActiveRef.current = previewPt
+            }
+          }
+        }
+        polyPreviewRef.current = previewPt
         scheduleRender()
         return
       }
@@ -4220,28 +4349,36 @@ export default function PdfAnnotateTool() {
       scheduleRender()
     } else {
       const start = currentPtsRef.current[0]
-      let endPt = pt
+      let dx = pt.x - start.x
+      let dy = pt.y - start.y
 
-      // Shift-constrain
+      // Shift-constrain proportions (square/circle) or angles (line/arrow)
       if (e.shiftKey && start) {
-        if (activeTool === 'rectangle') {
-          const dx = pt.x - start.x, dy = pt.y - start.y
+        if (activeTool === 'rectangle' || activeTool === 'circle') {
           const side = Math.max(Math.abs(dx), Math.abs(dy))
-          endPt = { x: start.x + side * Math.sign(dx || 1), y: start.y + side * Math.sign(dy || 1) }
-        } else if (activeTool === 'circle') {
-          const dx = pt.x - start.x, dy = pt.y - start.y
-          const side = Math.max(Math.abs(dx), Math.abs(dy))
-          endPt = { x: start.x + side * Math.sign(dx || 1), y: start.y + side * Math.sign(dy || 1) }
+          dx = side * Math.sign(dx || 1)
+          dy = side * Math.sign(dy || 1)
         } else if (activeTool === 'line' || activeTool === 'arrow') {
-          const dx = pt.x - start.x, dy = pt.y - start.y
           const angle = Math.atan2(dy, dx)
           const snapped = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4)
           const dist = Math.hypot(dx, dy)
-          endPt = { x: start.x + dist * Math.cos(snapped), y: start.y + dist * Math.sin(snapped) }
+          dx = dist * Math.cos(snapped)
+          dy = dist * Math.sin(snapped)
         }
       }
 
-      currentPtsRef.current = [start, endPt]
+      // Alt+drag: draw from center (rectangle/circle)
+      let p0: Point
+      let p1: Point
+      if (e.altKey && (activeTool === 'rectangle' || activeTool === 'circle')) {
+        p0 = { x: start.x - Math.abs(dx), y: start.y - Math.abs(dy) }
+        p1 = { x: start.x + Math.abs(dx), y: start.y + Math.abs(dy) }
+      } else {
+        p0 = start
+        p1 = { x: start.x + dx, y: start.y + dy }
+      }
+
+      currentPtsRef.current = [p0, p1]
       scheduleRender()
     }
   }, [getPointForPage, activeTool, annotations, redrawPage, eraserRadius, eraserMode, zoom, straightLineMode, selectedAnnId, findAnnotationAt, zoomAtCenter, zoomAtPoint, pencilOnlyMode, scheduleRender])
@@ -4620,22 +4757,35 @@ export default function PdfAnnotateTool() {
 
     // Text highlight / strikethrough: create annotation from preview rects
     if (activeTool === 'textHighlight' || activeTool === 'textStrikethrough') {
-      const rects = textHighlightPreviewRectsRef.current
-      if (rects.length > 0) {
+      const newRects = textHighlightPreviewRectsRef.current
+      if (newRects.length > 0) {
         const isStrikethrough = activeTool === 'textStrikethrough'
-        const ann: Annotation = {
-          id: genId(),
-          createdAt: Date.now(),
-          type: 'highlighter',
-          points: [{ x: 0, y: 0 }],
-          color,
-          strokeWidth: 0,
-          opacity: isStrikethrough ? 1 : 0.4,
-          fontSize,
-          rects: [...rects],
-          strikethrough: isStrikethrough || undefined,
+        // Check for overlapping highlight of the same color to merge with
+        const pageAnns = annotations[ap] || []
+        const existingHighlight = pageAnns.find(a =>
+          a.type === 'highlighter' && a.color === color && a.rects && a.rects.length > 0 &&
+          (isStrikethrough ? a.strikethrough === true : !a.strikethrough) &&
+          rectsOverlap(a.rects, newRects)
+        )
+        if (existingHighlight) {
+          updateAnnotation(existingHighlight.id, {
+            rects: [...(existingHighlight.rects || []), ...newRects],
+          })
+        } else {
+          const ann: Annotation = {
+            id: genId(),
+            createdAt: Date.now(),
+            type: 'highlighter',
+            points: [{ x: 0, y: 0 }],
+            color,
+            strokeWidth: 0,
+            opacity: isStrikethrough ? 1 : 0.4,
+            fontSize,
+            rects: [...newRects],
+            strikethrough: isStrikethrough || undefined,
+          }
+          commitAnnotation(ann)
         }
-        commitAnnotation(ann)
       }
       textHighlightStartRef.current = null
       textHighlightPreviewRectsRef.current = []
@@ -4652,8 +4802,46 @@ export default function PdfAnnotateTool() {
 
     const isHL = activeTool === 'highlighter'
     const isPencilOrHL = activeTool === 'pencil' || isHL
+
+    // Shape recognition: try to auto-convert pencil strokes into shapes
+    if (activeTool === 'pencil') {
+      const recognized = recognizeShape(pts)
+      if (recognized) {
+        const { name, bounds } = recognized
+        const shapePts: Point[] = name === 'line' || name === 'arrow'
+          ? [{ x: bounds.x, y: bounds.y + bounds.height / 2 }, { x: bounds.x + bounds.width, y: bounds.y + bounds.height / 2 }]
+          : [{ x: bounds.x, y: bounds.y }, { x: bounds.x + bounds.width, y: bounds.y + bounds.height }]
+        const shapeAnn: Annotation = {
+          id: genId(),
+          createdAt: Date.now(),
+          type: name === 'triangle' ? 'pencil' : name,
+          points: name === 'triangle' ? pts : shapePts,
+          color,
+          strokeWidth,
+          opacity: opacity / 100,
+          fontSize,
+          ...(dashPattern !== 'solid' ? { dashPattern } : {}),
+          ...(activeLayerId !== 'default' ? { layerId: activeLayerId } : {}),
+        }
+        currentPtsRef.current = []
+        currentPressureRef.current = []
+        commitAnnotation(shapeAnn)
+        setSelectedAnnId(shapeAnn.id)
+        const shapeLabel = name.charAt(0).toUpperCase() + name.slice(1)
+        addToast({ type: 'info', message: `Recognized as ${shapeLabel}`, duration: 1500 })
+        return
+      }
+    }
+
+    // Apply RDP path smoothing for pencil strokes based on smoothing level
     // Highlighter uses raw points (no decimation) so committed path exactly matches in-progress
-    const finalPts = [...pts]
+    let finalPts: Point[]
+    if (activeTool === 'pencil' && smoothingLevel > 0 && pts.length > 2) {
+      const epsilon = (smoothingLevel / 100) * 3
+      finalPts = decimatePoints([...pts], epsilon)
+    } else {
+      finalPts = [...pts]
+    }
     const ann: Annotation = {
       id: genId(),
       createdAt: Date.now(),
@@ -4678,7 +4866,7 @@ export default function PdfAnnotateTool() {
     if (activeTool !== 'pencil' && activeTool !== 'highlighter') {
       setSelectedAnnId(ann.id)
     }
-  }, [activeTool, color, strokeWidth, opacity, fontSize, fillColor, cornerRadius, dashPattern, arrowStart, commitAnnotation,
+  }, [activeTool, color, strokeWidth, opacity, fontSize, fillColor, cornerRadius, dashPattern, arrowStart, commitAnnotation, smoothingLevel,
       pushHistory, redrawPage, annotations, getAnnotation, updateAnnotation, selectedAnnId, addToast, getActiveCtx, pencilOnlyMode])
 
   // ── Comment & Sticky Note Management ─────────────────
@@ -4759,11 +4947,89 @@ export default function PdfAnnotateTool() {
   const handleExport = useCallback(async () => {
     if (!pdfFile) return
     if (editingTextId) commitTextEditing()
+    // Show export summary toast
+    const annCount = Object.values(annotations).reduce((s, a) => s + a.length, 0)
+    const pagesWithAnns = Object.keys(annotations).filter(k => annotations[Number(k)]?.length > 0).length
+    if (annCount > 0) {
+      addToast({ type: 'info', message: `Exporting ${annCount} annotation${annCount !== 1 ? 's' : ''} across ${pagesWithAnns} page${pagesWithAnns !== 1 ? 's' : ''}`, duration: 2000 })
+    }
     await exportAnnotatedPdf({
       pdfFile, annotations, pageRotations, measurements, calibration,
       cropRegions, setIsExporting, setExportError, addToast,
     })
   }, [pdfFile, annotations, pageRotations, editingTextId, commitTextEditing, measurements, calibration, cropRegions, addToast])
+
+  // ── Save / Load progress (JSON sidecar) ──────────────
+
+  const progressFileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleSaveProgress = useCallback(async () => {
+    if (!pdfFile) return
+    const data = {
+      version: 1,
+      fileName: pdfFile.name,
+      savedAt: new Date().toISOString(),
+      annotations,
+      measurements,
+      polyMeasurements,
+      countGroups,
+      commentThreads,
+      stickyNotes,
+      calibration,
+      pageRotations,
+      layers,
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const baseName = pdfFile.name.replace(/\.pdf$/i, '')
+    const result = await saveWithPicker(blob, `${baseName}-annotations.json`, {
+      description: 'JSON annotation file',
+      accept: { 'application/json': ['.json'] },
+    })
+    if (result === 'fallback') {
+      downloadBlob(blob, `${baseName}-annotations.json`)
+    }
+    if (result !== 'cancelled') {
+      addToast({ type: 'success', message: 'Progress saved' })
+    }
+  }, [pdfFile, annotations, measurements, polyMeasurements, countGroups, commentThreads, stickyNotes, calibration, pageRotations, layers, addToast])
+
+  const handleLoadProgress = useCallback((file: File) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result as string) as {
+          version: number
+          annotations?: Record<number, Annotation[]>
+          measurements?: Record<number, Measurement[]>
+          polyMeasurements?: Record<number, PolyMeasurement[]>
+          countGroups?: Record<number, CountGroup[]>
+          commentThreads?: CommentThread[]
+          stickyNotes?: Record<number, StickyNote[]>
+          calibration?: CalibrationState
+          pageRotations?: Record<number, number>
+          layers?: AnnotationLayer[]
+        }
+        if (data.version !== 1) {
+          addToast({ type: 'error', message: 'Unsupported progress file version' })
+          return
+        }
+        if (data.annotations) { setAnnotations(data.annotations); pushHistory(data.annotations) }
+        if (data.measurements) setMeasurements(data.measurements)
+        if (data.polyMeasurements) setPolyMeasurements(data.polyMeasurements)
+        if (data.countGroups) setCountGroups(data.countGroups)
+        if (data.commentThreads) setCommentThreads(data.commentThreads)
+        if (data.stickyNotes) setStickyNotes(data.stickyNotes)
+        if (data.calibration) setCalibration(data.calibration)
+        if (data.pageRotations) setPageRotations(data.pageRotations)
+        if (data.layers) { setLayers(data.layers); setActiveLayerId(data.layers[0]?.id ?? 'default') }
+        requestAnimationFrame(() => redrawAll())
+        addToast({ type: 'success', message: 'Progress loaded' })
+      } catch {
+        addToast({ type: 'error', message: 'Failed to parse progress file' })
+      }
+    }
+    reader.readAsText(file)
+  }, [addToast, pushHistory, redrawAll])
 
   // ── Reset ────────────────────────────────────────────
 
@@ -5104,6 +5370,19 @@ export default function PdfAnnotateTool() {
                 <ImagePlus size={15} className="text-white/40 shrink-0" />
                 <span>Stamp Library</span>
               </button>
+
+              <div className="h-px bg-white/[0.06] my-1 mx-3" />
+
+              <button onClick={() => { handleSaveProgress(); setMoreMenuOpen(false) }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-white/80 hover:bg-white/[0.06] transition-colors">
+                <Save size={15} className="text-white/40 shrink-0" />
+                <span>Save Progress</span>
+              </button>
+              <button onClick={() => { progressFileInputRef.current?.click(); setMoreMenuOpen(false) }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-[13px] text-white/80 hover:bg-white/[0.06] transition-colors">
+                <FolderOpen size={15} className="text-white/40 shrink-0" />
+                <span>Load Progress</span>
+              </button>
             </div>
           )}
         </div>
@@ -5224,9 +5503,11 @@ export default function PdfAnnotateTool() {
             value={color}
             onChange={c => {
               setColor(c)
+              addRecentColor(c)
               if (selectedAnnId) updateAnnotation(selectedAnnId, { color: c })
             }}
             presets={(activeTool === 'highlighter' || activeTool === 'textHighlight') ? HIGHLIGHT_COLORS : ANN_COLORS}
+            recentColors={recentColors}
           />
         )}
 
@@ -5264,28 +5545,52 @@ export default function PdfAnnotateTool() {
           </div>
         )}
 
-        {/* Fill color — shapes only */}
+        {/* Fill/stroke toggle -- shapes only */}
         {(activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'cloud' || activeTool === 'polygon' ||
           (activeTool === 'select' && selectedAnn && (selectedAnn.type === 'rectangle' || selectedAnn.type === 'circle' || selectedAnn.type === 'cloud' || selectedAnn.type === 'polygon'))) && (
           <div className="flex items-center gap-1">
-            <span className="text-[10px] text-white/40">Fill</span>
-            <input type="color" value={fillColor || '#ffffff'}
-              onChange={e => {
-                setFillColor(e.target.value)
-                if (selectedAnnId) updateAnnotation(selectedAnnId, { fillColor: e.target.value })
-              }}
-              className="w-5 h-5 rounded cursor-pointer border border-white/[0.1] bg-transparent p-0"
-            />
+            <div className="flex items-center gap-0.5">
+              <span className="text-[9px] text-white/40">Stroke</span>
+              <div className="w-4 h-4 rounded border border-white/20" style={{ backgroundColor: color }} />
+            </div>
+            <div className="w-px h-4 bg-white/10 mx-0.5" />
             <button
               onClick={() => {
-                setFillColor(null)
-                if (selectedAnnId) updateAnnotation(selectedAnnId, { fillColor: undefined })
+                if (fillColor) {
+                  setFillColor(null)
+                  if (selectedAnnId) updateAnnotation(selectedAnnId, { fillColor: undefined })
+                } else {
+                  const fc = color + '40'
+                  setFillColor(fc)
+                  if (selectedAnnId) updateAnnotation(selectedAnnId, { fillColor: fc })
+                }
               }}
-              className={`px-1 py-0.5 rounded text-[9px] font-medium transition-colors ${
-                !fillColor ? 'bg-white/10 text-white/60' : 'text-white/30 hover:text-white/50 border border-white/[0.08]'
-              }`}>
-              None
+              className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-medium transition-colors ${
+                fillColor ? 'bg-white/10 text-white/60' : 'text-white/30 hover:text-white/50 border border-white/[0.08]'
+              }`}
+            >
+              <span>Fill</span>
+              <div
+                className="w-3 h-3 rounded-sm border"
+                style={{
+                  backgroundColor: fillColor || 'transparent',
+                  borderColor: fillColor ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.15)',
+                  backgroundImage: !fillColor ? 'linear-gradient(135deg, transparent 45%, rgba(255,80,80,0.5) 45%, rgba(255,80,80,0.5) 55%, transparent 55%)' : undefined,
+                }}
+              />
             </button>
+            {fillColor && (
+              <label className="w-5 h-5 rounded cursor-pointer border border-white/[0.1] overflow-hidden flex-shrink-0" style={{ backgroundColor: fillColor }}>
+                <input type="color" value={fillColor.slice(0, 7)}
+                  onChange={e => {
+                    setFillColor(e.target.value)
+                    addRecentColor(e.target.value)
+                    if (selectedAnnId) updateAnnotation(selectedAnnId, { fillColor: e.target.value })
+                  }}
+                  className="opacity-0 w-0 h-0"
+                />
+              </label>
+            )}
           </div>
         )}
 
@@ -5349,6 +5654,17 @@ export default function PdfAnnotateTool() {
             }`}>
             {straightLineMode ? 'Straight' : 'Free'}
           </button>
+        )}
+
+        {/* Smoothing level — pencil only */}
+        {activeTool === 'pencil' && (
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] text-white/40">Smooth</span>
+            <input type="range" min="0" max="100" value={smoothingLevel}
+              onChange={e => setSmoothingLevel(Number(e.target.value))}
+              className="w-16 h-1 accent-teal-400" />
+            <span className="text-[10px] text-white/40 w-6">{smoothingLevel}%</span>
+          </div>
         )}
 
         {/* Text formatting controls */}
@@ -5584,6 +5900,19 @@ export default function PdfAnnotateTool() {
               <span className="text-[10px] text-white/40 w-5">{eraserRadius}</span>
             </div>
           </>
+        )}
+
+        {/* Highlighter quick-access color presets */}
+        {(activeTool === 'highlighter' || activeTool === 'textHighlight') && (
+          <div className="flex items-center gap-1">
+            {(['#FFFF00', '#FF69B4', '#00FF00', '#00BFFF', '#FFA500'] as const).map(hc => (
+              <button key={hc} onClick={() => { setColor(hc); if (selectedAnnId) updateAnnotation(selectedAnnId, { color: hc }) }}
+                className={`w-5 h-5 rounded-full border-2 transition-all ${color === hc ? 'border-white scale-110' : 'border-transparent hover:border-white/40'}`}
+                style={{ backgroundColor: hc, opacity: 0.7 }}
+                title={hc}
+              />
+            ))}
+          </div>
         )}
 
         {/* Measure controls */}
@@ -6818,6 +7147,7 @@ export default function PdfAnnotateTool() {
               }}
               onChangeColor={(c) => {
                 setColor(c)
+                addRecentColor(c)
                 if (editingTextId) updateAnnotation(editingTextId, { color: c })
               }}
               onSetListType={(lt) => {
@@ -6977,13 +7307,15 @@ export default function PdfAnnotateTool() {
               'Click two points'
             ) :
             activeTool === 'textHighlight' ? 'Drag to highlight' :
-            activeTool === 'stamp' ? `${activeStampPreset.label} · click to place` :
+            activeTool === 'stamp' ? `${activeStampPreset.label === 'DATE' ? new Date().toLocaleDateString() : activeStampPreset.label} · click to place` :
             activeTool === 'crop' ? 'Drag to set crop region' :
             activeTool === 'imageStamp' ? (pendingImageRef.current ? 'Click to place image' : 'Select an image file') :
             activeTool === 'ocrRegion' ? 'Drag to scan text in region' :
             activeTool === 'note' ? 'Click to place a sticky note' :
-            (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'line' || activeTool === 'arrow')
-              ? 'Shift for perfect shapes' :
+            (activeTool === 'rectangle' || activeTool === 'circle')
+              ? 'Shift = constrain, Alt = from center' :
+            (activeTool === 'line' || activeTool === 'arrow')
+              ? 'Shift to snap angles' :
             'Ctrl+scroll zoom'
           }</span>
         </div>
@@ -7713,6 +8045,7 @@ export default function PdfAnnotateTool() {
           color={color}
           onChangeColor={c => {
             setColor(c)
+            addRecentColor(c)
             if (selectedAnnId) updateAnnotation(selectedAnnId, { color: c })
           }}
           strokeWidth={strokeWidth}
@@ -7731,6 +8064,19 @@ export default function PdfAnnotateTool() {
           }
         />
       )}
+
+      {/* Hidden file input for Load Progress */}
+      <input
+        ref={progressFileInputRef}
+        type="file"
+        accept=".json"
+        className="hidden"
+        onChange={e => {
+          const file = e.target.files?.[0]
+          if (file) handleLoadProgress(file)
+          e.target.value = ''
+        }}
+      />
     </div>
   )
 }

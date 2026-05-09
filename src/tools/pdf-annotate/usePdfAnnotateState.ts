@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from 'react'
+import { useState, useRef, useMemo, useEffect, useCallback } from 'react'
 import { useAppStore } from '@/stores/appStore.ts'
 import type { PDFFile } from '@/types'
 import type {
@@ -263,8 +263,15 @@ export function usePdfAnnotateState() {
   // Zoom presets dropdown
   const [zoomDropdownOpen, setZoomDropdownOpen] = useState(false)
 
+  // Recent colors palette
+  const [recentColors, setRecentColors] = useState<string[]>([])
+  const addRecentColor = useCallback((c: string) => {
+    setRecentColors(prev => [c, ...prev.filter(x => x !== c)].slice(0, 6))
+  }, [])
+
   // Drawing options
   const [straightLineMode, setStraightLineMode] = useState(false)
+  const [smoothingLevel, setSmoothingLevel] = useState(50)
   const [fillColor, setFillColor] = useState<string | null>(null)
   const [cornerRadius, setCornerRadius] = useState(0)
   const [dashPattern, setDashPattern] = useState<'solid' | 'dashed' | 'dotted'>('solid')
@@ -274,6 +281,7 @@ export function usePdfAnnotateState() {
   const [eraserRadius, setEraserRadius] = useState(15)
   const [eraserMode, setEraserMode] = useState<'partial' | 'object'>('partial')
   const eraserModsRef = useRef<{ removed: Set<string>; added: Annotation[] }>({ removed: new Set(), added: [] })
+  const eraserHoverIdsRef = useRef<Set<string>>(new Set())
   const canvasSnapshotRef = useRef<ImageData | null>(null)
 
   // Rotation
@@ -337,6 +345,8 @@ export function usePdfAnnotateState() {
   const [countGroupColor, setCountGroupColor] = useState('#EF4444')
   const [edgeSnappingEnabled, setEdgeSnappingEnabled] = useState(true)
   const [precisionSnapMode, setPrecisionSnapMode] = useState(false)
+  /** Tracks whether the current measurement preview point was snapped to an edge */
+  const measureSnapActiveRef = useRef<Point | null>(null)
   const [isPrinting, setIsPrinting] = useState(false)
 
   // Comment & review system
@@ -586,13 +596,16 @@ export function usePdfAnnotateState() {
     exportWatermarkOpacity, setExportWatermarkOpacity,
     // Zoom
     zoomDropdownOpen, setZoomDropdownOpen,
+    // Recent colors
+    recentColors, addRecentColor,
     // Drawing options
     straightLineMode, setStraightLineMode,
+    smoothingLevel, setSmoothingLevel,
     fillColor, setFillColor, cornerRadius, setCornerRadius,
     dashPattern, setDashPattern, arrowStart, setArrowStart,
     // Eraser
     eraserRadius, setEraserRadius, eraserMode, setEraserMode,
-    eraserModsRef, canvasSnapshotRef,
+    eraserModsRef, eraserHoverIdsRef, canvasSnapshotRef,
     // Rotation
     pageRotations, setPageRotations,
     // Text tool
@@ -631,6 +644,7 @@ export function usePdfAnnotateState() {
     countGroupColor, setCountGroupColor,
     edgeSnappingEnabled, setEdgeSnappingEnabled,
     precisionSnapMode, setPrecisionSnapMode,
+    measureSnapActiveRef,
     isPrinting, setIsPrinting,
     // Comments
     commentThreads, setCommentThreads,
