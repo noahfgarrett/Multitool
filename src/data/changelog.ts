@@ -12,6 +12,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.5.0',
+    date: 'PLACEHOLDER',
+    type: 'feature',
+    stats: { features: 2 },
+    notes: `### PDF Split
+- Shift-click to select a range of pages
+- Undo and redo buttons`,
+  },
+  {
     version: '4.4.1',
     date: '2026-05-09T20:47:39Z',
     type: 'fix',

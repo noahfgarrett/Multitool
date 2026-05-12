@@ -14,7 +14,7 @@ import { SortableContext, useSortable, rectSortingStrategy, arrayMove } from '@d
 import { CSS } from '@dnd-kit/utilities'
 import {
   Download, RotateCcw, ZoomIn, ZoomOut, Loader2, FilePlus, Plus,
-  Trash2, X, Pencil, Check, Package, Lock, Unlock,
+  Trash2, X, Pencil, Check, Package, Lock, Unlock, Undo2, Redo2,
 } from 'lucide-react'
 import JSZip from 'jszip'
 
@@ -42,6 +42,64 @@ function makeDocId(): string { return `doc-${++_uid}` }
 function makeSlotId(): string { return `slot-${++_uid}` }
 
 const DOC_COLORS = ['#14B8A6', '#3B82F6', '#22C55E', '#A855F7', '#EC4899', '#14B8A6', '#F59E0B', '#6366F1']
+
+/* ── Undo/Redo history ── */
+
+interface HistorySnapshot {
+  pages: SourcePage[]
+  outputDocs: OutputDocument[]
+  slotEntries: Array<[string, { sourceUid: string; pageNumber: number }]>
+}
+
+const MAX_HISTORY = 50
+
+function useHistory() {
+  const undoStack = useRef<HistorySnapshot[]>([])
+  const redoStack = useRef<HistorySnapshot[]>([])
+  const [canUndo, setCanUndo] = useState(false)
+  const [canRedo, setCanRedo] = useState(false)
+
+  const pushSnapshot = useCallback((snap: HistorySnapshot) => {
+    undoStack.current.push(snap)
+    if (undoStack.current.length > MAX_HISTORY) undoStack.current.shift()
+    redoStack.current = []
+    setCanUndo(true)
+    setCanRedo(false)
+  }, [])
+
+  const undo = useCallback((
+    currentSnap: HistorySnapshot,
+    apply: (snap: HistorySnapshot) => void,
+  ) => {
+    const prev = undoStack.current.pop()
+    if (!prev) return
+    redoStack.current.push(currentSnap)
+    apply(prev)
+    setCanUndo(undoStack.current.length > 0)
+    setCanRedo(true)
+  }, [])
+
+  const redo = useCallback((
+    currentSnap: HistorySnapshot,
+    apply: (snap: HistorySnapshot) => void,
+  ) => {
+    const next = redoStack.current.pop()
+    if (!next) return
+    undoStack.current.push(currentSnap)
+    apply(next)
+    setCanUndo(true)
+    setCanRedo(redoStack.current.length > 0)
+  }, [])
+
+  const clear = useCallback(() => {
+    undoStack.current = []
+    redoStack.current = []
+    setCanUndo(false)
+    setCanRedo(false)
+  }, [])
+
+  return { pushSnapshot, undo, redo, clear, canUndo, canRedo }
+}
 
 /** Typed wrapper around the File System Access API — eliminates `any` casts */
 interface PickerHandle {
@@ -295,6 +353,60 @@ export default function PdfSplitTool() {
   const outputDocsRef = useRef(outputDocs)
   outputDocsRef.current = outputDocs
 
+  // Shift-click range selection: track last-clicked page index
+  const lastClickedIdx = useRef<number | null>(null)
+
+  // Undo/redo
+  const history = useHistory()
+
+  const takeSnapshot = useCallback((): HistorySnapshot => ({
+    pages: pagesRef.current.map((p) => ({ ...p, assignedTo: [...p.assignedTo] })),
+    outputDocs: outputDocsRef.current.map((d) => ({ ...d, pageUids: [...d.pageUids] })),
+    slotEntries: Array.from(slotPageMap.current.entries()).map(([k, v]) => [k, { ...v }]),
+  }), [])
+
+  const applySnapshot = useCallback((snap: HistorySnapshot) => {
+    setPages(snap.pages.map((p) => ({ ...p, assignedTo: [...p.assignedTo] })))
+    setOutputDocs(snap.outputDocs.map((d) => ({ ...d, pageUids: [...d.pageUids] })))
+    slotPageMap.current.clear()
+    for (const [k, v] of snap.slotEntries) {
+      slotPageMap.current.set(k, { ...v })
+    }
+  }, [])
+
+  const pushUndo = useCallback(() => {
+    history.pushSnapshot(takeSnapshot())
+  }, [history, takeSnapshot])
+
+  const handleUndo = useCallback(() => {
+    history.undo(takeSnapshot(), applySnapshot)
+  }, [history, takeSnapshot, applySnapshot])
+
+  const handleRedo = useCallback(() => {
+    history.redo(takeSnapshot(), applySnapshot)
+  }, [history, takeSnapshot, applySnapshot])
+
+  // Ctrl+Z / Ctrl+Shift+Z keyboard shortcuts
+  useEffect(() => {
+    if (!pdfFile) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+      const mod = e.metaKey || e.ctrlKey
+      if (mod && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        handleUndo()
+      } else if (mod && e.key === 'z' && e.shiftKey) {
+        e.preventDefault()
+        handleRedo()
+      } else if (mod && e.key === 'y') {
+        e.preventDefault()
+        handleRedo()
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [pdfFile, handleUndo, handleRedo])
+
   // dnd-kit sensors for sidebar reorder
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -429,22 +541,38 @@ export default function PdfSplitTool() {
     const page = pagesRef.current.find((p) => p.uid === pageUid)
     if (!page) return
 
+    const clickedIdx = pagesRef.current.findIndex((p) => p.uid === pageUid)
+
     shiftHeldRef.current = e.shiftKey
     isPainting.current = true
     paintedThisStroke.current = new Set([pageUid])
 
-    // Capture pointer on the grid container so we get pointermove even outside thumbnails
     const container = gridContainerRef.current
     if (container) {
       container.setPointerCapture(e.pointerId)
     }
 
-    // Shift+Click: always add a duplicate copy
-    if (e.shiftKey) {
+    // Shift+Click: range selection from last-clicked to this page
+    if (e.shiftKey && lastClickedIdx.current !== null) {
+      pushUndo()
+      isPainting.current = false
       paintMode.current = 'assign'
-      assignPage(pageUid, pageNumber)
+
+      const start = Math.min(lastClickedIdx.current, clickedIdx)
+      const end = Math.max(lastClickedIdx.current, clickedIdx)
+      const docId = activeDocIdRef.current
+
+      for (let i = start; i <= end; i++) {
+        const p = pagesRef.current[i]
+        if (!p.assignedTo.includes(docId)) {
+          assignPage(p.uid, p.pageNumber)
+        }
+      }
+      // Don't update lastClickedIdx — allows extending from the same anchor
       return
     }
+
+    pushUndo()
 
     // Normal click: toggle assign/unassign
     if (page.assignedTo.includes(activeDocIdRef.current)) {
@@ -454,7 +582,9 @@ export default function PdfSplitTool() {
       paintMode.current = 'assign'
       assignPage(pageUid, pageNumber)
     }
-  }, [assignPage, unassignPage])
+
+    lastClickedIdx.current = clickedIdx
+  }, [assignPage, unassignPage, pushUndo])
 
   const handleContainerPointerMove = useCallback((e: React.PointerEvent) => {
     if (!isPainting.current || !activeDocIdRef.current) return
@@ -541,6 +671,7 @@ export default function PdfSplitTool() {
   /* ── Remove a single slot from a specific document ── */
 
   const removeSlotFromDoc = useCallback((docId: string, slotId: string) => {
+    pushUndo()
     const info = slotPageMap.current.get(slotId)
     slotPageMap.current.delete(slotId)
 
@@ -567,11 +698,12 @@ export default function PdfSplitTool() {
 
       return updated
     })
-  }, [])
+  }, [pushUndo])
 
   /* ── Delete entire document ── */
 
   const deleteDocument = useCallback((docId: string) => {
+    pushUndo()
     const doc = outputDocs.find((d) => d.id === docId)
     if (!doc) return
 
@@ -608,7 +740,7 @@ export default function PdfSplitTool() {
         setActiveDocId(newDocId)
       }
     }
-  }, [outputDocs, activeDocId, docCounter])
+  }, [outputDocs, activeDocId, docCounter, pushUndo])
 
   /* ── Rename document ── */
 
@@ -638,6 +770,7 @@ export default function PdfSplitTool() {
     setActiveDragId(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
+    pushUndo()
     setOutputDocs((prev) => prev.map((d) => {
       if (d.id !== docId) return d
       const oldIdx = d.pageUids.indexOf(active.id as string)
@@ -773,13 +906,14 @@ export default function PdfSplitTool() {
       setRangeError('No pages specified')
       return
     }
+    pushUndo()
     for (const pageNum of result.pages) {
       const sourcePage = pages.find((p) => p.pageNumber === pageNum)
       if (sourcePage) assignPage(sourcePage.uid, sourcePage.pageNumber)
     }
     setRangeInput('')
     setRangeError(null)
-  }, [pdfFile, rangeInput, pages, assignPage])
+  }, [pdfFile, rangeInput, pages, assignPage, pushUndo])
 
   /* ── Reset ── */
 
@@ -794,6 +928,8 @@ export default function PdfSplitTool() {
     setRangeError(null)
     loadingThumbs.current.clear()
     slotPageMap.current.clear()
+    history.clear()
+    lastClickedIdx.current = null
   }
 
   /* ── Render: empty state ── */
@@ -890,6 +1026,28 @@ export default function PdfSplitTool() {
             <span className="text-[10px] text-white/30 min-w-[20px]">{RES_LEVELS[resIdx].label}</span>
           </div>
 
+          {/* Undo / Redo */}
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={handleUndo}
+              disabled={!history.canUndo}
+              className={`p-1.5 rounded transition-colors ${history.canUndo ? 'text-white/40 hover:text-white/80 hover:bg-white/[0.06]' : 'text-white/10 cursor-default'}`}
+              title="Undo (Ctrl+Z)"
+              aria-label="Undo"
+            >
+              <Undo2 size={14} />
+            </button>
+            <button
+              onClick={handleRedo}
+              disabled={!history.canRedo}
+              className={`p-1.5 rounded transition-colors ${history.canRedo ? 'text-white/40 hover:text-white/80 hover:bg-white/[0.06]' : 'text-white/10 cursor-default'}`}
+              title="Redo (Ctrl+Shift+Z)"
+              aria-label="Redo"
+            >
+              <Redo2 size={14} />
+            </button>
+          </div>
+
           <Button
             variant="ghost"
             size="sm"
@@ -929,7 +1087,7 @@ export default function PdfSplitTool() {
 
         {/* Footer hint */}
         <p className="text-[10px] text-white/25 text-center flex-shrink-0 px-1">
-          Click or drag to paint pages · Shift+Click to add duplicates · Press Enter to start a new document
+          Click or drag to paint pages · Shift+Click to select a range · Ctrl+Z to undo · Enter for new document
         </p>
       </div>
 
