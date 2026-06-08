@@ -10,6 +10,9 @@ import { isNewer } from '@/utils/semver.ts'
 
 function formatDate(iso: string): string {
   const d = new Date(iso)
+  // Guard against unparseable dates (e.g. an unpatched 'PLACEHOLDER' from a
+  // botched release) so we never render "Invalid Date NaN, NaN".
+  if (Number.isNaN(d.getTime())) return ''
   const month = d.toLocaleString('en-US', { month: 'short' })
   const day = d.getDate()
   const year = d.getFullYear()
