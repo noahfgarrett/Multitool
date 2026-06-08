@@ -13,7 +13,7 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '4.6.0',
-    date: 'PLACEHOLDER',
+    date: '2026-06-08T17:20:07Z',
     type: 'feature',
     stats: { features: 8 },
     notes: `### Background Remover — Pro Rebuild
