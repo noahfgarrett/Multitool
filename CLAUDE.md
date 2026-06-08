@@ -144,10 +144,16 @@ When the user says "push a new release", "push to GitHub", or "release vX.Y.Z", 
    ASSET_ID=$(gh api repos/noahfgarrett/Multitool/releases/tags/vX.Y.Z --jq '.assets[0].id')
    gh api repos/noahfgarrett/Multitool/releases/assets/$ASSET_ID -X DELETE
    gh release upload vX.Y.Z dist/Multitool.html
+   # VERIFY the live asset is the patched build — must print 0. (v4.5.0 shipped an
+   # unpatched 'PLACEHOLDER' date here because this check was missing, which made
+   # the in-app changelog render "Invalid Date NaN, NaN" for that version.)
+   gh release download vX.Y.Z -p Multitool.html -D /tmp/relcheck --clobber
+   grep -c "PLACEHOLDER" /tmp/relcheck/Multitool.html   # MUST be 0
+   rm -rf /tmp/relcheck
    git add src/data/changelog.ts && git add -f dist/Multitool.html
    git commit -m "fix: patch changelog timestamp for vX.Y.Z" && git push
    ```
-   This ensures the changelog displays the exact date and time the release was published.
+   This ensures the changelog displays the exact date and time the release was published, and that the downloadable asset actually contains the patched timestamp (not a leftover `PLACEHOLDER`).
 10. **Deploy to GitHub Pages (PWA)** — The PWA at `noahfgarrett.github.io/Multitool/` is served from the `gh-pages` branch. Copy the built HTML there and push:
     ```bash
     git worktree add /tmp/multitool-ghpages origin/gh-pages
