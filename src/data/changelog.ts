@@ -12,6 +12,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.6.0',
+    date: 'PLACEHOLDER',
+    type: 'feature',
+    stats: { features: 8 },
+    notes: `### Background Remover — Pro Rebuild
+- Soft anti-aliased edges
+- Defringe removes edge color halos
+- Live preview as you adjust
+- Magic-wand selection for connected backgrounds
+- Multi-color sampling
+- Erase and restore brushes
+- Zoom, pan, and before/after view
+- Undo/redo and keyboard shortcuts`,
+  },
+  {
     version: '4.5.0',
     date: '2026-05-12T10:58:12Z',
     type: 'feature',
