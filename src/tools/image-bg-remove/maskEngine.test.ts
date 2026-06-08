@@ -9,6 +9,8 @@ import {
   MAX_COLOR_DIST,
 } from './maskEngine'
 import type { ColorSample } from './types'
+import { floodFillRegion, boxBlur01, removalFromWand } from './maskEngine'
+import type { Point } from './types'
 
 /** Build a solid RGBA buffer. */
 function solid(w: number, h: number, r: number, g: number, b: number, a = 255): Uint8ClampedArray {
@@ -62,5 +64,49 @@ test('removalFromColor: soft band yields partial removal', () => {
 test('removalFromColor: no samples removes nothing', () => {
   const data = solid(3, 1, 10, 20, 30)
   const removal = removalFromColor(data, 3, 1, [], 50, 20)
+  assert.deepEqual(Array.from(removal), [0, 0, 0])
+})
+
+test('floodFillRegion: fills only the contiguous matching region', () => {
+  // 3x1: black, black, white. Seed at x=0, low tolerance.
+  const data = new Uint8Array([0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255, 255])
+  const region = floodFillRegion(new Uint8ClampedArray(data), 3, 1, { x: 0, y: 0 }, 5)
+  assert.equal(region[0], 1)
+  assert.equal(region[1], 1)
+  assert.equal(region[2], 0) // white not reached
+})
+
+test('floodFillRegion: does not leak across a non-matching barrier', () => {
+  // 5x1: black, black, WHITE barrier, black, black. Seed left → only left pair.
+  const px = [
+    0, 0, 0, 255,
+    0, 0, 0, 255,
+    255, 255, 255, 255,
+    0, 0, 0, 255,
+    0, 0, 0, 255,
+  ]
+  const region = floodFillRegion(new Uint8ClampedArray(px), 5, 1, { x: 0, y: 0 }, 5)
+  assert.deepEqual(Array.from(region), [1, 1, 0, 0, 0])
+})
+
+test('boxBlur01: radius 0 is identity; blur of a step is monotonic and bounded', () => {
+  const mask = new Float32Array([0, 0, 1, 1])
+  assert.deepEqual(Array.from(boxBlur01(mask, 4, 1, 0)), [0, 0, 1, 1])
+  const blurred = boxBlur01(new Float32Array([0, 0, 1, 1, 1, 1]), 6, 1, 1)
+  for (const v of blurred) assert.ok(v >= 0 && v <= 1)
+})
+
+test('removalFromWand: unions seeds and stays within 0..1', () => {
+  const data = new Uint8ClampedArray([0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 255, 255])
+  const seeds: Point[] = [{ x: 0, y: 0 }]
+  const removal = removalFromWand(data, 3, 1, seeds, 5, 0)
+  assert.equal(removal[0], 1)
+  assert.equal(removal[2], 0)
+  for (const v of removal) assert.ok(v >= 0 && v <= 1)
+})
+
+test('removalFromWand: no seeds removes nothing', () => {
+  const data = new Uint8ClampedArray(3 * 4)
+  const removal = removalFromWand(data, 3, 1, [], 50, 50)
   assert.deepEqual(Array.from(removal), [0, 0, 0])
 })
