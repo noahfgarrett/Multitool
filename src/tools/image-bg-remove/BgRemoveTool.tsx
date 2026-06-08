@@ -1,145 +1,263 @@
+// src/tools/image-bg-remove/BgRemoveTool.tsx
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { FileDropZone } from '@/components/common/FileDropZone.tsx'
-import { Button } from '@/components/common/Button.tsx'
-import { Slider } from '@/components/common/Slider.tsx'
-import { readFileAsDataURL, formatFileSize } from '@/utils/fileReader.ts'
-import { loadImage, resizeImage, canvasToBlob, removeBackgroundColor, getPixelColor } from '@/utils/imageProcessing.ts'
+import { readFileAsDataURL } from '@/utils/fileReader.ts'
+import { loadImage, canvasToBlob } from '@/utils/imageProcessing.ts'
 import { downloadBlob } from '@/utils/download.ts'
-import { Download, Pipette, RotateCcw, Undo2, Image as ImageIcon, Eye, EyeOff, X } from 'lucide-react'
+import { X } from 'lucide-react'
+import { ControlPanel } from './ControlPanel'
+import { Workspace } from './Workspace'
+import { useMaskHistory } from './useMaskHistory'
+import {
+  removalFromColor, removalFromWand, combineMax, rasterizeStrokes, collectBgColors, applyMaskInto, renderMask,
+} from './maskEngine'
+import type { Tool, Point, PreviewBackground, BrushStroke, MaskDoc } from './types'
+
+const PREVIEW_MAX_EDGE = 1600
+const MAX_MEGAPIXELS = 64
+
+interface BufferCache {
+  data: Uint8ClampedArray
+  width: number
+  height: number
+}
+
+const yieldToUI = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
+
+/** Async full-res render with progress, reusing the engine pieces. */
+async function renderMaskChunked(
+  src: Uint8ClampedArray,
+  width: number,
+  height: number,
+  doc: MaskDoc,
+  onProgress: (p: number) => void,
+): Promise<Uint8ClampedArray> {
+  const colorR = removalFromColor(src, width, height, doc.samples, doc.tolerance, doc.softness)
+  onProgress(0.15)
+  await yieldToUI()
+  const scaledSeeds = doc.wandSeeds.map((s) => ({ x: s.x, y: s.y })) // scale = 1 at native res
+  const wandR = removalFromWand(src, width, height, scaledSeeds, doc.tolerance, doc.softness)
+  onProgress(0.4)
+  await yieldToUI()
+  const removal = combineMax(colorR, wandR)
+  const manual = rasterizeStrokes(width, height, doc.strokes, 1)
+  const bgColors = collectBgColors(src, width, height, doc.samples, scaledSeeds)
+  onProgress(0.5)
+  await yieldToUI()
+
+  const out = new Uint8ClampedArray(src.length)
+  const band = Math.max(1, Math.floor(height / 20))
+  for (let y0 = 0; y0 < height; y0 += band) {
+    const y1 = Math.min(height, y0 + band)
+    applyMaskInto(out, src, width, removal, manual, bgColors, doc.defringe, y0, y1)
+    onProgress(0.5 + 0.5 * (y1 / height))
+    await yieldToUI()
+  }
+  return out
+}
 
 export default function BgRemoveTool() {
   const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imageSrc, setImageSrc] = useState<string | null>(null)
-  const [originalSize, setOriginalSize] = useState({ width: 0, height: 0 })
-  const [selectedColor, setSelectedColor] = useState<{ r: number; g: number; b: number } | null>(null)
-  const [tolerance, setTolerance] = useState(30)
-  const [isPickingColor, setIsPickingColor] = useState(false)
-  const [outputBlob, setOutputBlob] = useState<Blob | null>(null)
-  const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [tool, setTool] = useState<Tool>('wand')
+  const [brushSize, setBrushSize] = useState(40)
+  const [previewBg, setPreviewBg] = useState<PreviewBackground>('checkerboard')
   const [showOriginal, setShowOriginal] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportProgress, setExportProgress] = useState(0)
+  const [outputSize, setOutputSize] = useState<number | null>(null)
+  const [originalSize, setOriginalSize] = useState({ width: 0, height: 0 })
+  const [previewReady, setPreviewReady] = useState(false)
+  const [renderVersion, setRenderVersion] = useState(0)
 
-  const sourceCanvasRef = useRef<HTMLCanvasElement>(null)
-  const previewCanvasRef = useRef<HTMLCanvasElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const history = useMaskHistory()
+  const { doc } = history
+  const docRef = useRef(doc)
+  docRef.current = doc
 
-  const drawSourceImage = useCallback(async (src: string) => {
-    const img = await loadImage(src)
-    const canvas = sourceCanvasRef.current
-    if (!canvas) return
+  const nativeRef = useRef<BufferCache | null>(null)
+  const previewRef = useRef<(BufferCache & { scale: number }) | null>(null)
+  const originalCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const maskedCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const rafRef = useRef<number | null>(null)
 
-    // Scale canvas to fit container while maintaining aspect ratio
-    const maxW = 600
-    const maxH = 500
-    const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1)
-    canvas.width = img.naturalWidth * scale
-    canvas.height = img.naturalHeight * scale
+  // ── Live preview (rAF-coalesced) ──
+  // The guard coalesces bursts of doc changes into one render per frame; the
+  // rAF reads docRef so it always renders the LATEST doc, never a stale closure.
+  useEffect(() => {
+    if (!previewReady) return
+    if (rafRef.current != null) return
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null
+      const pv = previewRef.current
+      const masked = maskedCanvasRef.current
+      if (!pv || !masked) return
+      const out = renderMask(pv.data, pv.width, pv.height, docRef.current, pv.scale)
+      masked.getContext('2d')!.putImageData(new ImageData(out, pv.width, pv.height), 0, 0)
+      setRenderVersion((v) => v + 1)
+    })
+  }, [doc, previewReady])
 
-    const ctx = canvas.getContext('2d')!
-    ctx.imageSmoothingEnabled = true
-    ctx.imageSmoothingQuality = 'high'
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+  // Cancel any pending preview render on unmount only.
+  useEffect(() => () => {
+    if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
+  }, [])
+
+  const resetCaches = useCallback(() => {
+    nativeRef.current = null
+    previewRef.current = null
+    originalCanvasRef.current = null
+    maskedCanvasRef.current = null
+    setPreviewReady(false)
   }, [])
 
   const handleFiles = useCallback(async (files: File[]) => {
     const file = files[0]
     if (!file) return
-
     setError(null)
-    setImageFile(file)
-    setOutputBlob(null)
-    setSelectedColor(null)
-
+    setOutputSize(null)
+    setShowOriginal(false)
+    setTool('wand')
     try {
       const dataUrl = await readFileAsDataURL(file)
-      setImageSrc(dataUrl)
-
       const img = await loadImage(dataUrl)
-      setOriginalSize({ width: img.naturalWidth, height: img.naturalHeight })
+      let nw = img.naturalWidth
+      let nh = img.naturalHeight
+      setOriginalSize({ width: nw, height: nh })
 
-      await drawSourceImage(dataUrl)
-      setIsPickingColor(true)
+      let capNote = false
+      if (nw * nh > MAX_MEGAPIXELS * 1_000_000) {
+        const f = Math.sqrt((MAX_MEGAPIXELS * 1_000_000) / (nw * nh))
+        nw = Math.round(nw * f)
+        nh = Math.round(nh * f)
+        capNote = true
+      }
+
+      // native working buffer
+      const nativeCanvas = document.createElement('canvas')
+      nativeCanvas.width = nw
+      nativeCanvas.height = nh
+      const nctx = nativeCanvas.getContext('2d', { willReadFrequently: true })!
+      nctx.drawImage(img, 0, 0, nw, nh)
+      nativeRef.current = { data: nctx.getImageData(0, 0, nw, nh).data, width: nw, height: nh }
+
+      // preview buffer
+      const scale = Math.min(1, PREVIEW_MAX_EDGE / Math.max(nw, nh))
+      const pw = Math.max(1, Math.round(nw * scale))
+      const ph = Math.max(1, Math.round(nh * scale))
+      const previewCanvas = document.createElement('canvas')
+      previewCanvas.width = pw
+      previewCanvas.height = ph
+      const pctx = previewCanvas.getContext('2d', { willReadFrequently: true })!
+      pctx.imageSmoothingEnabled = true
+      pctx.imageSmoothingQuality = 'high'
+      pctx.drawImage(img, 0, 0, pw, ph)
+      previewRef.current = { data: pctx.getImageData(0, 0, pw, ph).data, width: pw, height: ph, scale: pw / nw }
+      originalCanvasRef.current = previewCanvas
+
+      const masked = document.createElement('canvas')
+      masked.width = pw
+      masked.height = ph
+      // seed masked with the original so first paint isn't blank
+      masked.getContext('2d')!.drawImage(previewCanvas, 0, 0)
+      maskedCanvasRef.current = masked
+
+      history.clear()
+      setImageFile(file)
+      setPreviewReady(true)
+      setError(capNote ? `Image is very large — processing capped at ~${MAX_MEGAPIXELS} MP.` : null)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error'
       setError(`Failed to load image: ${msg}`)
       setImageFile(null)
+      resetCaches()
     }
-  }, [drawSourceImage])
+  }, [history, resetCaches])
 
-  // Redraw source when toggling original view
-  useEffect(() => {
-    if (imageSrc && showOriginal) {
-      drawSourceImage(imageSrc)
-    }
-  }, [imageSrc, showOriginal, drawSourceImage])
+  const handlePickColor = useCallback((p: Point) => {
+    const nd = nativeRef.current
+    if (!nd) return
+    const x = Math.round(p.x)
+    const y = Math.round(p.y)
+    if (x < 0 || y < 0 || x >= nd.width || y >= nd.height) return
+    const i = (y * nd.width + x) * 4
+    history.addSample({ r: nd.data[i], g: nd.data[i + 1], b: nd.data[i + 2] })
+  }, [history])
 
-  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isPickingColor || !sourceCanvasRef.current) return
+  const handleWandClick = useCallback((p: Point) => {
+    const nd = nativeRef.current
+    if (!nd) return
+    if (p.x < 0 || p.y < 0 || p.x >= nd.width || p.y >= nd.height) return
+    history.addWandSeed({ x: p.x, y: p.y })
+  }, [history])
 
-    const canvas = sourceCanvasRef.current
-    const rect = canvas.getBoundingClientRect()
-    const x = Math.floor((e.clientX - rect.left) * (canvas.width / rect.width))
-    const y = Math.floor((e.clientY - rect.top) * (canvas.height / rect.height))
+  const handleStroke = useCallback((stroke: BrushStroke) => {
+    history.addStroke(stroke)
+  }, [history])
 
-    const color = getPixelColor(canvas, x, y)
-    setSelectedColor(color)
-    setIsPickingColor(false)
-  }, [isPickingColor])
-
-  const handleRemove = useCallback(async () => {
-    if (!imageSrc || !selectedColor) return
-
-    setIsProcessing(true)
+  const handleExport = useCallback(async () => {
+    const nd = nativeRef.current
+    if (!nd || !imageFile) return
+    setIsExporting(true)
+    setExportProgress(0)
     setError(null)
     try {
-      const img = await loadImage(imageSrc)
-      // Work at full resolution
-      const canvas = resizeImage(img, img.naturalWidth, img.naturalHeight)
-      removeBackgroundColor(canvas, selectedColor, tolerance)
-
+      const out = await renderMaskChunked(nd.data, nd.width, nd.height, doc, setExportProgress)
+      const canvas = document.createElement('canvas')
+      canvas.width = nd.width
+      canvas.height = nd.height
+      canvas.getContext('2d')!.putImageData(new ImageData(out, nd.width, nd.height), 0, 0)
       const blob = await canvasToBlob(canvas, 'image/png', 1)
-      setOutputBlob(blob)
-
-      // Draw preview with checkerboard
-      if (previewCanvasRef.current) {
-        const previewCanvas = previewCanvasRef.current
-        const maxW = 600
-        const maxH = 500
-        const scale = Math.min(maxW / canvas.width, maxH / canvas.height, 1)
-        previewCanvas.width = canvas.width * scale
-        previewCanvas.height = canvas.height * scale
-
-        const ctx = previewCanvas.getContext('2d')!
-
-        // Draw checkerboard pattern
-        drawCheckerboard(ctx, previewCanvas.width, previewCanvas.height)
-
-        // Draw result on top
-        ctx.drawImage(canvas, 0, 0, previewCanvas.width, previewCanvas.height)
-      }
+      setOutputSize(blob.size)
+      const baseName = imageFile.name.replace(/\.[^.]+$/, '')
+      downloadBlob(blob, `${baseName}-nobg.png`)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error'
-      setError(`Background removal failed: ${msg}`)
+      setError(`Export failed: ${msg}`)
     } finally {
-      setIsProcessing(false)
+      setIsExporting(false)
+      setExportProgress(0)
     }
-  }, [imageSrc, selectedColor, tolerance])
+  }, [doc, imageFile])
 
-  const handleDownload = () => {
-    if (!outputBlob || !imageFile) return
-    const baseName = imageFile.name.replace(/\.[^.]+$/, '')
-    downloadBlob(outputBlob, `${baseName}-nobg.png`)
-  }
+  const handleLoadNew = useCallback(() => {
+    setImageFile(null)
+    setOutputSize(null)
+    history.clear()
+    resetCaches()
+  }, [history, resetCaches])
 
-  const handleReset = () => {
-    setSelectedColor(null)
-    setOutputBlob(null)
-    setTolerance(30)
-    setIsPickingColor(true)
-    if (imageSrc) {
-      drawSourceImage(imageSrc)
+  // ── Keyboard shortcuts ──
+  useEffect(() => {
+    if (!imageFile) return
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName
+      const typing = tag === 'INPUT' || tag === 'TEXTAREA'
+      const mod = e.metaKey || e.ctrlKey
+      if (mod && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        if (e.shiftKey) history.redo()
+        else history.undo()
+        return
+      }
+      if (mod && e.key.toLowerCase() === 'y') {
+        e.preventDefault()
+        history.redo()
+        return
+      }
+      if (typing || mod) return
+      switch (e.key.toLowerCase()) {
+        case 'w': setTool('wand'); break
+        case 'i': setTool('picker'); break
+        case 'e': setTool('erase'); break
+        case 'r': setTool('restore'); break
+        case '[': setBrushSize((s) => Math.max(2, s - 4)); break
+        case ']': setBrushSize((s) => Math.min(300, s + 4)); break
+      }
     }
-  }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [imageFile, history])
 
   if (!imageFile) {
     return (
@@ -166,177 +284,51 @@ export default function BgRemoveTool() {
 
   return (
     <div className="h-full flex gap-6">
-      {/* Left panel - Controls */}
-      <div className="w-72 flex-shrink-0 space-y-5 overflow-y-auto pr-2">
-        {/* Original info */}
-        <div className="p-3 rounded-lg bg-white/[0.04] border border-white/[0.06] space-y-1">
-          <p className="text-xs text-white/40">Original</p>
-          <p className="text-sm text-white">{originalSize.width} x {originalSize.height}px</p>
-          <p className="text-xs text-white/40">{formatFileSize(imageFile.size)}</p>
-        </div>
-
-        {/* Selected color */}
-        <div className="space-y-2">
-          <span className="text-xs font-medium text-white/70">Target Color</span>
-          <div className="flex items-center gap-3">
-            {selectedColor ? (
-              <>
-                <div
-                  className="w-10 h-10 rounded-lg border-2 border-white/20"
-                  style={{ backgroundColor: `rgb(${selectedColor.r}, ${selectedColor.g}, ${selectedColor.b})` }}
-                />
-                <div className="text-xs text-white/50 space-y-0.5">
-                  <p>R: {selectedColor.r}</p>
-                  <p>G: {selectedColor.g}</p>
-                  <p>B: {selectedColor.b}</p>
-                </div>
-              </>
-            ) : (
-              <p className="text-xs text-white/40 italic">Click on the image to pick a color</p>
-            )}
-          </div>
-
-          <Button
-            variant={isPickingColor ? 'primary' : 'secondary'}
-            onClick={() => {
-              setIsPickingColor(!isPickingColor)
-              if (!isPickingColor && imageSrc) {
-                drawSourceImage(imageSrc)
-              }
-            }}
-            icon={<Pipette size={14} />}
-            className="w-full"
-          >
-            {isPickingColor ? 'Picking...' : 'Pick Color'}
-          </Button>
-        </div>
-
-        {/* Tolerance */}
-        <Slider
-          label="Tolerance"
-          value={tolerance}
-          min={1}
-          max={100}
-          step={1}
-          suffix="%"
-          onChange={(e) => setTolerance(Number((e.target as HTMLInputElement).value))}
+      <ControlPanel
+        tool={tool}
+        onToolChange={setTool}
+        doc={doc}
+        brushSize={brushSize}
+        onBrushSizeChange={setBrushSize}
+        onRemoveSample={history.removeSample}
+        onSliderChange={history.setSlider}
+        onSliderGestureStart={history.beginGesture}
+        onSliderGestureEnd={history.endGesture}
+        canUndo={history.canUndo}
+        canRedo={history.canRedo}
+        onUndo={history.undo}
+        onRedo={history.redo}
+        onReset={history.reset}
+        onExport={handleExport}
+        onLoadNew={handleLoadNew}
+        isExporting={isExporting}
+        exportProgress={exportProgress}
+        outputSize={outputSize}
+        originalSize={originalSize}
+        fileSize={imageFile.size}
+        previewBg={previewBg}
+        onPreviewBgChange={setPreviewBg}
+        showOriginal={showOriginal}
+        onToggleOriginal={() => setShowOriginal((s) => !s)}
+        error={error}
+        onDismissError={() => setError(null)}
+      />
+      {previewReady && originalCanvasRef.current && maskedCanvasRef.current && (
+        <Workspace
+          originalCanvas={originalCanvasRef.current}
+          maskedCanvas={maskedCanvasRef.current}
+          imageWidth={nativeRef.current!.width}
+          imageHeight={nativeRef.current!.height}
+          tool={tool}
+          brushSize={brushSize}
+          previewBg={previewBg}
+          showOriginal={showOriginal}
+          renderVersion={renderVersion}
+          onPickColor={handlePickColor}
+          onWandClick={handleWandClick}
+          onStroke={handleStroke}
         />
-
-        <p className="text-[10px] text-white/30 leading-relaxed">
-          Lower tolerance removes only very similar colors. Higher tolerance removes a wider range.
-        </p>
-
-        {/* Actions */}
-        <div className="space-y-2 pt-2">
-          {error && (
-            <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20">
-              <p className="text-[11px] text-red-400 flex-1">{error}</p>
-              <button onClick={() => setError(null)} className="p-0.5 rounded text-red-400/60 hover:text-red-400" aria-label="Dismiss error">
-                <X size={12} />
-              </button>
-            </div>
-          )}
-          <Button
-            onClick={handleRemove}
-            disabled={isProcessing || !selectedColor}
-            className="w-full"
-          >
-            {isProcessing ? 'Removing...' : 'Remove Background'}
-          </Button>
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              onClick={handleDownload}
-              icon={<Download size={14} />}
-              disabled={!outputBlob}
-              className="flex-1"
-            >
-              Download PNG
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={handleReset}
-              icon={<Undo2 size={14} />}
-            >
-              Reset
-            </Button>
-          </div>
-        </div>
-
-        {/* Output info */}
-        {outputBlob && (
-          <div className="p-3 rounded-lg bg-[#14B8A6]/5 border border-[#14B8A6]/20 space-y-1">
-            <p className="text-xs text-white/40">Output (PNG)</p>
-            <p className="text-sm text-white">{originalSize.width} x {originalSize.height}px</p>
-            <p className="text-xs text-white/40">{formatFileSize(outputBlob.size)}</p>
-          </div>
-        )}
-
-        {/* Toggle original/result */}
-        {outputBlob && (
-          <button
-            onClick={() => setShowOriginal(!showOriginal)}
-            className="flex items-center gap-2 text-xs text-white/30 hover:text-white/60 transition-colors"
-          >
-            {showOriginal ? <EyeOff size={12} /> : <Eye size={12} />}
-            {showOriginal ? 'Show result' : 'Show original'}
-          </button>
-        )}
-
-        {/* Load new image */}
-        <button
-          onClick={() => {
-            setImageFile(null)
-            setImageSrc(null)
-            setOutputBlob(null)
-            setSelectedColor(null)
-          }}
-          className="text-xs text-white/30 hover:text-white/60 transition-colors"
-        >
-          Load different image
-        </button>
-      </div>
-
-      {/* Right panel - Preview */}
-      <div className="flex-1 flex items-center justify-center overflow-hidden" ref={containerRef}>
-        <div className="flex flex-col items-center gap-4">
-          {outputBlob && !showOriginal && !isPickingColor ? (
-            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
-              <canvas ref={previewCanvasRef} className="max-w-full max-h-[60vh]" />
-            </div>
-          ) : imageSrc ? (
-            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] relative">
-              <canvas
-                ref={sourceCanvasRef}
-                onClick={handleCanvasClick}
-                className={`max-w-full max-h-[60vh] ${isPickingColor ? 'cursor-crosshair' : ''}`}
-              />
-              {isPickingColor && (
-                <div className="absolute top-2 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-[#14B8A6]/90 text-white text-xs font-medium backdrop-blur-sm pointer-events-none">
-                  Click to select the background color
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-3 text-white/30">
-              <ImageIcon size={64} strokeWidth={1} />
-              <p className="text-sm">Image preview will appear here</p>
-            </div>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   )
-}
-
-/** Draw a checkerboard pattern to show transparency */
-function drawCheckerboard(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  const size = 8
-  for (let y = 0; y < h; y += size) {
-    for (let x = 0; x < w; x += size) {
-      const isLight = ((x / size) + (y / size)) % 2 === 0
-      ctx.fillStyle = isLight ? '#2a2a2a' : '#1a1a1a'
-      ctx.fillRect(x, y, size, size)
-    }
-  }
 }
