@@ -11,6 +11,17 @@ import {
 import type { ColorSample } from './types'
 import { floodFillRegion, boxBlur01, removalFromWand } from './maskEngine'
 import type { Point } from './types'
+import {
+  rasterizeStrokes,
+  combineMax,
+  collectBgColors,
+  applyMask,
+  renderMask,
+  MANUAL_NONE,
+  MANUAL_KEEP,
+  MANUAL_REMOVE,
+} from './maskEngine'
+import type { BrushStroke, MaskDoc } from './types'
 
 /** Build a solid RGBA buffer. */
 function solid(w: number, h: number, r: number, g: number, b: number, a = 255): Uint8ClampedArray {
@@ -109,4 +120,78 @@ test('removalFromWand: no seeds removes nothing', () => {
   const data = new Uint8ClampedArray(3 * 4)
   const removal = removalFromWand(data, 3, 1, [], 50, 50)
   assert.deepEqual(Array.from(removal), [0, 0, 0])
+})
+
+test('rasterizeStrokes: disk stamps the center; erase=2, restore=1; last wins', () => {
+  const erase: BrushStroke = { type: 'erase', points: [{ x: 2, y: 2 }], radius: 1 }
+  const m1 = rasterizeStrokes(5, 5, [erase], 1)
+  assert.equal(m1[2 * 5 + 2], MANUAL_REMOVE)
+  assert.equal(m1[0], MANUAL_NONE)
+
+  const restore: BrushStroke = { type: 'restore', points: [{ x: 2, y: 2 }], radius: 1 }
+  const m2 = rasterizeStrokes(5, 5, [erase, restore], 1) // restore applied last
+  assert.equal(m2[2 * 5 + 2], MANUAL_KEEP)
+})
+
+test('rasterizeStrokes: scale maps native coords/radius into buffer space', () => {
+  const stroke: BrushStroke = { type: 'erase', points: [{ x: 4, y: 4 }], radius: 2 }
+  const m = rasterizeStrokes(5, 5, [stroke], 0.5) // center → (2,2), radius → 1
+  assert.equal(m[2 * 5 + 2], MANUAL_REMOVE)
+})
+
+test('combineMax takes the per-pixel maximum', () => {
+  // Use float32-exact values so Array.from round-trips without quantization drift.
+  const a = new Float32Array([0, 0.75, 1])
+  const b = new Float32Array([0.5, 0.25, 0])
+  assert.deepEqual(Array.from(combineMax(a, b)), [0.5, 0.75, 1])
+})
+
+test('applyMask: manual override beats key removal', () => {
+  const src = new Uint8ClampedArray([10, 20, 30, 255, 10, 20, 30, 255])
+  const removal = new Float32Array([1, 0]) // px0 removed, px1 kept by key
+  const manual = new Uint8Array([MANUAL_KEEP, MANUAL_REMOVE]) // overrides flip both
+  const out = applyMask(src, 2, 1, removal, manual, [], 0)
+  assert.equal(out[3], 255) // px0 force-kept
+  assert.equal(out[7], 0)   // px1 force-removed
+})
+
+test('applyMask: partial removal scales original alpha', () => {
+  const src = new Uint8ClampedArray([0, 0, 0, 200])
+  const removal = new Float32Array([0.5])
+  const out = applyMask(src, 1, 1, removal, new Uint8Array([MANUAL_NONE]), [], 0)
+  assert.equal(out[3], Math.round((1 - 0.5) * 200))
+})
+
+test('applyMask: defringe pushes edge color toward the unmixed foreground', () => {
+  // Observed grey 128 at coverage a=0.5 over black bg → unmixed F = 256→clamped 255.
+  const src = new Uint8ClampedArray([128, 128, 128, 255])
+  const removal = new Float32Array([0.5]) // a = 0.5 (edge pixel)
+  const bg = [{ r: 0, g: 0, b: 0 }]
+  const none = applyMask(src, 1, 1, removal, new Uint8Array([MANUAL_NONE]), bg, 0)
+  const full = applyMask(src, 1, 1, removal, new Uint8Array([MANUAL_NONE]), bg, 100)
+  assert.equal(none[0], 128)        // defringe off → unchanged
+  assert.ok(full[0] > none[0])      // defringe on → brighter (decontaminated)
+})
+
+test('renderMask: end-to-end keys the sampled background', () => {
+  // 2x1: green bg + red fg. Sample green via doc.samples.
+  const src = new Uint8ClampedArray([0, 255, 0, 255, 255, 0, 0, 255])
+  const doc: MaskDoc = {
+    samples: [{ r: 0, g: 255, b: 0 }],
+    wandSeeds: [],
+    strokes: [],
+    tolerance: 10,
+    softness: 0,
+    defringe: 0,
+  }
+  const out = renderMask(src, 2, 1, doc, 1)
+  assert.equal(out[3], 0)   // green bg transparent
+  assert.equal(out[7], 255) // red fg opaque
+})
+
+test('collectBgColors: includes samples and the color under each seed', () => {
+  const src = new Uint8ClampedArray([0, 0, 255, 255]) // single blue pixel
+  const colors = collectBgColors(src, 1, 1, [{ r: 9, g: 9, b: 9 }], [{ x: 0, y: 0 }])
+  assert.deepEqual(colors[0], { r: 9, g: 9, b: 9 })
+  assert.deepEqual(colors[1], { r: 0, g: 0, b: 255 })
 })
