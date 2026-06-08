@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "npx playwright test",
     "test:ui": "npx playwright test --ui",
-    "test:headed": "npx playwright test --headed"
+    "test:headed": "npx playwright test --headed",
+    "test:unit": "node --import tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@dagrejs/dagre": "^2.0.4",

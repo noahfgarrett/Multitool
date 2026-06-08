@@ -49,36 +49,6 @@ export function canvasToBlob(
 }
 
 /**
- * Remove a background color from an image by setting matching pixels to transparent.
- * Uses Euclidean distance in RGB space with a tolerance threshold.
- */
-export function removeBackgroundColor(
-  canvas: HTMLCanvasElement,
-  targetColor: { r: number; g: number; b: number },
-  tolerance: number,
-): HTMLCanvasElement {
-  const ctx = canvas.getContext('2d')!
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-  const data = imageData.data
-
-  const maxDist = tolerance * 4.41 // normalize 0-100 to 0-441 (max RGB distance)
-
-  for (let i = 0; i < data.length; i += 4) {
-    const dr = data[i] - targetColor.r
-    const dg = data[i + 1] - targetColor.g
-    const db = data[i + 2] - targetColor.b
-    const dist = Math.sqrt(dr * dr + dg * dg + db * db)
-
-    if (dist <= maxDist) {
-      data[i + 3] = 0 // set alpha to 0
-    }
-  }
-
-  ctx.putImageData(imageData, 0, 0)
-  return canvas
-}
-
-/**
  * Get the color at a specific pixel from a canvas.
  */
 export function getPixelColor(
