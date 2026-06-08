@@ -343,7 +343,13 @@ Expected: FAIL — `floodFillRegion`/`boxBlur01`/`removalFromWand` not exported.
 
 - [ ] **Step 3: Implement flood fill, box blur, and wand**
 
-Append to `maskEngine.ts`:
+First, update the type import at the top of `maskEngine.ts` to add `Point`:
+
+```ts
+import type { ColorSample, Point } from './types'
+```
+
+Then append to `maskEngine.ts`:
 
 ```ts
 /** Preview-space blur radius (px) applied to wand edges at softness=100. */
@@ -521,9 +527,10 @@ test('rasterizeStrokes: scale maps native coords/radius into buffer space', () =
 })
 
 test('combineMax takes the per-pixel maximum', () => {
-  const a = new Float32Array([0, 0.3, 1])
-  const b = new Float32Array([0.5, 0.1, 0])
-  assert.deepEqual(Array.from(combineMax(a, b)), [0.5, 0.3, 1])
+  // Use float32-exact values so Array.from round-trips without quantization drift.
+  const a = new Float32Array([0, 0.75, 1])
+  const b = new Float32Array([0.5, 0.25, 0])
+  assert.deepEqual(Array.from(combineMax(a, b)), [0.5, 0.75, 1])
 })
 
 test('applyMask: manual override beats key removal', () => {
@@ -1957,9 +1964,10 @@ test.describe('Background Remover tool', () => {
     await uploadFile(page, 'sample-image.png')
     await expect(page.getByTestId('bg-workspace-canvas')).toBeVisible({ timeout: 5000 })
 
-    // Switch to the color picker and click the canvas
+    // Switch to the color picker and click the canvas center (reliably inside the
+    // centered image — corner clicks land in the fit padding, outside the image).
     await page.getByTestId('tool-picker').click()
-    await page.getByTestId('bg-workspace-canvas').click({ position: { x: 8, y: 8 } })
+    await page.getByTestId('bg-workspace-canvas').click()
 
     // A sample swatch should appear
     await expect(page.getByTestId('sample-swatch').first()).toBeVisible({ timeout: 3000 })
@@ -1976,7 +1984,7 @@ test.describe('Background Remover tool', () => {
     const canvas = page.getByTestId('bg-workspace-canvas')
     await expect(canvas).toBeVisible({ timeout: 5000 })
 
-    await canvas.click({ position: { x: 8, y: 8 } }) // wand is default
+    await canvas.click() // wand is default
     await expect(page.locator('button').filter({ hasText: 'Undo' })).toBeEnabled({ timeout: 3000 })
   })
 
@@ -1984,7 +1992,7 @@ test.describe('Background Remover tool', () => {
     await uploadFile(page, 'sample-image.png')
     const canvas = page.getByTestId('bg-workspace-canvas')
     await expect(canvas).toBeVisible({ timeout: 5000 })
-    await canvas.click({ position: { x: 8, y: 8 } })
+    await canvas.click()
 
     const downloadPromise = page.waitForEvent('download')
     await page.locator('button').filter({ hasText: 'Download PNG' }).click()
