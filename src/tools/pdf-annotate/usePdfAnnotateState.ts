@@ -397,15 +397,13 @@ export function usePdfAnnotateState() {
   // useLayoutEffect immediately after setZoom commits, so the user
   // never sees an intermediate state.
   const gestureTransformRef = useRef<HTMLDivElement>(null)
-  // Anchor data bridging the pinch touchend handler and the post-setZoom
-  // useLayoutEffect, which computes the final scroll from the NEW layout
-  // (so the zoom-dependent centering padding is accounted for — no jump).
+  // Final midpoint + zoom bridging the pinch touchend handler and the
+  // post-setZoom useLayoutEffect, which recomputes the bounded scroll via
+  // pinchFrame so the committed position matches the last live frame — no jump.
   const pinchCommitRef = useRef<{
-    anchorLocalX: number
-    anchorLocalY: number
-    ratio: number
     finalMidX: number
     finalMidY: number
+    finalZoom: number
   } | null>(null)
   const zoomRef = useRef(zoom)
   const focusModeRef = useRef(focusMode)
@@ -498,6 +496,10 @@ export function usePdfAnnotateState() {
   const pinchStartMidClientRef = useRef({ x: 0, y: 0 })
   // Scroll offset at gesture start
   const pinchStartScrollRef = useRef({ left: 0, top: 0 })
+  // Scroll-range inputs cached at gesture start: viewport size, unscaled
+  // content size, and per-side padding. maxScroll(zoom) on an axis =
+  // natural*zoom + 2*pad - client (see pinchMath.maxScroll).
+  const pinchBoundsRef = useRef({ clientW: 0, clientH: 0, naturalW: 0, naturalH: 0, padX: 24, padY: 24 })
 
   // Active canvas drawing pipeline (iPad perf overhaul)
   const pointBufferRef = useRef<{ x: number; y: number; pressure: number }[]>([])
@@ -692,7 +694,7 @@ export function usePdfAnnotateState() {
     pinchActiveRef, pinchStartZoomRef, pinchStartDistRef,
     pinchLocalZoomRef, pinchRafIdRef, pinchPendingRef,
     pinchOriginRef, pinchMidClientRef, pinchStartMidClientRef,
-    pinchStartScrollRef,
+    pinchStartScrollRef, pinchBoundsRef,
     // Active canvas pipeline
     pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     // Memos

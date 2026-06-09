@@ -11,7 +11,7 @@ import { exportAnnotatedPdf, buildAnnotatedPdfBytes } from './exportPdf.ts'
 import { loadPDFFile, renderPageToCanvas, generateThumbnail, removePDFFromCache, extractPositionedText, getAllPageDimensions, validatePageRange, isRenderingCancelled, getMaxRenderScale, renderPageTile, getMaxCanvasPixels } from '@/utils/pdf.ts'
 import { buildTileGrid, teardownTileGrid } from './tileRendering.ts'
 import type { PageTile } from './tileRendering.ts'
-import { pinchGestureTransform, anchorScrollAxis } from './pinchMath.ts'
+import { pinchFrame, maxScroll } from './pinchMath.ts'
 import type { PinchStart } from './pinchMath.ts'
 import Tesseract from 'tesseract.js'
 import { downloadBlob } from '@/utils/download.ts'
@@ -428,7 +428,7 @@ export default function PdfAnnotateTool() {
     pinchActiveRef, pinchStartZoomRef, pinchStartDistRef,
     pinchLocalZoomRef, pinchRafIdRef, pinchPendingRef,
     pinchOriginRef, pinchMidClientRef, pinchStartMidClientRef,
-    pinchStartScrollRef,
+    pinchStartScrollRef, pinchBoundsRef,
     pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     annPageMap, totalAnnotationCount,
   } = S
@@ -1944,11 +1944,23 @@ export default function PdfAnnotateTool() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pdfFile, dimsReady, renderSinglePage, fitToWindow])
 
-  // Pinch commit: runs synchronously AFTER React has updated the DOM
-  // with the new zoom (layout wrapper size, inner transform, padded
-  // wrapper padding) but BEFORE the browser paints. Applies the stashed
-  // scroll target and clears the gesture transform in the same frame,
-  // so the user never sees an intermediate state between the CSS
+  // Immutable snapshot of the gesture start, assembled from the refs cached in
+  // onTouchStart. Pure inputs for the pinch math — shared by the live rAF and
+  // the post-setZoom commit so both reproduce the identical (bounded) scroll.
+  const pinchStartSnapshot = useCallback((): PinchStart => ({
+    originX: pinchOriginRef.current.x,
+    originY: pinchOriginRef.current.y,
+    startMidX: pinchStartMidClientRef.current.x,
+    startMidY: pinchStartMidClientRef.current.y,
+    scrollLeft: pinchStartScrollRef.current.left,
+    scrollTop: pinchStartScrollRef.current.top,
+    startZoom: pinchStartZoomRef.current,
+  }), [pinchOriginRef, pinchStartMidClientRef, pinchStartScrollRef, pinchStartZoomRef])
+
+  // Pinch commit: runs synchronously AFTER React has updated the DOM with the
+  // new zoom (layout wrapper size, inner transform) but BEFORE the browser
+  // paints. Clears the gesture transform and applies the final scroll in the
+  // same frame, so the user never sees an intermediate state between the CSS
   // transform preview and the React-owned final layout.
   useLayoutEffect(() => {
     const commit = pinchCommitRef.current
@@ -1959,19 +1971,23 @@ export default function PdfAnnotateTool() {
     const el = scrollRef.current
     if (!gestureEl || !el) return
 
-    // Clear the gesture transform FIRST — React already committed the new zoom
-    // layout. Clearing now (before paint) avoids a flash AND lets us read the
-    // gesture layer's NATURAL position in the new layout below.
+    // Clear the gesture transform — React already committed the new zoom layout.
     gestureEl.style.transform = ''
     gestureEl.style.transformOrigin = '0 0'
 
-    // Compute the scroll from the NEW layout. `rect.left + el.scrollLeft` is the
-    // layer's client x at scroll 0, including the new centering padding — which
-    // shifts with zoom on the horizontal axis and was the source of the jump.
-    // Place the anchor (start-midpoint content) under the final finger midpoint.
-    const rect = gestureEl.getBoundingClientRect()
-    el.scrollLeft = anchorScrollAxis(rect.left + el.scrollLeft, commit.anchorLocalX, commit.ratio, commit.finalMidX)
-    el.scrollTop = anchorScrollAxis(rect.top + el.scrollTop, commit.anchorLocalY, commit.ratio, commit.finalMidY)
+    // Recompute the bounded scroll at the FINAL zoom from the same gesture-start
+    // snapshot the live frames used. pinchFrame clamps to [0, maxScroll] at the
+    // final zoom; since the last live frame clamped to the same bounds, the
+    // committed scroll equals what's already on screen — no jump, and crossing a
+    // "fit" threshold stays smooth. The cached start origin stays valid because
+    // the touch layout keeps padding constant across zoom (centering is off).
+    const snap = pinchStartSnapshot()
+    const b = pinchBoundsRef.current
+    const limX = maxScroll(b.naturalW, commit.finalZoom, b.padX * 2, b.clientW)
+    const limY = maxScroll(b.naturalH, commit.finalZoom, b.padY * 2, b.clientH)
+    const frame = pinchFrame(snap, commit.finalMidX, commit.finalMidY, commit.finalZoom, limX, limY)
+    el.scrollLeft = frame.scrollLeft
+    el.scrollTop = frame.scrollTop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoom])
 
@@ -2530,18 +2546,6 @@ export default function PdfAnnotateTool() {
     const el = scrollRef.current
     if (!el) return
 
-    // Immutable snapshot of the gesture start, assembled from the refs cached
-    // in onTouchStart. Pure inputs for the pinch math — no DOM reads here.
-    const pinchStartSnapshot = (): PinchStart => ({
-      originX: pinchOriginRef.current.x,
-      originY: pinchOriginRef.current.y,
-      startMidX: pinchStartMidClientRef.current.x,
-      startMidY: pinchStartMidClientRef.current.y,
-      scrollLeft: pinchStartScrollRef.current.left,
-      scrollTop: pinchStartScrollRef.current.top,
-      startZoom: pinchStartZoomRef.current,
-    })
-
     const onTouchStart = (ev: TouchEvent): void => {
       // A fresh 2-finger touch while a pinch is already active: reset cleanly.
       if (ev.touches.length === 2 && pinchActiveRef.current) {
@@ -2586,6 +2590,20 @@ export default function PdfAnnotateTool() {
           x: rect.left + padL - startScrollLeft,
           y: rect.top + padT - startScrollTop,
         }
+        // Cache the scroll-range inputs once, so every live frame and the commit
+        // clamp to the SAME bounds (no snap when crossing a fit threshold). The
+        // unscaled content size = the layout box ÷ current zoom; clientW/H is the
+        // scrollbar-excluded viewport; padL/padT are the (symmetric) touch pads.
+        const layoutEl = zoomLayoutRef.current
+        const sz = pinchStartZoomRef.current
+        pinchBoundsRef.current = {
+          clientW: el.clientWidth,
+          clientH: el.clientHeight,
+          naturalW: layoutEl && sz ? layoutEl.offsetWidth / sz : 0,
+          naturalH: layoutEl && sz ? layoutEl.offsetHeight / sz : 0,
+          padX: padL,
+          padY: padT,
+        }
 
         const gestureEl = gestureTransformRef.current
         if (gestureEl) gestureEl.style.transformOrigin = '0 0'
@@ -2626,15 +2644,20 @@ export default function PdfAnnotateTool() {
 
           // ONE composited transform — no layout reads, no native scroll writes.
           // Anchors the start-midpoint content under the current midpoint, so
-          // the page tracks the fingers smoothly (Google Maps feel).
-          const { tx, ty, s } = pinchGestureTransform(
-            pinchStartSnapshot(), pending.midX, pending.midY, pending.zoom,
+          // the page tracks the fingers smoothly (Google Maps feel). Clamped to
+          // the real scroll range at this zoom, so the preview can't show a
+          // position the commit would have to snap back from.
+          const b = pinchBoundsRef.current
+          const limX = maxScroll(b.naturalW, pending.zoom, b.padX * 2, b.clientW)
+          const limY = maxScroll(b.naturalH, pending.zoom, b.padY * 2, b.clientH)
+          const frame = pinchFrame(
+            pinchStartSnapshot(), pending.midX, pending.midY, pending.zoom, limX, limY,
           )
           // translate3d (not translate) forces a GPU/compositor layer so iOS
           // Safari repaints the transform DURING the gesture. iOS throttles
           // main-thread paint mid-touch, but compositor-thread transforms keep
           // updating — without this the page doesn't visibly zoom on iPad.
-          gestureEl.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${s})`
+          gestureEl.style.transform = `translate3d(${frame.tx}px, ${frame.ty}px, 0) scale(${frame.s})`
           // Record the last RENDERED frame so the touchend commit anchors to
           // exactly this on-screen state (prevents the end-of-gesture jump).
           pinchLocalZoomRef.current = pending.zoom
@@ -2652,19 +2675,21 @@ export default function PdfAnnotateTool() {
       }
       pinchPendingRef.current = null
 
-      const finalZoom = Math.round(pinchLocalZoomRef.current * 100) / 100
+      // Commit the EXACT zoom the last live frame rendered (already clamped to
+      // [0.25, 4] in the rAF). No rounding: the commit's pinchFrame must use the
+      // identical zoom so the scroll matches the live frame to the pixel — any
+      // rounding here shifts content far from the anchor (a visible "jump" when
+      // the page is large / deeply scrolled). The zoom % label rounds for display.
+      const finalZoom = pinchLocalZoomRef.current
       if (finalZoom !== pinchStartZoomRef.current) {
         const mid = pinchMidClientRef.current // last RENDERED midpoint
-        const snap = pinchStartSnapshot()
-        // Stash anchor inputs. The post-setZoom layout effect computes the
-        // scroll from the NEW layout (DOM), so the zoom-dependent centering
-        // padding is accounted for — the page stays put across the handoff.
+        // Stash the final midpoint + zoom. The post-setZoom layout effect
+        // recomputes the bounded scroll via pinchFrame from the same gesture
+        // start, so the committed position equals the last live frame — no jump.
         pinchCommitRef.current = {
-          anchorLocalX: snap.startMidX - snap.originX,
-          anchorLocalY: snap.startMidY - snap.originY,
-          ratio: finalZoom / snap.startZoom,
           finalMidX: mid.x,
           finalMidY: mid.y,
+          finalZoom,
         }
         setZoom(finalZoom)
       } else {
