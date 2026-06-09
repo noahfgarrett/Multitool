@@ -2518,14 +2518,15 @@ export default function PdfAnnotateTool() {
     return () => el.removeEventListener('scroll', handler)
   }, [selectTextToolbar, redrawAll])
 
-  // ── Mobile pinch-to-zoom (Google Maps style) ──────────
+  // ── Pinch-to-zoom for touch devices (phones AND tablets) ──────────
   // Continuously re-derives the zoom anchor from the current finger
   // midpoint every frame, so pinch+pan feels like zooming into a map.
-  // Only activates on mobile (isMobile). Desktop uses Ctrl+wheel zoom.
-  // Uses native touch events with passive:false to suppress iOS Safari's
-  // native zoom (which ignores touch-action: none).
+  // Gated on isTouchDevice (any-pointer: coarse), NOT isMobile — iPads use the
+  // desktop layout (width > 767px) yet still need pinch-to-zoom. Mouse-only
+  // desktops never fire touch events, so attaching the listeners is harmless.
+  // Native touch events with passive:false suppress iOS Safari's native zoom.
   useEffect(() => {
-    if (!isMobile) return
+    if (!isTouchDevice) return
     const el = scrollRef.current
     if (!el) return
 
@@ -2676,7 +2677,7 @@ export default function PdfAnnotateTool() {
       document.removeEventListener('gesturestart', onDocGesture)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pdfFile, isMobile])
+  }, [pdfFile, isTouchDevice])
 
   // ── Mobile edge-swipe + 3-finger gestures ───────────
   // Runs only when the mobile layout is active. Native touch listeners on
