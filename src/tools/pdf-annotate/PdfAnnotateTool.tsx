@@ -11,6 +11,8 @@ import { exportAnnotatedPdf, buildAnnotatedPdfBytes } from './exportPdf.ts'
 import { loadPDFFile, renderPageToCanvas, generateThumbnail, removePDFFromCache, extractPositionedText, getAllPageDimensions, validatePageRange, isRenderingCancelled, getMaxRenderScale, renderPageTile, getMaxCanvasPixels } from '@/utils/pdf.ts'
 import { buildTileGrid, teardownTileGrid } from './tileRendering.ts'
 import type { PageTile } from './tileRendering.ts'
+import { pinchGestureTransform, pinchCommitScroll } from './pinchMath.ts'
+import type { PinchStart } from './pinchMath.ts'
 import Tesseract from 'tesseract.js'
 import { downloadBlob } from '@/utils/download.ts'
 import { saveSession, loadSession, clearSession, computeFileHash } from './storage.ts'
@@ -426,7 +428,7 @@ export default function PdfAnnotateTool() {
     pinchActiveRef, pinchStartZoomRef, pinchStartDistRef,
     pinchLocalZoomRef, pinchRafIdRef, pinchPendingRef,
     pinchOriginRef, pinchMidClientRef, pinchStartMidClientRef,
-    pinchStartScrollRef, pinchContainerRectRef,
+    pinchStartScrollRef,
     pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     annPageMap, totalAnnotationCount,
   } = S
@@ -1965,11 +1967,11 @@ export default function PdfAnnotateTool() {
     const el = scrollRef.current
     if (!el) return
 
-    // Anchor formula: the content point that was at viewport position
-    // (originX, originY) before the zoom stays at that position after.
-    // scrollPos_new = (scrollPos_old + origin) * ratio - origin
-    el.scrollLeft = Math.max(0, (commit.scrollLeft + commit.originX) * commit.ratio - commit.originX)
-    el.scrollTop = Math.max(0, (commit.scrollTop + commit.originY) * commit.ratio - commit.originY)
+    // The final scroll offset was computed at touchend (pinchCommitScroll) so
+    // the anchor lands under the final finger midpoint. Apply it now that the
+    // page is laid out at the new zoom (the scroll range is large enough).
+    el.scrollLeft = commit.scrollLeft
+    el.scrollTop = commit.scrollTop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoom])
 
@@ -2527,25 +2529,20 @@ export default function PdfAnnotateTool() {
     const el = scrollRef.current
     if (!el) return
 
-    const getPadding = (): { l: number; t: number } => {
-      const padded = paddedWrapperRef.current
-      const cs = padded ? getComputedStyle(padded) : null
-      return {
-        l: cs ? (parseFloat(cs.paddingLeft) || 24) : 24,
-        t: cs ? (parseFloat(cs.paddingTop) || 24) : 24,
-      }
-    }
-
-    const toContentSpace = (clientX: number, clientY: number): { x: number; y: number } => {
-      const rect = el.getBoundingClientRect()
-      const pad = getPadding()
-      return {
-        x: el.scrollLeft + (clientX - rect.left) - pad.l,
-        y: el.scrollTop + (clientY - rect.top) - pad.t,
-      }
-    }
+    // Immutable snapshot of the gesture start, assembled from the refs cached
+    // in onTouchStart. Pure inputs for the pinch math — no DOM reads here.
+    const pinchStartSnapshot = (): PinchStart => ({
+      originX: pinchOriginRef.current.x,
+      originY: pinchOriginRef.current.y,
+      startMidX: pinchStartMidClientRef.current.x,
+      startMidY: pinchStartMidClientRef.current.y,
+      scrollLeft: pinchStartScrollRef.current.left,
+      scrollTop: pinchStartScrollRef.current.top,
+      startZoom: pinchStartZoomRef.current,
+    })
 
     const onTouchStart = (ev: TouchEvent): void => {
+      // A fresh 2-finger touch while a pinch is already active: reset cleanly.
       if (ev.touches.length === 2 && pinchActiveRef.current) {
         if (pinchRafIdRef.current !== null) {
           cancelAnimationFrame(pinchRafIdRef.current)
@@ -2565,16 +2562,33 @@ export default function PdfAnnotateTool() {
         const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
         const midX = (t0.clientX + t1.clientX) / 2
         const midY = (t0.clientY + t1.clientY) / 2
+
+        // Read layout ONCE here — never during the gesture (avoids per-frame
+        // forced reflows). Padding + container rect don't change mid-pinch.
+        const rect = el.getBoundingClientRect()
+        const padded = paddedWrapperRef.current
+        const cs = padded ? getComputedStyle(padded) : null
+        const padL = cs ? (parseFloat(cs.paddingLeft) || 24) : 24
+        const padT = cs ? (parseFloat(cs.paddingTop) || 24) : 24
+        const startScrollLeft = el.scrollLeft
+        const startScrollTop = el.scrollTop
+
         pinchActiveRef.current = true
         pinchStartZoomRef.current = zoomRef.current
         pinchLocalZoomRef.current = zoomRef.current
         pinchStartDistRef.current = dist
         pinchMidClientRef.current = { x: midX, y: midY }
         pinchStartMidClientRef.current = { x: midX, y: midY }
-        pinchStartScrollRef.current = { left: el.scrollLeft, top: el.scrollTop }
-        const rect = el.getBoundingClientRect()
-        pinchContainerRectRef.current = { left: rect.left, top: rect.top }
-        pinchOriginRef.current = toContentSpace(midX, midY)
+        pinchStartScrollRef.current = { left: startScrollLeft, top: startScrollTop }
+        // L0: the gesture layer's untransformed top-left in client coords.
+        pinchOriginRef.current = {
+          x: rect.left + padL - startScrollLeft,
+          y: rect.top + padT - startScrollTop,
+        }
+
+        const gestureEl = gestureTransformRef.current
+        if (gestureEl) gestureEl.style.transformOrigin = '0 0'
+
         if (isDrawingRef.current) {
           isDrawingRef.current = false
           currentPtsRef.current = []
@@ -2607,17 +2621,13 @@ export default function PdfAnnotateTool() {
           const gestureEl = gestureTransformRef.current
           if (!gestureEl) return
 
-          // Re-derive the content-space anchor from the CURRENT finger
-          // midpoint every frame — this is what makes it feel like Maps.
-          const newOrigin = toContentSpace(pending.midX, pending.midY)
-          const scale = pending.zoom / zoomRef.current
-
-          gestureEl.style.transformOrigin = `${newOrigin.x}px ${newOrigin.y}px`
-          gestureEl.style.transform = `scale(${scale})`
-
-          // Scroll so the content under the midpoint stays fixed
-          el.scrollLeft = newOrigin.x * scale - (pending.midX - el.getBoundingClientRect().left - getPadding().l)
-          el.scrollTop = newOrigin.y * scale - (pending.midY - el.getBoundingClientRect().top - getPadding().t)
+          // ONE composited transform — no layout reads, no native scroll writes.
+          // Anchors the start-midpoint content under the current midpoint, so
+          // the page tracks the fingers smoothly (Google Maps feel).
+          const { tx, ty, s } = pinchGestureTransform(
+            pinchStartSnapshot(), pending.midX, pending.midY, pending.zoom,
+          )
+          gestureEl.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`
         })
       }
     }
@@ -2632,16 +2642,11 @@ export default function PdfAnnotateTool() {
       pinchPendingRef.current = null
 
       const finalZoom = Math.round(pinchLocalZoomRef.current * 100) / 100
-      if (finalZoom !== zoomRef.current) {
+      if (finalZoom !== pinchStartZoomRef.current) {
         const mid = pinchMidClientRef.current
-        const rect = pinchContainerRectRef.current
-        pinchCommitRef.current = {
-          ratio: finalZoom / zoomRef.current,
-          originX: mid.x - rect.left,
-          originY: mid.y - rect.top,
-          scrollLeft: el.scrollLeft,
-          scrollTop: el.scrollTop,
-        }
+        // Stash the final scroll so the post-setZoom layout effect lands the
+        // anchor under the final midpoint once the page is re-laid out.
+        pinchCommitRef.current = pinchCommitScroll(pinchStartSnapshot(), mid.x, mid.y, finalZoom)
         setZoom(finalZoom)
       } else {
         const gestureEl = gestureTransformRef.current
@@ -5872,6 +5877,7 @@ export default function PdfAnnotateTool() {
         {/* ── Canvas area ─────────────────────────── */}
         <div
           ref={scrollRef}
+          data-testid="pdf-scroll"
           className="flex-1 overflow-auto bg-black/20 relative"
           style={{ overscrollBehavior: 'contain' }}
         >
@@ -5966,6 +5972,7 @@ export default function PdfAnnotateTool() {
           }}>
           <div
             ref={gestureTransformRef}
+            data-testid="pdf-gesture-layer"
             style={{ transformOrigin: '0 0' }}
           >
           <div
