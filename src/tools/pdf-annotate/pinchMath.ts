@@ -39,11 +39,6 @@ export interface GestureTransform {
   s: number
 }
 
-export interface ScrollOffset {
-  scrollLeft: number
-  scrollTop: number
-}
-
 /**
  * Live transform for the gesture layer. Scales by `s = targetZoom/startZoom`
  * and translates so the anchor (content under the start midpoint) sits under
@@ -66,21 +61,24 @@ export function pinchGestureTransform(
 }
 
 /**
- * Final scroll offset to apply AFTER the new zoom is committed (re-laid out at
- * `finalZoom`), so the anchor lands under the final finger midpoint. Clamped to
- * >= 0; the browser clamps the upper bound against the new scroll range.
+ * Commit scroll for ONE axis, computed in the FINAL (post-zoom) layout.
+ *
+ * `contentOrigin` is the gesture layer's client coordinate at scroll 0 in the
+ * NEW layout — read from the DOM after re-render, so it already reflects the
+ * new centering padding (which changes with zoom on the horizontal axis). That
+ * padding shift is exactly what made the page jump when the commit used the
+ * stale start-zoom padding.
+ *
+ * `anchorLocal` is the anchor's offset inside the layer at start zoom; scaling
+ * it by `ratio` (finalZoom/startZoom) gives its offset at final zoom. Placing
+ * that under the finger `midpoint` keeps the page anchored across the
+ * transform→layout handoff. Clamped to >= 0 (browser clamps the upper bound).
  */
-export function pinchCommitScroll(
-  start: PinchStart,
-  finalMidX: number,
-  finalMidY: number,
-  finalZoom: number,
-): ScrollOffset {
-  const ratio = finalZoom / start.startZoom
-  const ax = start.startMidX - start.originX
-  const ay = start.startMidY - start.originY
-  return {
-    scrollLeft: Math.max(0, start.originX + start.scrollLeft + ax * ratio - finalMidX),
-    scrollTop: Math.max(0, start.originY + start.scrollTop + ay * ratio - finalMidY),
-  }
+export function anchorScrollAxis(
+  contentOrigin: number,
+  anchorLocal: number,
+  ratio: number,
+  midpoint: number,
+): number {
+  return Math.max(0, contentOrigin + anchorLocal * ratio - midpoint)
 }
