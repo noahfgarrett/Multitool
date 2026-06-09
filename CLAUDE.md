@@ -154,18 +154,24 @@ When the user says "push a new release", "push to GitHub", or "release vX.Y.Z", 
    git commit -m "fix: patch changelog timestamp for vX.Y.Z" && git push
    ```
    This ensures the changelog displays the exact date and time the release was published, and that the downloadable asset actually contains the patched timestamp (not a leftover `PLACEHOLDER`).
-10. **Deploy to GitHub Pages (PWA)** — The PWA at `noahfgarrett.github.io/Multitool/` is served from the `gh-pages` branch. Copy the built HTML there and push:
+10. **Deploy to GitHub Pages (PWA)** — The PWA at `noahfgarrett.github.io/Multitool/` is served from the `gh-pages` branch. Copy the built HTML there, **bump the service-worker cache**, then push:
     ```bash
     git worktree add /tmp/multitool-ghpages origin/gh-pages
     cp dist/Multitool.html /tmp/multitool-ghpages/index.html
+    # MANDATORY: bump the SW cache name, or installed PWAs NEVER update.
+    # The browser only reinstalls the service worker when sw.js BYTES change;
+    # redeploying index.html alone leaves every installed PWA on a stale cache.
+    sed -i '' "s/const CACHE_NAME = '[^']*'/const CACHE_NAME = 'multitool-vX.Y.Z'/" /tmp/multitool-ghpages/sw.js
     cd /tmp/multitool-ghpages
-    git add index.html
+    git add index.html sw.js
     git commit -m "Deploy vX.Y.Z to GitHub Pages"
     git push origin gh-pages
     cd -
     git worktree remove /tmp/multitool-ghpages
+    # VERIFY the cache bumped — must print the new version:
+    git fetch origin gh-pages -q && git show origin/gh-pages:sw.js | grep "const CACHE_NAME"
     ```
-    The `gh-pages` branch also contains `manifest.json`, `sw.js`, and icon PNGs — don't touch those unless updating the PWA config.
+    **Bumping `CACHE_NAME` every deploy is required** — it triggers the SW reinstall + old-cache eviction so PWA users actually receive the update. (This step was missed from v4.0.27 through v4.6.1, which froze installed PWAs on a months-old cached build.) Don't touch `manifest.json` or the icon PNGs unless changing PWA config.
 
 ### Why `target_commitish` Matters
 GitHub's `/releases/latest` endpoint sorts by `created_at`, which is the **tag's target commit date** — NOT when the release was published. If you create a release against an old commit, it gets a stale `created_at` and may not be returned as "latest". Always pass `target_commitish` with the current HEAD SHA to guarantee a fresh timestamp.
