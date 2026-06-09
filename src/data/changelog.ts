@@ -12,6 +12,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.6.5',
+    date: 'PLACEHOLDER',
+    type: 'fix',
+    stats: { fixes: 1 },
+    notes: `### PDF Annotate
+- Page no longer drifts when pinch-zooming on tablets`,
+  },
+  {
     version: '4.6.4',
     date: '2026-06-09T14:50:27Z',
     type: 'fix',
