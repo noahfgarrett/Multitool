@@ -2627,7 +2627,11 @@ export default function PdfAnnotateTool() {
           const { tx, ty, s } = pinchGestureTransform(
             pinchStartSnapshot(), pending.midX, pending.midY, pending.zoom,
           )
-          gestureEl.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`
+          // translate3d (not translate) forces a GPU/compositor layer so iOS
+          // Safari repaints the transform DURING the gesture. iOS throttles
+          // main-thread paint mid-touch, but compositor-thread transforms keep
+          // updating — without this the page doesn't visibly zoom on iPad.
+          gestureEl.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${s})`
         })
       }
     }
