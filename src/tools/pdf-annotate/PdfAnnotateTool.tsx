@@ -5986,8 +5986,12 @@ export default function PdfAnnotateTool() {
             boxSizing: 'border-box',
             paddingTop: 24,
             paddingBottom: 24,
-            paddingLeft: innerScaledW ? `max(24px, calc((100% - ${innerScaledW}px) / 2))` : 24,
-            paddingRight: innerScaledW ? `max(24px, calc((100% - ${innerScaledW}px) / 2))` : 24,
+            // Touch devices (incl. iPad): NO horizontal auto-centering. The
+            // centering padding changes with content width as you zoom, which
+            // shifted the page left/right on pinch. Fixed padding → nothing to
+            // shift. Mouse/desktop keeps centering (it doesn't pinch-zoom).
+            paddingLeft: isTouchDevice ? 24 : (innerScaledW ? `max(24px, calc((100% - ${innerScaledW}px) / 2))` : 24),
+            paddingRight: isTouchDevice ? 24 : (innerScaledW ? `max(24px, calc((100% - ${innerScaledW}px) / 2))` : 24),
           }}>
           <div
             ref={gestureTransformRef}
