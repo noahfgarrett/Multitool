@@ -12,6 +12,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.6.2',
+    date: 'PLACEHOLDER',
+    type: 'fix',
+    stats: { fixes: 1 },
+    notes: `### PDF Annotate
+- Pinch-to-zoom fixed on iPads`,
+  },
+  {
     version: '4.6.1',
     date: '2026-06-09T13:02:12Z',
     type: 'fix',
