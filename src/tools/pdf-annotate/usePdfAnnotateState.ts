@@ -397,11 +397,15 @@ export function usePdfAnnotateState() {
   // useLayoutEffect immediately after setZoom commits, so the user
   // never sees an intermediate state.
   const gestureTransformRef = useRef<HTMLDivElement>(null)
-  // Final scroll offset bridging the pinch touchend handler and the
-  // post-setZoom useLayoutEffect (computed by pinchCommitScroll).
+  // Anchor data bridging the pinch touchend handler and the post-setZoom
+  // useLayoutEffect, which computes the final scroll from the NEW layout
+  // (so the zoom-dependent centering padding is accounted for — no jump).
   const pinchCommitRef = useRef<{
-    scrollLeft: number
-    scrollTop: number
+    anchorLocalX: number
+    anchorLocalY: number
+    ratio: number
+    finalMidX: number
+    finalMidY: number
   } | null>(null)
   const zoomRef = useRef(zoom)
   const focusModeRef = useRef(focusMode)
