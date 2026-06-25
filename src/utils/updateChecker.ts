@@ -1,4 +1,4 @@
-import { isNewer } from '@/utils/semver.ts'
+import { isNewer } from './semver.ts'
 
 const GITHUB_API_URL =
   'https://api.github.com/repos/noahfgarrett/Multitool/releases/latest'
@@ -10,9 +10,13 @@ export interface UpdateInfo {
   downloadUrl: string
   assetApiUrl: string
   assetName: string
+  downloadKind: 'html' | 'gzip-html'
+  fallbackDownloadUrl?: string
+  fallbackAssetApiUrl?: string
+  fallbackAssetName?: string
 }
 
-interface GitHubAsset {
+export interface GitHubAsset {
   name: string
   url: string
   browser_download_url: string
@@ -23,6 +27,49 @@ interface GitHubRelease {
   body?: string
   html_url: string
   assets?: GitHubAsset[]
+}
+
+export type SelectedUpdateAsset = Pick<
+  UpdateInfo,
+  | 'downloadUrl'
+  | 'assetApiUrl'
+  | 'assetName'
+  | 'downloadKind'
+  | 'fallbackDownloadUrl'
+  | 'fallbackAssetApiUrl'
+  | 'fallbackAssetName'
+>
+
+export function selectUpdateAsset(assets: GitHubAsset[] | undefined): SelectedUpdateAsset | null {
+  const htmlAsset = assets?.find((asset) =>
+    asset.name.toLowerCase().endsWith('.html'),
+  )
+
+  // Keep the plain HTML asset mandatory so older builds still show updates.
+  if (!htmlAsset) return null
+
+  const gzipAsset = assets?.find((asset) =>
+    asset.name.toLowerCase().endsWith('.html.gz'),
+  )
+
+  if (!gzipAsset) {
+    return {
+      downloadUrl: htmlAsset.browser_download_url,
+      assetApiUrl: htmlAsset.url,
+      assetName: htmlAsset.name,
+      downloadKind: 'html',
+    }
+  }
+
+  return {
+    downloadUrl: gzipAsset.browser_download_url,
+    assetApiUrl: gzipAsset.url,
+    assetName: gzipAsset.name,
+    downloadKind: 'gzip-html',
+    fallbackDownloadUrl: htmlAsset.browser_download_url,
+    fallbackAssetApiUrl: htmlAsset.url,
+    fallbackAssetName: htmlAsset.name,
+  }
 }
 
 /**
@@ -48,19 +95,15 @@ export async function checkForUpdate(): Promise<UpdateInfo | null> {
 
     if (!isNewer(remoteVersion, __APP_VERSION__)) return null
 
-    const htmlAsset = release.assets?.find((a) =>
-      a.name.toLowerCase().endsWith('.html'),
-    )
+    const selectedAsset = selectUpdateAsset(release.assets)
 
     // Only show update if the HTML file is attached to the release
-    if (!htmlAsset) return null
+    if (!selectedAsset) return null
 
     return {
       version: remoteVersion,
       releaseNotes: release.body ?? '',
-      downloadUrl: htmlAsset.browser_download_url,
-      assetApiUrl: htmlAsset.url,
-      assetName: htmlAsset.name,
+      ...selectedAsset,
     }
   } catch {
     // Network error, timeout, offline — silently ignore

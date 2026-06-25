@@ -1,5 +1,4 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import Tesseract from 'tesseract.js'
 import ExcelJS from 'exceljs'
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType } from 'docx'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
@@ -9,6 +8,8 @@ import { ProgressBar } from '@/components/common/ProgressBar.tsx'
 import { loadPDFFile, renderPageToCanvas, hasEmbeddedText, extractPositionedText, extractPageLines, removePDFFromCache } from '@/utils/pdf.ts'
 import type { PageLine } from '@/utils/pdf.ts'
 import { downloadBlob, downloadText } from '@/utils/download.ts'
+import { recognizeCanvasWithPaddle } from '@/utils/ocr/paddleEngine.ts'
+import { recognizeCanvasWithTesseract } from '@/utils/ocr/tesseractEngine.ts'
 import type { PDFFile } from '@/types'
 import {
   FileText, Copy, RotateCcw, ZoomIn, ZoomOut,
@@ -86,39 +87,19 @@ async function ocrPositionedText(
 ): Promise<PositionedText[]> {
   const renderScale = 2.0
   await renderPageToCanvas(pdfFile, pageNumber, canvas, renderScale)
-  const worker = await Tesseract.createWorker(language, undefined, {
-    logger: (m: { status: string; progress?: number }) => {
-      if (m.status === 'recognizing text' && onProgress) {
-        onProgress(m.progress ?? 0)
-      }
-    },
-  })
-  const result = await worker.recognize(canvas, {}, { blocks: true, text: true })
-  await worker.terminate()
-
-  // Parse blocks → paragraphs → lines → words for positioned text
-  const items: PositionedText[] = []
-  const blocks = result.data.blocks
-  if (blocks) {
-    for (const block of blocks) {
-      for (const para of block.paragraphs) {
-        for (const line of para.lines) {
-          for (const word of line.words) {
-            if (!word.text.trim()) continue
-            items.push({
-              text: word.text,
-              x: word.bbox.x0 / renderScale,
-              y: word.bbox.y0 / renderScale,
-              width: (word.bbox.x1 - word.bbox.x0) / renderScale,
-              height: (word.bbox.y1 - word.bbox.y0) / renderScale,
-              page: pageNumber,
-            })
-          }
-        }
-      }
-    }
+  try {
+    const result = await recognizeCanvasWithPaddle(canvas, pageNumber, renderScale, {
+      onProgress: progress => onProgress?.(progress.progress),
+    })
+    if (result.words.length > 0) return result.words
+  } catch {
+    // Fall back to Tesseract if the bundled Paddle runtime cannot initialize.
   }
-  return items
+
+  const result = await recognizeCanvasWithTesseract(canvas, language, pageNumber, renderScale, {
+    onProgress: progress => onProgress?.(progress.progress),
+  })
+  return result.words
 }
 
 // ── Table extraction algorithm ─────────────────────

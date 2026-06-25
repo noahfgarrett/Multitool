@@ -8,6 +8,10 @@ import { usePdfAnnotateState } from './usePdfAnnotateState.ts'
 import type { ToolPreset } from './usePdfAnnotateState.ts'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts.ts'
 import { exportAnnotatedPdf, buildAnnotatedPdfBytes } from './exportPdf.ts'
+import { findTextMatches, reconcileFindIndex } from './findUtils.ts'
+import type { FindTextItem } from './findUtils.ts'
+import { recognizeCanvasWithPaddle } from '@/utils/ocr/paddleEngine.ts'
+import { tesseractBlocksToWords } from '@/utils/ocr/tesseractEngine.ts'
 import { loadPDFFile, renderPageToCanvas, generateThumbnail, removePDFFromCache, extractPositionedText, getAllPageDimensions, validatePageRange, isRenderingCancelled, getMaxRenderScale, renderPageTile, getMaxCanvasPixels } from '@/utils/pdf.ts'
 import { buildTileGrid, teardownTileGrid } from './tileRendering.ts'
 import type { PageTile } from './tileRendering.ts'
@@ -2084,7 +2088,14 @@ export default function PdfAnnotateTool() {
   useEffect(() => { redrawAll() }, [findMatches, findIdx, cropRegions])
 
   // Find & Highlight: navigate to current match page + scroll into view
+  const pendingFindNavigationRef = useRef(false)
+  const requestFindNavigation = useCallback(() => {
+    pendingFindNavigationRef.current = true
+  }, [])
+
   useEffect(() => {
+    if (!pendingFindNavigationRef.current) return
+    pendingFindNavigationRef.current = false
     if (findMatches.length === 0 || !findMatches[findIdx]) return
     const match = findMatches[findIdx]
     navigateToPage(match.pageNum)
@@ -2107,34 +2118,27 @@ export default function PdfAnnotateTool() {
 
   // Find & Highlight: search text items when committed query or cache changes
   // Uses a committed query (set on Enter) to avoid running search on every keystroke.
-  const executeFind = useCallback(() => {
+  const executeFind = useCallback((options: { preserveActive?: boolean; navigate?: boolean } = {}) => {
     const raw = findQuery.trim()
     setFindCommittedQuery(raw)
-    if (!raw) { setFindMatches([]); setFindIdx(0); return }
-    const q = findCaseSensitive ? raw : raw.toLowerCase()
-    const matches: { pageNum: number; item: { text: string; x: number; y: number; width: number; height: number; page: number }; matchX: number; matchW: number }[] = []
-    for (const [key, items] of Object.entries(textItemsCacheRef.current)) {
-      const pageNum = parseInt(key.split('_')[0])
-      for (const item of items) {
-        const text = findCaseSensitive ? item.text : item.text.toLowerCase()
-        const idx = text.indexOf(q)
-        if (idx === -1) continue
-        // Proportional substring position within the word
-        const charCount = text.length || 1
-        const matchX = item.x + (idx / charCount) * item.width
-        const matchW = (q.length / charCount) * item.width
-        matches.push({ pageNum, item, matchX, matchW })
-      }
+    if (!raw) {
+      setFindMatches([])
+      setFindIdx(0)
+      return
     }
-    matches.sort((a, b) => a.pageNum - b.pageNum || a.item.y - b.item.y)
+    const matches = findTextMatches(textItemsCacheRef.current, raw, findCaseSensitive)
+    const nextIdx = options.preserveActive
+      ? reconcileFindIndex(findMatches, matches, findIdx)
+      : 0
     setFindMatches(matches)
-    setFindIdx(0)
-  }, [findQuery, findCaseSensitive])
+    setFindIdx(nextIdx)
+    if (options.navigate) requestFindNavigation()
+  }, [findQuery, findCaseSensitive, findMatches, findIdx, requestFindNavigation])
 
   // Re-run search when OCR results arrive or case sensitivity changes — only if we have a committed query
   useEffect(() => {
     if (!findCommittedQuery) return
-    executeFind()
+    executeFind({ preserveActive: true, navigate: false })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [findCacheTick, findCaseSensitive])
 
@@ -2370,7 +2374,7 @@ export default function PdfAnnotateTool() {
 
   // ── Cache text items for text highlight and find ───────────────
   // Phase 1: extract embedded text via pdf.js. Phase 2 (OCR): if a page has
-  // no embedded text and find is open, fall back to Tesseract.js OCR.
+  // no embedded text and find is open, run the bundled OCR engine.
 
   useEffect(() => {
     if (!pdfFile || (activeTool !== 'textHighlight' && activeTool !== 'textStrikethrough' && activeTool !== 'select' && !findOpen)) return
@@ -2428,12 +2432,13 @@ export default function PdfAnnotateTool() {
 
     setOcrScanning(true)
     const canvas = document.createElement('canvas')
-    let worker: Tesseract.Worker | null = null
+    const tesseractWorkerRef: { current: Tesseract.Worker | null } = { current: null }
+    const ensureTesseractWorker = async () => {
+      if (!tesseractWorkerRef.current) tesseractWorkerRef.current = await Tesseract.createWorker('eng')
+      return tesseractWorkerRef.current
+    }
 
     try {
-      worker = await Tesseract.createWorker('eng')
-      if (abort.signal.aborted) { await worker.terminate(); return }
-
       const renderScale = 2.0
       for (const { pageNum, rotation, cacheKey } of pages) {
         if (abort.signal.aborted) break
@@ -2444,31 +2449,18 @@ export default function PdfAnnotateTool() {
           await renderPageToCanvas(pdfFile, pageNum, canvas, renderScale, rotation)
           if (abort.signal.aborted) break
 
-          // Request blocks output to get word-level bounding boxes
-          const result = await worker.recognize(canvas, {}, { blocks: true, text: true })
-          if (abort.signal.aborted) break
+          let items: FindTextItem[] = []
+          try {
+            const result = await recognizeCanvasWithPaddle(canvas, pageNum, renderScale)
+            items = result.words
+          } catch {
+            const tesseractWorker = await ensureTesseractWorker()
+            if (abort.signal.aborted) break
 
-          // Parse blocks → paragraphs → lines → words
-          const items: { text: string; x: number; y: number; width: number; height: number; page: number }[] = []
-          const blocks = result.data.blocks
-          if (blocks) {
-            for (const block of blocks) {
-              for (const para of block.paragraphs) {
-                for (const line of para.lines) {
-                  for (const word of line.words) {
-                    if (!word.text.trim()) continue
-                    items.push({
-                      text: word.text,
-                      x: word.bbox.x0 / renderScale,
-                      y: word.bbox.y0 / renderScale,
-                      width: (word.bbox.x1 - word.bbox.x0) / renderScale,
-                      height: (word.bbox.y1 - word.bbox.y0) / renderScale,
-                      page: pageNum,
-                    })
-                  }
-                }
-              }
-            }
+            // Request blocks output to get word-level bounding boxes
+            const result = await tesseractWorker.recognize(canvas, {}, { blocks: true, text: true })
+            if (abort.signal.aborted) break
+            items = tesseractBlocksToWords(result.data.blocks, renderScale, pageNum)
           }
 
           if (items.length > 0) {
@@ -2482,7 +2474,7 @@ export default function PdfAnnotateTool() {
     } catch {
       // Worker creation failed — skip OCR entirely
     } finally {
-      if (worker) await worker.terminate().catch(() => {})
+      if (tesseractWorkerRef.current) await tesseractWorkerRef.current.terminate().catch(() => {})
       canvas.width = 0
       canvas.height = 0
       if (!abort.signal.aborted) setOcrScanning(false)
@@ -5359,11 +5351,12 @@ export default function PdfAnnotateTool() {
               if (e.key === 'Enter') {
                 if (findMatches.length > 0 && findCommittedQuery === findQuery.trim()) {
                   // Already searched — cycle through matches
+                  requestFindNavigation()
                   if (e.shiftKey) setFindIdx(i => (i - 1 + findMatches.length) % findMatches.length)
                   else setFindIdx(i => (i + 1) % findMatches.length)
                 } else {
                   // First Enter or query changed — run search
-                  executeFind()
+                  executeFind({ navigate: true })
                 }
               }
               if (e.key === 'Escape') { setFindOpen(false); setFindQuery(''); setFindCommittedQuery(''); setFindMatches([]); ocrAbortRef.current?.abort(); setOcrScanning(false) }
@@ -5386,11 +5379,11 @@ export default function PdfAnnotateTool() {
               findCaseSensitive ? 'bg-[#14B8A6]/20 text-[#14B8A6] border border-[#14B8A6]/30' : 'text-white/30 hover:text-white/50 border border-white/[0.08]'
             }`}
           >Aa</button>
-          <button onClick={() => setFindIdx(i => (i - 1 + Math.max(1, findMatches.length)) % Math.max(1, findMatches.length))} disabled={findMatches.length === 0}
+          <button onClick={() => { requestFindNavigation(); setFindIdx(i => (i - 1 + Math.max(1, findMatches.length)) % Math.max(1, findMatches.length)) }} disabled={findMatches.length === 0}
             className="p-0.5 text-white/40 hover:text-white disabled:opacity-30 rounded">
             <ChevronLeft size={12} />
           </button>
-          <button onClick={() => setFindIdx(i => (i + 1) % Math.max(1, findMatches.length))} disabled={findMatches.length === 0}
+          <button onClick={() => { requestFindNavigation(); setFindIdx(i => (i + 1) % Math.max(1, findMatches.length)) }} disabled={findMatches.length === 0}
             className="p-0.5 text-white/40 hover:text-white disabled:opacity-30 rounded">
             <ChevronRight size={12} />
           </button>

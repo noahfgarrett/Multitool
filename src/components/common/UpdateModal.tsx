@@ -6,6 +6,7 @@ import { Button } from '@/components/common/Button.tsx'
 import { CHANGELOG } from '@/data/changelog.ts'
 import type { ChangelogEntry } from '@/data/changelog.ts'
 import type { UpdateInfo } from '@/utils/updateChecker.ts'
+import { downloadUpdateFile } from '@/utils/updateDownload.ts'
 import { isNewer } from '@/utils/semver.ts'
 
 function formatDate(iso: string): string {
@@ -45,6 +46,8 @@ const INITIAL_VISIBLE = 8
 
 export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProps) {
   const [updated, setUpdated] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'update' | 'changelog'>(
     defaultTab ?? (info ? 'update' : 'changelog'),
   )
@@ -57,6 +60,13 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
   useEffect(() => {
     setActiveTab(defaultTab ?? (info ? 'update' : 'changelog'))
   }, [info, defaultTab])
+
+  useEffect(() => {
+    if (!open) return
+    setUpdated(false)
+    setDownloading(false)
+    setDownloadError(null)
+  }, [open, info?.version])
 
   const renderedNotes = useMemo(() => {
     if (!info?.releaseNotes) return ''
@@ -105,14 +115,18 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
     })
   }
 
-  function handleDownload(): void {
-    if (!info?.downloadUrl) return
-    // Simple direct download — navigates to GitHub's download URL which serves
-    // the file with Content-Disposition: attachment (triggers browser download,
-    // never shows a GitHub web page). Works everywhere: file://, corporate
-    // proxies, users without GitHub accounts.
-    window.open(info.downloadUrl, '_blank', 'noopener')
-    setUpdated(true)
+  async function handleDownload(): Promise<void> {
+    if (!info?.assetApiUrl || downloading) return
+    setDownloading(true)
+    setDownloadError(null)
+    try {
+      await downloadUpdateFile(info)
+      setUpdated(true)
+    } catch {
+      setDownloadError('Download failed. Please try again or ask for the direct HTML update file.')
+    } finally {
+      setDownloading(false)
+    }
   }
 
   function formatStats(entry: ChangelogEntry): string | null {
@@ -163,9 +177,9 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
             <div className="flex flex-col items-center gap-4 py-6">
               <CheckCircle2 size={48} className="text-emerald-400" />
               <div className="text-center space-y-1.5">
-                <p className="text-lg font-semibold text-white">Download started!</p>
+                <p className="text-lg font-semibold text-white">Download ready!</p>
                 <p className="text-sm text-white/50">
-                  v{info.version} is downloading now.
+                  v{info.version} was saved as Multitool.html.
                 </p>
               </div>
               <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 text-xs text-white/40 text-center max-w-sm">
@@ -194,7 +208,16 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
               <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 text-xs text-white/50 space-y-1.5">
                 <p className="text-white/70 font-medium">After downloading:</p>
                 <p>Replace your current Multitool.html with the new file to keep future updates working.</p>
+                {info.downloadKind === 'gzip-html' && (
+                  <p className="text-white/40">Multitool downloads the smaller update package and saves it as a normal HTML file automatically.</p>
+                )}
               </div>
+
+              {downloadError && (
+                <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-300">
+                  {downloadError}
+                </div>
+              )}
 
               <div className="flex items-center gap-2 justify-end pt-1">
                 <Button variant="ghost" size="sm" onClick={onClose} icon={<X size={14} />}>
@@ -204,10 +227,10 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
                   variant="primary"
                   size="sm"
                   onClick={handleDownload}
-                  disabled={!info.downloadUrl}
+                  disabled={!info.assetApiUrl || downloading}
                   icon={<Download size={14} />}
                 >
-                  Download v{info.version}
+                  {downloading ? 'Preparing...' : `Download v${info.version}`}
                 </Button>
               </div>
             </>
