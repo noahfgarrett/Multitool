@@ -9,8 +9,10 @@ import {
   LEGEND_PADDING, LEGEND_TITLE_HEIGHT, LEGEND_UNDERLINE_GAP, LEGEND_ROW_HEIGHT,
   LEGEND_LINE_SAMPLE_WIDTH, LEGEND_LINE_LABEL_GAP, LEGEND_MARGIN,
   createDefaultConnectorTypes, createDefaultLegend, mergeWithDefaults,
+  createDefaultBackground, mergeBackgroundWithDefaults,
   getConnectorType,
 } from './types.ts'
+import type { ImageExportOptions } from './exportOptions.ts'
 import { drawStyledLine, routeSecondaryEdge } from './connectorStyle.ts'
 import { downloadBlob, downloadText } from '@/utils/download.ts'
 import { loadImage } from '@/utils/imageProcessing.ts'
@@ -372,7 +374,15 @@ async function preloadImages(nodes: OrgNode[]): Promise<Map<string, HTMLImageEle
 
 // ── Render to offscreen canvas ──────────────────────────────
 
-async function renderToCanvas(state: OrgChartState): Promise<HTMLCanvasElement> {
+function resolveRenderBackground(state: OrgChartState, options: ImageExportOptions): string | null {
+  if ('backgroundColor' in options) return options.backgroundColor ?? null
+  return state.background.color
+}
+
+async function renderToCanvas(
+  state: OrgChartState,
+  options: ImageExportOptions = {},
+): Promise<HTMLCanvasElement> {
   const { nodes, connections, connectorTypes } = state
   const flat = buildLayout(nodes)
   const imageCache = await preloadImages(nodes)
@@ -417,8 +427,11 @@ async function renderToCanvas(state: OrgChartState): Promise<HTMLCanvasElement> 
   ctx.translate(-minX, -minY)
 
   // Background
-  ctx.fillStyle = '#0a0a14'
-  ctx.fillRect(minX, minY, w, h)
+  const backgroundColor = resolveRenderBackground(state, options)
+  if (backgroundColor) {
+    ctx.fillStyle = backgroundColor
+    ctx.fillRect(minX, minY, w, h)
+  }
 
   // Draw primary connectors (tree edges)
   const primaryType = getConnectorType(connectorTypes, 'primary')
@@ -629,20 +642,20 @@ function drawNodeCard(ctx: CanvasRenderingContext2D, node: LayoutNode, imageCach
   const textX = avatarX + AVATAR_SIZE + 12
   const maxTextW = w - textX - 10
 
-  ctx.font = '600 12px -apple-system, BlinkMacSystemFont, sans-serif'
+  ctx.font = '600 13px -apple-system, BlinkMacSystemFont, sans-serif'
   ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
   ctx.fillStyle = '#ffffff'
-  ctx.fillText(truncateText(ctx, node.name, maxTextW), textX, 16)
+  ctx.fillText(truncateText(ctx, node.name, maxTextW), textX, 15)
 
-  ctx.font = '400 10px -apple-system, BlinkMacSystemFont, sans-serif'
-  ctx.fillStyle = 'rgba(255,255,255,0.50)'
+  ctx.font = '400 11px -apple-system, BlinkMacSystemFont, sans-serif'
+  ctx.fillStyle = 'rgba(255,255,255,0.64)'
   ctx.fillText(truncateText(ctx, node.title, maxTextW), textX, 34)
 
   if (node.department) {
-    ctx.font = '400 9px -apple-system, BlinkMacSystemFont, sans-serif'
-    ctx.fillStyle = 'rgba(255,255,255,0.30)'
-    ctx.fillText(truncateText(ctx, node.department, maxTextW), textX, 50)
+    ctx.font = '400 10px -apple-system, BlinkMacSystemFont, sans-serif'
+    ctx.fillStyle = 'rgba(255,255,255,0.42)'
+    ctx.fillText(truncateText(ctx, node.department, maxTextW), textX, 52)
   }
 }
 
@@ -676,8 +689,12 @@ function truncateText(ctx: CanvasRenderingContext2D, text: string, maxWidth: num
 
 // ── Export as PNG ────────────────────────────────────────────
 
-export async function exportPNG(state: OrgChartState, filename = 'org-chart.png'): Promise<void> {
-  const canvas = await renderToCanvas(state)
+export async function exportPNG(
+  state: OrgChartState,
+  filename = 'org-chart.png',
+  options: ImageExportOptions = {},
+): Promise<void> {
+  const canvas = await renderToCanvas(state, options)
   return new Promise<void>((resolve, reject) => {
     canvas.toBlob(blob => {
       if (blob) {
@@ -694,8 +711,11 @@ export async function exportPNG(state: OrgChartState, filename = 'org-chart.png'
 
 // ── Copy as PNG to clipboard ────────────────────────────────
 
-export async function copyPNGToClipboard(state: OrgChartState): Promise<void> {
-  const canvas = await renderToCanvas(state)
+export async function copyPNGToClipboard(
+  state: OrgChartState,
+  options: ImageExportOptions = {},
+): Promise<void> {
+  const canvas = await renderToCanvas(state, options)
   return new Promise<void>((resolve, reject) => {
     canvas.toBlob(async blob => {
       if (!blob) {
@@ -723,7 +743,11 @@ export async function copyPNGToClipboard(state: OrgChartState): Promise<void> {
 
 // ── Export as SVG ────────────────────────────────────────────
 
-export async function exportSVG(state: OrgChartState, filename = 'org-chart.svg'): Promise<void> {
+export async function exportSVG(
+  state: OrgChartState,
+  filename = 'org-chart.svg',
+  options: ImageExportOptions = {},
+): Promise<void> {
   const { nodes, connections, connectorTypes } = state
   const flat = buildLayout(nodes)
   const roots = flat.filter(n => !n.reportsTo)
@@ -762,9 +786,12 @@ export async function exportSVG(state: OrgChartState, filename = 'org-chart.svg'
     }
   }
 
+  const backgroundColor = resolveRenderBackground(state, options)
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${w}" height="${h}" viewBox="${minX} ${minY} ${w} ${h}">`,
-    `<rect x="${minX}" y="${minY}" width="${w}" height="${h}" fill="#0a0a14"/>`,
+    ...(backgroundColor
+      ? [`<rect x="${minX}" y="${minY}" width="${w}" height="${h}" fill="${backgroundColor}"/>`]
+      : []),
     `<defs>`,
   ]
 
@@ -870,10 +897,10 @@ export async function exportSVG(state: OrgChartState, filename = 'org-chart.svg'
 
     // Text
     const textX = nx + 14 + AVATAR_SIZE + 12
-    parts.push(`<text x="${textX}" y="${ny + 24}" fill="#ffffff" font-size="12" font-weight="600" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${escapeXml(node.name)}</text>`)
-    parts.push(`<text x="${textX}" y="${ny + 42}" fill="rgba(255,255,255,0.5)" font-size="10" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${escapeXml(node.title)}</text>`)
+    parts.push(`<text x="${textX}" y="${ny + 24}" fill="#ffffff" font-size="13" font-weight="600" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${escapeXml(node.name)}</text>`)
+    parts.push(`<text x="${textX}" y="${ny + 43}" fill="rgba(255,255,255,0.64)" font-size="11" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${escapeXml(node.title)}</text>`)
     if (node.department) {
-      parts.push(`<text x="${textX}" y="${ny + 56}" fill="rgba(255,255,255,0.3)" font-size="9" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${escapeXml(node.department)}</text>`)
+      parts.push(`<text x="${textX}" y="${ny + 58}" fill="rgba(255,255,255,0.42)" font-size="10" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${escapeXml(node.department)}</text>`)
     }
     parts.push(`</g>`)
   }
@@ -969,6 +996,10 @@ export function importJSON(json: string): OrgChartState {
     legend = createDefaultLegend()
   }
 
+  const background = 'background' in obj
+    ? mergeBackgroundWithDefaults(obj.background)
+    : createDefaultBackground()
+
   // Sweep orphan connections whose from/to node is missing
   const nodeIds = new Set(nodes.map(n => n.id))
   connections = connections.filter(c => nodeIds.has(c.fromId) && nodeIds.has(c.toId))
@@ -977,7 +1008,7 @@ export function importJSON(json: string): OrgChartState {
   const typeIds = new Set<string>(connectorTypes.map(t => t.id))
   connections = connections.filter(c => isKnownTypeId(c.typeId, typeIds))
 
-  return { nodes, connections, connectorTypes, legend }
+  return { nodes, connections, connectorTypes, legend, background }
 }
 
 // ── Export as CSV ────────────────────────────────────────────

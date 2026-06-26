@@ -8,14 +8,26 @@ import { ConnectModeBanner } from './ConnectModeBanner.tsx'
 import { ConnectorTypePopover } from './ConnectorTypePopover.tsx'
 import { attachShortcuts } from './shortcuts.ts'
 import { exportPNG, exportSVG, exportJSON, exportCSV, importJSON, copyPNGToClipboard } from './export.ts'
+import {
+  resolveExportBackgroundColor,
+  type ExportBackgroundMode,
+} from './exportOptions.ts'
 import { TEMPLATES } from './templates.ts'
 import type { OrgChartState } from './types.ts'
 import { Modal } from '@/components/common/Modal.tsx'
 import { useAppStore } from '@/stores/appStore.ts'
 import {
   Image as ImageIcon, FileJson, FileCode, Clipboard, FileSpreadsheet, Users,
-  ZoomIn, ZoomOut,
+  ZoomIn, ZoomOut, Check,
 } from 'lucide-react'
+
+const EXPORT_BACKGROUND_MODES: { mode: ExportBackgroundMode; label: string }[] = [
+  { mode: 'current', label: 'Canvas' },
+  { mode: 'transparent', label: 'Clear' },
+  { mode: 'white', label: 'White' },
+  { mode: 'dark', label: 'Dark' },
+  { mode: 'custom', label: 'Custom' },
+]
 
 // ── Helper: trigger fitToContent via window bridge ──────────
 
@@ -55,6 +67,8 @@ export default function OrgChartTool() {
   const [showConnectorTypes, setShowConnectorTypes] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
   const [versionRefresh, setVersionRefresh] = useState(0)
+  const [exportBackgroundMode, setExportBackgroundMode] = useState<ExportBackgroundMode>('current')
+  const [customExportBackground, setCustomExportBackground] = useState('#ffffff')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Memoize versions list to re-read when panel opens or after mutations
@@ -71,37 +85,44 @@ export default function OrgChartTool() {
     connections: store.connections,
     connectorTypes: store.connectorTypes,
     legend: store.legend,
-  }), [store.nodes, store.connections, store.connectorTypes, store.legend])
+    background: store.background,
+  }), [store.nodes, store.connections, store.connectorTypes, store.legend, store.background])
+
+  const exportBackgroundColor = useMemo(() => resolveExportBackgroundColor({
+    mode: exportBackgroundMode,
+    chartColor: store.background.color,
+    customColor: customExportBackground,
+  }), [customExportBackground, exportBackgroundMode, store.background.color])
 
   const handleExportPNG = useCallback(async () => {
     try {
-      await exportPNG(getFullState())
+      await exportPNG(getFullState(), 'org-chart.png', { backgroundColor: exportBackgroundColor })
       addToast({ type: 'success', message: 'PNG exported successfully' })
     } catch (err) {
       addToast({ type: 'error', message: err instanceof Error ? err.message : 'Export failed' })
     }
     setShowExport(false)
-  }, [getFullState, addToast])
+  }, [getFullState, exportBackgroundColor, addToast])
 
   const handleCopyPNG = useCallback(async () => {
     try {
-      await copyPNGToClipboard(getFullState())
+      await copyPNGToClipboard(getFullState(), { backgroundColor: exportBackgroundColor })
       addToast({ type: 'success', message: 'Copied to clipboard' })
     } catch (err) {
       addToast({ type: 'error', message: err instanceof Error ? err.message : 'Copy failed' })
     }
     setShowExport(false)
-  }, [getFullState, addToast])
+  }, [getFullState, exportBackgroundColor, addToast])
 
   const handleExportSVG = useCallback(async () => {
     try {
-      await exportSVG(getFullState())
+      await exportSVG(getFullState(), 'org-chart.svg', { backgroundColor: exportBackgroundColor })
       addToast({ type: 'success', message: 'SVG exported successfully' })
     } catch (err) {
       addToast({ type: 'error', message: err instanceof Error ? err.message : 'Export failed' })
     }
     setShowExport(false)
-  }, [getFullState, addToast])
+  }, [getFullState, exportBackgroundColor, addToast])
 
   const handleExportJSON = useCallback(() => {
     try {
@@ -301,43 +322,52 @@ export default function OrgChartTool() {
       />
 
       {/* ── Export modal ──────────────────────────────── */}
-      <Modal open={showExport} onClose={() => setShowExport(false)} title="Export Org Chart" width="sm">
-        <div className="space-y-2">
-          <ExportButton
-            icon={ImageIcon}
-            label="Export as PNG"
-            description="High-resolution raster image (2x scale)"
-            onClick={handleExportPNG}
-            disabled={store.nodes.length === 0}
+      <Modal open={showExport} onClose={() => setShowExport(false)} title="Export Org Chart" width="md">
+        <div className="space-y-3">
+          <ExportBackgroundControls
+            mode={exportBackgroundMode}
+            onModeChange={setExportBackgroundMode}
+            chartColor={store.background.color}
+            customColor={customExportBackground}
+            onCustomColorChange={setCustomExportBackground}
           />
-          <ExportButton
-            icon={Clipboard}
-            label="Copy as PNG"
-            description="Copy diagram image to clipboard"
-            onClick={handleCopyPNG}
-            disabled={store.nodes.length === 0}
-          />
-          <ExportButton
-            icon={FileCode}
-            label="Export as SVG"
-            description="Scalable vector graphic with avatars"
-            onClick={handleExportSVG}
-            disabled={store.nodes.length === 0}
-          />
-          <ExportButton
-            icon={FileJson}
-            label="Save as JSON"
-            description="Re-importable diagram data"
-            onClick={handleExportJSON}
-            disabled={store.nodes.length === 0}
-          />
-          <ExportButton
-            icon={FileSpreadsheet}
-            label="Export as CSV"
-            description="Spreadsheet-compatible format"
-            onClick={handleExportCSV}
-            disabled={store.nodes.length === 0}
-          />
+          <div className="space-y-2">
+            <ExportButton
+              icon={ImageIcon}
+              label="Export as PNG"
+              description="High-resolution raster image (2x scale)"
+              onClick={handleExportPNG}
+              disabled={store.nodes.length === 0}
+            />
+            <ExportButton
+              icon={Clipboard}
+              label="Copy as PNG"
+              description="Copy diagram image to clipboard"
+              onClick={handleCopyPNG}
+              disabled={store.nodes.length === 0}
+            />
+            <ExportButton
+              icon={FileCode}
+              label="Export as SVG"
+              description="Scalable vector graphic with avatars"
+              onClick={handleExportSVG}
+              disabled={store.nodes.length === 0}
+            />
+            <ExportButton
+              icon={FileJson}
+              label="Save as JSON"
+              description="Re-importable diagram data"
+              onClick={handleExportJSON}
+              disabled={store.nodes.length === 0}
+            />
+            <ExportButton
+              icon={FileSpreadsheet}
+              label="Export as CSV"
+              description="Spreadsheet-compatible format"
+              onClick={handleExportCSV}
+              disabled={store.nodes.length === 0}
+            />
+          </div>
         </div>
       </Modal>
 
@@ -366,6 +396,120 @@ export default function OrgChartTool() {
   )
 }
 
+function ExportBackgroundControls({
+  mode,
+  onModeChange,
+  chartColor,
+  customColor,
+  onCustomColorChange,
+}: {
+  mode: ExportBackgroundMode
+  onModeChange: (mode: ExportBackgroundMode) => void
+  chartColor: string
+  customColor: string
+  onCustomColorChange: (color: string) => void
+}) {
+  return (
+    <div
+      className="space-y-2 pb-3"
+      style={{ borderBottom: '1px solid var(--border-subtle)' }}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+          Image Background
+        </span>
+        {mode === 'custom' && (
+          <label
+            className="w-7 h-7 rounded-md cursor-pointer overflow-hidden"
+            style={{ backgroundColor: customColor, border: '1px solid var(--border-default)' }}
+            title="Custom export background"
+          >
+            <input
+              type="color"
+              value={customColor}
+              onChange={e => onCustomColorChange(e.target.value)}
+              className="opacity-0 w-0 h-0"
+            />
+          </label>
+        )}
+      </div>
+      <div className="grid grid-cols-5 gap-1.5">
+        {EXPORT_BACKGROUND_MODES.map(option => (
+          <ExportBackgroundChoice
+            key={option.mode}
+            mode={option.mode}
+            label={option.label}
+            active={mode === option.mode}
+            chartColor={chartColor}
+            customColor={customColor}
+            onClick={() => onModeChange(option.mode)}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ExportBackgroundChoice({
+  mode,
+  label,
+  active,
+  chartColor,
+  customColor,
+  onClick,
+}: {
+  mode: ExportBackgroundMode
+  label: string
+  active: boolean
+  chartColor: string
+  customColor: string
+  onClick: () => void
+}) {
+  const backgroundStyle = (() => {
+    if (mode === 'transparent') {
+      return {
+        backgroundColor: '#fff',
+        backgroundImage:
+          'linear-gradient(45deg, #d1d5db 25%, transparent 25%), linear-gradient(-45deg, #d1d5db 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #d1d5db 75%), linear-gradient(-45deg, transparent 75%, #d1d5db 75%)',
+        backgroundSize: '10px 10px',
+        backgroundPosition: '0 0, 0 5px, 5px -5px, -5px 0px',
+      }
+    }
+    if (mode === 'white') return { backgroundColor: '#ffffff' }
+    if (mode === 'dark') return { backgroundColor: '#0a0a14' }
+    if (mode === 'custom') return { backgroundColor: customColor }
+    return { backgroundColor: chartColor }
+  })()
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="h-14 rounded-lg flex flex-col items-center justify-center gap-1 transition-colors relative"
+      style={{
+        color: 'var(--text-secondary)',
+        border: active ? '1px solid #14B8A6' : '1px solid var(--border-subtle)',
+        background: 'var(--bg-surface)',
+      }}
+      title={`${label} background`}
+    >
+      <span
+        className="w-6 h-4 rounded-sm"
+        style={{
+          ...backgroundStyle,
+          border: '1px solid var(--border-default)',
+        }}
+      />
+      <span className="text-[10px] leading-none">{label}</span>
+      {active && (
+        <span className="absolute right-1 top-1 text-[#14B8A6]">
+          <Check size={11} />
+        </span>
+      )}
+    </button>
+  )
+}
+
 // ── Export button row ────────────────────────────────────────
 
 function ExportButton({
@@ -389,16 +533,23 @@ function ExportButton({
         w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors
         ${disabled
           ? 'opacity-30 pointer-events-none'
-          : 'hover:bg-white/[0.04]'
+          : 'hover:opacity-80'
         }
       `}
+      style={{
+        border: '1px solid var(--border-subtle)',
+        background: 'var(--bg-surface)',
+      }}
     >
-      <div className="w-8 h-8 rounded-lg bg-white/[0.06] flex items-center justify-center flex-shrink-0">
-        <Icon size={14} className="text-white/40" />
+      <div
+        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+        style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}
+      >
+        <Icon size={14} />
       </div>
       <div>
-        <p className="text-sm text-white font-medium">{label}</p>
-        <p className="text-[10px] text-white/30">{description}</p>
+        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{label}</p>
+        <p className="text-[10px]" style={{ color: 'var(--text-disabled)' }}>{description}</p>
       </div>
     </button>
   )

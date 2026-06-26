@@ -1,5 +1,8 @@
 import type { OrgChartState, OrgNode } from './types.ts'
-import { createNode, createDefaultConnectorTypes, createDefaultLegend, DEPARTMENT_COLORS } from './types.ts'
+import {
+  createNode, createDefaultConnectorTypes, createDefaultLegend,
+  createDefaultBackground, DEPARTMENT_COLORS,
+} from './types.ts'
 
 function withDefaults(nodes: OrgNode[]): OrgChartState {
   return {
@@ -7,6 +10,7 @@ function withDefaults(nodes: OrgNode[]): OrgChartState {
     connections: [],
     connectorTypes: createDefaultConnectorTypes(),
     legend: createDefaultLegend(),
+    background: createDefaultBackground(),
   }
 }
 
@@ -152,6 +156,7 @@ export const TEMPLATES: OrgTemplate[] = [
       ],
       connectorTypes: createDefaultConnectorTypes(),
       legend: { position: 'bottom-right' },
+      background: createDefaultBackground(),
     }),
   },
 ]

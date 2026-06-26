@@ -12,6 +12,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.7.1',
+    date: 'PLACEHOLDER',
+    type: 'fix',
+    stats: { features: 2, fixes: 3, tools: 1 },
+    notes: `### Org Chart
+- Background color control
+- Export background options
+- Light mode export readability
+- Connector line type picker
+- Sharper chart text rendering`,
+  },
+  {
     version: '4.7.0',
     date: '2026-06-25T17:59:11Z',
     type: 'feature',

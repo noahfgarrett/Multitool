@@ -4,7 +4,7 @@ import { LegendPositionChip } from './LegendPositionChip.tsx'
 import {
   Undo2, Redo2, ZoomIn, ZoomOut, Maximize2,
   ArrowDown, ArrowRight, UserPlus, Trash2, Download, Upload,
-  LayoutGrid, RotateCcw, LayoutPanelLeft, History, Palette, Link2,
+  LayoutGrid, RotateCcw, LayoutPanelLeft, History, Palette, Link2, PaintBucket,
 } from 'lucide-react'
 
 // ── Component ───────────────────────────────────────────────
@@ -30,7 +30,7 @@ export function Toolbar({
     viewport, canUndo, canRedo, undo, redo,
     zoomIn, zoomOut, layoutDirection, setLayoutDirection,
     selectedNodeId, selectedNodeIds, nodes, addNode, removeSelectedNodes,
-    hasManualOffsets, resetLayout,
+    hasManualOffsets, resetLayout, background, setBackgroundColor,
   } = store
 
   const selectedNode = selectedNodeId ? nodes.find(n => n.id === selectedNodeId) : null
@@ -155,6 +155,24 @@ export function Toolbar({
         >
           <Palette size={16} />
         </button>
+        <label
+          title="Background Color"
+          className="relative p-1.5 rounded hover:bg-white/[0.08] text-white/60 hover:text-white/90 transition-colors cursor-pointer"
+          data-testid="org-chart-background-color"
+        >
+          <PaintBucket size={16} />
+          <span
+            className="absolute bottom-1 right-1 w-2 h-2 rounded-full border border-white/50"
+            style={{ backgroundColor: background.color }}
+          />
+          <input
+            type="color"
+            value={background.color}
+            onChange={e => setBackgroundColor(e.target.value)}
+            aria-label="Background color"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          />
+        </label>
         <button
           onClick={onImportJSON}
           className="px-2.5 py-1 text-[10px] font-medium text-white/50 hover:text-white hover:bg-white/[0.06] rounded transition-colors flex items-center gap-1"

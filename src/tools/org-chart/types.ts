@@ -29,6 +29,7 @@ export interface OrgChartState {
   connections: Connection[]
   connectorTypes: ConnectorType[]
   legend: LegendConfig
+  background: ChartBackgroundConfig
 }
 
 export interface OrgChartVersion {
@@ -87,6 +88,30 @@ export const LEGEND_POSITIONS: readonly LegendPosition[] = [
 
 export interface LegendConfig {
   position: LegendPosition
+}
+
+// ── Chart background ────────────────────────────────────────
+
+export interface ChartBackgroundConfig {
+  color: string
+}
+
+export const DEFAULT_CHART_BACKGROUND = '#0a0a14'
+
+export function isHexColor(value: unknown): value is string {
+  return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)
+}
+
+export function createDefaultBackground(): ChartBackgroundConfig {
+  return { color: DEFAULT_CHART_BACKGROUND }
+}
+
+export function mergeBackgroundWithDefaults(partial: unknown): ChartBackgroundConfig {
+  if (!partial || typeof partial !== 'object') return createDefaultBackground()
+  const color = (partial as Record<string, unknown>).color
+  return {
+    color: isHexColor(color) ? color.toLowerCase() : DEFAULT_CHART_BACKGROUND,
+  }
 }
 
 // ── Legend layout constants ─────────────────────────────────

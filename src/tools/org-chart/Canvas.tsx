@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import type { OrgChartStore } from './orgChartStore.ts'
-import type { OrgNode, LayoutNode, LayoutDirection, ConnectorType, Connection } from './types.ts'
+import type {
+  OrgNode, LayoutNode, LayoutDirection, ConnectorType, Connection, ConnectorTypeId,
+} from './types.ts'
 import {
   NODE_WIDTH, NODE_HEIGHT, H_SPACING, V_SPACING,
   AVATAR_SIZE, CONNECTOR_RADIUS, MIN_ZOOM, MAX_ZOOM,
@@ -56,6 +58,12 @@ interface ContextMenuState {
   nodeId: string | null  // null = canvas right-click (no node)
 }
 
+interface ConnectionTypeMenuState {
+  x: number
+  y: number
+  connectionId: string
+}
+
 // ── Component ───────────────────────────────────────────────
 
 export function Canvas({ store }: { store: OrgChartStore }) {
@@ -74,6 +82,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
   dragRef.current = drag
   const guidesRef = useRef<AlignGuide[]>([])
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const [connectionTypeMenu, setConnectionTypeMenu] = useState<ConnectionTypeMenuState | null>(null)
   const [reparentTarget, setReparentTarget] = useState<string | null>(null)
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null)
   const [editingTitleValue, setEditingTitleValue] = useState('')
@@ -110,6 +119,9 @@ export function Canvas({ store }: { store: OrgChartStore }) {
       // Escape cancels an active Shift-drag without closing anything else.
       if (e.key === 'Escape' && shiftDragRef.current) {
         setShiftDrag(null)
+      }
+      if (e.key === 'Escape') {
+        setConnectionTypeMenu(null)
       }
     }
     const onKeyUp = (e: KeyboardEvent) => {
@@ -199,6 +211,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     (e.currentTarget as HTMLCanvasElement).setPointerCapture(e.pointerId)
     if (contextMenu) setContextMenu(null)
+    if (connectionTypeMenu) setConnectionTypeMenu(null)
     if (e.button === 1) {
       // Middle click → pan
       setDrag({ type: 'pan', startX: e.clientX - store.viewport.panX, startY: e.clientY - store.viewport.panY, currentX: e.clientX, currentY: e.clientY })
@@ -282,6 +295,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
         if (path.length === 0) continue
         if (hitTestPath(pt.x, pt.y, path, tolerance)) {
           store.selectConnection(conn.id)
+          setConnectionTypeMenu({ connectionId: conn.id, x: e.clientX, y: e.clientY })
           connHit = true
           break
         }
@@ -342,7 +356,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
         })
       }
     }
-  }, [screenToCanvas, hitTestNode, hitTestAddButton, store, contextMenu])
+  }, [screenToCanvas, hitTestNode, hitTestAddButton, store, contextMenu, connectionTypeMenu])
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     const pt = screenToCanvas(e.clientX, e.clientY)
@@ -568,6 +582,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
+    setConnectionTypeMenu(null)
     const pt = screenToCanvas(e.clientX, e.clientY)
     const hit = hitTestNode(pt)
     if (hit) {
@@ -642,14 +657,17 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     if (!ctx) return
 
     const dpr = window.devicePixelRatio || 1
-    const cw = container.clientWidth
-    const ch = container.clientHeight
+    const rect = container.getBoundingClientRect()
+    const cw = Math.max(1, Math.round(rect.width))
+    const ch = Math.max(1, Math.round(rect.height))
 
-    canvas.width = cw * dpr
-    canvas.height = ch * dpr
+    canvas.width = Math.round(cw * dpr)
+    canvas.height = Math.round(ch * dpr)
     canvas.style.width = cw + 'px'
     canvas.style.height = ch + 'px'
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
 
     // Build layout trees (multi-root)
     const trees = buildLayoutTrees(store.nodes, store.layoutDirection)
@@ -666,12 +684,16 @@ export function Canvas({ store }: { store: OrgChartStore }) {
 
     // Clear
     ctx.clearRect(0, 0, cw, ch)
+    ctx.fillStyle = store.background.color
+    ctx.fillRect(0, 0, cw, ch)
 
     if (trees.length === 0) return
 
     // Apply viewport
+    const panX = Math.round(store.viewport.panX * dpr) / dpr
+    const panY = Math.round(store.viewport.panY * dpr) / dpr
     ctx.save()
-    ctx.translate(store.viewport.panX, store.viewport.panY)
+    ctx.translate(panX, panY)
     ctx.scale(store.viewport.zoom, store.viewport.zoom)
 
     const imageCache = imageCacheRef.current
@@ -884,7 +906,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
 
     ctx.restore()
   }, [
-    store.nodes, store.connections, store.connectorTypes, store.viewport,
+    store.nodes, store.connections, store.connectorTypes, store.background, store.viewport,
     store.selectedNodeIds, store.selectedConnectionId, store.layoutDirection,
     store.connectMode, shiftDrag,
     hoveredNodeId, reparentTarget, drag, imageCacheVer, screenToCanvas,
@@ -922,7 +944,11 @@ export function Canvas({ store }: { store: OrgChartStore }) {
   else if (hoveredNodeId) cursor = 'pointer'
 
   return (
-    <div ref={containerRef} className="w-full h-full relative" style={{ cursor }}>
+    <div
+      ref={containerRef}
+      className="w-full h-full relative"
+      style={{ cursor, backgroundColor: store.background.color }}
+    >
       <canvas
         ref={canvasRef}
         className="w-full h-full"
@@ -970,6 +996,14 @@ export function Canvas({ store }: { store: OrgChartStore }) {
             )}
           </div>
         </>
+      )}
+
+      {connectionTypeMenu && (
+        <ConnectionTypeMenu
+          menu={connectionTypeMenu}
+          store={store}
+          onClose={() => setConnectionTypeMenu(null)}
+        />
       )}
 
       {/* Inline section title editor */}
@@ -1045,6 +1079,110 @@ function ContextMenuItem({
       {label}
     </button>
   )
+}
+
+// ── Connection type menu ────────────────────────────────────
+
+function ConnectionTypeMenu({
+  menu,
+  store,
+  onClose,
+}: {
+  menu: ConnectionTypeMenuState
+  store: OrgChartStore
+  onClose: () => void
+}) {
+  const menuRef = useRef<HTMLDivElement>(null)
+  const connection = store.connections.find(c => c.id === menu.connectionId) ?? null
+
+  useEffect(() => {
+    const onPointerDown = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) onClose()
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    const outsideListenerTimer = window.setTimeout(() => {
+      document.addEventListener('mousedown', onPointerDown)
+    }, 0)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.clearTimeout(outsideListenerTimer)
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [onClose])
+
+  if (!connection) return null
+
+  const pickType = (typeId: ConnectorTypeId) => {
+    store.updateConnection(connection.id, { typeId })
+    onClose()
+  }
+
+  return (
+    <div
+      ref={menuRef}
+      data-testid="connection-type-menu"
+      className="fixed z-50 min-w-[210px] rounded-lg shadow-2xl overflow-hidden"
+      style={{
+        left: Math.min(menu.x, window.innerWidth - 230),
+        top: Math.min(menu.y, window.innerHeight - 240),
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border-default)',
+      }}
+    >
+      <div
+        className="px-3 py-2 text-[10px] uppercase tracking-wide"
+        style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-subtle)' }}
+      >
+        Line Type
+      </div>
+      {store.connectorTypes.map(type => {
+        const active = connection.typeId === type.id
+        return (
+          <button
+            key={type.id}
+            type="button"
+            onClick={() => pickType(type.id)}
+            className="w-full flex items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-white/[0.06]"
+            style={{ background: active ? 'rgba(20, 184, 166, 0.12)' : undefined }}
+            data-testid={`connection-type-menu-row-${type.id}`}
+          >
+            <ConnectionLineSample type={type} />
+            <span className="flex-1 text-[12px]" style={{ color: 'var(--text-primary)' }}>
+              {type.label}
+            </span>
+            <span
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: active ? '#14B8A6' : 'transparent' }}
+            />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function ConnectionLineSample({ type }: { type: ConnectorType }) {
+  const ref = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = ref.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const dpr = window.devicePixelRatio || 1
+    canvas.width = Math.round(46 * dpr)
+    canvas.height = Math.round(12 * dpr)
+    canvas.style.width = '46px'
+    canvas.style.height = '12px'
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.clearRect(0, 0, 46, 12)
+    drawStyledLine(ctx, [[2, 6], [44, 6]], type, 1)
+  }, [type])
+
+  return <canvas ref={ref} className="flex-shrink-0" aria-hidden="true" />
 }
 
 // ── Tree layout ─────────────────────────────────────────────
@@ -1355,22 +1493,22 @@ function drawNodeCard(
   const maxTextW = w - textX - 10
 
   // Name
-  ctx.font = `600 12px -apple-system, BlinkMacSystemFont, sans-serif`
+  ctx.font = `600 13px -apple-system, BlinkMacSystemFont, sans-serif`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
   ctx.fillStyle = '#ffffff'
-  ctx.fillText(truncateText(ctx, node.name, maxTextW), textX, 16)
+  ctx.fillText(truncateText(ctx, node.name, maxTextW), textX, 15)
 
   // Title
-  ctx.font = `400 10px -apple-system, BlinkMacSystemFont, sans-serif`
-  ctx.fillStyle = 'rgba(255,255,255,0.50)'
+  ctx.font = `400 11px -apple-system, BlinkMacSystemFont, sans-serif`
+  ctx.fillStyle = 'rgba(255,255,255,0.64)'
   ctx.fillText(truncateText(ctx, node.title, maxTextW), textX, 34)
 
   // Department
   if (node.department) {
-    ctx.font = `400 9px -apple-system, BlinkMacSystemFont, sans-serif`
-    ctx.fillStyle = 'rgba(255,255,255,0.30)'
-    ctx.fillText(truncateText(ctx, node.department, maxTextW), textX, 50)
+    ctx.font = `400 10px -apple-system, BlinkMacSystemFont, sans-serif`
+    ctx.fillStyle = 'rgba(255,255,255,0.42)'
+    ctx.fillText(truncateText(ctx, node.department, maxTextW), textX, 52)
   }
 }
 

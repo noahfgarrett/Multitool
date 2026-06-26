@@ -2,10 +2,12 @@ import { useState, useRef, useCallback } from 'react'
 import type {
   OrgNode, OrgChartState, OrgChartVersion, Viewport, LayoutDirection,
   Connection, ConnectorType, ConnectorTypeId, LegendConfig, LegendPosition,
+  ChartBackgroundConfig,
 } from './types.ts'
 import {
   createNode, createDefaultConnectorTypes, createDefaultLegend, mergeWithDefaults,
-  DEFAULT_VIEWPORT, MIN_ZOOM, MAX_ZOOM, MAX_VERSIONS, genId,
+  createDefaultBackground, mergeBackgroundWithDefaults,
+  DEFAULT_VIEWPORT, MIN_ZOOM, MAX_ZOOM, MAX_VERSIONS, genId, isHexColor,
 } from './types.ts'
 
 const MAX_HISTORY = 50
@@ -29,6 +31,7 @@ export function upgradeSnapshot(snapshot: unknown): OrgChartState {
       connections: [],
       connectorTypes: createDefaultConnectorTypes(),
       legend: createDefaultLegend(),
+      background: createDefaultBackground(),
     }
   }
   // New shape: snapshot is already OrgChartState; repair missing fields
@@ -50,6 +53,9 @@ export function upgradeSnapshot(snapshot: unknown): OrgChartState {
         ? mergeWithDefaults(s.connectorTypes)
         : createDefaultConnectorTypes(),
       legend: { position: legendPos },
+      background: 'background' in s
+        ? mergeBackgroundWithDefaults(s.background)
+        : createDefaultBackground(),
     }
   }
   // Totally malformed — return empty default
@@ -58,6 +64,7 @@ export function upgradeSnapshot(snapshot: unknown): OrgChartState {
     connections: [],
     connectorTypes: createDefaultConnectorTypes(),
     legend: createDefaultLegend(),
+    background: createDefaultBackground(),
   }
 }
 
@@ -104,6 +111,7 @@ export function useOrgChartStore() {
   const [connections, setConnections] = useState<Connection[]>([])
   const [connectorTypes, setConnectorTypes] = useState<ConnectorType[]>(() => createDefaultConnectorTypes())
   const [legend, setLegend] = useState<LegendConfig>(() => createDefaultLegend())
+  const [background, setBackground] = useState<ChartBackgroundConfig>(() => createDefaultBackground())
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set())
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null)
   const [viewport, setViewport] = useState<Viewport>(DEFAULT_VIEWPORT)
@@ -124,6 +132,8 @@ export function useOrgChartStore() {
   connectorTypesRef.current = connectorTypes
   const legendRef = useRef(legend)
   legendRef.current = legend
+  const backgroundRef = useRef(background)
+  backgroundRef.current = background
 
   // ── Undo/redo (ref-based, structuredClone) ──────────────
   // Initialize history with the same root node as the initial state
@@ -132,6 +142,7 @@ export function useOrgChartStore() {
     connections: [],
     connectorTypes: createDefaultConnectorTypes(),
     legend: createDefaultLegend(),
+    background: createDefaultBackground(),
   }])
   const historyIdxRef = useRef(0)
   const [, forceRender] = useState(0)
@@ -145,6 +156,7 @@ export function useOrgChartStore() {
       connections: override?.connections ?? connectionsRef.current,
       connectorTypes: override?.connectorTypes ?? connectorTypesRef.current,
       legend: override?.legend ?? legendRef.current,
+      background: override?.background ?? backgroundRef.current,
     }
     const h = historyRef.current.slice(0, historyIdxRef.current + 1)
     h.push(structuredClone(state))
@@ -162,6 +174,7 @@ export function useOrgChartStore() {
     setConnections(state.connections)
     setConnectorTypes(state.connectorTypes)
     setLegend(state.legend)
+    setBackground(state.background)
     setSelectedNodeIds(new Set())
     setSelectedConnectionId(null)
     forceRender(v => v + 1)
@@ -175,6 +188,7 @@ export function useOrgChartStore() {
     setConnections(state.connections)
     setConnectorTypes(state.connectorTypes)
     setLegend(state.legend)
+    setBackground(state.background)
     setSelectedNodeIds(new Set())
     setSelectedConnectionId(null)
     forceRender(v => v + 1)
@@ -387,6 +401,7 @@ export function useOrgChartStore() {
     setConnections(state.connections)
     setConnectorTypes(state.connectorTypes)
     setLegend(state.legend)
+    setBackground(state.background)
     setSelectedNodeIds(new Set())
     setSelectedConnectionId(null)
     historyRef.current = [structuredClone(state)]
@@ -401,6 +416,7 @@ export function useOrgChartStore() {
       connections: [],
       connectorTypes: createDefaultConnectorTypes(),
       legend: createDefaultLegend(),
+      background: createDefaultBackground(),
     })
   }, [loadDiagram])
 
@@ -576,6 +592,13 @@ export function useOrgChartStore() {
     pushHistory({ legend: nextLegend })
   }, [pushHistory])
 
+  const setBackgroundColor = useCallback((color: string) => {
+    if (!isHexColor(color)) return
+    const nextBackground: ChartBackgroundConfig = { color: color.toLowerCase() }
+    setBackground(nextBackground)
+    pushHistory({ background: nextBackground })
+  }, [pushHistory])
+
   // ── Version control ──────────────────────────────────
 
   const getVersions = useCallback((): OrgChartVersion[] => loadVersions(), [])
@@ -595,11 +618,12 @@ export function useOrgChartStore() {
         connections,
         connectorTypes,
         legend,
+        background,
       }),
     }
     versions.unshift(version) // newest first
     persistVersions(versions)
-  }, [nodes, connections, connectorTypes, legend])
+  }, [nodes, connections, connectorTypes, legend, background])
 
   const restoreVersion = useCallback((versionId: string) => {
     const versions = loadVersions()
@@ -610,11 +634,13 @@ export function useOrgChartStore() {
     setConnections(restored.connections)
     setConnectorTypes(restored.connectorTypes)
     setLegend(restored.legend)
+    setBackground(restored.background)
     pushHistory({
       nodes: restored.nodes,
       connections: restored.connections,
       connectorTypes: restored.connectorTypes,
       legend: restored.legend,
+      background: restored.background,
     })
     setSelectedNodeIds(new Set())
     setSelectedConnectionId(null)
@@ -676,7 +702,7 @@ export function useOrgChartStore() {
 
   return {
     // State
-    nodes, connections, connectorTypes, legend,
+    nodes, connections, connectorTypes, legend, background,
     selectedNodeIds, selectedNodeId, selectedConnectionId,
     viewport, layoutDirection,
     canUndo, canRedo, hasManualOffsets,
@@ -711,7 +737,7 @@ export function useOrgChartStore() {
     updateConnectorType, resetConnectorType, resetAllConnectorTypes,
 
     // Legend actions
-    setLegendPosition,
+    setLegendPosition, setBackgroundColor,
 
     // Version control
     getVersions, saveVersion, restoreVersion, deleteVersion, renameVersion,
