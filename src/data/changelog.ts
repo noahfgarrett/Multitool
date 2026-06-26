@@ -12,6 +12,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.7.2',
+    date: 'PLACEHOLDER',
+    type: 'fix',
+    stats: { fixes: 3, tools: 2 },
+    notes: `### OCR
+- Better scanned PDF search
+- Sharper OCR word matching
+- Improved Text Extract OCR layout`,
+  },
+  {
     version: '4.7.1',
     date: '2026-06-26T17:54:19Z',
     type: 'fix',
