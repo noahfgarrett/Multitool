@@ -3,6 +3,8 @@ node_modules/
 
 # Build output
 dist/
+dist-tauri/
+src-tauri/target/
 
 # OS files
 .DS_Store

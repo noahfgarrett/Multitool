@@ -8,6 +8,7 @@ import { UpdateModal } from '@/components/common/UpdateModal.tsx'
 import { UserProfileModal } from '@/components/common/UserProfileModal.tsx'
 import { SettingsModal } from '@/components/common/SettingsModal.tsx'
 import { checkForUpdate } from '@/utils/updateChecker.ts'
+import { isTauriRuntime, shouldCheckHtmlUpdates } from '@/utils/runtimeEnvironment.ts'
 import { migrateFromLotusWorks } from '@/utils/migration.ts'
 import { getUserProfile, saveUserProfile, hasUserProfile } from '@/utils/userProfile.ts'
 import type { UpdateInfo } from '@/utils/updateChecker.ts'
@@ -66,11 +67,11 @@ export default function App() {
       setShowProfileModal(true)
     }
 
-    // In PWA mode, the service worker handles updates — skip the download modal.
-    // Only show the update modal for standalone HTML file users.
+    // In PWA/Tauri mode, updates are handled by those shells.
+    // Only show the HTML update modal for standalone HTML file users.
     const isPwa = window.matchMedia('(display-mode: standalone)').matches
       || (navigator as unknown as { standalone?: boolean }).standalone === true
-    if (!isPwa) {
+    if (shouldCheckHtmlUpdates({ isPwa, isTauri: isTauriRuntime() })) {
       checkForUpdate().then((info) => {
         if (info) {
           setUpdateInfo(info)
