@@ -16,6 +16,20 @@ function normalizeConfidence(score: number | undefined): number | undefined {
   return score >= 0 && score <= 1 ? score * 100 : score
 }
 
+function getTokenRanges(text: string): { text: string; start: number; end: number }[] {
+  const ranges: { text: string; start: number; end: number }[] = []
+  const tokenPattern = /\S+/g
+  let match: RegExpExecArray | null
+  while ((match = tokenPattern.exec(text)) !== null) {
+    ranges.push({
+      text: match[0],
+      start: match.index,
+      end: match.index + match[0].length,
+    })
+  }
+  return ranges
+}
+
 export function paddleItemsToWords(
   items: readonly PaddleOcrResultItem[],
   renderScale: number,
@@ -40,15 +54,24 @@ export function paddleItemsToWords(
     const maxY = Math.max(...ys)
     if (maxX <= minX || maxY <= minY) continue
 
-    words.push({
-      text,
-      confidence: normalizeConfidence(item.score),
-      x: offset.x + minX / renderScale,
-      y: offset.y + minY / renderScale,
-      width: (maxX - minX) / renderScale,
-      height: (maxY - minY) / renderScale,
-      page: pageNumber,
-    })
+    const confidence = normalizeConfidence(item.score)
+    const tokens = getTokenRanges(text)
+    const wordRanges = tokens.length > 1 ? tokens : [{ text, start: 0, end: text.length }]
+    const boxWidth = maxX - minX
+
+    for (const token of wordRanges) {
+      const startRatio = token.start / text.length
+      const endRatio = token.end / text.length
+      words.push({
+        text: token.text,
+        confidence,
+        x: offset.x + (minX + boxWidth * startRatio) / renderScale,
+        y: offset.y + minY / renderScale,
+        width: (boxWidth * (endRatio - startRatio)) / renderScale,
+        height: (maxY - minY) / renderScale,
+        page: pageNumber,
+      })
+    }
   }
 
   return words
