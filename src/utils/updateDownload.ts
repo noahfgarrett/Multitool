@@ -9,12 +9,15 @@ interface UpdateDownloadDeps {
   fetchImpl?: typeof fetch
   saveImpl?: SaveUpdateFile
   decompressImpl?: (blob: Blob) => Promise<Blob>
+  directDownloadImpl?: (url: string, filename: string) => void
+  shouldUseDirectDownload?: () => boolean
 }
 
 export interface UpdateDownloadResult {
   downloadedAssetName: string
   savedFilename: string
   usedCompressedAsset: boolean
+  usedDirectDownloadFallback?: boolean
 }
 
 type DecompressionStreamCtor = new (format: 'gzip') => TransformStream<Uint8Array, Uint8Array>
@@ -26,6 +29,49 @@ function getHtmlFilename(assetName: string, fallbackAssetName?: string): string 
 
 function getDecompressionStream(): DecompressionStreamCtor | undefined {
   return (globalThis as { DecompressionStream?: DecompressionStreamCtor }).DecompressionStream
+}
+
+function isStandaloneFileContext(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.location.protocol === 'file:' || window.location.origin === 'null'
+}
+
+function getDirectHtmlDownload(info: UpdateInfo): { url: string; filename: string } | null {
+  if (info.downloadKind === 'gzip-html') {
+    if (!info.fallbackDownloadUrl || !info.fallbackAssetName) return null
+    return { url: info.fallbackDownloadUrl, filename: info.fallbackAssetName }
+  }
+
+  return { url: info.downloadUrl, filename: info.assetName }
+}
+
+function openDirectUpdateDownload(url: string, filename: string): void {
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.target = '_blank'
+  a.rel = 'noopener noreferrer'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+}
+
+function useDirectDownload(
+  info: UpdateInfo,
+  directDownloadImpl: (url: string, filename: string) => void,
+): UpdateDownloadResult {
+  const directDownload = getDirectHtmlDownload(info)
+  if (!directDownload) {
+    throw new Error('No direct HTML update asset is available.')
+  }
+
+  directDownloadImpl(directDownload.url, directDownload.filename)
+  return {
+    downloadedAssetName: directDownload.filename,
+    savedFilename: directDownload.filename,
+    usedCompressedAsset: false,
+    usedDirectDownloadFallback: true,
+  }
 }
 
 export function canDecompressGzipInBrowser(): boolean {
@@ -60,6 +106,12 @@ export async function downloadUpdateFile(
   const fetchImpl = deps.fetchImpl ?? fetch
   const saveImpl = deps.saveImpl ?? saveBlob
   const decompressImpl = deps.decompressImpl ?? decompressGzipHtml
+  const directDownloadImpl = deps.directDownloadImpl ?? openDirectUpdateDownload
+  const shouldUseDirectDownload = deps.shouldUseDirectDownload ?? isStandaloneFileContext
+
+  if (shouldUseDirectDownload()) {
+    return useDirectDownload(info, directDownloadImpl)
+  }
 
   if (info.downloadKind === 'gzip-html' && canDecompressGzipInBrowser()) {
     try {
@@ -88,11 +140,15 @@ export async function downloadUpdateFile(
     throw new Error('No compatible update asset is available.')
   }
 
-  const htmlBlob = await fetchGitHubAssetBlob(fallbackAssetApiUrl, fetchImpl)
-  await saveImpl(new Blob([htmlBlob], { type: 'text/html' }), fallbackAssetName, 'text/html')
-  return {
-    downloadedAssetName: fallbackAssetName,
-    savedFilename: fallbackAssetName,
-    usedCompressedAsset: false,
+  try {
+    const htmlBlob = await fetchGitHubAssetBlob(fallbackAssetApiUrl, fetchImpl)
+    await saveImpl(new Blob([htmlBlob], { type: 'text/html' }), fallbackAssetName, 'text/html')
+    return {
+      downloadedAssetName: fallbackAssetName,
+      savedFilename: fallbackAssetName,
+      usedCompressedAsset: false,
+    }
+  } catch {
+    return useDirectDownload(info, directDownloadImpl)
   }
 }

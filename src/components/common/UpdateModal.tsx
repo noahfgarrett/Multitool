@@ -177,9 +177,9 @@ export function UpdateModal({ open, onClose, info, defaultTab }: UpdateModalProp
             <div className="flex flex-col items-center gap-4 py-6">
               <CheckCircle2 size={48} className="text-emerald-400" />
               <div className="text-center space-y-1.5">
-                <p className="text-lg font-semibold text-white">Download ready!</p>
+                <p className="text-lg font-semibold text-white">Download started!</p>
                 <p className="text-sm text-white/50">
-                  v{info.version} was saved as Multitool.html.
+                  v{info.version} is downloading as Multitool.html.
                 </p>
               </div>
               <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-3 text-xs text-white/40 text-center max-w-sm">
