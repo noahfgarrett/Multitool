@@ -12,6 +12,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.8.1',
+    date: 'PLACEHOLDER',
+    type: 'fix',
+    stats: { fixes: 1, tools: 1 },
+    notes: `### PDF Annotate
+- Middle-click panning uses grab hand`,
+  },
+  {
     version: '4.8.0',
     date: '2026-07-06T11:53:21Z',
     type: 'feature',

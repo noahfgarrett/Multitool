@@ -25,6 +25,7 @@ import { getPagesToRenderInProtectedWindow } from './pageRenderScheduling.ts'
 import { touchRecentPageCluster } from './recentPageCache.ts'
 import { shouldReleaseInactiveTile } from './tileReleasePolicy.ts'
 import { getPagesToPrefetchAround } from './pagePrefetchWindow.ts'
+import { getMiddleMousePanCursor, getPannedScrollPosition, shouldHandleMiddleMousePan } from './middleMousePan.ts'
 import { pinchFrame, maxScroll } from './pinchMath.ts'
 import type { PinchStart } from './pinchMath.ts'
 import { downloadBlob } from '@/utils/download.ts'
@@ -2687,33 +2688,69 @@ export default function PdfAnnotateTool() {
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
-    const onDown = (e: PointerEvent) => {
-      if (e.button !== 1) return
+    const cursor = getMiddleMousePanCursor()
+    let capturedPointerId: number | null = null
+    let middleMousePanActive = false
+
+    const preventNativeMiddleMouse = (e: MouseEvent | PointerEvent) => {
+      if (!shouldHandleMiddleMousePan(e)) return false
       e.preventDefault()
-      panRef.current = { startX: e.clientX, startY: e.clientY, scrollLeft: el.scrollLeft, scrollTop: el.scrollTop }
-      el.style.cursor = 'grabbing'
+      e.stopPropagation()
+      return true
     }
-    const onMove = (e: PointerEvent) => {
-      if (!panRef.current) return
-      el.scrollLeft = panRef.current.scrollLeft - (e.clientX - panRef.current.startX)
-      el.scrollTop = panRef.current.scrollTop - (e.clientY - panRef.current.startY)
-    }
-    const onUp = () => {
-      if (!panRef.current) return
+
+    const clearPan = () => {
+      if (!middleMousePanActive) return
+      if (capturedPointerId !== null) {
+        try { el.releasePointerCapture(capturedPointerId) } catch {}
+      }
+      capturedPointerId = null
+      middleMousePanActive = false
       panRef.current = null
       el.style.cursor = ''
+      document.body.style.cursor = ''
+      setCanvasCursor(null)
     }
+
+    const onDown = (e: PointerEvent) => {
+      if (!preventNativeMiddleMouse(e)) return
+      middleMousePanActive = true
+      panRef.current = { startX: e.clientX, startY: e.clientY, scrollLeft: el.scrollLeft, scrollTop: el.scrollTop }
+      capturedPointerId = e.pointerId
+      try { el.setPointerCapture(e.pointerId) } catch {}
+      el.style.cursor = cursor
+      document.body.style.cursor = cursor
+      setCanvasCursor(cursor)
+    }
+    const onMove = (e: PointerEvent) => {
+      if (!middleMousePanActive || !panRef.current) return
+      e.preventDefault()
+      const next = getPannedScrollPosition(panRef.current, e)
+      el.scrollLeft = next.scrollLeft
+      el.scrollTop = next.scrollTop
+    }
+    const onMouseDown = (e: MouseEvent) => { preventNativeMiddleMouse(e) }
+    const onAuxClick = (e: MouseEvent) => { preventNativeMiddleMouse(e) }
     el.addEventListener('pointerdown', onDown)
     el.addEventListener('pointermove', onMove)
-    el.addEventListener('pointerup', onUp)
-    el.addEventListener('pointercancel', onUp)
+    el.addEventListener('pointerup', clearPan)
+    el.addEventListener('pointercancel', clearPan)
+    el.addEventListener('mousedown', onMouseDown)
+    el.addEventListener('auxclick', onAuxClick)
+    document.addEventListener('mouseup', clearPan)
+    window.addEventListener('blur', clearPan)
     return () => {
       el.removeEventListener('pointerdown', onDown)
       el.removeEventListener('pointermove', onMove)
-      el.removeEventListener('pointerup', onUp)
-      el.removeEventListener('pointercancel', onUp)
+      el.removeEventListener('pointerup', clearPan)
+      el.removeEventListener('pointercancel', clearPan)
+      el.removeEventListener('mousedown', onMouseDown)
+      el.removeEventListener('auxclick', onAuxClick)
+      document.removeEventListener('mouseup', clearPan)
+      window.removeEventListener('blur', clearPan)
+      clearPan()
     }
-  }, [])
+  }, [setCanvasCursor])
 
   // ── Clear in-progress when tool changes ──────────────
 
