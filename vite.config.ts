@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
   const buildMode = resolveViteBuildMode(mode)
 
   return {
+    base: buildMode.base,
     plugins: [
       react(),
       ...(buildMode.singleFile ? [viteSingleFile()] : []),
@@ -19,10 +20,17 @@ export default defineConfig(({ mode }) => {
       __APP_VERSION__: JSON.stringify(pkg.version),
     },
     resolve: {
-      alias: {
-        '@': path.resolve(__dirname, 'src'),
-        'onnxruntime-web': 'onnxruntime-web/wasm',
-      },
+      alias: [
+        {
+          find: '@/utils/ocr/runtime.ts',
+          replacement: path.resolve(
+            __dirname,
+            buildMode.bundledOcr ? 'src/utils/ocr/runtime.ts' : 'src/utils/ocr/pwaRuntime.ts',
+          ),
+        },
+        { find: '@', replacement: path.resolve(__dirname, 'src') },
+        { find: 'onnxruntime-web', replacement: 'onnxruntime-web/wasm' },
+      ],
     },
     build: {
       outDir: buildMode.outDir,

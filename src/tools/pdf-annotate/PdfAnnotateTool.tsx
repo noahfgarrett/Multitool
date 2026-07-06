@@ -10,8 +10,7 @@ import { useKeyboardShortcuts } from './useKeyboardShortcuts.ts'
 import { exportAnnotatedPdf, buildAnnotatedPdfBytes } from './exportPdf.ts'
 import { findTextMatches, reconcileFindIndex } from './findUtils.ts'
 import type { FindTextItem } from './findUtils.ts'
-import { recognizeCanvasWithPaddle } from '@/utils/ocr/paddleEngine.ts'
-import { tesseractBlocksToWords } from '@/utils/ocr/tesseractEngine.ts'
+import { createTesseractWorker, recognizeCanvasWithPaddle, recognizeCanvasWithTesseract, tesseractBlocksToWords } from '@/utils/ocr/runtime.ts'
 import { loadPDFFile, renderPageToCanvas, generateThumbnail, removePDFFromCache, extractPositionedText, getAllPageDimensions, validatePageRange, isRenderingCancelled, getMaxRenderScale, renderPageTile, getMaxCanvasPixels, cancelCanvasRender, prefetchPDFPages } from '@/utils/pdf.ts'
 import { buildTileGrid, getTileCanvasBytes, releaseTile, teardownTileGrid } from './tileRendering.ts'
 import type { PageTile } from './tileRendering.ts'
@@ -28,7 +27,6 @@ import { shouldReleaseInactiveTile } from './tileReleasePolicy.ts'
 import { getPagesToPrefetchAround } from './pagePrefetchWindow.ts'
 import { pinchFrame, maxScroll } from './pinchMath.ts'
 import type { PinchStart } from './pinchMath.ts'
-import Tesseract from 'tesseract.js'
 import { downloadBlob } from '@/utils/download.ts'
 import { saveSession, loadSession, clearSession, computeFileHash } from './storage.ts'
 import type { PdfAnnotateSession } from './storage.ts'
@@ -2853,9 +2851,9 @@ export default function PdfAnnotateTool() {
 
     setOcrScanning(true)
     const canvas = document.createElement('canvas')
-    const tesseractWorkerRef: { current: Tesseract.Worker | null } = { current: null }
+    const tesseractWorkerRef: { current: Awaited<ReturnType<typeof createTesseractWorker>> | null } = { current: null }
     const ensureTesseractWorker = async () => {
-      if (!tesseractWorkerRef.current) tesseractWorkerRef.current = await Tesseract.createWorker('eng')
+      if (!tesseractWorkerRef.current) tesseractWorkerRef.current = await createTesseractWorker('eng')
       return tesseractWorkerRef.current
     }
 
@@ -5067,18 +5065,16 @@ export default function PdfAnnotateTool() {
       const scanPage = ap
       setOcrRegionScanning(true)
       ;(async () => {
-        let worker: Awaited<ReturnType<typeof Tesseract.createWorker>> | null = null
         try {
           const rotation = pageRotations[scanPage] || 0
           const canvas = document.createElement('canvas')
           await renderPageToCanvas(pdfFile, scanPage, canvas, 2.0, rotation)
-          worker = await Tesseract.createWorker('eng')
-          const result = await worker.recognize(canvas, {
+          const result = await recognizeCanvasWithTesseract(canvas, 'eng', scanPage, 2.0, {
             rectangle: { left: Math.round(scanRegion.x * 2), top: Math.round(scanRegion.y * 2), width: Math.round(scanRegion.w * 2), height: Math.round(scanRegion.h * 2) },
-          }, { text: true })
+          })
           canvas.width = 0
           canvas.height = 0
-          const text = (result.data.text ?? '').trim()
+          const text = result.text.trim()
           if (text) {
             setOcrRegionResult({ text, pageNum: scanPage, rect: scanRegion })
           } else {
@@ -5091,7 +5087,6 @@ export default function PdfAnnotateTool() {
           ocrRegionPreviewRef.current = null
           redrawPage(scanPage)
         } finally {
-          await worker?.terminate()
           setOcrRegionScanning(false)
         }
       })()

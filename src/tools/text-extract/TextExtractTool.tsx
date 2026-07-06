@@ -8,8 +8,7 @@ import { ProgressBar } from '@/components/common/ProgressBar.tsx'
 import { loadPDFFile, renderPageToCanvas, hasEmbeddedText, extractPositionedText, extractPageLines, removePDFFromCache } from '@/utils/pdf.ts'
 import type { PageLine } from '@/utils/pdf.ts'
 import { downloadBlob, downloadText } from '@/utils/download.ts'
-import { recognizeCanvasWithPaddle } from '@/utils/ocr/paddleEngine.ts'
-import { recognizeCanvasWithTesseract } from '@/utils/ocr/tesseractEngine.ts'
+import { recognizeCanvasWithPaddle, recognizeCanvasWithTesseract } from '@/utils/ocr/runtime.ts'
 import type { PDFFile } from '@/types'
 import {
   FileText, Copy, RotateCcw, ZoomIn, ZoomOut,
