@@ -8,6 +8,7 @@ import { PDFDocument, PDFDict, PDFName, PDFHexString, PDFArray, PDFNumber, PDFRe
 import * as pdfjsLib from 'pdfjs-dist'
 import type { RenderTask } from 'pdfjs-dist'
 import type { PDFFile, PDFPage, PageRangeValidation } from '@/types'
+import { resolveMaxCanvasPixels } from './pdfCanvasLimits.ts'
 
 // Centralized PDF.js worker setup (side-effect import)
 import '@/utils/pdfWorkerSetup.ts'
@@ -199,6 +200,15 @@ export async function generateAllThumbnails(
 const activeRenderTasks = new WeakMap<HTMLCanvasElement, RenderTask>()
 const renderGenerations = new WeakMap<HTMLCanvasElement, number>()
 
+export function cancelCanvasRender(canvas: HTMLCanvasElement): void {
+  const previous = activeRenderTasks.get(canvas)
+  if (previous) {
+    previous.cancel()
+    activeRenderTasks.delete(canvas)
+  }
+  renderGenerations.set(canvas, (renderGenerations.get(canvas) ?? 0) + 1)
+}
+
 /**
  * Maximum total canvas pixel area for a single rendered page.
  *
@@ -215,17 +225,9 @@ const renderGenerations = new WeakMap<HTMLCanvasElement, number>()
  * progressively blurrier at very high zoom instead of disappearing, which
  * is the exact tradeoff pdf.js's own viewer makes.
  */
-const IS_IOS_OR_ANDROID = (() => {
-  if (typeof navigator === 'undefined') return false
-  const ua = navigator.userAgent || ''
-  const platform = navigator.platform || ''
-  const maxTouch = navigator.maxTouchPoints || 1
-  const isIOS = /\b(iPad|iPhone|iPod)(?=;)/.test(ua)
-    || (platform === 'MacIntel' && maxTouch > 1)
-  const isAndroid = /Android/.test(ua)
-  return isIOS || isAndroid
-})()
-const MAX_CANVAS_PIXELS = IS_IOS_OR_ANDROID ? 5_242_880 : 16_777_216
+const MAX_CANVAS_PIXELS = resolveMaxCanvasPixels(
+  typeof navigator === 'undefined' ? undefined : navigator,
+)
 
 /**
  * Returns the largest render scale that will keep a page's pixel buffer
@@ -360,6 +362,8 @@ export async function renderPageToCanvas(
   canvas.width = targetWidth
   canvas.height = targetHeight
   ctx.drawImage(offscreen, 0, 0)
+  offscreen.width = 0
+  offscreen.height = 0
 
   page.cleanup()
 }
@@ -472,8 +476,32 @@ export async function renderPageTile(
   if (tileCanvas.width !== tileW) tileCanvas.width = tileW
   if (tileCanvas.height !== tileH) tileCanvas.height = tileH
   ctx.drawImage(offscreen, 0, 0)
+  offscreen.width = 0
+  offscreen.height = 0
 
   page.cleanup()
+}
+
+export async function prefetchPDFPages(
+  pdfFile: PDFFile,
+  pageNumbers: readonly number[],
+  concurrency = 2,
+): Promise<void> {
+  const doc = await getCachedDoc(pdfFile.id, pdfFile.file)
+  const safeConcurrency = Math.max(1, Math.floor(concurrency))
+  const uniquePageNumbers = Array.from(new Set(pageNumbers))
+    .filter(pageNumber => pageNumber >= 1 && pageNumber <= doc.numPages)
+
+  for (let i = 0; i < uniquePageNumbers.length; i += safeConcurrency) {
+    await Promise.all(uniquePageNumbers.slice(i, i + safeConcurrency).map(async pageNumber => {
+      try {
+        const page = await doc.getPage(pageNumber)
+        page.cleanup()
+      } catch {
+        // Prefetch is opportunistic; normal render paths surface real failures.
+      }
+    }))
+  }
 }
 
 /** Expose the current canvas pixel cap for callers that need to compute tile grids. */

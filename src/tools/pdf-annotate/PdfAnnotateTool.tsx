@@ -12,9 +12,20 @@ import { findTextMatches, reconcileFindIndex } from './findUtils.ts'
 import type { FindTextItem } from './findUtils.ts'
 import { recognizeCanvasWithPaddle } from '@/utils/ocr/paddleEngine.ts'
 import { tesseractBlocksToWords } from '@/utils/ocr/tesseractEngine.ts'
-import { loadPDFFile, renderPageToCanvas, generateThumbnail, removePDFFromCache, extractPositionedText, getAllPageDimensions, validatePageRange, isRenderingCancelled, getMaxRenderScale, renderPageTile, getMaxCanvasPixels } from '@/utils/pdf.ts'
-import { buildTileGrid, teardownTileGrid } from './tileRendering.ts'
+import { loadPDFFile, renderPageToCanvas, generateThumbnail, removePDFFromCache, extractPositionedText, getAllPageDimensions, validatePageRange, isRenderingCancelled, getMaxRenderScale, renderPageTile, getMaxCanvasPixels, cancelCanvasRender, prefetchPDFPages } from '@/utils/pdf.ts'
+import { buildTileGrid, getTileCanvasBytes, releaseTile, teardownTileGrid } from './tileRendering.ts'
 import type { PageTile } from './tileRendering.ts'
+import { getPagesToRelease } from './pageResourceWindow.ts'
+import { collapseCanvasForRelease, restoreCanvasForRender } from './canvasResourceState.ts'
+import { getTileItemsToReleaseForBudget } from './tileBudget.ts'
+import type { TileBudgetItem } from './tileBudget.ts'
+import { getPagesIntersectingViewportMargin } from './viewportResourceWindow.ts'
+import { getTileRenderPriority, insertTileRenderJob } from './tileRenderQueue.ts'
+import { shouldUseTileRendering } from './tileRenderingStrategy.ts'
+import { getPagesToRenderInProtectedWindow } from './pageRenderScheduling.ts'
+import { touchRecentPageCluster } from './recentPageCache.ts'
+import { shouldReleaseInactiveTile } from './tileReleasePolicy.ts'
+import { getPagesToPrefetchAround } from './pagePrefetchWindow.ts'
 import { pinchFrame, maxScroll } from './pinchMath.ts'
 import type { PinchStart } from './pinchMath.ts'
 import Tesseract from 'tesseract.js'
@@ -94,6 +105,23 @@ const FONT_GROUPS: { label: string; fonts: string[] }[] = [
   { label: 'Monospace', fonts: ['Courier New', 'Consolas', 'Monaco', 'Lucida Console'] },
   { label: 'Display', fonts: ['Comic Sans MS', 'Impact'] },
 ]
+
+const PAGE_RESOURCE_KEEP_RADIUS = 1
+const PAGE_RESOURCE_CLEANUP_DELAY_MS = 120
+const PAGE_RENDER_ROOT_MARGIN_PX = 1000
+const ACTIVE_SCROLL_RENDER_IDLE_MS = 90
+const RECENT_READABLE_PAGE_KEEP_LIMIT = 8
+const RECENT_READABLE_PAGE_NEIGHBOR_RADIUS = 1
+const PAGE_PROXY_PREFETCH_DELAY_MS = 40
+const PAGE_PROXY_PREFETCH_AHEAD_COUNT = 2
+const PAGE_PROXY_PREFETCH_BEHIND_COUNT = 1
+const PAGE_GAP_PX = 24
+const TILE_CANVAS_BUDGET_BYTES = 640 * 1024 * 1024
+const PROGRESSIVE_TILE_MIN_PIXELS = 1.5 * 1024 * 1024
+const PROGRESSIVE_TILE_MIN_AXIS_PX = 1800
+const MAX_CONCURRENT_TILE_RENDERS = 2
+const TILE_PREFERRED_MAX_DIM_PX = 1536
+const TILE_RENDER_ROOT_MARGIN_PX = 500
 
 // ── Thumbnail sidebar item ──────────────────────────────
 
@@ -436,6 +464,18 @@ export default function PdfAnnotateTool() {
     pointBufferRef, rafIdRef, rafRunningRef, activeCtxCacheRef,
     annPageMap, totalAnnotationCount,
   } = S
+  const resourceCleanupTimerRef = useRef<number | null>(null)
+  const pendingResourceCleanupCenterRef = useRef<number | null>(null)
+  const tileRenderQueueRef = useRef<Array<{ job: () => Promise<void>; priority: number; sequence: number }>>([])
+  const tileRenderSequenceRef = useRef(0)
+  const activeTileRenderCountRef = useRef(0)
+  const activeScrollRenderPauseRef = useRef(false)
+  const scrollRenderIdleTimerRef = useRef<number | null>(null)
+  const pageProxyPrefetchTimerRef = useRef<number | null>(null)
+  const recentReadablePagesRef = useRef<number[]>([])
+  const lastScrollTopRef = useRef(0)
+  const scrollIdleCenterPageRef = useRef(1)
+  const scrollDirectionRef = useRef<'forward' | 'backward' | 'none'>('none')
 
   const pencilOnlyMode = useAppStore((s) => s.pencilOnlyMode)
 
@@ -774,6 +814,203 @@ export default function PdfAnnotateTool() {
       redrawPage(pageNum)
     }
   }, [redrawPage])
+
+  const rememberReadablePage = useCallback((pageNum: number) => {
+    const pageCount = pdfFileRef.current?.pageCount ?? pageNum
+    recentReadablePagesRef.current = touchRecentPageCluster(
+      recentReadablePagesRef.current,
+      pageNum,
+      pageCount,
+      RECENT_READABLE_PAGE_NEIGHBOR_RADIUS,
+      RECENT_READABLE_PAGE_KEEP_LIMIT,
+    )
+  }, [pdfFileRef])
+
+  const shouldReleaseTileWhenInactive = useCallback((pageNum: number, tile: PageTile) => {
+    return shouldReleaseInactiveTile({
+      pageNum,
+      recentReadablePages: new Set(recentReadablePagesRef.current),
+      rendered: tile.rendered,
+      rendering: tile.rendering,
+      queued: tile.queued,
+    })
+  }, [])
+
+  const releasePageResources = useCallback((pageNum: number) => {
+    const refs = pageRefsMap.current.get(pageNum)
+
+    const activeGrid = pageTileGridsRef.current.get(pageNum)
+    if (activeGrid) {
+      teardownTileGrid(activeGrid)
+      pageTileGridsRef.current.delete(pageNum)
+    }
+
+    const pendingGrid = pendingOldTileGridsRef.current.get(pageNum)
+    if (pendingGrid) {
+      teardownTileGrid(pendingGrid)
+      pendingOldTileGridsRef.current.delete(pageNum)
+    }
+
+    if (refs) {
+      cancelCanvasRender(refs.pdfCanvas)
+      collapseCanvasForRelease(refs.pdfCanvas)
+      collapseCanvasForRelease(refs.annCanvas)
+      collapseCanvasForRelease(refs.activeCanvas)
+    }
+
+    activeCtxCacheRef.current.delete(pageNum)
+    pageRenderScaleRef.current.delete(pageNum)
+    renderedPagesRef.current.delete(pageNum)
+  }, [])
+
+  const getProtectedPageWindow = useCallback(() => {
+    const scrollEl = scrollRef.current
+    if (!scrollEl) return new Set<number>()
+    const viewport = scrollEl.getBoundingClientRect()
+    const pages = Array.from(pageRefsMap.current, ([pageNum, refs]) => {
+      const rect = refs.container.getBoundingClientRect()
+      return { pageNum, top: rect.top, bottom: rect.bottom }
+    })
+
+    return new Set(getPagesIntersectingViewportMargin({
+      pages,
+      viewportTop: viewport.top,
+      viewportBottom: viewport.bottom,
+      marginPx: PAGE_RENDER_ROOT_MARGIN_PX,
+    }))
+  }, [])
+
+  const cleanupDistantPageResources = useCallback((centerPage: number) => {
+    if (!pdfFile) return
+    const protectedPages = getProtectedPageWindow()
+    for (const pageNum of recentReadablePagesRef.current) {
+      if (pageNum >= 1 && pageNum <= pdfFile.pageCount) protectedPages.add(pageNum)
+    }
+    if (isDrawingRef.current || editingTextIdRef.current) {
+      protectedPages.add(activePageRef.current)
+    }
+    const pagesToRelease = getPagesToRelease({
+      renderedPages: renderedPagesRef.current,
+      activePage: centerPage,
+      pageCount: pdfFile.pageCount,
+      radius: PAGE_RESOURCE_KEEP_RADIUS,
+      protectedPages,
+    })
+    for (const pageNum of pagesToRelease) {
+      releasePageResources(pageNum)
+    }
+  }, [pdfFile, getProtectedPageWindow, releasePageResources])
+
+  const enforceTileCanvasBudget = useCallback((centerPage: number) => {
+    const tileById = new Map<string, PageTile>()
+    const items: TileBudgetItem[] = []
+
+    for (const [pageNum, grid] of pageTileGridsRef.current) {
+      for (const tile of grid.tiles) {
+        const id = `${pageNum}:${tile.row}:${tile.col}`
+        const bytes = getTileCanvasBytes(tile)
+        tileById.set(id, tile)
+        items.push({
+          id,
+          pageNum,
+          bytes,
+          inRenderWindow: tile.inRenderWindow,
+          lastTouchedAt: tile.lastTouchedAt,
+        })
+      }
+    }
+
+    const releases = getTileItemsToReleaseForBudget({
+      items,
+      activePage: centerPage,
+      maxBytes: TILE_CANVAS_BUDGET_BYTES,
+    })
+    for (const id of releases) {
+      const tile = tileById.get(id)
+      if (tile) releaseTile(tile)
+    }
+  }, [])
+
+  const pumpTileRenderQueue = useCallback(() => {
+    if (activeScrollRenderPauseRef.current) return
+
+    while (
+      activeTileRenderCountRef.current < MAX_CONCURRENT_TILE_RENDERS
+      && tileRenderQueueRef.current.length > 0
+    ) {
+      const item = tileRenderQueueRef.current.shift()
+      if (!item) return
+      activeTileRenderCountRef.current++
+      void item.job().finally(() => {
+        activeTileRenderCountRef.current = Math.max(0, activeTileRenderCountRef.current - 1)
+        pumpTileRenderQueue()
+      })
+    }
+  }, [])
+
+  const enqueueTileRender = useCallback((job: () => Promise<void>, priority: number) => {
+    insertTileRenderJob(tileRenderQueueRef.current, {
+      job,
+      priority,
+      sequence: tileRenderSequenceRef.current++,
+    })
+    pumpTileRenderQueue()
+  }, [pumpTileRenderQueue])
+
+  const scheduleResourceCleanup = useCallback((centerPage: number) => {
+    pendingResourceCleanupCenterRef.current = centerPage
+    if (resourceCleanupTimerRef.current !== null) return
+
+    resourceCleanupTimerRef.current = window.setTimeout(() => {
+      resourceCleanupTimerRef.current = null
+      const latestCenter = pendingResourceCleanupCenterRef.current ?? centerPage
+      pendingResourceCleanupCenterRef.current = null
+      cleanupDistantPageResources(latestCenter)
+      enforceTileCanvasBudget(latestCenter)
+    }, PAGE_RESOURCE_CLEANUP_DELAY_MS)
+  }, [cleanupDistantPageResources, enforceTileCanvasBudget])
+
+  const schedulePageProxyPrefetch = useCallback((
+    centerPage: number,
+    scrollDirection: 'forward' | 'backward' | 'none',
+  ) => {
+    if (!pdfFile) return
+    if (pageProxyPrefetchTimerRef.current !== null) {
+      window.clearTimeout(pageProxyPrefetchTimerRef.current)
+    }
+
+    pageProxyPrefetchTimerRef.current = window.setTimeout(() => {
+      pageProxyPrefetchTimerRef.current = null
+      const pages = getPagesToPrefetchAround({
+        activePage: centerPage,
+        pageCount: pdfFile.pageCount,
+        scrollDirection,
+        aheadCount: PAGE_PROXY_PREFETCH_AHEAD_COUNT,
+        behindCount: PAGE_PROXY_PREFETCH_BEHIND_COUNT,
+      })
+      if (pages.length === 0) return
+      void prefetchPDFPages(pdfFile, pages).catch(() => {})
+    }, PAGE_PROXY_PREFETCH_DELAY_MS)
+  }, [pdfFile])
+
+  useEffect(() => {
+    return () => {
+      if (resourceCleanupTimerRef.current !== null) {
+        window.clearTimeout(resourceCleanupTimerRef.current)
+      }
+      if (scrollRenderIdleTimerRef.current !== null) {
+        window.clearTimeout(scrollRenderIdleTimerRef.current)
+      }
+      if (pageProxyPrefetchTimerRef.current !== null) {
+        window.clearTimeout(pageProxyPrefetchTimerRef.current)
+      }
+      activeScrollRenderPauseRef.current = false
+      scrollRenderIdleTimerRef.current = null
+      pageProxyPrefetchTimerRef.current = null
+      pendingResourceCleanupCenterRef.current = null
+      tileRenderQueueRef.current = []
+    }
+  }, [])
 
   // ── Active canvas helpers (iPad perf overhaul) ──────
 
@@ -1487,6 +1724,20 @@ export default function PdfAnnotateTool() {
       pageRefsMap.current.clear()
       renderedPagesRef.current.clear()
       pageRenderScaleRef.current.clear()
+      tileRenderQueueRef.current = []
+      recentReadablePagesRef.current = []
+      if (scrollRenderIdleTimerRef.current !== null) {
+        window.clearTimeout(scrollRenderIdleTimerRef.current)
+        scrollRenderIdleTimerRef.current = null
+      }
+      if (pageProxyPrefetchTimerRef.current !== null) {
+        window.clearTimeout(pageProxyPrefetchTimerRef.current)
+        pageProxyPrefetchTimerRef.current = null
+      }
+      activeScrollRenderPauseRef.current = false
+      scrollDirectionRef.current = 'none'
+      lastScrollTopRef.current = 0
+      scrollIdleCenterPageRef.current = 1
       activePageRef.current = 1
       // Compute page dimensions for all pages
       // Use scale=1 for CSS-pixel layout dimensions; the pixel buffer is rendered at
@@ -1702,48 +1953,85 @@ export default function PdfAnnotateTool() {
       const requestedRs = RENDER_SCALE * clampedZoom
       const dims = pageDimsMap.current.get(pageNum)
       const maxRs = dims ? getMaxRenderScale(dims.width, dims.height) : requestedRs
-      const needsTiling = !!dims && requestedRs > maxRs * 1.02
+      const needsTiling = !!dims && shouldUseTileRendering({
+        naturalWidth: dims.width,
+        naturalHeight: dims.height,
+        requestedScale: requestedRs,
+        maxRenderScale: maxRs,
+        progressiveTileMinPixels: PROGRESSIVE_TILE_MIN_PIXELS,
+        progressiveTileMinAxisPx: PROGRESSIVE_TILE_MIN_AXIS_PX,
+      })
 
-      // STEP 1 — always render pdf-canvas at the capped "base" scale,
-      // even when a tile grid will eventually overlay it. pdf-canvas
-      // acts as a permanent fallback layer so the user never sees blank
-      // space during tile grid rebuilds. Tile canvases sit on top when
-      // they're needed; when torn down, the base layer is already there.
+      if (!needsTiling) {
+        // On high-zoom -> low-zoom transitions, drop old tile buffers before
+        // rasterizing the new base canvas. The existing base canvas stays
+        // visible while the sharper low-zoom render finishes.
+        const existing = pageTileGridsRef.current.get(pageNum)
+        if (existing) {
+          teardownTileGrid(existing)
+          pageTileGridsRef.current.delete(pageNum)
+        }
+        const pendingOld = pendingOldTileGridsRef.current.get(pageNum)
+        if (pendingOld) {
+          teardownTileGrid(pendingOld)
+          pendingOldTileGridsRef.current.delete(pageNum)
+        }
+      }
+
       const baseRs = Math.min(requestedRs, maxRs)
-      await renderPageToCanvas(pdfFile, pageNum, refs.pdfCanvas, baseRs, rotation)
 
-      // Base canvas CSS size tracks the unscaled doc dimensions — the
-      // parent `transform: scale(zoom)` handles visual scaling.
-      if (dims) {
-        refs.pdfCanvas.style.width = dims.width + 'px'
-        refs.pdfCanvas.style.height = dims.height + 'px'
-      }
-      refs.pdfCanvas.style.display = ''
-
-      // Annotation canvases track the base canvas pixel buffer so
-      // hit-testing math stays consistent with where annotations were
-      // stored.
-      refs.annCanvas.width = refs.pdfCanvas.width
-      refs.annCanvas.height = refs.pdfCanvas.height
-      if (dims) {
-        refs.annCanvas.style.width = dims.width + 'px'
-        refs.annCanvas.style.height = dims.height + 'px'
-      }
-      if (refs.activeCanvas) {
-        refs.activeCanvas.width = refs.pdfCanvas.width
-        refs.activeCanvas.height = refs.pdfCanvas.height
+      const syncCanvasLayout = (canvasWidth: number, canvasHeight: number): void => {
         if (dims) {
-          refs.activeCanvas.style.width = dims.width + 'px'
-          refs.activeCanvas.style.height = dims.height + 'px'
+          refs.pdfCanvas.style.width = dims.width + 'px'
+          refs.pdfCanvas.style.height = dims.height + 'px'
+          refs.annCanvas.style.width = dims.width + 'px'
+          refs.annCanvas.style.height = dims.height + 'px'
+          if (refs.activeCanvas) {
+            refs.activeCanvas.style.width = dims.width + 'px'
+            refs.activeCanvas.style.height = dims.height + 'px'
+          }
+        }
+        refs.annCanvas.width = canvasWidth
+        refs.annCanvas.height = canvasHeight
+        restoreCanvasForRender(refs.annCanvas)
+        if (refs.activeCanvas) {
+          refs.activeCanvas.width = canvasWidth
+          refs.activeCanvas.height = canvasHeight
+          restoreCanvasForRender(refs.activeCanvas)
         }
         activeCtxCacheRef.current.delete(pageNum)
+        pageRenderScaleRef.current.set(pageNum, baseRs)
+        redrawPage(pageNum)
       }
-      pageRenderScaleRef.current.set(pageNum, baseRs)
-      redrawPage(pageNum)
 
-      // STEP 2 — if the zoom requires it, build a tile overlay. Tiles
-      // are purely additive detail on top of pdf-canvas; we never hide
-      // pdf-canvas. Reuse an existing grid if scale + rotation match.
+      const prepareOverlayCanvases = (): void => {
+        if (!dims) return
+        const canvasWidth = Math.max(1, Math.floor(dims.width * baseRs))
+        const canvasHeight = Math.max(1, Math.floor(dims.height * baseRs))
+        restoreCanvasForRender(refs.pdfCanvas)
+        syncCanvasLayout(canvasWidth, canvasHeight)
+      }
+
+      const renderBaseCanvas = async (): Promise<void> => {
+        await renderPageToCanvas(pdfFile, pageNum, refs.pdfCanvas, baseRs, rotation)
+        restoreCanvasForRender(refs.pdfCanvas)
+        syncCanvasLayout(refs.pdfCanvas.width, refs.pdfCanvas.height)
+        rememberReadablePage(pageNum)
+      }
+
+      if (needsTiling && dims) {
+        // Do not block first visible tiles behind a large capped full-page
+        // fallback render. Size the interaction layers now; tiles paint
+        // immediately, and the fallback pdf-canvas fills in behind them.
+        prepareOverlayCanvases()
+      } else {
+        await renderBaseCanvas()
+      }
+
+      // If the page needs tile rendering, build the grid immediately.
+      // Tiles are the primary PDF image in this mode; the full-page
+      // pdf-canvas is reserved for small pages or a no-observer fallback.
+      // Reuse an existing grid if scale + rotation match.
       if (needsTiling && dims) {
         const existing = pageTileGridsRef.current.get(pageNum)
         const reuse = existing
@@ -1801,6 +2089,7 @@ export default function PdfAnnotateTool() {
             scale: requestedRs,
             rotation,
             maxCanvasPixels: getMaxCanvasPixels(),
+            preferredMaxTileDim: TILE_PREFERRED_MAX_DIM_PX,
             insertBefore: refs.pdfCanvas,
           })
 
@@ -1828,57 +2117,125 @@ export default function PdfAnnotateTool() {
               }
             }
 
-            const obs = new IntersectionObserver(
-              entries => {
-                for (const entry of entries) {
-                  if (!entry.isIntersecting) continue
-                  const el = entry.target as HTMLCanvasElement
-                  const tile = grid.tiles.find((t: PageTile) => t.canvas === el)
-                  if (!tile || tile.rendered) continue
-                  scheduledRenders++
-                  renderPageTile(
+            const queueTileRender = (tile: PageTile, priority: number): void => {
+              if (tile.rendered || tile.rendering || tile.queued) return
+              tile.queued = true
+              const renderToken = tile.renderToken + 1
+              tile.renderToken = renderToken
+              scheduledRenders++
+              enqueueTileRender(async () => {
+                if (tile.renderToken !== renderToken || !tile.queued || (!tile.inRenderWindow && shouldReleaseTileWhenInactive(pageNum, tile))) {
+                  tile.queued = false
+                  completedRenders++
+                  tryTeardownPendingOld()
+                  return
+                }
+
+                try {
+                  tile.queued = false
+                  tile.rendering = true
+                  await renderPageTile(
                     pdfFile, pageNum, tile.canvas,
                     requestedRs, rotation,
                     tile.x, tile.y, tile.w, tile.h,
-                  ).then(() => {
-                    tile.rendered = true
-                    completedRenders++
-                    tryTeardownPendingOld()
-                  }).catch((err: unknown) => {
-                    completedRenders++
-                    tryTeardownPendingOld()
-                    if (!isRenderingCancelled(err)) {
-                      // Non-cancellation failure — leave unrendered;
-                      // the observer may retry on the next scroll.
-                    }
+                  )
+
+                  if (tile.renderToken !== renderToken) return
+                  tile.rendered = true
+                  tile.rendering = false
+                  tile.lastTouchedAt = performance.now()
+                  rememberReadablePage(pageNum)
+                  if (!tile.inRenderWindow && shouldReleaseTileWhenInactive(pageNum, tile)) releaseTile(tile)
+                  enforceTileCanvasBudget(activePageRef.current)
+                } catch (err: unknown) {
+                  if (tile.renderToken === renderToken) {
+                    tile.queued = false
+                    tile.rendering = false
+                  }
+                  if (!isRenderingCancelled(err)) {
+                    // Non-cancellation failure — leave unrendered;
+                    // the observer may retry on the next scroll.
+                  }
+                } finally {
+                  completedRenders++
+                  tryTeardownPendingOld()
+                }
+              }, priority)
+            }
+
+            const obs = new IntersectionObserver(
+              entries => {
+                for (const entry of entries) {
+                  const touchedAt = performance.now()
+                  const el = entry.target as HTMLCanvasElement
+                  const tile = grid.tileByCanvas.get(el)
+                  if (!tile) continue
+
+                  tile.inRenderWindow = entry.isIntersecting
+                  tile.lastTouchedAt = touchedAt
+
+                  if (!entry.isIntersecting) {
+                    if ((tile.rendered || tile.rendering || tile.queued) && shouldReleaseTileWhenInactive(pageNum, tile)) releaseTile(tile)
+                    continue
+                  }
+
+                  const rootTop = entry.rootBounds?.top ?? scrollEl.getBoundingClientRect().top
+                  const priority = getTileRenderPriority({
+                    pageNum,
+                    activePage: activePageRef.current,
+                    rootTop,
+                    tileTop: entry.boundingClientRect.top,
+                    row: tile.row,
+                    col: tile.col,
                   })
+                  queueTileRender(tile, priority)
                 }
               },
-              { root: scrollEl, rootMargin: '500px' },
+              { root: scrollEl, rootMargin: `${TILE_RENDER_ROOT_MARGIN_PX}px` },
             )
             grid.observer = obs
             for (const tile of grid.tiles) obs.observe(tile.canvas)
+
+            requestAnimationFrame(() => {
+              if (pageTileGridsRef.current.get(pageNum) !== grid) return
+              const rootRect = scrollEl.getBoundingClientRect()
+              const renderTop = rootRect.top - TILE_RENDER_ROOT_MARGIN_PX
+              const renderBottom = rootRect.bottom + TILE_RENDER_ROOT_MARGIN_PX
+              const visibleTiles = grid.tiles
+                .map(tile => ({ tile, rect: tile.canvas.getBoundingClientRect() }))
+                .filter(({ rect }) => rect.bottom >= renderTop && rect.top <= renderBottom)
+                .map(({ tile, rect }) => ({
+                  tile,
+                  priority: getTileRenderPriority({
+                    pageNum,
+                    activePage: activePageRef.current,
+                    rootTop: rootRect.top,
+                    tileTop: rect.top,
+                    row: tile.row,
+                    col: tile.col,
+                  }),
+                }))
+                .sort((a, b) => a.priority - b.priority)
+
+              const touchedAt = performance.now()
+              for (const { tile, priority } of visibleTiles) {
+                tile.inRenderWindow = true
+                tile.lastTouchedAt = touchedAt
+                queueTileRender(tile, priority)
+              }
+            })
+          } else {
+            void renderBaseCanvas().catch((err: unknown) => {
+              if (!isRenderingCancelled(err)) renderedPagesRef.current.delete(pageNum)
+            })
           }
 
           pageTileGridsRef.current.set(pageNum, grid)
         }
       } else {
-        // Not tiling — tear down any grid left over from a higher zoom.
-        // pdf-canvas is already rendered at the correct scale above, so
-        // removing tiles leaves the sharp base layer visible.
-        const existing = pageTileGridsRef.current.get(pageNum)
-        if (existing) {
-          teardownTileGrid(existing)
-          pageTileGridsRef.current.delete(pageNum)
-        }
-        // Also flush any still-pending old grid from a prior
-        // double-buffered rebuild — we're transitioning to single-
-        // canvas mode, so the sharper pdf-canvas is the new base.
-        const pendingOld = pendingOldTileGridsRef.current.get(pageNum)
-        if (pendingOld) {
-          teardownTileGrid(pendingOld)
-          pendingOldTileGridsRef.current.delete(pageNum)
-        }
+        // Not tiling — any grid left over from a higher zoom was already
+        // released before the base canvas render to avoid a transient
+        // high-memory overlap.
       }
     } catch (err: unknown) {
       // A newer renderSinglePage call cancelled this one via renderPageToCanvas —
@@ -1887,7 +2244,23 @@ export default function PdfAnnotateTool() {
       if (isRenderingCancelled(err)) return
       renderedPagesRef.current.delete(pageNum)
     }
-  }, [pdfFile, redrawPage])
+  }, [pdfFile, redrawPage, enforceTileCanvasBudget, enqueueTileRender, rememberReadablePage, shouldReleaseTileWhenInactive])
+
+  const renderPagesInProtectedWindow = useCallback((
+    activePage = currentPageRef.current,
+    scrollDirection = scrollDirectionRef.current,
+  ) => {
+    const pages = getPagesToRenderInProtectedWindow({
+      protectedPages: getProtectedPageWindow(),
+      renderedPages: renderedPagesRef.current,
+      deferNewWork: activeScrollRenderPauseRef.current,
+      activePage,
+      scrollDirection,
+    })
+    for (const pageNum of pages) {
+      renderSinglePage(pageNum)
+    }
+  }, [currentPageRef, getProtectedPageWindow, renderSinglePage])
 
   // Stable thumbnail callbacks — required for React.memo(ThumbnailItem) to skip re-renders
   const handleThumbVisible = useCallback((pageNum: number) => { loadThumbnail(pageNum) }, [loadThumbnail])
@@ -1904,13 +2277,13 @@ export default function PdfAnnotateTool() {
         for (const entry of entries) {
           if (entry.isIntersecting) {
             const pageNum = Number((entry.target as HTMLElement).dataset.page)
-            if (pageNum && !renderedPagesRef.current.has(pageNum)) {
+            if (pageNum && !activeScrollRenderPauseRef.current && !renderedPagesRef.current.has(pageNum)) {
               renderSinglePage(pageNum)
             }
           }
         }
       },
-      { root: scrollRef.current, rootMargin: '1000px 0px' },
+      { root: scrollRef.current, rootMargin: `${PAGE_RENDER_ROOT_MARGIN_PX}px 0px` },
     )
     observerRef.current = obs
 
@@ -1918,6 +2291,7 @@ export default function PdfAnnotateTool() {
     for (const [, refs] of pageRefsMap.current) {
       obs.observe(refs.container)
     }
+    const initialRenderRaf = requestAnimationFrame(renderPagesInProtectedWindow)
 
     // Restore scroll from session or fit to window on initial load only
     if (restoringSessionRef.current) {
@@ -1944,9 +2318,12 @@ export default function PdfAnnotateTool() {
       }
     }
 
-    return () => obs.disconnect()
+    return () => {
+      cancelAnimationFrame(initialRenderRaf)
+      obs.disconnect()
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pdfFile, dimsReady, renderSinglePage, fitToWindow])
+  }, [pdfFile, dimsReady, renderSinglePage, renderPagesInProtectedWindow, fitToWindow])
 
   // Immutable snapshot of the gesture start, assembled from the refs cached in
   // onTouchStart. Pure inputs for the pinch math — shared by the live rAF and
@@ -2004,15 +2381,22 @@ export default function PdfAnnotateTool() {
       // Work out which pages need a re-render at the new zoom. Four
       // transitions matter:
       //   1. single → single at a different scale (sharpen normally)
-      //   2. single → tile (zoomed past the cap threshold)
-      //   3. tile → single (zoomed back down below the threshold)
+      //   2. single → tile (oversized/progressive page or over cap)
+      //   3. tile → single (small page below the progressive threshold)
       //   4. tile → tile at a different scale (rebuild grid)
       const pagesToRerender: number[] = []
       for (const pageNum of renderedPagesRef.current) {
         const dims = pageDimsMap.current.get(pageNum)
         if (!dims) continue
         const maxRs = getMaxRenderScale(dims.width, dims.height)
-        const needsTiling = requestedRs > maxRs * 1.02
+        const needsTiling = shouldUseTileRendering({
+          naturalWidth: dims.width,
+          naturalHeight: dims.height,
+          requestedScale: requestedRs,
+          maxRenderScale: maxRs,
+          progressiveTileMinPixels: PROGRESSIVE_TILE_MIN_PIXELS,
+          progressiveTileMinAxisPx: PROGRESSIVE_TILE_MIN_AXIS_PX,
+        })
         const grid = pageTileGridsRef.current.get(pageNum)
 
         if (needsTiling) {
@@ -2045,8 +2429,30 @@ export default function PdfAnnotateTool() {
   useEffect(() => {
     const el = scrollRef.current
     if (!el || !pdfFile) return
+    lastScrollTopRef.current = el.scrollTop
+    scrollIdleCenterPageRef.current = currentPageRef.current
     let rafId = 0
     const onScroll = () => {
+      const nextScrollTop = el.scrollTop
+      const previousScrollTop = lastScrollTopRef.current
+      if (Math.abs(nextScrollTop - previousScrollTop) > 2) {
+        scrollDirectionRef.current = nextScrollTop > previousScrollTop ? 'forward' : 'backward'
+      }
+      lastScrollTopRef.current = nextScrollTop
+      activeScrollRenderPauseRef.current = true
+      if (scrollRenderIdleTimerRef.current !== null) {
+        window.clearTimeout(scrollRenderIdleTimerRef.current)
+      }
+      scrollRenderIdleTimerRef.current = window.setTimeout(() => {
+        scrollRenderIdleTimerRef.current = null
+        activeScrollRenderPauseRef.current = false
+        const centerPage = scrollIdleCenterPageRef.current || currentPageRef.current
+        const scrollDirection = scrollDirectionRef.current
+        renderPagesInProtectedWindow(centerPage, scrollDirection)
+        schedulePageProxyPrefetch(centerPage, scrollDirection)
+        scheduleResourceCleanup(centerPage)
+        pumpTileRenderQueue()
+      }, ACTIVE_SCROLL_RENDER_IDLE_MS)
       cancelAnimationFrame(rafId)
       rafId = requestAnimationFrame(() => {
         const scrollRect = el.getBoundingClientRect()
@@ -2062,6 +2468,8 @@ export default function PdfAnnotateTool() {
         if (closest !== currentPageRef.current) {
           setCurrentPage(closest)
         }
+        scrollIdleCenterPageRef.current = closest
+        scheduleResourceCleanup(closest)
       })
     }
     // Reposition fixed textarea overlay on scroll
@@ -2070,8 +2478,21 @@ export default function PdfAnnotateTool() {
     }
     el.addEventListener('scroll', onScroll, { passive: true })
     el.addEventListener('scroll', onScrollTextOverlay, { passive: true })
-    return () => { el.removeEventListener('scroll', onScroll); el.removeEventListener('scroll', onScrollTextOverlay); cancelAnimationFrame(rafId) }
-  }, [pdfFile, dimsReady])
+    return () => {
+      el.removeEventListener('scroll', onScroll)
+      el.removeEventListener('scroll', onScrollTextOverlay)
+      cancelAnimationFrame(rafId)
+      if (scrollRenderIdleTimerRef.current !== null) {
+        window.clearTimeout(scrollRenderIdleTimerRef.current)
+        scrollRenderIdleTimerRef.current = null
+      }
+      if (pageProxyPrefetchTimerRef.current !== null) {
+        window.clearTimeout(pageProxyPrefetchTimerRef.current)
+        pageProxyPrefetchTimerRef.current = null
+      }
+      activeScrollRenderPauseRef.current = false
+    }
+  }, [pdfFile, dimsReady, renderPagesInProtectedWindow, schedulePageProxyPrefetch, scheduleResourceCleanup, pumpTileRenderQueue])
 
   // ── Re-render annotations ────────────────────────────
 
@@ -5029,6 +5450,7 @@ export default function PdfAnnotateTool() {
   const ActiveDrawIcon = activeDrawDef.icon
   const activeTextDef = TEXT_TOOLS.find(s => s.type === activeTool) || TEXT_TOOLS.find(s => s.type === activeText)!
   const ActiveTextIcon = activeTextDef.icon
+  const unscaledPageGap = PAGE_GAP_PX / Math.max(zoom, 0.01)
 
   // Helper: select a tool inside the drawer and auto-close if not pinned
   const selectToolInDrawer = (action: () => void): void => {
@@ -5048,7 +5470,7 @@ export default function PdfAnnotateTool() {
       const d = pageDimsMap.current.get(p)
       if (d) totalH += d.height
     }
-    totalH += Math.max(0, pdfFile.pageCount - 1) * 24 // gap-6 = 24px
+    totalH += Math.max(0, pdfFile.pageCount - 1) * unscaledPageGap
     return totalH
   })()
   // Scaled layout wrapper dimensions. The zoom layout wrapper has an
@@ -6031,14 +6453,15 @@ export default function PdfAnnotateTool() {
             width: naturalW || undefined,
             transform: `scale(${zoom})`,
             transformOrigin: '0 0',
-          }} className="flex flex-col items-center gap-6">
+            gap: unscaledPageGap,
+          }} className="flex flex-col items-center">
             {Array.from({ length: pdfFile.pageCount }, (_, i) => i + 1).map(pageNum => {
               const dims = pageDimsMap.current.get(pageNum)
               return (
                 <div
                   key={pageNum}
                   data-page={pageNum}
-                  className="relative"
+                  className="relative bg-white"
                   style={dims ? { width: dims.width, height: dims.height } : undefined}
                   ref={el => {
                     if (el) {
@@ -6056,19 +6479,19 @@ export default function PdfAnnotateTool() {
                 >
                   <canvas
                     className="pdf-canvas block"
-                    width={dims?.width ?? 0}
-                    height={dims?.height ?? 0}
+                    width={0}
+                    height={0}
                   />
                   <canvas
                     className="ann-canvas absolute top-0 left-0"
-                    width={dims?.width ?? 0}
-                    height={dims?.height ?? 0}
+                    width={0}
+                    height={0}
                     style={{ mixBlendMode: 'multiply' }}
                   />
                   <canvas
                     className="active-canvas absolute top-0 left-0"
-                    width={dims?.width ?? 0}
-                    height={dims?.height ?? 0}
+                    width={0}
+                    height={0}
                     style={{ touchAction: 'none', cursor: canvasCursor || (activeTool === 'select' && selectedAnnId ? 'default' : CURSOR_MAP[activeTool]) }}
                     onPointerDown={e => handlePointerDown(e, pageNum)}
                     onPointerMove={e => handlePointerMove(e, pageNum)}

@@ -12,6 +12,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.8.0',
+    date: 'PLACEHOLDER',
+    type: 'feature',
+    stats: { features: 4, fixes: 3, tools: 1 },
+    notes: `### PDF Annotate
+- Faster large PDF viewing
+- Smoother design drawing scrolling
+- Sharper high-zoom page detail
+- Faster revisits to viewed pages
+- Lower memory after scrolling
+- Fewer blank pages while loading
+- Visible pages load first`,
+  },
+  {
     version: '4.7.2',
     date: '2026-06-26T18:16:19Z',
     type: 'fix',

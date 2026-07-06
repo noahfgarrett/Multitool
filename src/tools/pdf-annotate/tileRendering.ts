@@ -1,3 +1,6 @@
+import { cancelCanvasRender } from '../../utils/pdf.ts'
+import { computeTileGridLayout } from './tileGridLayout.ts'
+
 /**
  * Tiled PDF rendering for high zoom levels.
  *
@@ -40,6 +43,16 @@ export interface PageTile {
   h: number
   /** True once pdf.js has finished drawing this tile. */
   rendered: boolean
+  /** True after the tile has been scheduled but before pdf.js starts drawing it. */
+  queued: boolean
+  /** True while pdf.js is currently drawing this tile. */
+  rendering: boolean
+  /** True while this tile is inside the observer's prefetch window. */
+  inRenderWindow: boolean
+  /** Monotonic timestamp used for cache-budget eviction. */
+  lastTouchedAt: number
+  /** Incremented whenever queued or active render work for this tile is superseded. */
+  renderToken: number
 }
 
 export interface PageTileGrid {
@@ -59,6 +72,8 @@ export interface PageTileGrid {
   totalHeight: number
   /** The absolute-positioned div that holds all tile canvases. */
   container: HTMLDivElement
+  /** Fast lookup for IntersectionObserver callbacks. */
+  tileByCanvas: Map<HTMLCanvasElement, PageTile>
   /** Per-tile visibility observer; set by the caller after grid construction. */
   observer: IntersectionObserver | null
   /** Unscaled doc dimensions — used for CSS sizing of the container. */
@@ -78,6 +93,8 @@ export interface BuildTileGridParams {
   rotation: number
   /** Max canvas pixels for the current device — from getMaxCanvasPixels(). */
   maxCanvasPixels: number
+  /** Optional preferred tile edge for progressive top-to-bottom rendering. */
+  preferredMaxTileDim?: number
   /**
    * Tile canvases are inserted BEFORE this sibling so the tile layer
    * sits underneath the annotation/active canvases in DOM z-order.
@@ -94,21 +111,17 @@ export interface BuildTileGridParams {
 export function buildTileGrid(params: BuildTileGridParams): PageTileGrid {
   const {
     pageNum, pageContainer, naturalWidth, naturalHeight,
-    scale, rotation, maxCanvasPixels, insertBefore,
+    scale, rotation, maxCanvasPixels, preferredMaxTileDim, insertBefore,
   } = params
 
   const totalW = Math.max(1, Math.floor(naturalWidth * scale))
   const totalH = Math.max(1, Math.floor(naturalHeight * scale))
-
-  // Keep each tile at ~85% of the cap so there's headroom against
-  // floor/ceil rounding and the browser's internal bookkeeping overhead.
-  const maxTileDim = Math.max(256, Math.floor(Math.sqrt(maxCanvasPixels * 0.85)))
-  const cols = Math.max(1, Math.ceil(totalW / maxTileDim))
-  const rows = Math.max(1, Math.ceil(totalH / maxTileDim))
-  // Floor the nominal tile size, then let the last column/row consume
-  // whatever's left so the grid covers the full buffer exactly.
-  const tileW = Math.max(1, Math.floor(totalW / cols))
-  const tileH = Math.max(1, Math.floor(totalH / rows))
+  const { cols, rows, tileW, tileH } = computeTileGridLayout({
+    totalWidth: totalW,
+    totalHeight: totalH,
+    maxCanvasPixels,
+    preferredMaxTileDim,
+  })
 
   const container = document.createElement('div')
   container.className = 'pdf-tile-container'
@@ -123,6 +136,7 @@ export function buildTileGrid(params: BuildTileGridParams): PageTileGrid {
   pageContainer.insertBefore(container, insertBefore)
 
   const tiles: PageTile[] = []
+  const tileByCanvas = new Map<HTMLCanvasElement, PageTile>()
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const x = col * tileW
@@ -132,8 +146,8 @@ export function buildTileGrid(params: BuildTileGridParams): PageTileGrid {
 
       const canvas = document.createElement('canvas')
       canvas.className = 'pdf-tile'
-      canvas.width = w
-      canvas.height = h
+      canvas.width = 0
+      canvas.height = 0
       // CSS position in doc-CSS-pixel coords — divide buffer coords by
       // the effective scale to project back to CSS pixels.
       canvas.style.position = 'absolute'
@@ -145,7 +159,23 @@ export function buildTileGrid(params: BuildTileGridParams): PageTileGrid {
       canvas.style.display = 'block'
       container.appendChild(canvas)
 
-      tiles.push({ canvas, col, row, x, y, w, h, rendered: false })
+      const tile = {
+        canvas,
+        col,
+        row,
+        x,
+        y,
+        w,
+        h,
+        rendered: false,
+        queued: false,
+        rendering: false,
+        inRenderWindow: false,
+        lastTouchedAt: 0,
+        renderToken: 0,
+      }
+      tiles.push(tile)
+      tileByCanvas.set(canvas, tile)
     }
   }
 
@@ -156,10 +186,25 @@ export function buildTileGrid(params: BuildTileGridParams): PageTileGrid {
     totalWidth: totalW,
     totalHeight: totalH,
     container,
+    tileByCanvas,
     observer: null,
     naturalWidth,
     naturalHeight,
   }
+}
+
+export function getTileCanvasBytes(tile: PageTile): number {
+  return tile.canvas.width * tile.canvas.height * 4
+}
+
+export function releaseTile(tile: PageTile): void {
+  cancelCanvasRender(tile.canvas)
+  tile.canvas.width = 0
+  tile.canvas.height = 0
+  tile.rendered = false
+  tile.queued = false
+  tile.rendering = false
+  tile.renderToken++
 }
 
 /**
@@ -172,11 +217,9 @@ export function teardownTileGrid(grid: PageTileGrid | null | undefined): void {
   grid.observer?.disconnect()
   grid.observer = null
   for (const tile of grid.tiles) {
-    // Setting width/height to 0 releases the canvas pixel buffer sooner
-    // than waiting for GC to reclaim the <canvas> element.
-    tile.canvas.width = 0
-    tile.canvas.height = 0
+    releaseTile(tile)
   }
   grid.tiles.length = 0
+  grid.tileByCanvas.clear()
   grid.container.remove()
 }
