@@ -6,7 +6,9 @@
  * uses a simple network-first strategy without body comparison —
  * the old approach read 2 x 9 MB strings and could OOM on iPad.
  */
-const CACHE_NAME = 'multitool-v4.6.6';
+const CACHE_NAME = 'multitool-v4.8.0-pages';
+const APP_PREFIX = '/Multitool/';
+const ASSET_PREFIX = '/Multitool/assets/';
 const APP_URLS = [
   '/Multitool/',
   '/Multitool/index.html',
@@ -36,8 +38,16 @@ self.addEventListener('activate', (event) => {
 
 // Fetch — network-first, cache fallback
 self.addEventListener('fetch', (event) => {
-  if (event.request.mode !== 'navigate' &&
-      !APP_URLS.some((url) => event.request.url.endsWith(url))) {
+  if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+  const shouldHandle =
+    event.request.mode === 'navigate' ||
+    url.pathname === APP_PREFIX ||
+    url.pathname === `${APP_PREFIX}index.html` ||
+    url.pathname.startsWith(ASSET_PREFIX);
+
+  if (!shouldHandle) {
     return;
   }
 
