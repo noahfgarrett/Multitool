@@ -44,6 +44,20 @@ test('legend settings can hide either legend section', () => {
   assert.deepEqual(content, { relationships: [], departments: [] })
 })
 
+test('legend content includes line types used by hierarchy relationships', () => {
+  const content = buildLegendContent({
+    nodes: [
+      createNode({ id: 'root', reportsTo: '' }),
+      createNode({ id: 'child', reportsTo: 'root', relationshipTypeId: 'supports' }),
+    ],
+    connections: [],
+    connectorTypes: createDefaultConnectorTypes(),
+    legend: createDefaultLegend(),
+  })
+
+  assert.deepEqual(content.relationships.map(type => type.id), ['supports'])
+})
+
 test('connector colors are contrast-protected against the chart background', () => {
   const type = createDefaultConnectorTypes()[0]
   const protectedType = ensureVisibleConnectorType(type, '#0a0a14')

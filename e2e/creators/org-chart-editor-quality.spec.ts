@@ -44,6 +44,10 @@ test.describe('Org Chart editor quality pass', () => {
     await loadMultiDepartmentTemplate(page)
     await page.locator('[data-testid="org-chart-background-color"] > button').click()
     await page.getByRole('button', { name: 'Use background #ffffff' }).click()
+    await expect.poll(() => page.getByTestId('org-chart-canvas').evaluate(canvas => {
+      const context = (canvas as HTMLCanvasElement).getContext('2d')
+      return context ? Array.from(context.getImageData(2, 2, 1, 1).data).slice(0, 3).join(',') : ''
+    })).toBe('255,255,255')
     await page.locator('button[title^="Layout:"]').click()
     await page.locator('[data-testid="legend-position-chip"]').click()
     await page.locator('[data-testid="legend-position-grid"]').getByLabel('Relationships').uncheck()
@@ -77,6 +81,60 @@ test.describe('Org Chart editor quality pass', () => {
     await expect(page.locator('button[title="Layout: Left-Right"]')).toBeVisible()
     await expect(page.locator('[data-testid="org-chart-legend"]').getByText('Departments')).toBeVisible()
     await expect(page.locator('[data-testid="org-chart-legend"]').getByText('Relationships')).not.toBeVisible()
+  })
+
+  test('a hierarchy connector can be changed by clicking its line', async ({ page }) => {
+    await page.evaluate(() => {
+      const store = window.__orgChartTest!.getStore!() as {
+        addNode: (parentId: string, overrides: unknown) => void
+      }
+      store.addNode('root', { id: 'child', name: 'Director', title: 'Director' })
+    })
+
+    const point = await page.evaluate(() => {
+      const store = window.__orgChartTest!.getStore!() as {
+        viewport: { panX: number; panY: number; zoom: number }
+      }
+      const canvas = document.querySelector('[data-testid="org-chart-canvas"]')!
+      const rect = canvas.getBoundingClientRect()
+      return {
+        x: rect.left + store.viewport.panX + 110 * store.viewport.zoom,
+        y: rect.top + store.viewport.panY + 135 * store.viewport.zoom,
+      }
+    })
+    await page.mouse.click(point.x, point.y)
+    await expect(page.getByRole('menu', { name: 'Change connector type' })).toBeVisible()
+    await page.getByRole('menuitem', { name: /Supports/ }).click()
+
+    await expect.poll(() => page.evaluate(() => {
+      const store = window.__orgChartTest!.getStore!() as {
+        nodes: Array<{ id: string; relationshipTypeId?: string }>
+      }
+      return store.nodes.find(node => node.id === 'child')?.relationshipTypeId
+    })).toBe('supports')
+  })
+
+  test('an editable color key appears on the chart and is preserved in JSON', async ({ page }) => {
+    await page.getByTestId('color-key-chip').click()
+    await page.getByRole('button', { name: 'Add key item' }).click()
+    const label = page.getByLabel('Color meaning 1')
+    await label.fill('Executive leadership')
+    await label.press('Enter')
+
+    const key = page.getByTestId('org-chart-color-key')
+    await expect(key).toBeVisible()
+    await expect(key.getByText('Executive leadership')).toBeVisible()
+
+    await page.locator('button[title="Export"]').click()
+    const downloadPromise = page.waitForEvent('download')
+    await page.getByRole('button', { name: /Save as JSON/ }).click()
+    const download = await downloadPromise
+    const path = await download.path()
+    const exported = JSON.parse(await readFile(path!, 'utf8')) as {
+      colorKey?: { visible?: boolean; entries?: Array<{ label?: string }> }
+    }
+    expect(exported.colorKey?.visible).toBe(true)
+    expect(exported.colorKey?.entries?.[0]?.label).toBe('Executive leadership')
   })
 
   test('JSON export preserves layout and expanded legend settings', async ({ page }) => {

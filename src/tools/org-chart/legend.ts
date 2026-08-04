@@ -1,5 +1,5 @@
 import type { Connection, ConnectorType, LegendConfig, OrgNode } from './types.ts'
-import { getConnectorType } from './types.ts'
+import { getConnectorType, getNodeConnectorTypeId } from './types.ts'
 
 export interface DepartmentLegendItem {
   label: string
@@ -23,12 +23,12 @@ export function buildLegendContent(source: LegendSource): LegendContent {
 
   const relationships: ConnectorType[] = []
   if (source.legend.showRelationships) {
-    if (source.nodes.some(node => node.reportsTo)) {
-      relationships.push(getConnectorType(source.connectorTypes, 'primary'))
-    }
     const usedIds = new Set(source.connections.map(connection => connection.typeId))
+    for (const node of source.nodes) {
+      if (node.reportsTo) usedIds.add(getNodeConnectorTypeId(node))
+    }
     for (const type of source.connectorTypes) {
-      if (type.id !== 'primary' && usedIds.has(type.id)) relationships.push(type)
+      if (usedIds.has(type.id)) relationships.push(getConnectorType(source.connectorTypes, type.id))
     }
   }
 

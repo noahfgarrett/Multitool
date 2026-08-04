@@ -11,6 +11,7 @@ export interface OrgNode {
   location: string
   imageDataUrl: string | null // base64 avatar (max 128px, JPEG)
   nodeColor: string           // accent color (top bar on card)
+  relationshipTypeId?: ConnectorTypeId // connector from reportsTo parent; defaults to primary
   offsetX: number             // manual position offset from auto-layout (default 0)
   offsetY: number             // manual position offset from auto-layout (default 0)
   sectionTitle: string        // section header text — only meaningful when reportsTo === ''
@@ -29,6 +30,7 @@ export interface OrgChartState {
   connections: Connection[]
   connectorTypes: ConnectorType[]
   legend: LegendConfig
+  colorKey: ColorKeyConfig
   background: ChartBackgroundConfig
   layoutDirection: LayoutDirection
 }
@@ -94,6 +96,18 @@ export interface LegendConfig {
   showDepartments: boolean
 }
 
+export interface ColorKeyEntry {
+  id: string
+  label: string
+  color: string
+}
+
+export interface ColorKeyConfig {
+  position: LegendPosition
+  visible: boolean
+  entries: ColorKeyEntry[]
+}
+
 // ── Chart background ────────────────────────────────────────
 
 export interface ChartBackgroundConfig {
@@ -115,6 +129,37 @@ export function mergeBackgroundWithDefaults(partial: unknown): ChartBackgroundCo
   const color = (partial as Record<string, unknown>).color
   return {
     color: isHexColor(color) ? color.toLowerCase() : DEFAULT_CHART_BACKGROUND,
+  }
+}
+
+export function createDefaultColorKey(): ColorKeyConfig {
+  return { position: 'bottom-left', visible: false, entries: [] }
+}
+
+export function mergeColorKeyWithDefaults(partial: unknown): ColorKeyConfig {
+  const defaults = createDefaultColorKey()
+  if (!partial || typeof partial !== 'object') return defaults
+  const value = partial as Record<string, unknown>
+  const position = value.position
+  const entries: ColorKeyEntry[] = []
+  if (Array.isArray(value.entries)) {
+    for (const item of value.entries.slice(0, 20)) {
+      if (!item || typeof item !== 'object') continue
+      const entry = item as Record<string, unknown>
+      if (typeof entry.id !== 'string' || !entry.id || typeof entry.label !== 'string' || !isHexColor(entry.color)) continue
+      entries.push({
+        id: entry.id.slice(0, 64),
+        label: entry.label.trim().slice(0, 80) || 'Color meaning',
+        color: entry.color.toLowerCase(),
+      })
+    }
+  }
+  return {
+    position: LEGEND_POSITIONS.includes(position as LegendPosition)
+      ? position as LegendPosition
+      : defaults.position,
+    visible: typeof value.visible === 'boolean' ? value.visible : defaults.visible,
+    entries,
   }
 }
 
@@ -173,6 +218,11 @@ export function createNode(overrides: Partial<OrgNode> = {}): OrgNode {
     sectionTitle: '',
     ...overrides,
   }
+}
+
+export function getNodeConnectorTypeId(node: Pick<OrgNode, 'relationshipTypeId'>): ConnectorTypeId {
+  const id = node.relationshipTypeId
+  return id === 'dotted-line' || id === 'supports' || id === 'collaborates' ? id : 'primary'
 }
 
 // ── Connector type defaults ─────────────────────────────────

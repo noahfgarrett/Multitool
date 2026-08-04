@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import type {
   OrgNode, OrgChartState, OrgChartVersion, Viewport, LayoutDirection,
   Connection, ConnectorType, ConnectorTypeId, LegendConfig, LegendPosition,
-  ChartBackgroundConfig,
+  ChartBackgroundConfig, ColorKeyConfig,
 } from './types.ts'
 import {
   loadAutosavedChart,
@@ -14,6 +14,7 @@ import {
   createNode, createDefaultConnectorTypes, createDefaultLegend, mergeWithDefaults,
   mergeLegendWithDefaults,
   createDefaultBackground, mergeBackgroundWithDefaults,
+  createDefaultColorKey, mergeColorKeyWithDefaults,
   DEFAULT_VIEWPORT, MIN_ZOOM, MAX_ZOOM, MAX_VERSIONS, genId, isHexColor,
 } from './types.ts'
 
@@ -33,6 +34,7 @@ export function upgradeSnapshot(snapshot: unknown): OrgChartState {
       connections: [],
       connectorTypes: createDefaultConnectorTypes(),
       legend: createDefaultLegend(),
+      colorKey: createDefaultColorKey(),
       background: createDefaultBackground(),
       layoutDirection: 'top-down',
     }
@@ -47,6 +49,7 @@ export function upgradeSnapshot(snapshot: unknown): OrgChartState {
         ? mergeWithDefaults(s.connectorTypes)
         : createDefaultConnectorTypes(),
       legend: mergeLegendWithDefaults(s.legend),
+      colorKey: mergeColorKeyWithDefaults(s.colorKey),
       background: 'background' in s
         ? mergeBackgroundWithDefaults(s.background)
         : createDefaultBackground(),
@@ -59,6 +62,7 @@ export function upgradeSnapshot(snapshot: unknown): OrgChartState {
     connections: [],
     connectorTypes: createDefaultConnectorTypes(),
     legend: createDefaultLegend(),
+    colorKey: createDefaultColorKey(),
     background: createDefaultBackground(),
     layoutDirection: 'top-down',
   }
@@ -103,6 +107,7 @@ export function useOrgChartStore() {
   const [connections, setConnections] = useState<Connection[]>([])
   const [connectorTypes, setConnectorTypes] = useState<ConnectorType[]>(() => createDefaultConnectorTypes())
   const [legend, setLegend] = useState<LegendConfig>(() => createDefaultLegend())
+  const [colorKey, setColorKey] = useState<ColorKeyConfig>(() => createDefaultColorKey())
   const [background, setBackground] = useState<ChartBackgroundConfig>(() => createDefaultBackground())
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set())
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null)
@@ -129,6 +134,8 @@ export function useOrgChartStore() {
   connectorTypesRef.current = connectorTypes
   const legendRef = useRef(legend)
   legendRef.current = legend
+  const colorKeyRef = useRef(colorKey)
+  colorKeyRef.current = colorKey
   const backgroundRef = useRef(background)
   backgroundRef.current = background
   const layoutDirectionRef = useRef(layoutDirection)
@@ -141,6 +148,7 @@ export function useOrgChartStore() {
     connections: [],
     connectorTypes: createDefaultConnectorTypes(),
     legend: createDefaultLegend(),
+    colorKey: createDefaultColorKey(),
     background: createDefaultBackground(),
     layoutDirection: 'top-down',
   }])
@@ -156,6 +164,7 @@ export function useOrgChartStore() {
       connections: override?.connections ?? connectionsRef.current,
       connectorTypes: override?.connectorTypes ?? connectorTypesRef.current,
       legend: override?.legend ?? legendRef.current,
+      colorKey: override?.colorKey ?? colorKeyRef.current,
       background: override?.background ?? backgroundRef.current,
       layoutDirection: override?.layoutDirection ?? layoutDirectionRef.current,
     }
@@ -176,6 +185,7 @@ export function useOrgChartStore() {
     setConnections(state.connections)
     setConnectorTypes(state.connectorTypes)
     setLegend(state.legend)
+    setColorKey(state.colorKey)
     setBackground(state.background)
     setLayoutDirectionState(state.layoutDirection)
     setSelectedNodeIds(new Set())
@@ -192,6 +202,7 @@ export function useOrgChartStore() {
     setConnections(state.connections)
     setConnectorTypes(state.connectorTypes)
     setLegend(state.legend)
+    setColorKey(state.colorKey)
     setBackground(state.background)
     setLayoutDirectionState(state.layoutDirection)
     setSelectedNodeIds(new Set())
@@ -212,6 +223,7 @@ export function useOrgChartStore() {
       setConnections(restored.connections)
       setConnectorTypes(restored.connectorTypes)
       setLegend(restored.legend)
+      setColorKey(restored.colorKey)
       setBackground(restored.background)
       setLayoutDirectionState(restored.layoutDirection)
       historyRef.current = [structuredClone(restored)]
@@ -236,6 +248,7 @@ export function useOrgChartStore() {
       connections,
       connectorTypes,
       legend,
+      colorKey,
       background,
       layoutDirection,
     }
@@ -247,7 +260,7 @@ export function useOrgChartStore() {
       }).catch(() => setAutosaveStatus('error'))
     }, 650)
     return () => window.clearTimeout(timer)
-  }, [background, connections, connectorTypes, isHydrated, layoutDirection, legend, nodes])
+  }, [background, colorKey, connections, connectorTypes, isHydrated, layoutDirection, legend, nodes])
 
   // ── Node CRUD ─────────────────────────────────────────
 
@@ -463,6 +476,7 @@ export function useOrgChartStore() {
     setConnections(repaired.connections)
     setConnectorTypes(repaired.connectorTypes)
     setLegend(repaired.legend)
+    setColorKey(repaired.colorKey)
     setBackground(repaired.background)
     setLayoutDirectionState(repaired.layoutDirection)
     setSelectedNodeIds(new Set())
@@ -480,6 +494,7 @@ export function useOrgChartStore() {
       connections: [],
       connectorTypes: createDefaultConnectorTypes(),
       legend: createDefaultLegend(),
+      colorKey: createDefaultColorKey(),
       background: createDefaultBackground(),
       layoutDirection: 'top-down',
     })
@@ -663,6 +678,12 @@ export function useOrgChartStore() {
     pushHistory({ legend: nextLegend })
   }, [legend, pushHistory])
 
+  const updateColorKey = useCallback((updates: Partial<ColorKeyConfig>) => {
+    const nextColorKey = mergeColorKeyWithDefaults({ ...colorKey, ...updates })
+    setColorKey(nextColorKey)
+    pushHistory({ colorKey: nextColorKey })
+  }, [colorKey, pushHistory])
+
   const setBackgroundColor = useCallback((color: string) => {
     if (!isHexColor(color)) return
     const nextBackground: ChartBackgroundConfig = { color: color.toLowerCase() }
@@ -689,13 +710,14 @@ export function useOrgChartStore() {
         connections,
         connectorTypes,
         legend,
+        colorKey,
         background,
         layoutDirection,
       }),
     }
     versions.unshift(version) // newest first
     await persistVersions(versions)
-  }, [nodes, connections, connectorTypes, legend, background, layoutDirection])
+  }, [nodes, connections, connectorTypes, legend, colorKey, background, layoutDirection])
 
   const restoreVersion = useCallback(async (versionId: string) => {
     const versions = await loadVersions()
@@ -706,6 +728,7 @@ export function useOrgChartStore() {
     setConnections(restored.connections)
     setConnectorTypes(restored.connectorTypes)
     setLegend(restored.legend)
+    setColorKey(restored.colorKey)
     setBackground(restored.background)
     setLayoutDirectionState(restored.layoutDirection)
     pushHistory({
@@ -713,6 +736,7 @@ export function useOrgChartStore() {
       connections: restored.connections,
       connectorTypes: restored.connectorTypes,
       legend: restored.legend,
+      colorKey: restored.colorKey,
       background: restored.background,
       layoutDirection: restored.layoutDirection,
     })
@@ -776,7 +800,7 @@ export function useOrgChartStore() {
 
   return {
     // State
-    nodes, connections, connectorTypes, legend, background,
+    nodes, connections, connectorTypes, legend, colorKey, background,
     selectedNodeIds, selectedNodeId, selectedConnectionId,
     viewport, layoutDirection,
     canUndo, canRedo, hasManualOffsets,
@@ -812,7 +836,7 @@ export function useOrgChartStore() {
     updateConnectorType, resetConnectorType, resetAllConnectorTypes,
 
     // Legend actions
-    setLegendPosition, updateLegend, setBackgroundColor,
+    setLegendPosition, updateLegend, updateColorKey, setBackgroundColor,
 
     // Version control
     getVersions, saveVersion, restoreVersion, deleteVersion, renameVersion,

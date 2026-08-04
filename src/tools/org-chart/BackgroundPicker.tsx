@@ -36,13 +36,15 @@ export function BackgroundPicker({ store }: { store: OrgChartStore }): React.Rea
         title="Chart background"
         aria-label="Chart background"
         aria-expanded={open}
-        className={`relative p-1.5 rounded transition-colors ${
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border transition-colors ${
           open ? 'bg-white/[0.1] text-white' : 'text-white/60 hover:text-white/90 hover:bg-white/[0.08]'
         }`}
+        style={{ borderColor: open ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.08)' }}
       >
         <PaintBucket size={16} />
+        <span className="text-[11px] font-medium">Background</span>
         <span
-          className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full border border-white/60"
+          className="w-3 h-3 rounded-sm border border-white/60"
           style={{ backgroundColor: store.background.color }}
         />
       </button>
@@ -55,7 +57,7 @@ export function BackgroundPicker({ store }: { store: OrgChartStore }): React.Rea
           aria-label="Chart background colors"
         >
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Background</span>
+            <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Canvas background</span>
             <span className="text-[10px] font-mono" style={{ color: 'var(--text-disabled)' }}>
               {store.background.color.toUpperCase()}
             </span>

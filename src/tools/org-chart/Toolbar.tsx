@@ -1,6 +1,7 @@
 import type { OrgChartStore } from './orgChartStore.ts'
 import { LegendPositionChip } from './LegendPositionChip.tsx'
 import { BackgroundPicker } from './BackgroundPicker.tsx'
+import { ColorKeyChip } from './ColorKeyChip.tsx'
 import {
   Undo2, Redo2, ZoomIn, ZoomOut, Maximize2,
   ArrowDown, ArrowRight, UserPlus, Trash2, Download, Upload,
@@ -176,6 +177,7 @@ export function Toolbar({
           Import
         </button>
         <LegendPositionChip store={store} />
+        <ColorKeyChip store={store} />
         <ToolbarButton icon={Download} label="Export" onClick={onExport} />
         {canDelete && (
           <ToolbarButton

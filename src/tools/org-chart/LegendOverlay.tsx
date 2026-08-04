@@ -35,17 +35,60 @@ function RelationshipSample({ type }: { type: ConnectorType }): React.ReactEleme
 export function LegendOverlay({ store }: { store: OrgChartStore }): React.ReactElement | null {
   const content = buildLegendContent(store)
   const hasContent = content.relationships.length > 0 || content.departments.length > 0
-  if (!store.legend.visible || !hasContent) return null
+  const showLegend = store.legend.visible && hasContent
+  const showKey = store.colorKey.visible && store.colorKey.entries.length > 0
+  if (!showLegend && !showKey) return null
+
+  const positions = new Set<LegendPosition>()
+  if (showLegend) positions.add(store.legend.position)
+  if (showKey) positions.add(store.colorKey.position)
 
   return (
+    <>
+      {[...positions].map(position => (
+        <div
+          key={position}
+          className={`absolute z-20 flex gap-2 pointer-events-none ${position.startsWith('bottom') ? 'flex-col-reverse' : 'flex-col'}`}
+          style={POSITION_STYLE[position]}
+        >
+          {showLegend && store.legend.position === position ? (
+            <LegendPanel content={content} />
+          ) : null}
+          {showKey && store.colorKey.position === position ? (
+            <aside
+              className="w-52 rounded-md px-3 py-2.5 shadow-lg"
+              style={PANEL_STYLE}
+              aria-label="Chart color key"
+              data-testid="org-chart-color-key"
+            >
+              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-white/60">Key</h3>
+              <ul className="mt-2 space-y-1.5">
+                {store.colorKey.entries.map(entry => (
+                  <li key={entry.id} className="flex items-center gap-2 text-[11px] text-white/85">
+                    <span className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: entry.color, border: '1px solid rgba(255,255,255,0.2)' }} />
+                    <span className="truncate">{entry.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </aside>
+          ) : null}
+        </div>
+      ))}
+    </>
+  )
+}
+
+const PANEL_STYLE: CSSProperties = {
+  color: '#ffffff',
+  backgroundColor: 'rgba(16, 16, 24, 0.94)',
+  border: '1px solid rgba(255,255,255,0.14)',
+}
+
+function LegendPanel({ content }: { content: ReturnType<typeof buildLegendContent> }): React.ReactElement {
+  return (
     <aside
-      className="absolute z-20 w-52 rounded-md px-3 py-2.5 pointer-events-none shadow-lg"
-      style={{
-        ...POSITION_STYLE[store.legend.position],
-        color: '#ffffff',
-        backgroundColor: 'rgba(16, 16, 24, 0.94)',
-        border: '1px solid rgba(255,255,255,0.14)',
-      }}
+      className="w-52 rounded-md px-3 py-2.5 shadow-lg"
+      style={PANEL_STYLE}
       aria-label="Chart legend"
       data-testid="org-chart-legend"
     >

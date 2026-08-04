@@ -98,9 +98,10 @@ export default function OrgChartTool() {
     connections: store.connections,
     connectorTypes: store.connectorTypes,
     legend: store.legend,
+    colorKey: store.colorKey,
     background: store.background,
     layoutDirection: store.layoutDirection,
-  }), [store.nodes, store.connections, store.connectorTypes, store.legend, store.background, store.layoutDirection])
+  }), [store.nodes, store.connections, store.connectorTypes, store.legend, store.colorKey, store.background, store.layoutDirection])
 
   const exportBackgroundColor = useMemo(() => resolveExportBackgroundColor({
     mode: exportBackgroundMode,

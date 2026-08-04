@@ -1,6 +1,7 @@
 import type {
   OrgNode, OrgChartState, LayoutNode,
   Connection, ConnectorType, ConnectorTypeId, LegendConfig, LegendPosition,
+  ColorKeyConfig, ColorKeyEntry,
 } from './types.ts'
 import {
   NODE_WIDTH, NODE_HEIGHT, AVATAR_SIZE,
@@ -9,7 +10,8 @@ import {
   LEGEND_LINE_SAMPLE_WIDTH, LEGEND_LINE_LABEL_GAP, LEGEND_MARGIN,
   createDefaultConnectorTypes, mergeWithDefaults, mergeLegendWithDefaults,
   createDefaultBackground, mergeBackgroundWithDefaults,
-  getConnectorType,
+  createDefaultColorKey, mergeColorKeyWithDefaults,
+  getConnectorType, getNodeConnectorTypeId,
 } from './types.ts'
 import type { ImageExportOptions } from './exportOptions.ts'
 import { drawStyledLine, routePrimaryEdge, routeSecondaryEdge } from './connectorStyle.ts'
@@ -110,6 +112,77 @@ function positionLegend(
     case 'bottom-left':  return { x: bounds.minX + LEGEND_MARGIN,      y: bounds.maxY - h - LEGEND_MARGIN,  w, h }
     case 'bottom-right': return { x: bounds.maxX - w - LEGEND_MARGIN,  y: bounds.maxY - h - LEGEND_MARGIN,  w, h }
   }
+}
+
+function measureColorKey(
+  ctx: CanvasRenderingContext2D,
+  entries: ColorKeyEntry[],
+): { w: number; h: number } {
+  if (entries.length === 0) return { w: 0, h: 0 }
+  ctx.save()
+  ctx.font = '500 11px -apple-system, BlinkMacSystemFont, sans-serif'
+  let longest = ctx.measureText('KEY').width
+  for (const entry of entries) longest = Math.max(longest, 20 + ctx.measureText(entry.label).width)
+  ctx.restore()
+  return {
+    w: 2 * LEGEND_PADDING + longest,
+    h: 2 * LEGEND_PADDING + LEGEND_TITLE_HEIGHT + LEGEND_UNDERLINE_GAP + entries.length * LEGEND_ROW_HEIGHT,
+  }
+}
+
+function positionOverlayBoxes(
+  legend: { position: LegendPosition; dims: { w: number; h: number } } | null,
+  colorKey: { position: LegendPosition; dims: { w: number; h: number } } | null,
+  bounds: { minX: number; minY: number; maxX: number; maxY: number },
+): { legendBox: LegendBox | null; colorKeyBox: LegendBox | null } {
+  const legendBox = legend ? positionLegend(legend.position, legend.dims, bounds) : null
+  const colorKeyBox = colorKey ? positionLegend(colorKey.position, colorKey.dims, bounds) : null
+  if (legendBox && colorKeyBox && legend && colorKey && legend.position === colorKey.position) {
+    if (legend.position.startsWith('top')) colorKeyBox.y = legendBox.y + legendBox.h + 8
+    else colorKeyBox.y = legendBox.y - colorKeyBox.h - 8
+  }
+  return { legendBox, colorKeyBox }
+}
+
+function drawPanel(ctx: CanvasRenderingContext2D, box: LegendBox, title: string): void {
+  const radius = 6
+  drawRoundedRect(ctx, box.x, box.y, box.w, box.h, radius)
+  ctx.fillStyle = 'rgba(10, 10, 20, 0.9)'
+  ctx.fill()
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'
+  ctx.lineWidth = 1
+  ctx.stroke()
+  ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif'
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.55)'
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillText(title, box.x + LEGEND_PADDING, box.y + LEGEND_PADDING + LEGEND_TITLE_HEIGHT * 0.7)
+  const underlineY = box.y + LEGEND_PADDING + LEGEND_TITLE_HEIGHT + LEGEND_UNDERLINE_GAP / 2
+  ctx.beginPath()
+  ctx.moveTo(box.x + LEGEND_PADDING, underlineY)
+  ctx.lineTo(box.x + box.w - LEGEND_PADDING, underlineY)
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'
+  ctx.stroke()
+}
+
+function drawColorKey(ctx: CanvasRenderingContext2D, box: LegendBox, entries: ColorKeyEntry[]): void {
+  if (entries.length === 0) return
+  ctx.save()
+  drawPanel(ctx, box, 'KEY')
+  let cursorY = box.y + LEGEND_PADDING + LEGEND_TITLE_HEIGHT + LEGEND_UNDERLINE_GAP
+  for (const entry of entries) {
+    const centerY = cursorY + LEGEND_ROW_HEIGHT / 2
+    ctx.fillStyle = entry.color
+    ctx.fillRect(box.x + LEGEND_PADDING, centerY - 5, 10, 10)
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)'
+    ctx.strokeRect(box.x + LEGEND_PADDING, centerY - 5, 10, 10)
+    ctx.font = '500 11px -apple-system, BlinkMacSystemFont, sans-serif'
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(entry.label, box.x + LEGEND_PADDING + 20, centerY)
+    cursorY += LEGEND_ROW_HEIGHT
+  }
+  ctx.restore()
 }
 
 function drawLegend(
@@ -215,22 +288,22 @@ function drawLegend(
 function calcExportBounds(
   flat: LayoutNode[],
   connections: Connection[],
-  legendBox: LegendBox | null,
+  overlayBoxes: LegendBox[],
   sectionTitleOffset: number,
 ): { minX: number; minY: number; maxX: number; maxY: number } {
   const base = calcBounds(flat, connections)
   const minY = sectionTitleOffset > 0 ? base.minY - sectionTitleOffset : base.minY
 
-  if (!legendBox) {
+  if (overlayBoxes.length === 0) {
     return { ...base, minY }
   }
 
-  return {
-    minX: Math.min(base.minX, legendBox.x - LEGEND_MARGIN),
-    minY: Math.min(minY, legendBox.y - LEGEND_MARGIN),
-    maxX: Math.max(base.maxX, legendBox.x + legendBox.w + LEGEND_MARGIN),
-    maxY: Math.max(base.maxY, legendBox.y + legendBox.h + LEGEND_MARGIN),
-  }
+  return overlayBoxes.reduce((bounds, box) => ({
+    minX: Math.min(bounds.minX, box.x - LEGEND_MARGIN),
+    minY: Math.min(bounds.minY, box.y - LEGEND_MARGIN),
+    maxX: Math.max(bounds.maxX, box.x + box.w + LEGEND_MARGIN),
+    maxY: Math.max(bounds.maxY, box.y + box.h + LEGEND_MARGIN),
+  }), { ...base, minY })
 }
 
 function emitSVGLegend(
@@ -302,6 +375,25 @@ function emitSVGLegend(
   parts.push(`</g>`)
 }
 
+function emitSVGColorKey(parts: string[], box: LegendBox, entries: ColorKeyEntry[]): void {
+  if (entries.length === 0) return
+  const { x, y, w, h } = box
+  parts.push(`<g data-layer="color-key">`)
+  parts.push(`  <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="rgba(10,10,20,0.9)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>`)
+  const titleY = y + LEGEND_PADDING + LEGEND_TITLE_HEIGHT * 0.7
+  parts.push(`  <text x="${x + LEGEND_PADDING}" y="${titleY}" font-size="10" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, sans-serif" fill="rgba(255,255,255,0.55)">KEY</text>`)
+  const underlineY = y + LEGEND_PADDING + LEGEND_TITLE_HEIGHT + LEGEND_UNDERLINE_GAP / 2
+  parts.push(`  <line x1="${x + LEGEND_PADDING}" y1="${underlineY}" x2="${x + w - LEGEND_PADDING}" y2="${underlineY}" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>`)
+  let cursorY = y + LEGEND_PADDING + LEGEND_TITLE_HEIGHT + LEGEND_UNDERLINE_GAP
+  for (const entry of entries) {
+    const rowY = cursorY + LEGEND_ROW_HEIGHT / 2
+    parts.push(`  <rect x="${x + LEGEND_PADDING}" y="${rowY - 5}" width="10" height="10" rx="1" fill="${entry.color}" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>`)
+    parts.push(`  <text x="${x + LEGEND_PADDING + 20}" y="${rowY}" font-size="11" font-weight="500" font-family="-apple-system, BlinkMacSystemFont, sans-serif" fill="rgba(255,255,255,0.85)" dominant-baseline="central">${escapeXml(entry.label)}</text>`)
+    cursorY += LEGEND_ROW_HEIGHT
+  }
+  parts.push(`</g>`)
+}
+
 // ── Preload images ──────────────────────────────────────────
 
 async function preloadImages(nodes: OrgNode[]): Promise<Map<string, HTMLImageElement>> {
@@ -342,6 +434,8 @@ async function renderToCanvas(
   const legendDims = hasLegendContent(legendContent) && tempCtx
     ? measureLegend(tempCtx, legendContent)
     : { w: 0, h: 0 }
+  const colorKeyEntries = state.colorKey.visible ? state.colorKey.entries : []
+  const colorKeyDims = tempCtx ? measureColorKey(tempCtx, colorKeyEntries) : { w: 0, h: 0 }
 
   // Compute diagram bounds (include section title offset for tentative positioning)
   const baseBounds = calcBounds(flat, connections)
@@ -355,12 +449,15 @@ async function renderToCanvas(
     maxX: baseBounds.maxX,
     maxY: baseBounds.maxY,
   }
-  const legendBox = hasLegendContent(legendContent)
-    ? positionLegend(state.legend.position, legendDims, tentativeBounds)
-    : null
+  const { legendBox, colorKeyBox } = positionOverlayBoxes(
+    hasLegendContent(legendContent) ? { position: state.legend.position, dims: legendDims } : null,
+    colorKeyEntries.length > 0 ? { position: state.colorKey.position, dims: colorKeyDims } : null,
+    tentativeBounds,
+  )
 
   // Final bounds = diagram ∪ legend footprint (with margin)
-  const { minX, minY, maxX, maxY } = calcExportBounds(flat, connections, legendBox, sectionOffset)
+  const overlayBoxes = [legendBox, colorKeyBox].filter((box): box is LegendBox => box !== null)
+  const { minX, minY, maxX, maxY } = calcExportBounds(flat, connections, overlayBoxes, sectionOffset)
   const w = maxX - minX
   const h = maxY - minY
   const scale = 2
@@ -382,10 +479,6 @@ async function renderToCanvas(
   }
 
   // Draw primary connectors (tree edges)
-  const primaryType = ensureVisibleConnectorType(
-    getConnectorType(connectorTypes, 'primary'),
-    contrastBackground,
-  )
   const childMap = new Map<string, LayoutNode[]>()
   for (const n of flat) {
     if (n.reportsTo) {
@@ -397,10 +490,14 @@ async function renderToCanvas(
   for (const parent of flat) {
     const children = childMap.get(parent.id) ?? []
     for (const child of children) {
+      const type = ensureVisibleConnectorType(
+        getConnectorType(connectorTypes, getNodeConnectorTypeId(child)),
+        contrastBackground,
+      )
       drawStyledLine(
         ctx,
         routePrimaryEdge(parent, child, state.layoutDirection),
-        primaryType,
+        type,
         1,
       )
     }
@@ -476,15 +573,14 @@ async function renderToCanvas(
     ctx.restore()
   }
 
-  // Draw legend (re-positioned against final bounds for accuracy)
-  if (legendBox && hasLegendContent(legendContent)) {
-    const finalBox = positionLegend(
-      state.legend.position,
-      legendDims,
-      { minX, minY, maxX, maxY },
-    )
-    drawLegend(ctx, finalBox, legendContent)
-  }
+  // Draw legend and custom key (re-positioned against final bounds for accuracy)
+  const finalOverlays = positionOverlayBoxes(
+    hasLegendContent(legendContent) ? { position: state.legend.position, dims: legendDims } : null,
+    colorKeyEntries.length > 0 ? { position: state.colorKey.position, dims: colorKeyDims } : null,
+    { minX, minY, maxX, maxY },
+  )
+  if (finalOverlays.legendBox) drawLegend(ctx, finalOverlays.legendBox, legendContent)
+  if (finalOverlays.colorKeyBox) drawColorKey(ctx, finalOverlays.colorKeyBox, colorKeyEntries)
 
   return canvas
 }
@@ -689,6 +785,8 @@ export async function exportSVG(
   const legendDimsPre = hasLegendContent(legendContent) && tempCtx
     ? measureLegend(tempCtx, legendContent)
     : { w: 0, h: 0 }
+  const colorKeyEntries = state.colorKey.visible ? state.colorKey.entries : []
+  const colorKeyDimsPre = tempCtx ? measureColorKey(tempCtx, colorKeyEntries) : { w: 0, h: 0 }
 
   const baseBounds = calcBounds(flat, connections)
   const hasTitles = roots.some(r => r.sectionTitle)
@@ -699,11 +797,14 @@ export async function exportSVG(
     maxX: baseBounds.maxX,
     maxY: baseBounds.maxY,
   }
-  const legendBoxPre = hasLegendContent(legendContent)
-    ? positionLegend(state.legend.position, legendDimsPre, tentativeBounds)
-    : null
+  const { legendBox: legendBoxPre, colorKeyBox: colorKeyBoxPre } = positionOverlayBoxes(
+    hasLegendContent(legendContent) ? { position: state.legend.position, dims: legendDimsPre } : null,
+    colorKeyEntries.length > 0 ? { position: state.colorKey.position, dims: colorKeyDimsPre } : null,
+    tentativeBounds,
+  )
 
-  const { minX, minY, maxX, maxY } = calcExportBounds(flat, connections, legendBoxPre, sectionOffset)
+  const overlayBoxesPre = [legendBoxPre, colorKeyBoxPre].filter((box): box is LegendBox => box !== null)
+  const { minX, minY, maxX, maxY } = calcExportBounds(flat, connections, overlayBoxesPre, sectionOffset)
   const w = maxX - minX
   const h = maxY - minY
 
@@ -735,16 +836,23 @@ export async function exportSVG(
   parts.push(`</defs>`)
 
   // Primary connectors (tree edges)
-  const primaryType = ensureVisibleConnectorType(
-    getConnectorType(connectorTypes, 'primary'),
-    contrastBackground,
-  )
   for (const parent of flat) {
     const children = childMap.get(parent.id) ?? []
     for (const child of children) {
       const path = routePrimaryEdge(parent, child, state.layoutDirection)
       const pathData = path.map(([x, y], index) => `${index === 0 ? 'M' : 'L'}${x},${y}`).join(' ')
-      parts.push(`<path d="${pathData}" fill="none" stroke="${primaryType.color}" stroke-width="${primaryType.lineWidth}" stroke-linecap="round" stroke-linejoin="round"/>`)
+      const type = ensureVisibleConnectorType(
+        getConnectorType(connectorTypes, getNodeConnectorTypeId(child)),
+        contrastBackground,
+      )
+      const dash = type.style === 'dashed' ? ' stroke-dasharray="8,5"'
+        : type.style === 'dotted' ? ' stroke-dasharray="2,3"' : ''
+      if (type.style === 'double') {
+        parts.push(`<path d="${pathData}" fill="none" stroke="${type.color}" stroke-width="${type.lineWidth + 3}" stroke-linecap="round" stroke-linejoin="round"/>`)
+        parts.push(`<path d="${pathData}" fill="none" stroke="${contrastBackground}" stroke-width="${Math.max(1, type.lineWidth)}" stroke-linecap="round" stroke-linejoin="round"/>`)
+      } else {
+        parts.push(`<path d="${pathData}" fill="none" stroke="${type.color}" stroke-width="${type.lineWidth}" stroke-linecap="round" stroke-linejoin="round"${dash}/>`)
+      }
     }
   }
 
@@ -847,11 +955,14 @@ export async function exportSVG(
     parts.push(`</g>`)
   }
 
-  // Legend (after nodes so it overlays cleanly)
-  if (legendBoxPre && hasLegendContent(legendContent)) {
-    const finalBox = positionLegend(state.legend.position, legendDimsPre, { minX, minY, maxX, maxY })
-    emitSVGLegend(parts, finalBox, legendContent)
-  }
+  // Legend and custom key (after nodes so they overlay cleanly)
+  const finalOverlays = positionOverlayBoxes(
+    hasLegendContent(legendContent) ? { position: state.legend.position, dims: legendDimsPre } : null,
+    colorKeyEntries.length > 0 ? { position: state.colorKey.position, dims: colorKeyDimsPre } : null,
+    { minX, minY, maxX, maxY },
+  )
+  if (finalOverlays.legendBox) emitSVGLegend(parts, finalOverlays.legendBox, legendContent)
+  if (finalOverlays.colorKeyBox) emitSVGColorKey(parts, finalOverlays.colorKeyBox, colorKeyEntries)
 
   parts.push(`</svg>`)
 
@@ -923,6 +1034,9 @@ export function importJSON(json: string): OrgChartState {
 
   // legend — default if missing or invalid
   const legend: LegendConfig = mergeLegendWithDefaults(obj.legend)
+  const colorKey: ColorKeyConfig = 'colorKey' in obj
+    ? mergeColorKeyWithDefaults(obj.colorKey)
+    : createDefaultColorKey()
 
   const background = 'background' in obj
     ? mergeBackgroundWithDefaults(obj.background)
@@ -937,7 +1051,7 @@ export function importJSON(json: string): OrgChartState {
   const typeIds = new Set<string>(connectorTypes.map(t => t.id))
   connections = connections.filter(c => isKnownTypeId(c.typeId, typeIds))
 
-  return { nodes, connections, connectorTypes, legend, background, layoutDirection }
+  return { nodes, connections, connectorTypes, legend, colorKey, background, layoutDirection }
 }
 
 // ── Export as CSV ────────────────────────────────────────────

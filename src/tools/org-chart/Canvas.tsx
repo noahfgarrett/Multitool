@@ -6,7 +6,7 @@ import type {
 import {
   NODE_WIDTH, NODE_HEIGHT, AVATAR_SIZE, MIN_ZOOM, MAX_ZOOM,
   SECTION_TITLE_HEIGHT,
-  getConnectorType,
+  getConnectorType, getNodeConnectorTypeId,
 } from './types.ts'
 import { drawStyledLine, routePrimaryEdge, routeSecondaryEdge, hitTestPath } from './connectorStyle.ts'
 import { loadImage } from '@/utils/imageProcessing.ts'
@@ -62,8 +62,12 @@ interface ContextMenuState {
 interface ConnectionTypeMenuState {
   x: number
   y: number
-  connectionId: string
+  target:
+    | { kind: 'connection'; connectionId: string }
+    | { kind: 'hierarchy'; childId: string }
 }
+
+type ConnectorHit = ConnectionTypeMenuState['target']
 
 // ── Component ───────────────────────────────────────────────
 
@@ -72,6 +76,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const layoutRef = useRef<LayoutNode[]>([])
   const flatLayoutRef = useRef<LayoutNode[]>([])
+  const nodeByIdRef = useRef<Map<string, LayoutNode>>(new Map())
   const layout = useMemo(
     () => buildOrgChartLayout(store.nodes, store.layoutDirection),
     [store.layoutDirection, store.nodes],
@@ -82,6 +87,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
   const [renderTick, forceUpdate] = useState(0)
 
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null)
+  const [hoveredConnector, setHoveredConnector] = useState(false)
   const [drag, setDrag] = useState<DragState | null>(null)
   const dragRef = useRef<DragState | null>(null)
   dragRef.current = drag
@@ -211,6 +217,30 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     return null
   }, [])
 
+  const hitTestConnector = useCallback((pt: { x: number; y: number }): ConnectorHit | null => {
+    const tolerance = 10 / store.viewport.zoom
+    const nodeById = nodeByIdRef.current
+
+    for (const connection of store.connections) {
+      const from = nodeById.get(connection.fromId)
+      const to = nodeById.get(connection.toId)
+      if (!from || !to) continue
+      if (hitTestPath(pt.x, pt.y, routeSecondaryEdge(from, to), tolerance)) {
+        return { kind: 'connection', connectionId: connection.id }
+      }
+    }
+
+    for (const child of flatLayoutRef.current) {
+      if (!child.reportsTo) continue
+      const parent = nodeById.get(child.reportsTo)
+      if (!parent) continue
+      if (hitTestPath(pt.x, pt.y, routePrimaryEdge(parent, child, store.layoutDirection), tolerance)) {
+        return { kind: 'hierarchy', childId: child.id }
+      }
+    }
+    return null
+  }, [store.connections, store.layoutDirection, store.viewport.zoom])
+
   // ── Pointer handlers ────────────────────────────────────
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -288,26 +318,12 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     // select it and return early; otherwise we fall through to the
     // existing drag/marquee path so plain empty clicks still work.
     if (!hit && !e.shiftKey) {
-      const tolerance = 6 / store.viewport.zoom
-      const nodeById = new Map<string, LayoutNode>()
-      for (const n of flatLayoutRef.current) nodeById.set(n.id, n)
-
-      let connHit = false
-      for (const conn of store.connections) {
-        const from = nodeById.get(conn.fromId)
-        const to = nodeById.get(conn.toId)
-        if (!from || !to) continue
-        const path = routeSecondaryEdge(from, to)
-        if (path.length === 0) continue
-        if (hitTestPath(pt.x, pt.y, path, tolerance)) {
-          store.selectConnection(conn.id)
-          setConnectionTypeMenu({ connectionId: conn.id, x: e.clientX, y: e.clientY })
-          connHit = true
-          break
-        }
+      const connector = hitTestConnector(pt)
+      if (connector) {
+        store.selectConnection(connector.kind === 'connection' ? connector.connectionId : null)
+        setConnectionTypeMenu({ target: connector, x: e.clientX, y: e.clientY })
+        return
       }
-
-      if (connHit) return
       if (store.selectedConnectionId !== null) {
         store.selectConnection(null)
       }
@@ -362,7 +378,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
         })
       }
     }
-  }, [screenToCanvas, hitTestNode, hitTestAddButton, store, contextMenu, connectionTypeMenu])
+  }, [screenToCanvas, hitTestNode, hitTestAddButton, hitTestConnector, store, contextMenu, connectionTypeMenu])
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     const pt = screenToCanvas(e.clientX, e.clientY)
@@ -402,6 +418,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     setHoveredNodeId(hit?.id ?? addBtn ?? null)
 
     const d = dragRef.current
+    setHoveredConnector(!d && !hit && !addBtn && hitTestConnector(pt) !== null)
     if (!d) return
 
     if (d.type === 'pan') {
@@ -507,7 +524,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
       }
       return
     }
-  }, [screenToCanvas, hitTestNode, hitTestAddButton, store])
+  }, [screenToCanvas, hitTestNode, hitTestAddButton, hitTestConnector, store])
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     // ── Shift-drag release (Task 17) ─────────────────────
@@ -681,6 +698,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     layoutRef.current = trees
     const allFlat = layout.flat
     flatLayoutRef.current = allFlat
+    nodeByIdRef.current = new Map(allFlat.map(node => [node.id, node]))
 
     // Clear
     ctx.clearRect(0, 0, cw, ch)
@@ -707,15 +725,12 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     const imageCache = imageCacheRef.current
 
     // Draw connectors for each tree
-    const primaryType = ensureVisibleConnectorType(
-      getConnectorType(store.connectorTypes, 'primary'),
-      store.background.color,
-    )
     for (const tree of trees) {
       drawConnectors(
         ctx,
         tree,
-        primaryType,
+        store.connectorTypes,
+        store.background.color,
         store.layoutDirection,
         store.viewport.zoom,
         visibleBounds,
@@ -963,7 +978,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
   else if (spaceHeld) cursor = 'grab'
   else if (shiftDrag) cursor = 'crosshair'
   else if (store.connectMode.state !== 'off') cursor = 'crosshair'
-  else if (hoveredNodeId) cursor = 'pointer'
+  else if (hoveredNodeId || hoveredConnector) cursor = 'pointer'
 
   return (
     <div
@@ -973,6 +988,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     >
       <canvas
         ref={canvasRef}
+        data-testid="org-chart-canvas"
         className="w-full h-full"
         style={{ touchAction: 'none' }}
         tabIndex={0}
@@ -1142,7 +1158,13 @@ function ConnectionTypeMenu({
   onClose: () => void
 }) {
   const menuRef = useRef<HTMLDivElement>(null)
-  const connection = store.connections.find(c => c.id === menu.connectionId) ?? null
+  const target = menu.target
+  const connection = target.kind === 'connection'
+    ? store.connections.find(c => c.id === target.connectionId) ?? null
+    : null
+  const hierarchyNode = target.kind === 'hierarchy'
+    ? store.nodes.find(node => node.id === target.childId) ?? null
+    : null
 
   useEffect(() => {
     const onPointerDown = (e: MouseEvent) => {
@@ -1162,10 +1184,13 @@ function ConnectionTypeMenu({
     }
   }, [onClose])
 
-  if (!connection) return null
+  if (!connection && !hierarchyNode) return null
+
+  const currentTypeId = connection?.typeId ?? getNodeConnectorTypeId(hierarchyNode!)
 
   const pickType = (typeId: ConnectorTypeId) => {
-    store.updateConnection(connection.id, { typeId })
+    if (connection) store.updateConnection(connection.id, { typeId })
+    if (hierarchyNode) store.updateNode(hierarchyNode.id, { relationshipTypeId: typeId })
     onClose()
   }
 
@@ -1173,6 +1198,8 @@ function ConnectionTypeMenu({
     <div
       ref={menuRef}
       data-testid="connection-type-menu"
+      role="menu"
+      aria-label="Change connector type"
       className="fixed z-50 min-w-[210px] rounded-lg shadow-2xl overflow-hidden"
       style={{
         left: Math.min(menu.x, window.innerWidth - 230),
@@ -1188,7 +1215,7 @@ function ConnectionTypeMenu({
         Line Type
       </div>
       {store.connectorTypes.map(type => {
-        const active = connection.typeId === type.id
+        const active = currentTypeId === type.id
         return (
           <button
             key={type.id}
@@ -1197,6 +1224,8 @@ function ConnectionTypeMenu({
             className="w-full flex items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-white/[0.06]"
             style={{ background: active ? 'rgba(20, 184, 166, 0.12)' : undefined }}
             data-testid={`connection-type-menu-row-${type.id}`}
+            role="menuitem"
+            aria-label={type.label}
           >
             <ConnectionLineSample type={type} />
             <span className="flex-1 text-[12px]" style={{ color: 'var(--text-primary)' }}>
@@ -1239,7 +1268,8 @@ function ConnectionLineSample({ type }: { type: ConnectorType }) {
 function drawConnectors(
   ctx: CanvasRenderingContext2D,
   node: LayoutNode,
-  primaryType: ConnectorType,
+  connectorTypes: ConnectorType[],
+  backgroundColor: string,
   direction: 'top-down' | 'left-right',
   zoom: number,
   visibleBounds: CanvasBounds,
@@ -1247,9 +1277,13 @@ function drawConnectors(
   for (const child of node.children) {
     const path = routePrimaryEdge(node, child, direction)
     if (pathIntersectsBounds(path, visibleBounds)) {
-      drawStyledLine(ctx, path, primaryType, zoom)
+      const type = ensureVisibleConnectorType(
+        getConnectorType(connectorTypes, getNodeConnectorTypeId(child)),
+        backgroundColor,
+      )
+      drawStyledLine(ctx, path, type, zoom)
     }
-    drawConnectors(ctx, child, primaryType, direction, zoom, visibleBounds)
+    drawConnectors(ctx, child, connectorTypes, backgroundColor, direction, zoom, visibleBounds)
   }
 }
 
