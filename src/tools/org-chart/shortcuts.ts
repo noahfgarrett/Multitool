@@ -5,10 +5,11 @@ import type { OrgChartStore } from './orgChartStore.ts'
  * Returns a cleanup function for useEffect.
  */
 export function attachShortcuts(
-  store: OrgChartStore,
+  getStore: () => OrgChartStore,
   onExport: () => void,
 ): () => void {
   const handler = (e: KeyboardEvent) => {
+    const store = getStore()
     const isMod = e.metaKey || e.ctrlKey
     const tag = (e.target as HTMLElement).tagName
 

@@ -1,21 +1,23 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import type {
   OrgNode, OrgChartState, OrgChartVersion, Viewport, LayoutDirection,
   Connection, ConnectorType, ConnectorTypeId, LegendConfig, LegendPosition,
   ChartBackgroundConfig,
 } from './types.ts'
 import {
+  loadAutosavedChart,
+  loadStoredVersions,
+  saveAutosavedChart,
+  saveStoredVersions,
+} from './orgChartPersistence.ts'
+import {
   createNode, createDefaultConnectorTypes, createDefaultLegend, mergeWithDefaults,
+  mergeLegendWithDefaults,
   createDefaultBackground, mergeBackgroundWithDefaults,
   DEFAULT_VIEWPORT, MIN_ZOOM, MAX_ZOOM, MAX_VERSIONS, genId, isHexColor,
 } from './types.ts'
 
 const MAX_HISTORY = 50
-const VERSIONS_KEY = 'mt-orgchart-versions'
-
-function isLegendPosition(v: string): v is LegendPosition {
-  return v === 'top-left' || v === 'top-right' || v === 'bottom-left' || v === 'bottom-right'
-}
 
 // `upgradeSnapshot` validates the outer shape of a version snapshot and repairs
 // missing top-level fields with defaults. Array contents (nodes[], connections[])
@@ -32,30 +34,23 @@ export function upgradeSnapshot(snapshot: unknown): OrgChartState {
       connectorTypes: createDefaultConnectorTypes(),
       legend: createDefaultLegend(),
       background: createDefaultBackground(),
+      layoutDirection: 'top-down',
     }
   }
   // New shape: snapshot is already OrgChartState; repair missing fields
   if (snapshot && typeof snapshot === 'object') {
     const s = snapshot as Record<string, unknown>
-    const rawLegend = s.legend
-    const legendPos: LegendPosition = (
-      rawLegend
-      && typeof rawLegend === 'object'
-      && typeof (rawLegend as Record<string, unknown>).position === 'string'
-      && isLegendPosition((rawLegend as Record<string, unknown>).position as string)
-    )
-      ? ((rawLegend as Record<string, unknown>).position as LegendPosition)
-      : 'bottom-right'
     return {
       nodes: Array.isArray(s.nodes) ? s.nodes as OrgNode[] : [],
       connections: Array.isArray(s.connections) ? s.connections as Connection[] : [],
       connectorTypes: 'connectorTypes' in s
         ? mergeWithDefaults(s.connectorTypes)
         : createDefaultConnectorTypes(),
-      legend: { position: legendPos },
+      legend: mergeLegendWithDefaults(s.legend),
       background: 'background' in s
         ? mergeBackgroundWithDefaults(s.background)
         : createDefaultBackground(),
+      layoutDirection: s.layoutDirection === 'left-right' ? 'left-right' : 'top-down',
     }
   }
   // Totally malformed — return empty default
@@ -65,16 +60,13 @@ export function upgradeSnapshot(snapshot: unknown): OrgChartState {
     connectorTypes: createDefaultConnectorTypes(),
     legend: createDefaultLegend(),
     background: createDefaultBackground(),
+    layoutDirection: 'top-down',
   }
 }
 
-function loadVersions(): OrgChartVersion[] {
-  try {
-    const raw = localStorage.getItem(VERSIONS_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed.map((v: unknown) => {
+async function loadVersions(): Promise<OrgChartVersion[]> {
+  const parsed = await loadStoredVersions()
+  return parsed.map((v: unknown) => {
       const obj = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
       return {
         id: typeof obj.id === 'string' ? obj.id : genId(),
@@ -83,12 +75,11 @@ function loadVersions(): OrgChartVersion[] {
         nodeCount: typeof obj.nodeCount === 'number' ? obj.nodeCount : 0,
         snapshot: upgradeSnapshot(obj.snapshot),
       }
-    })
-  } catch { return [] }
+  })
 }
 
-function persistVersions(versions: OrgChartVersion[]): void {
-  localStorage.setItem(VERSIONS_KEY, JSON.stringify(versions))
+async function persistVersions(versions: OrgChartVersion[]): Promise<void> {
+  await saveStoredVersions(versions)
 }
 
 // ── Connect mode discriminated union ────────────────────────
@@ -100,6 +91,7 @@ export type ConnectMode =
   | { state: 'picking-type'; sourceId: string; targetId: string; anchorScreenXY: [number, number] }
 
 export const CONNECT_MODE_OFF: ConnectMode = { state: 'off' }
+export type AutosaveStatus = 'loading' | 'pending' | 'saving' | 'saved' | 'error'
 
 // ── Hook: useOrgChartStore ──────────────────────────────────
 
@@ -115,10 +107,15 @@ export function useOrgChartStore() {
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set())
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null)
   const [viewport, setViewport] = useState<Viewport>(DEFAULT_VIEWPORT)
-  const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>('top-down')
+  const [layoutDirection, setLayoutDirectionState] = useState<LayoutDirection>('top-down')
   const [connectMode, setConnectMode] = useState<ConnectMode>(CONNECT_MODE_OFF)
   const [connectFlash, setConnectFlash] = useState<string | null>(null)
+  const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>('loading')
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
+  const [recoveredDraft, setRecoveredDraft] = useState(false)
+  const [isHydrated, setIsHydrated] = useState(false)
   const connectFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const mutationRevisionRef = useRef(0)
 
   // Derived: first selected node ID for backward compat (PropertiesPanel)
   const selectedNodeId = selectedNodeIds.size > 0 ? [...selectedNodeIds][0] : null
@@ -134,6 +131,8 @@ export function useOrgChartStore() {
   legendRef.current = legend
   const backgroundRef = useRef(background)
   backgroundRef.current = background
+  const layoutDirectionRef = useRef(layoutDirection)
+  layoutDirectionRef.current = layoutDirection
 
   // ── Undo/redo (ref-based, structuredClone) ──────────────
   // Initialize history with the same root node as the initial state
@@ -143,6 +142,7 @@ export function useOrgChartStore() {
     connectorTypes: createDefaultConnectorTypes(),
     legend: createDefaultLegend(),
     background: createDefaultBackground(),
+    layoutDirection: 'top-down',
   }])
   const historyIdxRef = useRef(0)
   const [, forceRender] = useState(0)
@@ -157,12 +157,14 @@ export function useOrgChartStore() {
       connectorTypes: override?.connectorTypes ?? connectorTypesRef.current,
       legend: override?.legend ?? legendRef.current,
       background: override?.background ?? backgroundRef.current,
+      layoutDirection: override?.layoutDirection ?? layoutDirectionRef.current,
     }
     const h = historyRef.current.slice(0, historyIdxRef.current + 1)
     h.push(structuredClone(state))
     if (h.length > MAX_HISTORY) h.shift()
     historyRef.current = h
     historyIdxRef.current = h.length - 1
+    mutationRevisionRef.current += 1
     forceRender(v => v + 1)
   }, [])
 
@@ -175,8 +177,10 @@ export function useOrgChartStore() {
     setConnectorTypes(state.connectorTypes)
     setLegend(state.legend)
     setBackground(state.background)
+    setLayoutDirectionState(state.layoutDirection)
     setSelectedNodeIds(new Set())
     setSelectedConnectionId(null)
+    mutationRevisionRef.current += 1
     forceRender(v => v + 1)
   }, [])
 
@@ -189,10 +193,61 @@ export function useOrgChartStore() {
     setConnectorTypes(state.connectorTypes)
     setLegend(state.legend)
     setBackground(state.background)
+    setLayoutDirectionState(state.layoutDirection)
     setSelectedNodeIds(new Set())
     setSelectedConnectionId(null)
+    mutationRevisionRef.current += 1
     forceRender(v => v + 1)
   }, [])
+
+  // Restore the last active chart before autosave starts. A revision guard keeps
+  // a fast user interaction from being overwritten by a slower storage read.
+  useEffect(() => {
+    let cancelled = false
+    const revisionAtStart = mutationRevisionRef.current
+    void loadAutosavedChart().then(draft => {
+      if (cancelled || !draft || mutationRevisionRef.current !== revisionAtStart) return
+      const restored = upgradeSnapshot(draft.snapshot)
+      setNodes(restored.nodes)
+      setConnections(restored.connections)
+      setConnectorTypes(restored.connectorTypes)
+      setLegend(restored.legend)
+      setBackground(restored.background)
+      setLayoutDirectionState(restored.layoutDirection)
+      historyRef.current = [structuredClone(restored)]
+      historyIdxRef.current = 0
+      setLastSavedAt(draft.savedAt)
+      setRecoveredDraft(true)
+      forceRender(value => value + 1)
+    }).finally(() => {
+      if (!cancelled) {
+        setIsHydrated(true)
+        setAutosaveStatus('saved')
+      }
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    if (!isHydrated) return
+    setAutosaveStatus('pending')
+    const snapshot: OrgChartState = {
+      nodes,
+      connections,
+      connectorTypes,
+      legend,
+      background,
+      layoutDirection,
+    }
+    const timer = window.setTimeout(() => {
+      setAutosaveStatus('saving')
+      void saveAutosavedChart(snapshot).then(savedAt => {
+        setLastSavedAt(savedAt)
+        setAutosaveStatus('saved')
+      }).catch(() => setAutosaveStatus('error'))
+    }, 650)
+    return () => window.clearTimeout(timer)
+  }, [background, connections, connectorTypes, isHydrated, layoutDirection, legend, nodes])
 
   // ── Node CRUD ─────────────────────────────────────────
 
@@ -394,18 +449,27 @@ export function useOrgChartStore() {
 
   const hasManualOffsets = nodes.some(n => n.offsetX !== 0 || n.offsetY !== 0)
 
+  const setLayoutDirection = useCallback((direction: LayoutDirection) => {
+    if (direction === layoutDirection) return
+    setLayoutDirectionState(direction)
+    pushHistory({ layoutDirection: direction })
+  }, [layoutDirection, pushHistory])
+
   // ── Diagram operations ────────────────────────────────
 
   const loadDiagram = useCallback((state: OrgChartState) => {
-    setNodes(state.nodes)
-    setConnections(state.connections)
-    setConnectorTypes(state.connectorTypes)
-    setLegend(state.legend)
-    setBackground(state.background)
+    const repaired = upgradeSnapshot(state)
+    setNodes(repaired.nodes)
+    setConnections(repaired.connections)
+    setConnectorTypes(repaired.connectorTypes)
+    setLegend(repaired.legend)
+    setBackground(repaired.background)
+    setLayoutDirectionState(repaired.layoutDirection)
     setSelectedNodeIds(new Set())
     setSelectedConnectionId(null)
-    historyRef.current = [structuredClone(state)]
+    historyRef.current = [structuredClone(repaired)]
     historyIdxRef.current = 0
+    mutationRevisionRef.current += 1
     forceRender(v => v + 1)
     setViewport(DEFAULT_VIEWPORT)
   }, [])
@@ -417,6 +481,7 @@ export function useOrgChartStore() {
       connectorTypes: createDefaultConnectorTypes(),
       legend: createDefaultLegend(),
       background: createDefaultBackground(),
+      layoutDirection: 'top-down',
     })
   }, [loadDiagram])
 
@@ -587,10 +652,16 @@ export function useOrgChartStore() {
   // ── Legend actions ────────────────────────────────────
 
   const setLegendPosition = useCallback((position: LegendPosition) => {
-    const nextLegend: LegendConfig = { position }
+    const nextLegend: LegendConfig = { ...legend, position }
     setLegend(nextLegend)
     pushHistory({ legend: nextLegend })
-  }, [pushHistory])
+  }, [legend, pushHistory])
+
+  const updateLegend = useCallback((updates: Partial<LegendConfig>) => {
+    const nextLegend = mergeLegendWithDefaults({ ...legend, ...updates })
+    setLegend(nextLegend)
+    pushHistory({ legend: nextLegend })
+  }, [legend, pushHistory])
 
   const setBackgroundColor = useCallback((color: string) => {
     if (!isHexColor(color)) return
@@ -601,10 +672,10 @@ export function useOrgChartStore() {
 
   // ── Version control ──────────────────────────────────
 
-  const getVersions = useCallback((): OrgChartVersion[] => loadVersions(), [])
+  const getVersions = useCallback((): Promise<OrgChartVersion[]> => loadVersions(), [])
 
-  const saveVersion = useCallback((name: string) => {
-    const versions = loadVersions()
+  const saveVersion = useCallback(async (name: string) => {
+    const versions = await loadVersions()
     if (versions.length >= MAX_VERSIONS) {
       versions.pop() // remove oldest (last in array)
     }
@@ -619,14 +690,15 @@ export function useOrgChartStore() {
         connectorTypes,
         legend,
         background,
+        layoutDirection,
       }),
     }
     versions.unshift(version) // newest first
-    persistVersions(versions)
-  }, [nodes, connections, connectorTypes, legend, background])
+    await persistVersions(versions)
+  }, [nodes, connections, connectorTypes, legend, background, layoutDirection])
 
-  const restoreVersion = useCallback((versionId: string) => {
-    const versions = loadVersions()
+  const restoreVersion = useCallback(async (versionId: string) => {
+    const versions = await loadVersions()
     const version = versions.find(v => v.id === versionId)
     if (!version) return
     const restored = structuredClone(version.snapshot)
@@ -635,28 +707,30 @@ export function useOrgChartStore() {
     setConnectorTypes(restored.connectorTypes)
     setLegend(restored.legend)
     setBackground(restored.background)
+    setLayoutDirectionState(restored.layoutDirection)
     pushHistory({
       nodes: restored.nodes,
       connections: restored.connections,
       connectorTypes: restored.connectorTypes,
       legend: restored.legend,
       background: restored.background,
+      layoutDirection: restored.layoutDirection,
     })
     setSelectedNodeIds(new Set())
     setSelectedConnectionId(null)
   }, [pushHistory])
 
-  const deleteVersion = useCallback((versionId: string) => {
-    const versions = loadVersions().filter(v => v.id !== versionId)
-    persistVersions(versions)
+  const deleteVersion = useCallback(async (versionId: string) => {
+    const versions = (await loadVersions()).filter(v => v.id !== versionId)
+    await persistVersions(versions)
   }, [])
 
-  const renameVersion = useCallback((versionId: string, newName: string) => {
-    const versions = loadVersions()
+  const renameVersion = useCallback(async (versionId: string, newName: string) => {
+    const versions = await loadVersions()
     const version = versions.find(v => v.id === versionId)
     if (version) {
       version.name = newName
-      persistVersions(versions)
+      await persistVersions(versions)
     }
   }, [])
 
@@ -707,6 +781,7 @@ export function useOrgChartStore() {
     viewport, layoutDirection,
     canUndo, canRedo, hasManualOffsets,
     connectMode, connectFlash,
+    autosaveStatus, lastSavedAt, recoveredDraft, isHydrated,
 
     // Setters
     setViewport, setLayoutDirection,
@@ -737,7 +812,7 @@ export function useOrgChartStore() {
     updateConnectorType, resetConnectorType, resetAllConnectorTypes,
 
     // Legend actions
-    setLegendPosition, setBackgroundColor,
+    setLegendPosition, updateLegend, setBackgroundColor,
 
     // Version control
     getVersions, saveVersion, restoreVersion, deleteVersion, renameVersion,

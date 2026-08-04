@@ -180,7 +180,7 @@ test.describe('Org Chart — Functional', () => {
     await expect(page.getByText('Person Details')).toBeVisible({ timeout: 5000 })
 
     // Fill in department as "Engineering"
-    const deptInput = page.locator('input[placeholder="e.g. Engineering"]')
+    const deptInput = page.getByRole('combobox', { name: 'e.g. Engineering' })
     await deptInput.fill('Engineering')
 
     // The color dot should change to the Engineering color (#3B82F6)
@@ -633,7 +633,7 @@ test.describe('Org Chart — Functional', () => {
   test('loading Department template and adding more nodes', async ({ page }) => {
     await page.locator('button').filter({ hasText: 'Templates' }).first().click()
     await expect(page.getByText('Templates').first()).toBeVisible({ timeout: 3000 })
-    await page.locator('button').filter({ hasText: 'Department' }).click()
+    await page.getByRole('button', { name: /^Department\b/ }).click()
     await expect(page.locator('text=/Loaded "Department" template/')).toBeVisible({ timeout: 5000 })
 
     // Add more people
@@ -689,7 +689,7 @@ test.describe('Org Chart — Functional', () => {
     await expect(page.locator('input[type="text"]').first()).toHaveValue('New Person', { timeout: 3000 })
 
     // The "Reports To" dropdown should be visible (non-root node)
-    await expect(page.getByText('Reports To')).toBeVisible()
+    await expect(page.getByText('Reports To', { exact: true })).toBeVisible()
     const reportsToSelect = page.locator('select')
     await expect(reportsToSelect).toBeVisible()
 
@@ -738,7 +738,7 @@ test.describe('Org Chart — Functional', () => {
       const content = fs.readFileSync(filePath, 'utf-8')
       const lines = content.trim().split('\n')
       expect(lines.length).toBe(11) // 1 header + 10 data rows
-      expect(lines[0]).toBe('Name,Title,Department,Reports To,Email,Phone,Location')
+      expect(lines[0]).toBe('Name,Title,Department,Section,Reports To,Email,Phone,Location,Secondary Relationships')
     }
   })
 

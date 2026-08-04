@@ -1,10 +1,10 @@
 import type { OrgChartStore } from './orgChartStore.ts'
-import type { LayoutDirection } from './types.ts'
 import { LegendPositionChip } from './LegendPositionChip.tsx'
+import { BackgroundPicker } from './BackgroundPicker.tsx'
 import {
   Undo2, Redo2, ZoomIn, ZoomOut, Maximize2,
   ArrowDown, ArrowRight, UserPlus, Trash2, Download, Upload,
-  LayoutGrid, RotateCcw, LayoutPanelLeft, History, Palette, Link2, PaintBucket,
+  LayoutGrid, RotateCcw, LayoutPanelLeft, History, Palette, Link2,
 } from 'lucide-react'
 
 // ── Component ───────────────────────────────────────────────
@@ -30,7 +30,7 @@ export function Toolbar({
     viewport, canUndo, canRedo, undo, redo,
     zoomIn, zoomOut, layoutDirection, setLayoutDirection,
     selectedNodeId, selectedNodeIds, nodes, addNode, removeSelectedNodes,
-    hasManualOffsets, resetLayout, background, setBackgroundColor,
+    hasManualOffsets, resetLayout,
   } = store
 
   const selectedNode = selectedNodeId ? nodes.find(n => n.id === selectedNodeId) : null
@@ -125,6 +125,18 @@ export function Toolbar({
       {/* ── Spacer ─────────────────────────────── */}
       <div className="flex-1" />
 
+      <div
+        className="px-1.5 text-[10px] whitespace-nowrap"
+        style={{ color: store.autosaveStatus === 'error' ? '#f87171' : 'rgba(255,255,255,0.36)' }}
+        aria-live="polite"
+        title={store.lastSavedAt ? `Last saved ${new Date(store.lastSavedAt).toLocaleTimeString()}` : 'Autosave'}
+      >
+        {store.autosaveStatus === 'loading' ? 'Restoring...'
+          : store.autosaveStatus === 'error' ? 'Save failed'
+            : store.autosaveStatus === 'saved' ? 'Saved'
+              : 'Saving...'}
+      </div>
+
       {/* ── Actions ────────────────────────────── */}
       <ToolbarGroup>
         <button
@@ -155,24 +167,7 @@ export function Toolbar({
         >
           <Palette size={16} />
         </button>
-        <label
-          title="Background Color"
-          className="relative p-1.5 rounded hover:bg-white/[0.08] text-white/60 hover:text-white/90 transition-colors cursor-pointer"
-          data-testid="org-chart-background-color"
-        >
-          <PaintBucket size={16} />
-          <span
-            className="absolute bottom-1 right-1 w-2 h-2 rounded-full border border-white/50"
-            style={{ backgroundColor: background.color }}
-          />
-          <input
-            type="color"
-            value={background.color}
-            onChange={e => setBackgroundColor(e.target.value)}
-            aria-label="Background color"
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          />
-        </label>
+        <BackgroundPicker store={store} />
         <button
           onClick={onImportJSON}
           className="px-2.5 py-1 text-[10px] font-medium text-white/50 hover:text-white hover:bg-white/[0.06] rounded transition-colors flex items-center gap-1"

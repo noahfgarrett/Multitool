@@ -6,6 +6,7 @@ import { PropertiesPanel } from './PropertiesPanel.tsx'
 import { ConnectorTypesModal } from './ConnectorTypesModal.tsx'
 import { ConnectModeBanner } from './ConnectModeBanner.tsx'
 import { ConnectorTypePopover } from './ConnectorTypePopover.tsx'
+import { LegendOverlay } from './LegendOverlay.tsx'
 import { attachShortcuts } from './shortcuts.ts'
 import { exportPNG, exportSVG, exportJSON, exportCSV, importJSON, copyPNGToClipboard } from './export.ts'
 import {
@@ -13,7 +14,7 @@ import {
   type ExportBackgroundMode,
 } from './exportOptions.ts'
 import { TEMPLATES } from './templates.ts'
-import type { OrgChartState } from './types.ts'
+import type { OrgChartState, OrgChartVersion } from './types.ts'
 import { Modal } from '@/components/common/Modal.tsx'
 import { useAppStore } from '@/stores/appStore.ts'
 import {
@@ -58,8 +59,8 @@ export default function OrgChartTool() {
 
   // ── Keyboard shortcuts ──────────────────────────────────
   useEffect(() => {
-    return attachShortcuts(store, () => setShowExport(true))
-  }, [store])
+    return attachShortcuts(() => storeRef.current, () => setShowExport(true))
+  }, [])
 
   // ── Modal state ────────────────────────────────────────────
   const [showExport, setShowExport] = useState(false)
@@ -67,16 +68,28 @@ export default function OrgChartTool() {
   const [showConnectorTypes, setShowConnectorTypes] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
   const [versionRefresh, setVersionRefresh] = useState(0)
+  const [versions, setVersions] = useState<OrgChartVersion[]>([])
   const [exportBackgroundMode, setExportBackgroundMode] = useState<ExportBackgroundMode>('current')
   const [customExportBackground, setCustomExportBackground] = useState('#ffffff')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Memoize versions list to re-read when panel opens or after mutations
-  const versions = useMemo(
-    () => showVersions ? store.getVersions() : [],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [showVersions, versionRefresh, store],
-  )
+  useEffect(() => {
+    if (!showVersions) return
+    let cancelled = false
+    void store.getVersions().then(result => {
+      if (!cancelled) setVersions(result)
+    }).catch(() => {
+      if (!cancelled) addToast({ type: 'error', message: 'Version history could not be loaded' })
+    })
+    return () => { cancelled = true }
+  }, [addToast, showVersions, store.getVersions, versionRefresh])
+
+  const recoveryToastShown = useRef(false)
+  useEffect(() => {
+    if (!store.recoveredDraft || recoveryToastShown.current) return
+    recoveryToastShown.current = true
+    addToast({ type: 'success', message: 'Your last org chart was restored' })
+  }, [addToast, store.recoveredDraft])
 
   // ── Export handlers ────────────────────────────────────────
   // Centralize full-state snapshot so every export sees the same fields.
@@ -86,7 +99,8 @@ export default function OrgChartTool() {
     connectorTypes: store.connectorTypes,
     legend: store.legend,
     background: store.background,
-  }), [store.nodes, store.connections, store.connectorTypes, store.legend, store.background])
+    layoutDirection: store.layoutDirection,
+  }), [store.nodes, store.connections, store.connectorTypes, store.legend, store.background, store.layoutDirection])
 
   const exportBackgroundColor = useMemo(() => resolveExportBackgroundColor({
     mode: exportBackgroundMode,
@@ -195,6 +209,7 @@ export default function OrgChartTool() {
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 relative">
           <Canvas store={store} />
+          <LegendOverlay store={store} />
 
           {/* Connect mode banner + type picker popover */}
           <ConnectModeBanner store={store} />
@@ -234,8 +249,10 @@ export default function OrgChartTool() {
                   onClick={() => {
                     const name = prompt('Version name:', `Version ${versions.length + 1}`)
                     if (name) {
-                      store.saveVersion(name)
-                      setVersionRefresh(v => v + 1)
+                      void store.saveVersion(name).then(() => {
+                        setVersionRefresh(v => v + 1)
+                        addToast({ type: 'success', message: 'Version saved' })
+                      }).catch(() => addToast({ type: 'error', message: 'Version could not be saved' }))
                     }
                   }}
                   className="text-xs px-2 py-1 bg-[#14B8A6] text-white rounded hover:bg-[#14B8A6]/80 transition-colors"
@@ -260,8 +277,11 @@ export default function OrgChartTool() {
                         <button
                           onClick={() => {
                             if (confirm('Restore this version? Current chart will be replaced.')) {
-                              store.restoreVersion(v.id)
-                              triggerFitToContent()
+                              void store.restoreVersion(v.id).then(() => {
+                                setShowVersions(false)
+                                triggerFitToContent()
+                                addToast({ type: 'success', message: 'Version restored' })
+                              }).catch(() => addToast({ type: 'error', message: 'Version could not be restored' }))
                             }
                           }}
                           className="text-[10px] px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded hover:bg-blue-500/30 transition-colors"
@@ -272,8 +292,9 @@ export default function OrgChartTool() {
                           onClick={() => {
                             const newName = prompt('Rename version:', v.name)
                             if (newName) {
-                              store.renameVersion(v.id, newName)
-                              setVersionRefresh(ver => ver + 1)
+                              void store.renameVersion(v.id, newName).then(() => {
+                                setVersionRefresh(ver => ver + 1)
+                              }).catch(() => addToast({ type: 'error', message: 'Version could not be renamed' }))
                             }
                           }}
                           className="text-[10px] px-1.5 py-0.5 bg-white/5 text-white/50 rounded hover:bg-white/10 transition-colors"
@@ -283,8 +304,9 @@ export default function OrgChartTool() {
                         <button
                           onClick={() => {
                             if (confirm('Delete this version?')) {
-                              store.deleteVersion(v.id)
-                              setVersionRefresh(ver => ver + 1)
+                              void store.deleteVersion(v.id).then(() => {
+                                setVersionRefresh(ver => ver + 1)
+                              }).catch(() => addToast({ type: 'error', message: 'Version could not be deleted' }))
                             }
                           }}
                           className="text-[10px] px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
@@ -571,16 +593,17 @@ function TemplateCard({
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left hover:bg-white/[0.04] transition-colors"
+      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left hover:opacity-80 transition-opacity"
+      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
     >
       <div className="w-8 h-8 rounded-lg bg-[#14B8A6]/10 flex items-center justify-center flex-shrink-0">
         <Users size={14} className="text-[#14B8A6]" />
       </div>
       <div className="flex-1">
-        <p className="text-sm text-white font-medium">{name}</p>
-        <p className="text-[10px] text-white/30">{description}</p>
+        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{name}</p>
+        <p className="text-[10px]" style={{ color: 'var(--text-disabled)' }}>{description}</p>
       </div>
-      <span className="text-[10px] text-white/20">{nodeCount} people</span>
+      <span className="text-[10px]" style={{ color: 'var(--text-disabled)' }}>{nodeCount} people</span>
     </button>
   )
 }

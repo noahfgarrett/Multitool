@@ -1,31 +1,27 @@
 import type {
-  OrgNode, OrgChartState,
+  OrgNode, OrgChartState, LayoutNode,
   Connection, ConnectorType, ConnectorTypeId, LegendConfig, LegendPosition,
 } from './types.ts'
 import {
-  NODE_WIDTH, NODE_HEIGHT, H_SPACING, V_SPACING,
-  AVATAR_SIZE, CONNECTOR_RADIUS,
-  SECTION_TITLE_HEIGHT, SECTION_GAP,
+  NODE_WIDTH, NODE_HEIGHT, AVATAR_SIZE,
+  SECTION_TITLE_HEIGHT,
   LEGEND_PADDING, LEGEND_TITLE_HEIGHT, LEGEND_UNDERLINE_GAP, LEGEND_ROW_HEIGHT,
   LEGEND_LINE_SAMPLE_WIDTH, LEGEND_LINE_LABEL_GAP, LEGEND_MARGIN,
-  createDefaultConnectorTypes, createDefaultLegend, mergeWithDefaults,
+  createDefaultConnectorTypes, mergeWithDefaults, mergeLegendWithDefaults,
   createDefaultBackground, mergeBackgroundWithDefaults,
   getConnectorType,
 } from './types.ts'
 import type { ImageExportOptions } from './exportOptions.ts'
-import { drawStyledLine, routeSecondaryEdge } from './connectorStyle.ts'
+import { drawStyledLine, routePrimaryEdge, routeSecondaryEdge } from './connectorStyle.ts'
 import { downloadBlob, downloadText } from '@/utils/download.ts'
 import { loadImage } from '@/utils/imageProcessing.ts'
-
-// ── Layout types (local) ────────────────────────────────────
-
-interface LayoutNode extends OrgNode {
-  x: number
-  y: number
-  width: number
-  height: number
-  children: LayoutNode[]
-}
+import { buildOrgChartLayout } from './layout.ts'
+import {
+  buildLegendContent,
+  ensureVisibleConnectorType,
+  readableForeground,
+  type LegendContent,
+} from './legend.ts'
 
 // ── Bounds ──────────────────────────────────────────────────
 
@@ -64,29 +60,17 @@ function calcBounds(flat: LayoutNode[], connections: Connection[] = []) {
 
 interface LegendBox { x: number; y: number; w: number; h: number }
 
-function selectLegendTypes(
-  connections: Connection[],
-  connectorTypes: ConnectorType[],
-): ConnectorType[] {
-  if (connections.length === 0) return []
-  const usedTypeIds = new Set(connections.map(c => c.typeId))
-  const primary = connectorTypes.find(t => t.id === 'primary')
-  const result: ConnectorType[] = []
-  if (primary) result.push(primary)
-  const stableOrder: ConnectorTypeId[] = ['dotted-line', 'supports', 'collaborates']
-  for (const id of stableOrder) {
-    if (!usedTypeIds.has(id)) continue
-    const t = connectorTypes.find(ct => ct.id === id)
-    if (t) result.push(t)
-  }
-  return result
+const LEGEND_SECTION_HEIGHT = 16
+
+function hasLegendContent(content: LegendContent): boolean {
+  return content.relationships.length > 0 || content.departments.length > 0
 }
 
 function measureLegend(
   ctx: CanvasRenderingContext2D,
-  types: ConnectorType[],
+  content: LegendContent,
 ): { w: number; h: number } {
-  if (types.length === 0) return { w: 0, h: 0 }
+  if (!hasLegendContent(content)) return { w: 0, h: 0 }
 
   ctx.save()
   ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, sans-serif'
@@ -94,8 +78,8 @@ function measureLegend(
 
   ctx.font = '500 11px -apple-system, BlinkMacSystemFont, sans-serif'
   let longestRowWidth = 0
-  for (const t of types) {
-    const labelW = ctx.measureText(t.label).width
+  for (const item of [...content.relationships, ...content.departments]) {
+    const labelW = ctx.measureText(item.label).width
     const rowW = LEGEND_LINE_SAMPLE_WIDTH + LEGEND_LINE_LABEL_GAP + labelW
     if (rowW > longestRowWidth) longestRowWidth = rowW
   }
@@ -103,10 +87,13 @@ function measureLegend(
 
   const contentWidth = Math.max(titleWidth, longestRowWidth)
   const w = 2 * LEGEND_PADDING + contentWidth
+  const sectionCount = Number(content.relationships.length > 0) + Number(content.departments.length > 0)
+  const rowCount = content.relationships.length + content.departments.length
   const h = 2 * LEGEND_PADDING
     + LEGEND_TITLE_HEIGHT
     + LEGEND_UNDERLINE_GAP
-    + types.length * LEGEND_ROW_HEIGHT
+    + sectionCount * LEGEND_SECTION_HEIGHT
+    + rowCount * LEGEND_ROW_HEIGHT
 
   return { w, h }
 }
@@ -128,9 +115,9 @@ function positionLegend(
 function drawLegend(
   ctx: CanvasRenderingContext2D,
   box: LegendBox,
-  types: ConnectorType[],
+  content: LegendContent,
 ): void {
-  if (types.length === 0) return
+  if (!hasLegendContent(content)) return
 
   ctx.save()
 
@@ -171,11 +158,21 @@ function drawLegend(
   ctx.lineWidth = 1
   ctx.stroke()
 
-  // Rows
-  const rowBaseY = box.y + LEGEND_PADDING + LEGEND_TITLE_HEIGHT + LEGEND_UNDERLINE_GAP
-  for (let i = 0; i < types.length; i++) {
-    const type = types[i]
-    const rowCenterY = rowBaseY + i * LEGEND_ROW_HEIGHT + LEGEND_ROW_HEIGHT / 2
+  let cursorY = box.y + LEGEND_PADDING + LEGEND_TITLE_HEIGHT + LEGEND_UNDERLINE_GAP
+  const drawSectionLabel = (label: string): void => {
+    ctx.font = '600 9px -apple-system, BlinkMacSystemFont, sans-serif'
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.38)'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(label.toUpperCase(), box.x + LEGEND_PADDING, cursorY + LEGEND_SECTION_HEIGHT / 2)
+    cursorY += LEGEND_SECTION_HEIGHT
+  }
+
+  if (content.relationships.length > 0) {
+    drawSectionLabel('Relationships')
+  }
+  for (const originalType of content.relationships) {
+    const type = ensureVisibleConnectorType(originalType, '#0a0a14')
+    const rowCenterY = cursorY + LEGEND_ROW_HEIGHT / 2
     const sampleStartX = box.x + LEGEND_PADDING
     const sampleEndX = sampleStartX + LEGEND_LINE_SAMPLE_WIDTH
 
@@ -191,6 +188,25 @@ function drawLegend(
     ctx.textAlign = 'left'
     ctx.textBaseline = 'middle'
     ctx.fillText(type.label, sampleEndX + LEGEND_LINE_LABEL_GAP, rowCenterY)
+    cursorY += LEGEND_ROW_HEIGHT
+  }
+
+  if (content.departments.length > 0) {
+    drawSectionLabel('Departments')
+  }
+  for (const department of content.departments) {
+    const rowCenterY = cursorY + LEGEND_ROW_HEIGHT / 2
+    const sampleX = box.x + LEGEND_PADDING
+    ctx.fillStyle = department.color
+    ctx.fillRect(sampleX, rowCenterY - 5, 10, 10)
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)'
+    ctx.strokeRect(sampleX, rowCenterY - 5, 10, 10)
+    ctx.font = '500 11px -apple-system, BlinkMacSystemFont, sans-serif'
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(department.label, sampleX + LEGEND_LINE_SAMPLE_WIDTH + LEGEND_LINE_LABEL_GAP, rowCenterY)
+    cursorY += LEGEND_ROW_HEIGHT
   }
 
   ctx.restore()
@@ -220,9 +236,9 @@ function calcExportBounds(
 function emitSVGLegend(
   parts: string[],
   box: LegendBox,
-  types: ConnectorType[],
+  content: LegendContent,
 ): void {
-  if (types.length === 0) return
+  if (!hasLegendContent(content)) return
   const { x, y, w, h } = box
 
   parts.push(`<g data-layer="legend">`)
@@ -237,11 +253,17 @@ function emitSVGLegend(
   const underlineY = y + LEGEND_PADDING + LEGEND_TITLE_HEIGHT + LEGEND_UNDERLINE_GAP / 2
   parts.push(`  <line x1="${x + LEGEND_PADDING}" y1="${underlineY}" x2="${x + w - LEGEND_PADDING}" y2="${underlineY}" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>`)
 
-  // Rows
-  const rowBaseY = y + LEGEND_PADDING + LEGEND_TITLE_HEIGHT + LEGEND_UNDERLINE_GAP
-  for (let i = 0; i < types.length; i++) {
-    const type = types[i]
-    const rowY = rowBaseY + i * LEGEND_ROW_HEIGHT + LEGEND_ROW_HEIGHT / 2
+  let cursorY = y + LEGEND_PADDING + LEGEND_TITLE_HEIGHT + LEGEND_UNDERLINE_GAP
+  const emitSectionLabel = (label: string): void => {
+    const labelY = cursorY + LEGEND_SECTION_HEIGHT / 2
+    parts.push(`  <text x="${x + LEGEND_PADDING}" y="${labelY}" font-size="9" font-weight="600" font-family="-apple-system, BlinkMacSystemFont, sans-serif" fill="rgba(255,255,255,0.38)" dominant-baseline="central">${label.toUpperCase()}</text>`)
+    cursorY += LEGEND_SECTION_HEIGHT
+  }
+
+  if (content.relationships.length > 0) emitSectionLabel('Relationships')
+  for (const originalType of content.relationships) {
+    const type = ensureVisibleConnectorType(originalType, '#0a0a14')
+    const rowY = cursorY + LEGEND_ROW_HEIGHT / 2
     const sampleX1 = x + LEGEND_PADDING
     const sampleX2 = sampleX1 + LEGEND_LINE_SAMPLE_WIDTH
 
@@ -265,94 +287,19 @@ function emitSVGLegend(
 
     const labelX = sampleX2 + LEGEND_LINE_LABEL_GAP
     parts.push(`  <text x="${labelX}" y="${rowY}" font-size="11" font-weight="500" font-family="-apple-system, BlinkMacSystemFont, sans-serif" fill="rgba(255,255,255,0.85)" dominant-baseline="central">${escapeXml(type.label)}</text>`)
+    cursorY += LEGEND_ROW_HEIGHT
+  }
+
+  if (content.departments.length > 0) emitSectionLabel('Departments')
+  for (const department of content.departments) {
+    const rowY = cursorY + LEGEND_ROW_HEIGHT / 2
+    const sampleX = x + LEGEND_PADDING
+    parts.push(`  <rect x="${sampleX}" y="${rowY - 5}" width="10" height="10" rx="1" fill="${department.color}" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>`)
+    parts.push(`  <text x="${sampleX + LEGEND_LINE_SAMPLE_WIDTH + LEGEND_LINE_LABEL_GAP}" y="${rowY}" font-size="11" font-weight="500" font-family="-apple-system, BlinkMacSystemFont, sans-serif" fill="rgba(255,255,255,0.85)" dominant-baseline="central">${escapeXml(department.label)}</text>`)
+    cursorY += LEGEND_ROW_HEIGHT
   }
 
   parts.push(`</g>`)
-}
-
-// ── Build layout tree ───────────────────────────────────────
-
-function buildLayout(nodes: OrgNode[]): LayoutNode[] {
-  const roots = nodes.filter(n => !n.reportsTo)
-  if (roots.length === 0) return []
-
-  const childMap = new Map<string, OrgNode[]>()
-  for (const n of nodes) {
-    if (n.reportsTo) {
-      const arr = childMap.get(n.reportsTo) ?? []
-      arr.push(n)
-      childMap.set(n.reportsTo, arr)
-    }
-  }
-
-  const buildSubtree = (node: OrgNode): LayoutNode => {
-    const children = (childMap.get(node.id) ?? []).map(buildSubtree)
-    return { ...node, x: 0, y: 0, width: NODE_WIDTH, height: NODE_HEIGHT, children }
-  }
-
-  const allFlat: LayoutNode[] = []
-  let xOffset = 0
-
-  for (const root of roots) {
-    const tree = buildSubtree(root)
-    const treeWidth = layoutTopDown(tree, 0)
-    const yShift = root.sectionTitle ? SECTION_TITLE_HEIGHT : 0
-    shiftX(tree, xOffset)
-    if (yShift > 0) shiftY(tree, yShift)
-
-    const flat = flattenTree(tree)
-    allFlat.push(...flat)
-    xOffset += treeWidth + SECTION_GAP
-  }
-
-  // Apply manual offsets from OrgNode
-  for (const ln of allFlat) {
-    ln.x += ln.offsetX
-    ln.y += ln.offsetY
-  }
-
-  return allFlat
-}
-
-function shiftY(node: LayoutNode, dy: number) {
-  node.y += dy
-  for (const child of node.children) shiftY(child, dy)
-}
-
-function layoutTopDown(node: LayoutNode, depth: number): number {
-  node.y = depth * (NODE_HEIGHT + V_SPACING)
-  if (node.children.length === 0) { node.x = 0; return NODE_WIDTH }
-
-  let totalWidth = 0
-  const widths: number[] = []
-  for (const child of node.children) {
-    const w = layoutTopDown(child, depth + 1)
-    widths.push(w)
-    totalWidth += w
-  }
-  totalWidth += (node.children.length - 1) * H_SPACING
-
-  let offset = 0
-  for (let i = 0; i < node.children.length; i++) {
-    shiftX(node.children[i], offset)
-    offset += widths[i] + H_SPACING
-  }
-
-  const first = node.children[0]
-  const last = node.children[node.children.length - 1]
-  node.x = (first.x + last.x + last.width) / 2 - NODE_WIDTH / 2
-  return Math.max(NODE_WIDTH, totalWidth)
-}
-
-function shiftX(node: LayoutNode, dx: number) {
-  node.x += dx
-  for (const child of node.children) shiftX(child, dx)
-}
-
-function flattenTree(node: LayoutNode): LayoutNode[] {
-  const result: LayoutNode[] = [node]
-  for (const child of node.children) result.push(...flattenTree(child))
-  return result
 }
 
 // ── Preload images ──────────────────────────────────────────
@@ -384,16 +331,16 @@ async function renderToCanvas(
   options: ImageExportOptions = {},
 ): Promise<HTMLCanvasElement> {
   const { nodes, connections, connectorTypes } = state
-  const flat = buildLayout(nodes)
+  const flat = buildOrgChartLayout(nodes, state.layoutDirection).flat
   const imageCache = await preloadImages(nodes)
   const roots = flat.filter(n => !n.reportsTo)
 
   // Measure legend first (temp ctx for text measurement)
-  const legendTypes = selectLegendTypes(connections, connectorTypes)
+  const legendContent = buildLegendContent(state)
   const tempCanvas = document.createElement('canvas')
   const tempCtx = tempCanvas.getContext('2d')
-  const legendDims = legendTypes.length > 0 && tempCtx
-    ? measureLegend(tempCtx, legendTypes)
+  const legendDims = hasLegendContent(legendContent) && tempCtx
+    ? measureLegend(tempCtx, legendContent)
     : { w: 0, h: 0 }
 
   // Compute diagram bounds (include section title offset for tentative positioning)
@@ -408,7 +355,7 @@ async function renderToCanvas(
     maxX: baseBounds.maxX,
     maxY: baseBounds.maxY,
   }
-  const legendBox = legendTypes.length > 0
+  const legendBox = hasLegendContent(legendContent)
     ? positionLegend(state.legend.position, legendDims, tentativeBounds)
     : null
 
@@ -428,13 +375,17 @@ async function renderToCanvas(
 
   // Background
   const backgroundColor = resolveRenderBackground(state, options)
+  const contrastBackground = backgroundColor ?? state.background.color
   if (backgroundColor) {
     ctx.fillStyle = backgroundColor
     ctx.fillRect(minX, minY, w, h)
   }
 
   // Draw primary connectors (tree edges)
-  const primaryType = getConnectorType(connectorTypes, 'primary')
+  const primaryType = ensureVisibleConnectorType(
+    getConnectorType(connectorTypes, 'primary'),
+    contrastBackground,
+  )
   const childMap = new Map<string, LayoutNode[]>()
   for (const n of flat) {
     if (n.reportsTo) {
@@ -446,7 +397,12 @@ async function renderToCanvas(
   for (const parent of flat) {
     const children = childMap.get(parent.id) ?? []
     for (const child of children) {
-      drawConnector(ctx, parent, child, primaryType)
+      drawStyledLine(
+        ctx,
+        routePrimaryEdge(parent, child, state.layoutDirection),
+        primaryType,
+        1,
+      )
     }
   }
 
@@ -461,7 +417,10 @@ async function renderToCanvas(
       if (!from || !to) continue
       const path = routeSecondaryEdge(from, to)
       if (path.length === 0) continue
-      const type = getConnectorType(connectorTypes, conn.typeId)
+      const type = ensureVisibleConnectorType(
+        getConnectorType(connectorTypes, conn.typeId),
+        contrastBackground,
+      )
       drawStyledLine(ctx, path, type, 1) // native scale, no zoom dash adjustment
     }
   }
@@ -471,7 +430,8 @@ async function renderToCanvas(
     if (root.sectionTitle) {
       ctx.save()
       ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, sans-serif'
-      ctx.fillStyle = 'rgba(255,255,255,0.8)'
+      ctx.fillStyle = readableForeground(contrastBackground)
+      ctx.globalAlpha = 0.82
       ctx.textAlign = 'center'
       const titleX = root.x + root.width / 2
       const titleY = root.y - SECTION_TITLE_HEIGHT / 2 + 4
@@ -481,18 +441,27 @@ async function renderToCanvas(
 
     if (idx < roots.length - 1) {
       const sectionNodes = getSectionNodesFlat(root, flat)
-      let maxRight = root.x + root.width
-      for (const sn of sectionNodes) maxRight = Math.max(maxRight, sn.x + sn.width)
       const nextRoot = roots[idx + 1]
-      const dividerX = (maxRight + nextRoot.x) / 2
 
       ctx.save()
-      ctx.strokeStyle = 'rgba(255,255,255,0.1)'
+      ctx.strokeStyle = readableForeground(contrastBackground)
+      ctx.globalAlpha = 0.14
       ctx.lineWidth = 1
       ctx.setLineDash([6, 4])
       ctx.beginPath()
-      ctx.moveTo(dividerX, minY)
-      ctx.lineTo(dividerX, maxY)
+      if (state.layoutDirection === 'top-down') {
+        let maxRight = root.x + root.width
+        for (const node of sectionNodes) maxRight = Math.max(maxRight, node.x + node.width)
+        const dividerX = (maxRight + nextRoot.x) / 2
+        ctx.moveTo(dividerX, minY)
+        ctx.lineTo(dividerX, maxY)
+      } else {
+        let maxBottom = root.y + root.height
+        for (const node of sectionNodes) maxBottom = Math.max(maxBottom, node.y + node.height)
+        const dividerY = (maxBottom + nextRoot.y) / 2
+        ctx.moveTo(minX, dividerY)
+        ctx.lineTo(maxX, dividerY)
+      }
       ctx.stroke()
       ctx.setLineDash([])
       ctx.restore()
@@ -508,13 +477,13 @@ async function renderToCanvas(
   }
 
   // Draw legend (re-positioned against final bounds for accuracy)
-  if (legendBox && legendTypes.length > 0) {
+  if (legendBox && hasLegendContent(legendContent)) {
     const finalBox = positionLegend(
       state.legend.position,
       legendDims,
       { minX, minY, maxX, maxY },
     )
-    drawLegend(ctx, finalBox, legendTypes)
+    drawLegend(ctx, finalBox, legendContent)
   }
 
   return canvas
@@ -536,45 +505,6 @@ function getSectionNodesFlat(root: LayoutNode, allFlat: LayoutNode[]): LayoutNod
 }
 
 // ── Drawing helpers ─────────────────────────────────────────
-
-function drawConnector(
-  ctx: CanvasRenderingContext2D,
-  parent: LayoutNode,
-  child: LayoutNode,
-  primaryType: ConnectorType,
-) {
-  const px = parent.x + parent.width / 2
-  const py = parent.y + parent.height
-  const cx = child.x + child.width / 2
-  const cy = child.y
-  const midY = (py + cy) / 2
-  const r = Math.min(CONNECTOR_RADIUS, Math.abs(midY - py), Math.abs(cx - px) / 2 || CONNECTOR_RADIUS)
-
-  ctx.save()
-  ctx.strokeStyle = primaryType.color
-  ctx.lineWidth = primaryType.lineWidth
-
-  ctx.beginPath()
-  if (Math.abs(cx - px) < 1) {
-    ctx.moveTo(px, py)
-    ctx.lineTo(cx, cy)
-  } else {
-    ctx.moveTo(px, py)
-    ctx.lineTo(px, midY - r)
-    if (cx > px) {
-      ctx.arcTo(px, midY, px + r, midY, r)
-      ctx.lineTo(cx - r, midY)
-      ctx.arcTo(cx, midY, cx, midY + r, r)
-    } else {
-      ctx.arcTo(px, midY, px - r, midY, r)
-      ctx.lineTo(cx + r, midY)
-      ctx.arcTo(cx, midY, cx, midY + r, r)
-    }
-    ctx.lineTo(cx, cy)
-  }
-  ctx.stroke()
-  ctx.restore()
-}
 
 function drawNodeCard(ctx: CanvasRenderingContext2D, node: LayoutNode, imageCache: Map<string, HTMLImageElement>) {
   const w = NODE_WIDTH
@@ -749,15 +679,15 @@ export async function exportSVG(
   options: ImageExportOptions = {},
 ): Promise<void> {
   const { nodes, connections, connectorTypes } = state
-  const flat = buildLayout(nodes)
+  const flat = buildOrgChartLayout(nodes, state.layoutDirection).flat
   const roots = flat.filter(n => !n.reportsTo)
 
   // Pre-measure legend before sizing the viewport
-  const legendTypesPre = selectLegendTypes(connections, connectorTypes)
+  const legendContent = buildLegendContent(state)
   const tempCanvas = document.createElement('canvas')
   const tempCtx = tempCanvas.getContext('2d')
-  const legendDimsPre = legendTypesPre.length > 0 && tempCtx
-    ? measureLegend(tempCtx, legendTypesPre)
+  const legendDimsPre = hasLegendContent(legendContent) && tempCtx
+    ? measureLegend(tempCtx, legendContent)
     : { w: 0, h: 0 }
 
   const baseBounds = calcBounds(flat, connections)
@@ -769,7 +699,7 @@ export async function exportSVG(
     maxX: baseBounds.maxX,
     maxY: baseBounds.maxY,
   }
-  const legendBoxPre = legendTypesPre.length > 0
+  const legendBoxPre = hasLegendContent(legendContent)
     ? positionLegend(state.legend.position, legendDimsPre, tentativeBounds)
     : null
 
@@ -787,6 +717,7 @@ export async function exportSVG(
   }
 
   const backgroundColor = resolveRenderBackground(state, options)
+  const contrastBackground = backgroundColor ?? state.background.color
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${w}" height="${h}" viewBox="${minX} ${minY} ${w} ${h}">`,
     ...(backgroundColor
@@ -804,16 +735,16 @@ export async function exportSVG(
   parts.push(`</defs>`)
 
   // Primary connectors (tree edges)
-  const primaryType = getConnectorType(connectorTypes, 'primary')
+  const primaryType = ensureVisibleConnectorType(
+    getConnectorType(connectorTypes, 'primary'),
+    contrastBackground,
+  )
   for (const parent of flat) {
     const children = childMap.get(parent.id) ?? []
     for (const child of children) {
-      const px = parent.x + parent.width / 2
-      const py = parent.y + parent.height
-      const cx = child.x + child.width / 2
-      const cy = child.y
-      const midY = (py + cy) / 2
-      parts.push(`<path d="M${px},${py} L${px},${midY} L${cx},${midY} L${cx},${cy}" fill="none" stroke="${primaryType.color}" stroke-width="${primaryType.lineWidth}"/>`)
+      const path = routePrimaryEdge(parent, child, state.layoutDirection)
+      const pathData = path.map(([x, y], index) => `${index === 0 ? 'M' : 'L'}${x},${y}`).join(' ')
+      parts.push(`<path d="${pathData}" fill="none" stroke="${primaryType.color}" stroke-width="${primaryType.lineWidth}" stroke-linecap="round" stroke-linejoin="round"/>`)
     }
   }
 
@@ -828,7 +759,10 @@ export async function exportSVG(
       if (!from || !to) continue
       const path = routeSecondaryEdge(from, to)
       if (path.length === 0) continue
-      const type = getConnectorType(connectorTypes, conn.typeId)
+      const type = ensureVisibleConnectorType(
+        getConnectorType(connectorTypes, conn.typeId),
+        contrastBackground,
+      )
 
       const dashAttr = (() => {
         switch (type.style) {
@@ -865,16 +799,24 @@ export async function exportSVG(
     if (root.sectionTitle) {
       const titleX = root.x + root.width / 2
       const titleY = root.y - SECTION_TITLE_HEIGHT / 2 + 4
-      parts.push(`<text x="${titleX}" y="${titleY}" text-anchor="middle" fill="rgba(255,255,255,0.8)" font-size="18" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${escapeXml(root.sectionTitle)}</text>`)
+      parts.push(`<text x="${titleX}" y="${titleY}" text-anchor="middle" fill="${readableForeground(contrastBackground)}" fill-opacity="0.82" font-size="18" font-weight="bold" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${escapeXml(root.sectionTitle)}</text>`)
     }
 
     if (idx < roots.length - 1) {
       const sectionNodes = getSectionNodesFlat(root, flat)
-      let maxRight = root.x + root.width
-      for (const sn of sectionNodes) maxRight = Math.max(maxRight, sn.x + sn.width)
       const nextRoot = roots[idx + 1]
-      const dividerX = (maxRight + nextRoot.x) / 2
-      parts.push(`<line x1="${dividerX}" y1="${minY}" x2="${dividerX}" y2="${maxY}" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="6,4"/>`)
+      const dividerColor = readableForeground(contrastBackground)
+      if (state.layoutDirection === 'top-down') {
+        let maxRight = root.x + root.width
+        for (const node of sectionNodes) maxRight = Math.max(maxRight, node.x + node.width)
+        const dividerX = (maxRight + nextRoot.x) / 2
+        parts.push(`<line x1="${dividerX}" y1="${minY}" x2="${dividerX}" y2="${maxY}" stroke="${dividerColor}" stroke-opacity="0.14" stroke-width="1" stroke-dasharray="6,4"/>`)
+      } else {
+        let maxBottom = root.y + root.height
+        for (const node of sectionNodes) maxBottom = Math.max(maxBottom, node.y + node.height)
+        const dividerY = (maxBottom + nextRoot.y) / 2
+        parts.push(`<line x1="${minX}" y1="${dividerY}" x2="${maxX}" y2="${dividerY}" stroke="${dividerColor}" stroke-opacity="0.14" stroke-width="1" stroke-dasharray="6,4"/>`)
+      }
     }
   })
 
@@ -906,9 +848,9 @@ export async function exportSVG(
   }
 
   // Legend (after nodes so it overlays cleanly)
-  if (legendBoxPre && legendTypesPre.length > 0) {
+  if (legendBoxPre && hasLegendContent(legendContent)) {
     const finalBox = positionLegend(state.legend.position, legendDimsPre, { minX, minY, maxX, maxY })
-    emitSVGLegend(parts, finalBox, legendTypesPre)
+    emitSVGLegend(parts, finalBox, legendContent)
   }
 
   parts.push(`</svg>`)
@@ -921,13 +863,6 @@ export async function exportSVG(
 
 export function exportJSON(state: OrgChartState, filename = 'org-chart.json'): void {
   downloadText(JSON.stringify(state, null, 2), filename, 'application/json')
-}
-
-// Local type guard — export.ts is a pure module without a dependency on
-// orgChartStore.ts, so it defines its own narrower instead of importing.
-function isLegendPosition(value: unknown): value is LegendPosition {
-  return value === 'top-left' || value === 'top-right'
-    || value === 'bottom-left' || value === 'bottom-right'
 }
 
 // Validates connection typeId against a set of known ids. Returns true if the
@@ -987,18 +922,12 @@ export function importJSON(json: string): OrgChartState {
     : createDefaultConnectorTypes()
 
   // legend — default if missing or invalid
-  let legend: LegendConfig
-  const rawLegend = obj.legend
-  if (rawLegend && typeof rawLegend === 'object') {
-    const pos = (rawLegend as Record<string, unknown>).position
-    legend = isLegendPosition(pos) ? { position: pos } : createDefaultLegend()
-  } else {
-    legend = createDefaultLegend()
-  }
+  const legend: LegendConfig = mergeLegendWithDefaults(obj.legend)
 
   const background = 'background' in obj
     ? mergeBackgroundWithDefaults(obj.background)
     : createDefaultBackground()
+  const layoutDirection = obj.layoutDirection === 'left-right' ? 'left-right' : 'top-down'
 
   // Sweep orphan connections whose from/to node is missing
   const nodeIds = new Set(nodes.map(n => n.id))
@@ -1008,7 +937,7 @@ export function importJSON(json: string): OrgChartState {
   const typeIds = new Set<string>(connectorTypes.map(t => t.id))
   connections = connections.filter(c => isKnownTypeId(c.typeId, typeIds))
 
-  return { nodes, connections, connectorTypes, legend, background }
+  return { nodes, connections, connectorTypes, legend, background, layoutDirection }
 }
 
 // ── Export as CSV ────────────────────────────────────────────

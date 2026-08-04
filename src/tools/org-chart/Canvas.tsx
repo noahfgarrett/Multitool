@@ -1,16 +1,17 @@
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import type { OrgChartStore } from './orgChartStore.ts'
 import type {
-  OrgNode, LayoutNode, LayoutDirection, ConnectorType, Connection, ConnectorTypeId,
+  OrgNode, LayoutNode, ConnectorType, Connection, ConnectorTypeId,
 } from './types.ts'
 import {
-  NODE_WIDTH, NODE_HEIGHT, H_SPACING, V_SPACING,
-  AVATAR_SIZE, CONNECTOR_RADIUS, MIN_ZOOM, MAX_ZOOM,
-  SECTION_TITLE_HEIGHT, SECTION_GAP,
+  NODE_WIDTH, NODE_HEIGHT, AVATAR_SIZE, MIN_ZOOM, MAX_ZOOM,
+  SECTION_TITLE_HEIGHT,
   getConnectorType,
 } from './types.ts'
-import { drawStyledLine, routeSecondaryEdge, hitTestPath } from './connectorStyle.ts'
+import { drawStyledLine, routePrimaryEdge, routeSecondaryEdge, hitTestPath } from './connectorStyle.ts'
 import { loadImage } from '@/utils/imageProcessing.ts'
+import { buildOrgChartLayout, getSectionNodes } from './layout.ts'
+import { ensureVisibleConnectorType, readableForeground } from './legend.ts'
 
 // ── Constants ───────────────────────────────────────────────
 
@@ -71,6 +72,10 @@ export function Canvas({ store }: { store: OrgChartStore }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const layoutRef = useRef<LayoutNode[]>([])
   const flatLayoutRef = useRef<LayoutNode[]>([])
+  const layout = useMemo(
+    () => buildOrgChartLayout(store.nodes, store.layoutDirection),
+    [store.layoutDirection, store.nodes],
+  )
 
   // Render tick — bumped by handlePointerMove to force re-paint of ghost
   // previews and hover ring while cursor moves over empty canvas space.
@@ -210,6 +215,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     (e.currentTarget as HTMLCanvasElement).setPointerCapture(e.pointerId)
+    ;(e.currentTarget as HTMLCanvasElement).focus({ preventScroll: true })
     if (contextMenu) setContextMenu(null)
     if (connectionTypeMenu) setConnectionTypeMenu(null)
     if (e.button === 1) {
@@ -404,7 +410,6 @@ export function Canvas({ store }: { store: OrgChartStore }) {
         panX: e.clientX - d.startX,
         panY: e.clientY - d.startY,
       }))
-      setDrag({ ...d, currentX: e.clientX, currentY: e.clientY })
       return
     }
 
@@ -661,26 +666,21 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     const cw = Math.max(1, Math.round(rect.width))
     const ch = Math.max(1, Math.round(rect.height))
 
-    canvas.width = Math.round(cw * dpr)
-    canvas.height = Math.round(ch * dpr)
-    canvas.style.width = cw + 'px'
-    canvas.style.height = ch + 'px'
+    const targetWidth = Math.round(cw * dpr)
+    const targetHeight = Math.round(ch * dpr)
+    if (canvas.width !== targetWidth) canvas.width = targetWidth
+    if (canvas.height !== targetHeight) canvas.height = targetHeight
+    if (canvas.style.width !== `${cw}px`) canvas.style.width = `${cw}px`
+    if (canvas.style.height !== `${ch}px`) canvas.style.height = `${ch}px`
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
 
-    // Build layout trees (multi-root)
-    const trees = buildLayoutTrees(store.nodes, store.layoutDirection)
+    // Shared live/export layout, memoized across hover and connect-mode repaints.
+    const trees = layout.trees
     layoutRef.current = trees
-    const allFlat: LayoutNode[] = []
-    for (const tree of trees) allFlat.push(...flattenTree(tree))
+    const allFlat = layout.flat
     flatLayoutRef.current = allFlat
-
-    // Apply manual offsets to layout positions
-    for (const ln of allFlat) {
-      ln.x += ln.offsetX
-      ln.y += ln.offsetY
-    }
 
     // Clear
     ctx.clearRect(0, 0, cw, ch)
@@ -696,12 +696,30 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     ctx.translate(panX, panY)
     ctx.scale(store.viewport.zoom, store.viewport.zoom)
 
+    const renderMargin = 120 / store.viewport.zoom
+    const visibleBounds: CanvasBounds = {
+      left: -panX / store.viewport.zoom - renderMargin,
+      top: -panY / store.viewport.zoom - renderMargin,
+      right: (cw - panX) / store.viewport.zoom + renderMargin,
+      bottom: (ch - panY) / store.viewport.zoom + renderMargin,
+    }
+
     const imageCache = imageCacheRef.current
 
     // Draw connectors for each tree
-    const primaryType = getConnectorType(store.connectorTypes, 'primary')
+    const primaryType = ensureVisibleConnectorType(
+      getConnectorType(store.connectorTypes, 'primary'),
+      store.background.color,
+    )
     for (const tree of trees) {
-      drawConnectors(ctx, tree, primaryType)
+      drawConnectors(
+        ctx,
+        tree,
+        primaryType,
+        store.layoutDirection,
+        store.viewport.zoom,
+        visibleBounds,
+      )
     }
 
     // Draw secondary edges (store.connections)
@@ -715,7 +733,11 @@ export function Canvas({ store }: { store: OrgChartStore }) {
         if (!from || !to) continue
         const path = routeSecondaryEdge(from, to)
         if (path.length === 0) continue
-        const type = getConnectorType(store.connectorTypes, conn.typeId)
+        if (!pathIntersectsBounds(path, visibleBounds)) continue
+        const type = ensureVisibleConnectorType(
+          getConnectorType(store.connectorTypes, conn.typeId),
+          store.background.color,
+        )
         drawStyledLine(ctx, path, type, store.viewport.zoom)
       }
     }
@@ -807,7 +829,8 @@ export function Canvas({ store }: { store: OrgChartStore }) {
       if (root.sectionTitle) {
         ctx.save()
         ctx.font = 'bold 18px "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif'
-        ctx.fillStyle = 'rgba(255,255,255,0.8)'
+        ctx.fillStyle = readableForeground(store.background.color)
+        ctx.globalAlpha = 0.82
         ctx.textAlign = 'center'
         const titleX = root.x + root.width / 2
         const titleY = root.y - SECTION_TITLE_HEIGHT / 2 + 4
@@ -815,32 +838,30 @@ export function Canvas({ store }: { store: OrgChartStore }) {
         ctx.restore()
       }
 
-      // Draw vertical dashed divider between sections (not after last)
       if (idx < rootNodes.length - 1) {
-        // Find rightmost x of current section
         const sectionNodes = getSectionNodes(root, allFlat)
-        let maxRight = root.x + root.width
-        for (const sn of sectionNodes) {
-          maxRight = Math.max(maxRight, sn.x + sn.width)
-        }
         const nextRoot = rootNodes[idx + 1]
-        const dividerX = (maxRight + nextRoot.x) / 2
 
         ctx.save()
-        ctx.strokeStyle = 'rgba(255,255,255,0.1)'
+        ctx.strokeStyle = readableForeground(store.background.color)
+        ctx.globalAlpha = 0.14
         ctx.lineWidth = 1
         ctx.setLineDash([6, 4])
         ctx.beginPath()
 
-        // Find vertical extent of all nodes
-        let minY = Infinity, maxY = -Infinity
-        for (const n of allFlat) {
-          minY = Math.min(minY, n.y - SECTION_TITLE_HEIGHT)
-          maxY = Math.max(maxY, n.y + n.height + 40)
+        if (store.layoutDirection === 'top-down') {
+          let maxRight = root.x + root.width
+          for (const node of sectionNodes) maxRight = Math.max(maxRight, node.x + node.width)
+          const dividerX = (maxRight + nextRoot.x) / 2
+          ctx.moveTo(dividerX, visibleBounds.top)
+          ctx.lineTo(dividerX, visibleBounds.bottom)
+        } else {
+          let maxBottom = root.y + root.height
+          for (const node of sectionNodes) maxBottom = Math.max(maxBottom, node.y + node.height)
+          const dividerY = (maxBottom + nextRoot.y) / 2
+          ctx.moveTo(visibleBounds.left, dividerY)
+          ctx.lineTo(visibleBounds.right, dividerY)
         }
-
-        ctx.moveTo(dividerX, minY)
-        ctx.lineTo(dividerX, maxY)
         ctx.stroke()
         ctx.setLineDash([])
         ctx.restore()
@@ -850,6 +871,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
     // Draw nodes
     const flat = allFlat
     for (const node of flat) {
+      if (!nodeIntersectsBounds(node, visibleBounds)) continue
       const isSelected = store.selectedNodeIds.has(node.id)
       const isHovered = node.id === hoveredNodeId
       const isReparentDrop = node.id === reparentTarget
@@ -908,7 +930,7 @@ export function Canvas({ store }: { store: OrgChartStore }) {
   }, [
     store.nodes, store.connections, store.connectorTypes, store.background, store.viewport,
     store.selectedNodeIds, store.selectedConnectionId, store.layoutDirection,
-    store.connectMode, shiftDrag,
+    store.connectMode, shiftDrag, layout,
     hoveredNodeId, reparentTarget, drag, imageCacheVer, screenToCanvas,
     renderTick,
   ])
@@ -953,6 +975,9 @@ export function Canvas({ store }: { store: OrgChartStore }) {
         ref={canvasRef}
         className="w-full h-full"
         style={{ touchAction: 'none' }}
+        tabIndex={0}
+        role="application"
+        aria-label={`Interactive organization chart with ${store.nodes.length} people. Use Tab to browse people and arrow keys to navigate the selected hierarchy.`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -961,6 +986,30 @@ export function Canvas({ store }: { store: OrgChartStore }) {
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
       />
+
+      <div className="sr-only" aria-label="Organization chart people">
+        <ul>
+          {store.nodes.map(node => {
+            const manager = node.reportsTo
+              ? store.nodes.find(candidate => candidate.id === node.reportsTo)?.name
+              : null
+            return (
+              <li key={node.id}>
+                <button
+                  type="button"
+                  onFocus={() => store.selectNode(node.id)}
+                  onClick={() => store.selectNode(node.id)}
+                  aria-pressed={store.selectedNodeIds.has(node.id)}
+                >
+                  {node.name}, {node.title || 'no title'}
+                  {node.department ? `, ${node.department}` : ''}
+                  {manager ? `, reports to ${manager}` : ', top-level'}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
 
       {/* Zoom indicator */}
       <div className="absolute bottom-3 right-3 px-2 py-1 rounded bg-dark-elevated/80 text-[10px] text-white/40 pointer-events-none">
@@ -1185,214 +1234,52 @@ function ConnectionLineSample({ type }: { type: ConnectorType }) {
   return <canvas ref={ref} className="flex-shrink-0" aria-hidden="true" />
 }
 
-// ── Tree layout ─────────────────────────────────────────────
-
-function buildLayoutTrees(nodes: OrgNode[], direction: LayoutDirection): LayoutNode[] {
-  const roots = nodes.filter(n => !n.reportsTo)
-  if (roots.length === 0) return []
-
-  const childMap = new Map<string, OrgNode[]>()
-  for (const n of nodes) {
-    if (n.reportsTo) {
-      const arr = childMap.get(n.reportsTo) ?? []
-      arr.push(n)
-      childMap.set(n.reportsTo, arr)
-    }
-  }
-
-  const buildSubtree = (node: OrgNode): LayoutNode => {
-    const children = (childMap.get(node.id) ?? []).map(buildSubtree)
-    return { ...node, x: 0, y: 0, width: NODE_WIDTH, height: NODE_HEIGHT, children }
-  }
-
-  const trees: LayoutNode[] = []
-  let xOffset = 0
-
-  for (const root of roots) {
-    const tree = buildSubtree(root)
-    let treeWidth: number
-
-    if (direction === 'top-down') {
-      treeWidth = layoutTopDown(tree, 0)
-    } else {
-      treeWidth = layoutLeftRight(tree, 0)
-    }
-
-    // Shift tree by accumulated horizontal offset
-    const yShift = root.sectionTitle ? SECTION_TITLE_HEIGHT : 0
-    if (direction === 'top-down') {
-      shiftX(tree, xOffset)
-      if (yShift > 0) shiftY(tree, yShift)
-      xOffset += treeWidth + SECTION_GAP
-    } else {
-      // For left-right, offset on Y axis to stack sections vertically
-      shiftY(tree, xOffset)
-      if (yShift > 0) shiftY(tree, yShift)
-      xOffset += getTreeHeight(tree) + SECTION_GAP
-    }
-
-    trees.push(tree)
-  }
-
-  return trees
-}
-
-function getTreeHeight(node: LayoutNode): number {
-  let minY = node.y
-  let maxY = node.y + node.height
-  for (const child of node.children) {
-    const childH = getTreeHeight(child)
-    const childMinY = child.y
-    minY = Math.min(minY, childMinY)
-    maxY = Math.max(maxY, childMinY + childH)
-  }
-  return maxY - minY
-}
-
-function layoutTopDown(node: LayoutNode, depth: number): number {
-  node.y = depth * (NODE_HEIGHT + V_SPACING)
-
-  if (node.children.length === 0) {
-    node.x = 0
-    return NODE_WIDTH
-  }
-
-  let totalWidth = 0
-  const childWidths: number[] = []
-  for (const child of node.children) {
-    const w = layoutTopDown(child, depth + 1)
-    childWidths.push(w)
-    totalWidth += w
-  }
-  totalWidth += (node.children.length - 1) * H_SPACING
-
-  let xOffset = 0
-  for (let i = 0; i < node.children.length; i++) {
-    shiftX(node.children[i], xOffset)
-    xOffset += childWidths[i] + H_SPACING
-  }
-
-  const firstChild = node.children[0]
-  const lastChild = node.children[node.children.length - 1]
-  node.x = (firstChild.x + lastChild.x + lastChild.width) / 2 - NODE_WIDTH / 2
-
-  return Math.max(NODE_WIDTH, totalWidth)
-}
-
-function layoutLeftRight(node: LayoutNode, depth: number): number {
-  node.x = depth * (NODE_WIDTH + H_SPACING)
-
-  if (node.children.length === 0) {
-    node.y = 0
-    return NODE_HEIGHT
-  }
-
-  let totalHeight = 0
-  const childHeights: number[] = []
-  for (const child of node.children) {
-    const h = layoutLeftRight(child, depth + 1)
-    childHeights.push(h)
-    totalHeight += h
-  }
-  totalHeight += (node.children.length - 1) * V_SPACING / 2
-
-  let yOffset = 0
-  for (let i = 0; i < node.children.length; i++) {
-    shiftY(node.children[i], yOffset)
-    yOffset += childHeights[i] + V_SPACING / 2
-  }
-
-  const firstChild = node.children[0]
-  const lastChild = node.children[node.children.length - 1]
-  node.y = (firstChild.y + lastChild.y + lastChild.height) / 2 - NODE_HEIGHT / 2
-
-  return Math.max(NODE_HEIGHT, totalHeight)
-}
-
-function shiftX(node: LayoutNode, dx: number) {
-  node.x += dx
-  for (const child of node.children) shiftX(child, dx)
-}
-
-function shiftY(node: LayoutNode, dy: number) {
-  node.y += dy
-  for (const child of node.children) shiftY(child, dy)
-}
-
-function flattenTree(node: LayoutNode): LayoutNode[] {
-  const result: LayoutNode[] = [node]
-  for (const child of node.children) {
-    result.push(...flattenTree(child))
-  }
-  return result
-}
-
-/** Get all nodes belonging to a section (root + descendants) */
-function getSectionNodes(root: LayoutNode, allFlat: LayoutNode[]): LayoutNode[] {
-  const ids = new Set<string>([root.id])
-  let found = true
-  while (found) {
-    found = false
-    for (const n of allFlat) {
-      if (!ids.has(n.id) && ids.has(n.reportsTo)) {
-        ids.add(n.id)
-        found = true
-      }
-    }
-  }
-  return allFlat.filter(n => ids.has(n.id))
-}
-
 // ── Drawing functions ───────────────────────────────────────
 
-function drawConnectors(ctx: CanvasRenderingContext2D, node: LayoutNode, primaryType: ConnectorType) {
+function drawConnectors(
+  ctx: CanvasRenderingContext2D,
+  node: LayoutNode,
+  primaryType: ConnectorType,
+  direction: 'top-down' | 'left-right',
+  zoom: number,
+  visibleBounds: CanvasBounds,
+) {
   for (const child of node.children) {
-    drawConnector(ctx, node, child, primaryType)
-    drawConnectors(ctx, child, primaryType)
+    const path = routePrimaryEdge(node, child, direction)
+    if (pathIntersectsBounds(path, visibleBounds)) {
+      drawStyledLine(ctx, path, primaryType, zoom)
+    }
+    drawConnectors(ctx, child, primaryType, direction, zoom, visibleBounds)
   }
 }
 
-function drawConnector(
-  ctx: CanvasRenderingContext2D,
-  parent: LayoutNode,
-  child: LayoutNode,
-  primaryType: ConnectorType,
-) {
-  const px = parent.x + parent.width / 2
-  const py = parent.y + parent.height
-  const cx = child.x + child.width / 2
-  const cy = child.y
-  const midY = (py + cy) / 2
-  const r = Math.min(CONNECTOR_RADIUS, Math.abs(midY - py), Math.abs(cx - px) / 2 || CONNECTOR_RADIUS)
+interface CanvasBounds {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
 
-  ctx.save()
-  ctx.strokeStyle = primaryType.color
-  ctx.lineWidth = primaryType.lineWidth
+function nodeIntersectsBounds(node: LayoutNode, bounds: CanvasBounds): boolean {
+  return node.x + node.width >= bounds.left
+    && node.x <= bounds.right
+    && node.y + node.height >= bounds.top
+    && node.y <= bounds.bottom
+}
 
-  ctx.beginPath()
-  if (Math.abs(cx - px) < 1) {
-    // Straight vertical line
-    ctx.moveTo(px, py)
-    ctx.lineTo(cx, cy)
-  } else {
-    ctx.moveTo(px, py)
-    ctx.lineTo(px, midY - r)
-
-    if (cx > px) {
-      ctx.arcTo(px, midY, px + r, midY, r)
-      ctx.lineTo(cx - r, midY)
-      ctx.arcTo(cx, midY, cx, midY + r, r)
-    } else {
-      ctx.arcTo(px, midY, px - r, midY, r)
-      ctx.lineTo(cx + r, midY)
-      ctx.arcTo(cx, midY, cx, midY + r, r)
-    }
-
-    ctx.lineTo(cx, cy)
+function pathIntersectsBounds(path: [number, number][], bounds: CanvasBounds): boolean {
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const [x, y] of path) {
+    minX = Math.min(minX, x)
+    minY = Math.min(minY, y)
+    maxX = Math.max(maxX, x)
+    maxY = Math.max(maxY, y)
   }
-
-  ctx.stroke()
-  ctx.restore()
+  return maxX >= bounds.left && minX <= bounds.right
+    && maxY >= bounds.top && minY <= bounds.bottom
 }
 
 function drawNode(

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 
 interface ModalProps {
@@ -19,24 +19,30 @@ const widths = {
 }
 
 export function Modal({ open, onClose, title, children, width = 'md' }: ModalProps) {
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    },
-    [onClose],
-  )
+  const openRef = useRef(open)
+  const onCloseRef = useRef(onClose)
+  openRef.current = open
+  onCloseRef.current = onClose
 
   useEffect(() => {
-    if (open) {
-      document.addEventListener('keydown', handleKeyDown)
-      return () => document.removeEventListener('keydown', handleKeyDown)
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && openRef.current) {
+        onCloseRef.current()
+      }
     }
-  }, [open, handleKeyDown])
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title ?? 'Dialog'}
+    >
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"

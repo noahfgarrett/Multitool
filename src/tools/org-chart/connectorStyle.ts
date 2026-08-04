@@ -1,4 +1,4 @@
-import type { ConnectorType } from './types.ts'
+import type { ConnectorType, LayoutDirection } from './types.ts'
 
 // ── Dash patterns per style ─────────────────────────────────
 
@@ -119,6 +119,28 @@ export function routeSecondaryEdge(
   if (anchorDist < 1) return []
 
   return [sourceAnchor, targetAnchor]
+}
+
+export function routePrimaryEdge(
+  parent: RoutableNode,
+  child: RoutableNode,
+  direction: LayoutDirection,
+): [number, number][] {
+  if (direction === 'left-right') {
+    const startX = parent.x + parent.width
+    const startY = parent.y + parent.height / 2
+    const endX = child.x
+    const endY = child.y + child.height / 2
+    const middleX = (startX + endX) / 2
+    return [[startX, startY], [middleX, startY], [middleX, endY], [endX, endY]]
+  }
+
+  const startX = parent.x + parent.width / 2
+  const startY = parent.y + parent.height
+  const endX = child.x + child.width / 2
+  const endY = child.y
+  const middleY = (startY + endY) / 2
+  return [[startX, startY], [startX, middleY], [endX, middleY], [endX, endY]]
 }
 
 /**

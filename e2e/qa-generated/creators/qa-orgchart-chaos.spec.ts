@@ -155,7 +155,7 @@ test.describe('Org Chart — Chaos', () => {
     // Switch to Department
     await page.locator('button').filter({ hasText: 'Templates' }).first().click()
     await expect(page.getByText('Templates').first()).toBeVisible({ timeout: 3000 })
-    await page.locator('button').filter({ hasText: 'Department' }).click()
+    await page.getByRole('button', { name: /^Department\b/ }).click()
     await expect(page.locator('text=/Loaded "Department" template/')).toBeVisible({ timeout: 5000 })
     await page.waitForTimeout(200)
 
@@ -358,7 +358,7 @@ test.describe('Org Chart — Chaos', () => {
     await page.waitForTimeout(200)
 
     // Edit department
-    const deptInput = page.locator('input[placeholder="e.g. Engineering"]')
+    const deptInput = page.getByRole('combobox', { name: 'e.g. Engineering' })
     await deptInput.fill('Leadership')
     await page.waitForTimeout(200)
 

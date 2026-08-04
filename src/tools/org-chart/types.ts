@@ -30,6 +30,7 @@ export interface OrgChartState {
   connectorTypes: ConnectorType[]
   legend: LegendConfig
   background: ChartBackgroundConfig
+  layoutDirection: LayoutDirection
 }
 
 export interface OrgChartVersion {
@@ -88,6 +89,9 @@ export const LEGEND_POSITIONS: readonly LegendPosition[] = [
 
 export interface LegendConfig {
   position: LegendPosition
+  visible: boolean
+  showRelationships: boolean
+  showDepartments: boolean
 }
 
 // ── Chart background ────────────────────────────────────────
@@ -186,7 +190,32 @@ export function createDefaultConnectorTypes(): ConnectorType[] {
 }
 
 export function createDefaultLegend(): LegendConfig {
-  return { position: 'bottom-right' }
+  return {
+    position: 'bottom-right',
+    visible: true,
+    showRelationships: true,
+    showDepartments: true,
+  }
+}
+
+export function mergeLegendWithDefaults(partial: unknown): LegendConfig {
+  const defaults = createDefaultLegend()
+  if (!partial || typeof partial !== 'object') return defaults
+  const value = partial as Record<string, unknown>
+  const position = value.position
+  return {
+    position: position === 'top-left' || position === 'top-right'
+      || position === 'bottom-left' || position === 'bottom-right'
+      ? position
+      : defaults.position,
+    visible: typeof value.visible === 'boolean' ? value.visible : defaults.visible,
+    showRelationships: typeof value.showRelationships === 'boolean'
+      ? value.showRelationships
+      : defaults.showRelationships,
+    showDepartments: typeof value.showDepartments === 'boolean'
+      ? value.showDepartments
+      : defaults.showDepartments,
+  }
 }
 
 /** Repairs a potentially malformed connectorTypes array. Always returns exactly 4 types in stable order.

@@ -11,6 +11,7 @@ function withDefaults(nodes: OrgNode[]): OrgChartState {
     connectorTypes: createDefaultConnectorTypes(),
     legend: createDefaultLegend(),
     background: createDefaultBackground(),
+    layoutDirection: 'top-down',
   }
 }
 
@@ -155,8 +156,9 @@ export const TEMPLATES: OrgTemplate[] = [
         { id: 'mx-conn-3', fromId: 'mx-vp-eng', toId: 'mx-vp-prod', typeId: 'collaborates' },
       ],
       connectorTypes: createDefaultConnectorTypes(),
-      legend: { position: 'bottom-right' },
+      legend: createDefaultLegend(),
       background: createDefaultBackground(),
+      layoutDirection: 'top-down',
     }),
   },
 ]

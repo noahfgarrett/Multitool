@@ -71,7 +71,10 @@ function ConnectorTypeRow({
   }, [labelValue, type.label, onUpdate])
 
   return (
-    <div className="p-3 rounded-md border border-white/[0.06] bg-white/[0.03]">
+    <div
+      className="p-3 rounded-md border"
+      style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
+    >
       {/* Top row: sample · label input · reset button */}
       <div className="flex items-start gap-3">
         <div className="flex items-center flex-shrink-0" style={{ width: 60, height: 14, marginTop: 8 }}>
@@ -88,20 +91,25 @@ function ConnectorTypeRow({
             }}
             placeholder={type.label}
             maxLength={40}
-            className={`w-full bg-transparent border-b text-white text-sm py-1 outline-none transition-colors ${
-              labelError ? 'border-red-500' : 'border-white/[0.08] focus:border-white/30'
-            }`}
+            className="w-full bg-transparent border-b text-sm py-1 outline-none transition-colors"
+            style={{
+              color: 'var(--text-primary)',
+              borderColor: labelError ? '#ef4444' : 'var(--border-default)',
+            }}
             aria-label={`Label for ${type.id} connector type`}
             data-testid={`type-label-${type.id}`}
           />
-          <p className="text-[10px] text-white/40 mt-1">{STYLE_CAPTIONS[type.id]}</p>
+          <p className="text-[10px] mt-1" style={{ color: 'var(--text-disabled)' }}>
+            {STYLE_CAPTIONS[type.id]}
+          </p>
         </div>
         <div className="flex-shrink-0">
           {!isDefault ? (
             <button
               type="button"
               onClick={onReset}
-              className="p-1.5 rounded hover:bg-white/[0.08] text-white/50 hover:text-white/90 transition-colors"
+              className="p-1.5 rounded hover:opacity-70 transition-opacity"
+              style={{ color: 'var(--text-muted)', background: 'var(--bg-elevated)' }}
               title="Reset to default"
               data-testid={`type-reset-${type.id}`}
             >
@@ -148,7 +156,7 @@ export function ConnectorTypesModal({
   return (
     <Modal open={isOpen} onClose={onClose} title="Connector Types" width="lg">
       <div>
-        <p className="text-[11px] text-white/50 mb-4">
+        <p className="text-[11px] mb-4" style={{ color: 'var(--text-muted)' }}>
           Rename or recolor line styles used in this chart. The line style itself
           (solid, dashed, etc.) is fixed per type.
         </p>
@@ -163,11 +171,15 @@ export function ConnectorTypesModal({
             />
           ))}
         </div>
-        <div className="flex items-center justify-between mt-5 pt-3 border-t border-white/[0.06]">
+        <div
+          className="flex items-center justify-between mt-5 pt-3 border-t"
+          style={{ borderColor: 'var(--border-subtle)' }}
+        >
           <button
             type="button"
             onClick={handleResetAll}
-            className="text-[11px] text-white/50 hover:text-white/90 px-2 py-1"
+            className="text-[11px] px-2 py-1 hover:opacity-70 transition-opacity"
+            style={{ color: 'var(--text-muted)' }}
             data-testid="reset-all-types"
           >
             Reset all to defaults

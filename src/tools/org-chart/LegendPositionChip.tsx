@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Eye, EyeOff } from 'lucide-react'
 import type { OrgChartStore } from './orgChartStore.ts'
 import type { LegendPosition } from './types.ts'
 
@@ -15,7 +15,7 @@ const POSITION_GRID: LegendPosition[][] = [
   ['bottom-left', 'bottom-right'],
 ]
 
-export function LegendPositionChip({ store }: { store: OrgChartStore }): React.ReactElement | null {
+export function LegendPositionChip({ store }: { store: OrgChartStore }): React.ReactElement {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -24,12 +24,16 @@ export function LegendPositionChip({ store }: { store: OrgChartStore }): React.R
     const onClickOutside = (e: MouseEvent): void => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
     document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
+    document.addEventListener('keydown', onEscape)
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside)
+      document.removeEventListener('keydown', onEscape)
+    }
   }, [open])
-
-  // Hide chip when there are no secondary connections — legend wouldn't render anyway
-  if (store.connections.length === 0) return null
 
   const current = store.legend.position
 
@@ -42,16 +46,44 @@ export function LegendPositionChip({ store }: { store: OrgChartStore }): React.R
         data-testid="legend-position-chip"
         title="Legend position"
       >
+        {store.legend.visible ? <Eye size={12} /> : <EyeOff size={12} />}
         <span>Legend</span>
         <span className="text-white/40">·</span>
-        <span>{POSITION_LABELS[current]}</span>
+        <span>{store.legend.visible ? POSITION_LABELS[current] : 'Hidden'}</span>
         <ChevronDown size={12} className="text-white/40" />
       </button>
       {open && (
         <div
-          className="absolute top-full left-0 mt-1 z-30 p-2 bg-dark-elevated/95 backdrop-blur-md border border-white/[0.1] rounded-lg shadow-xl"
+          className="absolute top-full right-0 mt-1 z-30 p-3 bg-dark-elevated/95 backdrop-blur-md border border-white/[0.1] rounded-lg shadow-xl"
           data-testid="legend-position-grid"
         >
+          <label className="flex items-center justify-between gap-4 text-[11px] text-white/80 mb-2">
+            <span>Show legend</span>
+            <input
+              type="checkbox"
+              checked={store.legend.visible}
+              onChange={event => store.updateLegend({ visible: event.target.checked })}
+              className="accent-[#14B8A6]"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-4 text-[11px] text-white/70 mb-2">
+            <span>Relationships</span>
+            <input
+              type="checkbox"
+              checked={store.legend.showRelationships}
+              onChange={event => store.updateLegend({ showRelationships: event.target.checked })}
+              className="accent-[#14B8A6]"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-4 text-[11px] text-white/70 mb-3">
+            <span>Departments</span>
+            <input
+              type="checkbox"
+              checked={store.legend.showDepartments}
+              onChange={event => store.updateLegend({ showDepartments: event.target.checked })}
+              className="accent-[#14B8A6]"
+            />
+          </label>
           <div className="grid grid-cols-2 gap-1" style={{ width: 120 }}>
             {POSITION_GRID.flat().map(pos => (
               <button

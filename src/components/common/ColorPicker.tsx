@@ -1,4 +1,4 @@
-import { useState, memo, useCallback } from 'react'
+import { useState, memo, useCallback, useEffect } from 'react'
 import { Pipette } from 'lucide-react'
 
 interface ColorPickerProps {
@@ -26,6 +26,11 @@ export const ColorPicker = memo(function ColorPicker({
   recentColors,
 }: ColorPickerProps) {
   const [showHex, setShowHex] = useState(false)
+  const [hexValue, setHexValue] = useState(value)
+
+  useEffect(() => {
+    setHexValue(value)
+  }, [value])
 
   const pickEyeDropper = useCallback(async () => {
     if (!hasEyeDropper) return
@@ -120,11 +125,18 @@ export const ColorPicker = memo(function ColorPicker({
       {showHex && (
         <input
           type="text"
-          value={value}
+          value={hexValue}
           onChange={(e) => {
             const v = e.target.value
-            if (HEX_PATTERN.test(v)) onChange(v)
+            if (!HEX_PATTERN.test(v)) return
+            setHexValue(v)
+            if (v.length === 7) onChange(v)
           }}
+          onBlur={() => setHexValue(value)}
+          onKeyDown={event => {
+            if (event.key === 'Enter') event.currentTarget.blur()
+          }}
+          aria-label="Hex color"
           className="w-full px-2 py-1 text-xs rounded-md focus:outline-none focus:border-[#14B8A6]/40"
           style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
           placeholder="#000000"
