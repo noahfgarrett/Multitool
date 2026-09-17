@@ -15,6 +15,13 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       ...(buildMode.singleFile ? [viteSingleFile()] : []),
+      ...(mode === 'pages' ? [{
+        name: 'github-pages-static-assets',
+        generateBundle() {
+          // Jekyll otherwise drops generated chunks whose names start with an underscore.
+          this.emitFile({ type: 'asset', fileName: '.nojekyll', source: '' })
+        },
+      } satisfies import('vite').Plugin] : []),
     ],
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),

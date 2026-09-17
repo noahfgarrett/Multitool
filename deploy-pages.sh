@@ -16,6 +16,7 @@ mkdir "$DEPLOY_DIR"
 
 # Copy the built HTML as index.html (GitHub Pages serves index.html by default)
 cp dist/Multitool.html "$DEPLOY_DIR/index.html"
+touch "$DEPLOY_DIR/.nojekyll"
 
 # Inject PWA tags into <head>
 # Using a temp file approach for reliable multi-line sed on macOS
