@@ -1486,11 +1486,13 @@ test.describe('4F: Properties Bar & Status Bar Per Tool', () => {
     await expect(statusText).toContainText(/Click to select|Ctrl\+A/i)
   })
 
-  test('4F-14 status bar shows "Click and drag to draw" for drawing tools', async ({ page }) => {
+  test('4F-14 status bar shows modifier hints for drawing tools', async ({ page }) => {
     await selectTool(page, 'Rectangle (R)')
     const statusText = page.locator('span.truncate').last()
-    // Rectangle shows "Shift for perfect shapes"
-    await expect(statusText).toContainText(/Shift for perfect|shapes|scroll zoom/i)
+    // Rectangle/circle show the Shift/Alt modifier hint
+    await expect(statusText).toContainText('Shift = constrain, Alt = from center')
+    await selectTool(page, 'Line (L)')
+    await expect(statusText).toContainText('Shift to snap angles')
   })
 
   test('4F-15 status bar shows appropriate hint for each tool', async ({ page }) => {
