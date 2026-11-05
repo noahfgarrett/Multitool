@@ -3,8 +3,9 @@ import { navigateToTool } from '../../helpers/navigation'
 import {
   uploadPDFAndWait, selectTool, drawOnCanvas, dragOnCanvas, clickCanvasAt,
   doubleClickCanvasAt, getAnnotationCount, createAnnotation, selectAnnotationAt,
-  moveAnnotation, waitForSessionSave, getSessionData, clearSessionData, screenshotCanvas,
+  moveAnnotation, waitForSessionSave, getSessionData, clearSessionData,
 } from '../../helpers/pdf-annotate'
+import { annotationLayerHash, paintedPixelCount } from '../../helpers/pdf-annotate-b'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -47,8 +48,8 @@ test.describe('Z-Order — Drawing Order', () => {
     await createAnnotation(page, 'rectangle', { x: 130, y: 120, w: 150, h: 100 })
     await createAnnotation(page, 'rectangle', { x: 160, y: 140, w: 150, h: 100 })
     expect(await getAnnotationCount(page)).toBe(3)
-    const screenshot = await screenshotCanvas(page)
-    expect(screenshot.byteLength).toBeGreaterThan(0)
+    // The shapes were painted onto the annotation layer
+    expect(await paintedPixelCount(page, 'ann')).toBeGreaterThan(0)
   })
 
   test('overlapping annotations produce different canvas than non-overlapping', async ({ page }) => {
@@ -56,7 +57,7 @@ test.describe('Z-Order — Drawing Order', () => {
     // Draw two non-overlapping rectangles
     await createAnnotation(page, 'rectangle', { x: 50, y: 50, w: 80, h: 60 })
     await createAnnotation(page, 'rectangle', { x: 300, y: 50, w: 80, h: 60 })
-    const nonOverlap = await screenshotCanvas(page)
+    const nonOverlap = await annotationLayerHash(page)
     // Undo both
     await page.keyboard.press('Control+z')
     await page.keyboard.press('Control+z')
@@ -64,8 +65,8 @@ test.describe('Z-Order — Drawing Order', () => {
     // Draw two overlapping rectangles
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 100, h: 80 })
     await createAnnotation(page, 'rectangle', { x: 130, y: 120, w: 100, h: 80 })
-    const overlap = await screenshotCanvas(page)
-    expect(Buffer.compare(nonOverlap, overlap)).not.toBe(0)
+    const overlap = await annotationLayerHash(page)
+    expect(overlap).not.toBe(nonOverlap)
   })
 })
 
@@ -107,7 +108,7 @@ test.describe('Z-Order — Bring to Front', () => {
     await uploadPDFAndWait(page)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 150, h: 100 })
     await createAnnotation(page, 'circle', { x: 130, y: 120, w: 120, h: 80 })
-    const before = await screenshotCanvas(page)
+    const before = await annotationLayerHash(page)
     // Select rectangle and bring to front
     await selectAnnotationAt(page, 100, 140)
     await page.keyboard.press('Control+]')
@@ -115,23 +116,23 @@ test.describe('Z-Order — Bring to Front', () => {
     // Deselect to see clean render
     await page.keyboard.press('Escape')
     await page.waitForTimeout(200)
-    const after = await screenshotCanvas(page)
-    expect(Buffer.compare(before, after)).not.toBe(0)
+    const after = await annotationLayerHash(page)
+    expect(after).not.toBe(before)
   })
 
   test('send to back changes canvas rendering', async ({ page }) => {
     await uploadPDFAndWait(page)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 150, h: 100 })
     await createAnnotation(page, 'circle', { x: 130, y: 120, w: 120, h: 80 })
-    const before = await screenshotCanvas(page)
+    const before = await annotationLayerHash(page)
     // Select circle and send to back
     await selectAnnotationAt(page, 230, 150)
     await page.keyboard.press('Control+[')
     await page.waitForTimeout(300)
     await page.keyboard.press('Escape')
     await page.waitForTimeout(200)
-    const after = await screenshotCanvas(page)
-    expect(Buffer.compare(before, after)).not.toBe(0)
+    const after = await annotationLayerHash(page)
+    expect(after).not.toBe(before)
   })
 
   test('bring to front on already-top annotation is no-op', async ({ page }) => {
@@ -140,11 +141,11 @@ test.describe('Z-Order — Bring to Front', () => {
     await createAnnotation(page, 'circle', { x: 130, y: 120, w: 100, h: 60 })
     // Select the circle (already on top)
     await selectAnnotationAt(page, 230, 150)
-    const before = await screenshotCanvas(page)
+    const before = await annotationLayerHash(page)
     await page.keyboard.press('Control+]')
     await page.waitForTimeout(300)
-    const after = await screenshotCanvas(page)
-    expect(Buffer.compare(before, after)).toBe(0)
+    const after = await annotationLayerHash(page)
+    expect(after).toBe(before)
   })
 
   test('send to back on already-bottom annotation is no-op', async ({ page }) => {
@@ -153,11 +154,11 @@ test.describe('Z-Order — Bring to Front', () => {
     await createAnnotation(page, 'circle', { x: 130, y: 120, w: 100, h: 60 })
     // Select the rectangle (already at bottom)
     await selectAnnotationAt(page, 100, 100)
-    const before = await screenshotCanvas(page)
+    const before = await annotationLayerHash(page)
     await page.keyboard.press('Control+[')
     await page.waitForTimeout(300)
-    const after = await screenshotCanvas(page)
-    expect(Buffer.compare(before, after)).toBe(0)
+    const after = await annotationLayerHash(page)
+    expect(after).toBe(before)
   })
 
   test('z-order change without selection does nothing', async ({ page }) => {
@@ -168,11 +169,11 @@ test.describe('Z-Order — Bring to Front', () => {
     // Click empty space to ensure nothing selected
     await clickCanvasAt(page, 400, 400)
     await page.waitForTimeout(200)
-    const before = await screenshotCanvas(page)
+    const before = await annotationLayerHash(page)
     await page.keyboard.press('Control+]')
     await page.waitForTimeout(200)
-    const after = await screenshotCanvas(page)
-    expect(Buffer.compare(before, after)).toBe(0)
+    const after = await annotationLayerHash(page)
+    expect(after).toBe(before)
   })
 })
 
@@ -242,8 +243,8 @@ test.describe('Z-Order — Visual Overlap', () => {
       await createAnnotation(page, 'rectangle', { x: 80 + i * 20, y: 80 + i * 20, w: 100, h: 80 })
     }
     expect(await getAnnotationCount(page)).toBe(5)
-    const screenshot = await screenshotCanvas(page)
-    expect(screenshot.byteLength).toBeGreaterThan(0)
+    // The shapes were painted onto the annotation layer
+    expect(await paintedPixelCount(page, 'ann')).toBeGreaterThan(0)
   })
 
   test('different shape types can overlap without visual issues', async ({ page }) => {
@@ -252,8 +253,8 @@ test.describe('Z-Order — Visual Overlap', () => {
     await createAnnotation(page, 'circle', { x: 120, y: 110, w: 120, h: 80 })
     await createAnnotation(page, 'line', { x: 100, y: 150, w: 150, h: 0 })
     expect(await getAnnotationCount(page)).toBe(3)
-    const screenshot = await screenshotCanvas(page)
-    expect(screenshot.byteLength).toBeGreaterThan(0)
+    // The shapes were painted onto the annotation layer
+    expect(await paintedPixelCount(page, 'ann')).toBeGreaterThan(0)
   })
 
   test('pencil and shape annotations overlap correctly', async ({ page }) => {
@@ -261,8 +262,8 @@ test.describe('Z-Order — Visual Overlap', () => {
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 150, h: 100 })
     await createAnnotation(page, 'pencil', { x: 80, y: 80, w: 200, h: 150 })
     expect(await getAnnotationCount(page)).toBe(2)
-    const screenshot = await screenshotCanvas(page)
-    expect(screenshot.byteLength).toBeGreaterThan(0)
+    // The shapes were painted onto the annotation layer
+    expect(await paintedPixelCount(page, 'ann')).toBeGreaterThan(0)
   })
 
   test('text and shape annotations overlap correctly', async ({ page }) => {
@@ -270,22 +271,22 @@ test.describe('Z-Order — Visual Overlap', () => {
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 200, h: 100 })
     await createAnnotation(page, 'text', { x: 110, y: 110, w: 180, h: 40 })
     expect(await getAnnotationCount(page)).toBe(2)
-    const screenshot = await screenshotCanvas(page)
-    expect(screenshot.byteLength).toBeGreaterThan(0)
+    // The shapes were painted onto the annotation layer
+    expect(await paintedPixelCount(page, 'ann')).toBeGreaterThan(0)
   })
 
   test('deleting front annotation reveals back annotation', async ({ page }) => {
     await uploadPDFAndWait(page)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 150, h: 100 })
     await createAnnotation(page, 'rectangle', { x: 110, y: 110, w: 150, h: 100 })
-    const withBoth = await screenshotCanvas(page)
+    const withBoth = await annotationLayerHash(page)
     // Delete the top (second) rectangle
     await selectAnnotationAt(page, 110, 110)
     await page.keyboard.press('Delete')
     await page.waitForTimeout(200)
     expect(await getAnnotationCount(page)).toBe(1)
-    const withOne = await screenshotCanvas(page)
-    expect(Buffer.compare(withBoth, withOne)).not.toBe(0)
+    const withOne = await annotationLayerHash(page)
+    expect(withOne).not.toBe(withBoth)
   })
 
   test('arrow and rectangle overlap renders correctly', async ({ page }) => {
@@ -293,8 +294,8 @@ test.describe('Z-Order — Visual Overlap', () => {
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 200, h: 150 })
     await createAnnotation(page, 'arrow', { x: 80, y: 175, w: 250, h: 0 })
     expect(await getAnnotationCount(page)).toBe(2)
-    const screenshot = await screenshotCanvas(page)
-    expect(screenshot.byteLength).toBeGreaterThan(0)
+    // The shapes were painted onto the annotation layer
+    expect(await paintedPixelCount(page, 'ann')).toBeGreaterThan(0)
   })
 
   test('callout overlapping rectangle renders correctly', async ({ page }) => {
@@ -302,8 +303,8 @@ test.describe('Z-Order — Visual Overlap', () => {
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 200, h: 150 })
     await createAnnotation(page, 'callout', { x: 120, y: 120, w: 160, h: 80 })
     expect(await getAnnotationCount(page)).toBe(2)
-    const screenshot = await screenshotCanvas(page)
-    expect(screenshot.byteLength).toBeGreaterThan(0)
+    // The shapes were painted onto the annotation layer
+    expect(await paintedPixelCount(page, 'ann')).toBeGreaterThan(0)
   })
 
   test('bring to front then undo then redo preserves correct order', async ({ page }) => {
