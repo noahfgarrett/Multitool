@@ -147,4 +147,25 @@ test.describe('Dashboard Tool', () => {
     // The file should appear in the import list with its name
     await expect(page.getByText('sample.csv')).toBeVisible({ timeout: 10000 })
   })
+
+  test('adding a bar chart from imported CSV uses the title typed in the palette', async ({ page }) => {
+    await expect(page.getByText('No dashboards yet')).toBeVisible({ timeout: 10000 })
+    await page.getByRole('button', { name: /Create Dashboard/i }).click()
+    await page.locator('input[type="file"]').last().setInputFiles(fixturePath('sample.csv'))
+    await page.getByRole('button', { name: /Import 1 file/ }).click()
+    await expect(page.getByText(/sample\.csv · 5 rows/)).toBeVisible({ timeout: 5000 })
+
+    await page.locator('main').getByRole('button', { name: 'Add Widget', exact: true }).first().click()
+    await page.getByRole('button', { name: 'Bar Chart', exact: true }).click()
+    const selects = page.locator('main select')
+    await selects.nth(0).selectOption({ index: 1 })
+    await selects.nth(1).selectOption({ label: 'Department (string)' })
+    await selects.nth(2).selectOption({ label: 'Salary (number)' })
+    await page.getByPlaceholder('My Bar Chart').fill('Salary by department')
+    await page.locator('main').getByRole('button', { name: 'Add Widget', exact: true }).last().click()
+
+    await expect(page.getByRole('heading', { name: 'Salary by department' })).toBeVisible({ timeout: 5000 })
+    // One bar per department (Engineering, Marketing, Sales)
+    await expect(page.locator('.recharts-bar-rectangle')).toHaveCount(3)
+  })
 })

@@ -91,7 +91,7 @@ export function WidgetPalette({ dashboardId, store, onClose }: WidgetPaletteProp
         showTitle: selectedType !== 'divider',
         prefix: textContent || (selectedType === 'text' ? 'Enter your text here...' : ''),
       }
-      addWidget(dashboardId, selectedWidget.type, config)
+      addWidget(dashboardId, selectedWidget.type, config, undefined, config.title)
       onClose()
       return
     }
@@ -117,7 +117,7 @@ export function WidgetPalette({ dashboardId, store, onClose }: WidgetPaletteProp
       innerRadius: selectedWidget.donut ? 60 : undefined,
     }
 
-    const widgetId = addWidget(dashboardId, selectedWidget.type, config, selectedDataSource)
+    const widgetId = addWidget(dashboardId, selectedWidget.type, config, selectedDataSource, config.title)
 
     // Apply filter conditions from table selector
     if (widgetId && filterConditions.length > 0) {
