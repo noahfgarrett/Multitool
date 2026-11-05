@@ -3,8 +3,31 @@ import { navigateToTool } from '../../helpers/navigation'
 import {
   uploadPDFAndWait, selectTool, drawOnCanvas, dragOnCanvas, clickCanvasAt,
   doubleClickCanvasAt, getAnnotationCount, createAnnotation, selectAnnotationAt,
-  moveAnnotation, waitForSessionSave, getSessionData, clearSessionData, screenshotCanvas,
+  moveAnnotation, waitForSessionSave, getSessionData, clearSessionData,
 } from '../../helpers/pdf-annotate'
+import { chooseZoomPreset, settledLayerHash, pageBoxSize, scrollViewerToOrigin } from '../../helpers/pdf-annotate-b'
+
+const CW = 'button[title="Rotate CW"]'
+const CCW = 'button[title="Rotate CCW"]'
+
+/** "WxH" -> "HxW" */
+const swap = (size: string) => size.split('x').reverse().join('x')
+/** Dimensions prefix of a layer hash ("WxH:digest" -> "WxH") */
+const dims = (hash: string) => hash.split(':')[0]
+
+/** Rotation of the current page as shown in the status bar ("90°"), 0 when hidden */
+async function statusRotation(page: import('@playwright/test').Page): Promise<number> {
+  const el = page.locator('span').filter({ hasText: /^\d+°$/ })
+  if (await el.count() === 0) return 0
+  return parseInt((await el.first().textContent()) || '0', 10)
+}
+
+/** Click a rotate button and wait for the page box to take the expected size */
+async function rotate(page: import('@playwright/test').Page, btn: string) {
+  const before = await pageBoxSize(page)
+  await page.locator(btn).click()
+  await expect.poll(() => pageBoxSize(page)).toBe(swap(before))
+}
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -26,35 +49,35 @@ test.describe('Rotation — Buttons', () => {
 
   test('rotate CW button rotates page 90 degrees', async ({ page }) => {
     await uploadPDFAndWait(page)
-    const before = await screenshotCanvas(page)
-    await page.locator('button[title="Rotate CW"]').click()
-    await page.waitForTimeout(500)
-    const after = await screenshotCanvas(page)
-    expect(Buffer.compare(before, after)).not.toBe(0)
+    const before = await settledLayerHash(page, 'pdf')
+    await rotate(page, CW)
+    expect(await statusRotation(page)).toBe(90)
+    const after = await settledLayerHash(page, 'pdf')
+    expect(dims(after)).toBe(swap(dims(before)))
   })
 
   test('rotate CCW button rotates page -90 degrees', async ({ page }) => {
     await uploadPDFAndWait(page)
-    const before = await screenshotCanvas(page)
-    await page.locator('button[title="Rotate CCW"]').click()
-    await page.waitForTimeout(500)
-    const after = await screenshotCanvas(page)
-    expect(Buffer.compare(before, after)).not.toBe(0)
+    const before = await settledLayerHash(page, 'pdf')
+    await rotate(page, CCW)
+    expect(await statusRotation(page)).toBe(270)
+    const after = await settledLayerHash(page, 'pdf')
+    expect(dims(after)).toBe(swap(dims(before)))
   })
 
   test('CW and CCW rotations produce different results', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await page.locator('button[title="Rotate CW"]').click()
-    await page.waitForTimeout(500)
-    const cwScreenshot = await screenshotCanvas(page)
+    await rotate(page, CW)
+    const cwRender = await settledLayerHash(page, 'pdf')
     // Undo and rotate CCW instead
-    await page.locator('button[title="Rotate CCW"]').click()
-    await page.waitForTimeout(500)
+    await rotate(page, CCW)
     // Should be back to original, then rotate CCW
-    await page.locator('button[title="Rotate CCW"]').click()
-    await page.waitForTimeout(500)
-    const ccwScreenshot = await screenshotCanvas(page)
-    expect(Buffer.compare(cwScreenshot, ccwScreenshot)).not.toBe(0)
+    await rotate(page, CCW)
+    expect(await statusRotation(page)).toBe(270)
+    const ccwRender = await settledLayerHash(page, 'pdf')
+    // Same (swapped) size, different picture
+    expect(dims(ccwRender)).toBe(dims(cwRender))
+    expect(ccwRender).not.toBe(cwRender)
   })
 })
 
@@ -63,64 +86,54 @@ test.describe('Rotation — Buttons', () => {
 test.describe('Rotation — Full Circle', () => {
   test('four CW rotations return to original orientation', async ({ page }) => {
     await uploadPDFAndWait(page)
-    const original = await screenshotCanvas(page)
-    for (let i = 0; i < 4; i++) {
-      await page.locator('button[title="Rotate CW"]').click()
-      await page.waitForTimeout(500)
-    }
-    const after360 = await screenshotCanvas(page)
-    expect(Buffer.compare(original, after360)).toBe(0)
+    const original = await settledLayerHash(page, 'pdf')
+    for (let i = 0; i < 4; i++) await rotate(page, CW)
+    expect(await statusRotation(page)).toBe(0)
+    await expect.poll(() => settledLayerHash(page, 'pdf')).toBe(original)
   })
 
   test('four CCW rotations return to original orientation', async ({ page }) => {
     await uploadPDFAndWait(page)
-    const original = await screenshotCanvas(page)
-    for (let i = 0; i < 4; i++) {
-      await page.locator('button[title="Rotate CCW"]').click()
-      await page.waitForTimeout(500)
-    }
-    const after360 = await screenshotCanvas(page)
-    expect(Buffer.compare(original, after360)).toBe(0)
+    const original = await settledLayerHash(page, 'pdf')
+    for (let i = 0; i < 4; i++) await rotate(page, CCW)
+    expect(await statusRotation(page)).toBe(0)
+    await expect.poll(() => settledLayerHash(page, 'pdf')).toBe(original)
   })
 
   test('one CW + one CCW returns to original', async ({ page }) => {
     await uploadPDFAndWait(page)
-    const original = await screenshotCanvas(page)
-    await page.locator('button[title="Rotate CW"]').click()
-    await page.waitForTimeout(500)
-    await page.locator('button[title="Rotate CCW"]').click()
-    await page.waitForTimeout(500)
-    const after = await screenshotCanvas(page)
-    expect(Buffer.compare(original, after)).toBe(0)
+    const original = await settledLayerHash(page, 'pdf')
+    await rotate(page, CW)
+    await rotate(page, CCW)
+    expect(await statusRotation(page)).toBe(0)
+    await expect.poll(() => settledLayerHash(page, 'pdf')).toBe(original)
   })
 
   test('two CW rotations give 180 degrees', async ({ page }) => {
     await uploadPDFAndWait(page)
-    const original = await screenshotCanvas(page)
-    await page.locator('button[title="Rotate CW"]').click()
-    await page.waitForTimeout(500)
-    await page.locator('button[title="Rotate CW"]').click()
-    await page.waitForTimeout(500)
-    const at180 = await screenshotCanvas(page)
-    expect(Buffer.compare(original, at180)).not.toBe(0)
+    const original = await settledLayerHash(page, 'pdf')
+    await rotate(page, CW)
+    await rotate(page, CW)
+    expect(await statusRotation(page)).toBe(180)
+    // Upside-down render: same size, different picture
+    await expect.poll(async () => {
+      const at180 = await settledLayerHash(page, 'pdf')
+      return dims(at180) === dims(original) && at180 !== original
+    }).toBe(true)
   })
 
   test('three CW rotations are equivalent to one CCW', async ({ page }) => {
     await uploadPDFAndWait(page)
     // Rotate CW three times
-    for (let i = 0; i < 3; i++) {
-      await page.locator('button[title="Rotate CW"]').click()
-      await page.waitForTimeout(500)
-    }
-    const threeCW = await screenshotCanvas(page)
+    for (let i = 0; i < 3; i++) await rotate(page, CW)
+    expect(await statusRotation(page)).toBe(270)
+    const threeCW = await settledLayerHash(page, 'pdf')
     // Reset back to original
-    await page.locator('button[title="Rotate CW"]').click()
-    await page.waitForTimeout(500)
+    await rotate(page, CW)
     // Now rotate CCW once
-    await page.locator('button[title="Rotate CCW"]').click()
-    await page.waitForTimeout(500)
-    const oneCCW = await screenshotCanvas(page)
-    expect(Buffer.compare(threeCW, oneCCW)).toBe(0)
+    await rotate(page, CCW)
+    expect(await statusRotation(page)).toBe(270)
+    await expect.poll(() => settledLayerHash(page, 'pdf')).toBe(threeCW)
   })
 })
 
@@ -181,11 +194,9 @@ test.describe('Rotation — Annotations Persist', () => {
     const annsAfter = afterSession?.annotations?.[1] || afterSession?.annotations?.['1'] || []
     const ptsAfter = annsAfter[0]?.points
     // Points should have been transformed (coordinates change after rotation)
-    if (ptsBefore && ptsAfter && ptsBefore.length > 0 && ptsAfter.length > 0) {
-      const sameX = ptsBefore[0].x === ptsAfter[0].x
-      const sameY = ptsBefore[0].y === ptsAfter[0].y
-      expect(sameX && sameY).toBe(false)
-    }
+    expect(ptsBefore?.length).toBeGreaterThan(0)
+    expect(ptsAfter?.length).toBe(ptsBefore.length)
+    expect(ptsAfter[0]).not.toEqual(ptsBefore[0])
   })
 
   test('drawing on rotated page works', async ({ page }) => {
@@ -219,11 +230,11 @@ test.describe('Rotation — Annotations Persist', () => {
 
   test('canvas re-renders after rotation', async ({ page }) => {
     await uploadPDFAndWait(page)
-    const before = await screenshotCanvas(page)
-    await page.locator('button[title="Rotate CW"]').click()
-    await page.waitForTimeout(500)
-    const after = await screenshotCanvas(page)
-    expect(Buffer.compare(before, after)).not.toBe(0)
+    const before = await settledLayerHash(page, 'pdf')
+    await rotate(page, CW)
+    const after = await settledLayerHash(page, 'pdf')
+    expect(dims(after)).toBe(swap(dims(before)))
+    expect(after).not.toBe(before)
   })
 })
 
@@ -282,35 +293,23 @@ test.describe('Rotation — Session Persistence', () => {
 test.describe('Rotation — With Zoom', () => {
   test('rotation at 50% zoom works', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("50%")').click()
-    await page.waitForTimeout(300)
-    const before = await screenshotCanvas(page)
-    await page.locator('button[title="Rotate CW"]').click()
-    await page.waitForTimeout(500)
-    const after = await screenshotCanvas(page)
-    expect(Buffer.compare(before, after)).not.toBe(0)
+    await chooseZoomPreset(page, '50%')
+    await rotate(page, CW)
+    expect(await statusRotation(page)).toBe(90)
+    await expect(page.locator('button[title="Zoom presets"]')).toHaveText('50%')
   })
 
   test('rotation at 200% zoom works', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("200%")').click()
-    await page.waitForTimeout(300)
-    const before = await screenshotCanvas(page)
-    await page.locator('button[title="Rotate CW"]').click()
-    await page.waitForTimeout(500)
-    const after = await screenshotCanvas(page)
-    expect(Buffer.compare(before, after)).not.toBe(0)
+    await chooseZoomPreset(page, '200%')
+    await rotate(page, CW)
+    expect(await statusRotation(page)).toBe(90)
+    await expect(page.locator('button[title="Zoom presets"]')).toHaveText('200%')
   })
 
   test('zoom level preserved after rotation', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("150%")').click()
+    await chooseZoomPreset(page, '150%')
     await page.waitForTimeout(300)
     await page.locator('button[title="Rotate CW"]').click()
     await page.waitForTimeout(500)
@@ -325,10 +324,10 @@ test.describe('Rotation — With Zoom', () => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Rotate CW"]').click()
     await page.waitForTimeout(500)
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("150%")').click()
+    await chooseZoomPreset(page, '150%')
     await page.waitForTimeout(300)
+    // Zooming keeps the viewport centre; bring the page's top-left (where we draw) into view
+    await scrollViewerToOrigin(page)
     await createAnnotation(page, 'rectangle', { x: 80, y: 80, w: 100, h: 60 })
     expect(await getAnnotationCount(page)).toBe(1)
   })
@@ -339,17 +338,13 @@ test.describe('Rotation — With Zoom', () => {
 test.describe('Rotation — Multiple Operations', () => {
   test('alternating CW and CCW rotations work', async ({ page }) => {
     await uploadPDFAndWait(page)
-    const original = await screenshotCanvas(page)
-    await page.locator('button[title="Rotate CW"]').click()
-    await page.waitForTimeout(500)
-    await page.locator('button[title="Rotate CCW"]').click()
-    await page.waitForTimeout(500)
-    await page.locator('button[title="Rotate CW"]').click()
-    await page.waitForTimeout(500)
-    await page.locator('button[title="Rotate CCW"]').click()
-    await page.waitForTimeout(500)
-    const after = await screenshotCanvas(page)
-    expect(Buffer.compare(original, after)).toBe(0)
+    const original = await settledLayerHash(page, 'pdf')
+    await rotate(page, CW)
+    await rotate(page, CCW)
+    await rotate(page, CW)
+    await rotate(page, CCW)
+    expect(await statusRotation(page)).toBe(0)
+    await expect.poll(() => settledLayerHash(page, 'pdf')).toBe(original)
   })
 
   test('rotation does not corrupt annotation data', async ({ page }) => {
@@ -392,10 +387,7 @@ test.describe('Rotation — Multiple Operations', () => {
     const measAfter = afterSession?.measurements?.[1] || afterSession?.measurements?.['1'] || []
     expect(measAfter.length).toBe(1)
     // Points should be transformed
-    if (measBefore[0] && measAfter[0]) {
-      const sameStart = measBefore[0].startPt.x === measAfter[0].startPt.x && measBefore[0].startPt.y === measAfter[0].startPt.y
-      expect(sameStart).toBe(false)
-    }
+    expect(measAfter[0].startPt).not.toEqual(measBefore[0].startPt)
   })
 
   test('rapid rotation sequence does not crash', async ({ page }) => {
@@ -446,28 +438,18 @@ test.describe('Rotation — Multiple Operations', () => {
 
   test('rotation at 25% zoom works', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("25%")').click()
-    await page.waitForTimeout(300)
-    const before = await screenshotCanvas(page)
-    await page.locator('button[title="Rotate CW"]').click()
-    await page.waitForTimeout(500)
-    const after = await screenshotCanvas(page)
-    expect(Buffer.compare(before, after)).not.toBe(0)
+    await chooseZoomPreset(page, '25%')
+    await rotate(page, CW)
+    expect(await statusRotation(page)).toBe(90)
+    await expect(page.locator('button[title="Zoom presets"]')).toHaveText('25%')
   })
 
   test('rotation at 300% zoom works', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("300%")').click()
-    await page.waitForTimeout(500)
-    const before = await screenshotCanvas(page)
-    await page.locator('button[title="Rotate CW"]').click()
-    await page.waitForTimeout(500)
-    const after = await screenshotCanvas(page)
-    expect(Buffer.compare(before, after)).not.toBe(0)
+    await chooseZoomPreset(page, '300%')
+    await rotate(page, CW)
+    expect(await statusRotation(page)).toBe(90)
+    await expect(page.locator('button[title="Zoom presets"]')).toHaveText('300%')
   })
 
   test('two CCW rotations give 180 degrees', async ({ page }) => {
