@@ -477,7 +477,7 @@ export const BACKGROUND_TEMPLATES: BackgroundTemplate[] = [
   { id: 'radial-purple', name: 'Radial Purple', category: 'gradient', background: { type: 'gradient', color1: '#7c3aed', color2: '#1e1b4b', gradientType: 'radial' }, preview: 'radial-gradient(circle, #7c3aed, #1e1b4b)' },
   { id: 'cosmic', name: 'Cosmic', category: 'gradient', background: { type: 'gradient', color1: '#1e1b4b', color2: '#4c1d95', color3: '#be185d', angle: 135, gradientType: 'linear' }, preview: 'linear-gradient(135deg, #1e1b4b, #4c1d95, #be185d)' },
   { id: 'ocean-dark', name: 'Ocean Dark', category: 'gradient', background: { type: 'gradient', color1: '#0c4a6e', color2: '#0f172a', angle: 180, gradientType: 'linear' }, preview: 'linear-gradient(180deg, #0c4a6e, #0f172a)' },
-  { id: 'lotus-gradient', name: 'Lotus', category: 'gradient', background: { type: 'gradient', color1: '#00171F', color2: '#003459', angle: 180, gradientType: 'linear' }, preview: 'linear-gradient(180deg, #00171F, #003459)' },
+  { id: 'navy-gradient', name: 'Navy', category: 'gradient', background: { type: 'gradient', color1: '#00171F', color2: '#003459', angle: 180, gradientType: 'linear' }, preview: 'linear-gradient(180deg, #00171F, #003459)' },
 
   // Vibrant darks
   { id: 'neon-glow', name: 'Neon Glow', category: 'vibrant', background: { type: 'gradient', color1: '#312e81', color2: '#581c87', color3: '#1e1b4b', angle: 45, gradientType: 'linear' }, preview: 'linear-gradient(45deg, #312e81, #581c87, #1e1b4b)' },

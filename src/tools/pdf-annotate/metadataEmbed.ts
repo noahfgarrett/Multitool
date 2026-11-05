@@ -3,9 +3,11 @@ import { PDFDocument, PDFName, PDFString, PDFDict } from 'pdf-lib'
 import type { EmbeddedAnnotationData } from './types.ts'
 
 const METADATA_KEY = 'MultitoolAnnotations'
-/** Legacy key for backward compatibility with PDFs exported during the Apex era */
+/**
+ * Keys written by earlier versions of the app. They are still read so that
+ * annotated PDFs exported before the rename can be reopened and edited.
+ */
 const LEGACY_APEX_KEY = 'ApexAnnotations'
-/** Legacy key for backward compatibility with PDFs exported before the Apex rebrand */
 const LEGACY_METADATA_KEY = 'LotusWorksAnnotations'
 const GZIP_MAGIC = [0x1f, 0x8b] as const
 
@@ -158,7 +160,7 @@ export async function extractAnnotationData(
     const doc = await PDFDocument.load(pdfBytes)
     const infoDict = getInfoDict(doc)
 
-    // Try new key first, then Apex-era key, then original LotusWorks key
+    // Try the current key first, then the two legacy keys
     let entry = infoDict.lookup(PDFName.of(METADATA_KEY))
     if (entry === undefined || !(entry instanceof PDFString)) {
       entry = infoDict.lookup(PDFName.of(LEGACY_APEX_KEY))
@@ -198,7 +200,7 @@ export async function hasEmbeddedAnnotations(
   try {
     const doc = await PDFDocument.load(pdfBytes)
     const infoDict = getInfoDict(doc)
-    // Check new key first, then Apex-era key, then original LotusWorks key
+    // Check the current key first, then the two legacy keys
     const entry = infoDict.lookup(PDFName.of(METADATA_KEY))
     if (entry instanceof PDFString) return true
     const apexEntry = infoDict.lookup(PDFName.of(LEGACY_APEX_KEY))

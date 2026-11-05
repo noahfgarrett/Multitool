@@ -1,7 +1,7 @@
 /**
  * One-time migration of localStorage/sessionStorage keys from
- * the old "lwt-" prefix (LotusWorks Toolkit) and the intermediate
- * "apex-" prefix to the current "mt-" prefix (Multitool).
+ * the two legacy prefixes ("lwt-" and "apex-") used by earlier versions
+ * of the app to the current "mt-" prefix.
  *
  * Does NOT delete old keys so that users who revert to an older version
  * still have their data intact during the transition period.
@@ -54,10 +54,10 @@ function copyKey(storage: Storage, oldKey: string, newKey: string): void {
 }
 
 /**
- * Migrate all lwt-* and apex-* localStorage and sessionStorage keys to mt-* equivalents.
+ * Migrate all legacy lwt-* and apex-* localStorage and sessionStorage keys to mt-* equivalents.
  * Safe to call multiple times — the migration flag prevents redundant work.
  */
-export function migrateFromLotusWorks(): void {
+export function migrateLegacyStorage(): void {
   try {
     if (localStorage.getItem(MIGRATION_FLAG) === 'true') return
   } catch {

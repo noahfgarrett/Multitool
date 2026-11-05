@@ -307,7 +307,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     type: 'major',
     stats: { features: 8, tools: 15 },
     notes: `### Multitool — A New Identity
-- Rebranded from LotusWorks Toolkit to Multitool
+- Renamed to Multitool
 - 4 new themes (Night Sky, Blueprint, Clean Dark, Light)
 - Global settings and user profile
 - Org Chart multi-root sections

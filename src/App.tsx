@@ -9,7 +9,7 @@ import { UserProfileModal } from '@/components/common/UserProfileModal.tsx'
 import { SettingsModal } from '@/components/common/SettingsModal.tsx'
 import { checkForUpdate } from '@/utils/updateChecker.ts'
 import { isTauriRuntime, shouldCheckHtmlUpdates } from '@/utils/runtimeEnvironment.ts'
-import { migrateFromLotusWorks } from '@/utils/migration.ts'
+import { migrateLegacyStorage } from '@/utils/migration.ts'
 import { getUserProfile, saveUserProfile, hasUserProfile } from '@/utils/userProfile.ts'
 import type { UpdateInfo } from '@/utils/updateChecker.ts'
 import type { UserProfile } from '@/utils/userProfile.ts'
@@ -57,8 +57,8 @@ export default function App() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
 
   useEffect(() => {
-    // Migrate localStorage/sessionStorage keys from LotusWorks → Multitool
-    migrateFromLotusWorks()
+    // Copy storage keys written under the app's earlier names to the current mt- prefix
+    migrateLegacyStorage()
 
     // Check for user profile on first launch
     const existing = getUserProfile()
