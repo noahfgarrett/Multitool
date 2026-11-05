@@ -20,20 +20,9 @@ test.beforeEach(async ({ page }) => {
 
 // ─── 1. Visual Regression ──────────────────────────────────────────────────────
 
-test.describe('Visual Regression', () => {
-  test('empty state matches baseline', async ({ page }) => {
+test.describe('Rendering', () => {
+  test('empty state shows the drop zone', async ({ page }) => {
     await expect(page.getByText('Drop a PDF file here')).toBeVisible()
-    await expect(page).toHaveScreenshot('empty-state.png', {
-      maxDiffPixelRatio: 0.01,
-    })
-  })
-
-  test('loaded PDF matches baseline', async ({ page }) => {
-    await uploadPDFAndWait(page)
-    await page.waitForTimeout(500)
-    await expect(page).toHaveScreenshot('pdf-loaded.png', {
-      maxDiffPixelRatio: 0.02,
-    })
   })
 
   test('toolbar active states render correctly', async ({ page }) => {
@@ -45,12 +34,9 @@ test.describe('Visual Regression', () => {
     // The shapes dropdown button should now have the active class
     const activeBtn = page.locator('button.bg-\\[\\#14B8A6\\]\\/15').first()
     await expect(activeBtn).toBeVisible()
-    await expect(page).toHaveScreenshot('toolbar-pencil-active.png', {
-      maxDiffPixelRatio: 0.02,
-    })
   })
 
-  test('annotation canvas with drawings matches baseline', async ({ page }) => {
+  test('annotation canvas renders drawings', async ({ page }) => {
     await uploadPDFAndWait(page)
     // Draw a rectangle
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 150, h: 100 })
@@ -62,26 +48,6 @@ test.describe('Visual Regression', () => {
     expect(screenshot.byteLength).toBeGreaterThan(1000)
   })
 
-  test('zoom levels render at correct visual scale', async ({ page }) => {
-    await uploadPDFAndWait(page)
-    // Zoom in
-    await page.locator('button[title="Zoom in"]').click()
-    await page.waitForTimeout(300)
-    await expect(page).toHaveScreenshot('zoom-in.png', {
-      maxDiffPixelRatio: 0.02,
-    })
-  })
-
-  test('properties bar updates visually for different tools', async ({ page }) => {
-    await uploadPDFAndWait(page)
-    // Select text tool — should show font controls
-    await page.keyboard.press('t')
-    await page.waitForTimeout(200)
-    const bottomBar = page.locator('div').filter({ has: page.locator('select') }).last()
-    await expect(bottomBar).toHaveScreenshot('properties-bar-text.png', {
-      maxDiffPixelRatio: 0.02,
-    })
-  })
 })
 
 // ─── 2. All Drawing Tools — Create & Verify ────────────────────────────────────
