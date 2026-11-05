@@ -12,6 +12,21 @@ test.beforeEach(async ({ page }) => {
   await navigateToTool(page, 'pdf-annotate')
 })
 
+/** Click a preset swatch in the properties-bar colour picker (presets render before the "Recent" row) */
+async function pickSwatch(page: import('@playwright/test').Page, hex: string) {
+  await page.locator(`button[title="${hex}"]`).first().click()
+  await page.waitForTimeout(100)
+}
+
+/** Enter an arbitrary colour through the colour picker's hex field */
+async function typeHexColor(page: import('@playwright/test').Page, hex: string) {
+  await page.getByRole('button', { name: '#', exact: true }).click()
+  const input = page.getByLabel('Hex color')
+  await input.fill(hex)
+  await input.press('Enter')
+  await page.waitForTimeout(100)
+}
+
 // ─── Activation ─────────────────────────────────────────────────────────────
 
 test.describe('Highlighter Tool — Activation', () => {
@@ -34,7 +49,7 @@ test.describe('Highlighter Tool — Activation', () => {
   test('highlight tool shows crosshair cursor on canvas', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Highlight (H)')
-    const canvas = page.locator('canvas').nth(1)
+    const canvas = page.locator('canvas.active-canvas').first()
     await expect(canvas).toHaveCSS('cursor', 'crosshair')
   })
 
@@ -196,12 +211,8 @@ test.describe('Highlighter Tool — Colors and Widths', () => {
   test('changing color before drawing applies to highlight', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Highlight (H)')
-    // Click red color swatch
-    const redSwatch = page.locator('button[title="#FF0000"]')
-    if (await redSwatch.isVisible()) {
-      await redSwatch.click()
-      await page.waitForTimeout(100)
-    }
+    // Pick the pink highlight preset (red is not a highlighter preset)
+    await pickSwatch(page, '#FF69B4')
     await drawOnCanvas(page, [{ x: 100, y: 150 }, { x: 300, y: 155 }])
     await page.waitForTimeout(200)
     await waitForSessionSave(page)
@@ -209,17 +220,13 @@ test.describe('Highlighter Tool — Colors and Widths', () => {
     const anns = Object.values(session.annotations).flat() as Array<{ type: string; color: string }>
     const highlight = anns.find(a => a.type === 'highlighter')
     expect(highlight).toBeDefined()
-    expect(highlight!.color).toBe('#FF0000')
+    expect(highlight!.color).toBe('#FF69B4')
   })
 
   test('highlight with yellow color', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Highlight (H)')
-    const yellowSwatch = page.locator('button[title="#FFFF00"]')
-    if (await yellowSwatch.isVisible()) {
-      await yellowSwatch.click()
-      await page.waitForTimeout(100)
-    }
+    await pickSwatch(page, '#FFFF00')
     await drawOnCanvas(page, [{ x: 100, y: 150 }, { x: 300, y: 155 }])
     await page.waitForTimeout(200)
     await waitForSessionSave(page)
@@ -232,11 +239,7 @@ test.describe('Highlighter Tool — Colors and Widths', () => {
   test('highlight with green color', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Highlight (H)')
-    const greenSwatch = page.locator('button[title="#22C55E"]')
-    if (await greenSwatch.isVisible()) {
-      await greenSwatch.click()
-      await page.waitForTimeout(100)
-    }
+    await pickSwatch(page, '#22C55E')
     await drawOnCanvas(page, [{ x: 100, y: 150 }, { x: 300, y: 155 }])
     await page.waitForTimeout(200)
     await waitForSessionSave(page)
@@ -249,11 +252,7 @@ test.describe('Highlighter Tool — Colors and Widths', () => {
   test('highlight with blue color', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Highlight (H)')
-    const blueSwatch = page.locator('button[title="#3B82F6"]')
-    if (await blueSwatch.isVisible()) {
-      await blueSwatch.click()
-      await page.waitForTimeout(100)
-    }
+    await pickSwatch(page, '#3B82F6')
     await drawOnCanvas(page, [{ x: 100, y: 150 }, { x: 300, y: 155 }])
     await page.waitForTimeout(200)
     await waitForSessionSave(page)
@@ -279,16 +278,12 @@ test.describe('Highlighter Tool — Colors and Widths', () => {
   test('two highlights with different colors are stored correctly', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Highlight (H)')
-    // First highlight: red
-    const redSwatch = page.locator('button[title="#FF0000"]')
-    if (await redSwatch.isVisible()) await redSwatch.click()
-    await page.waitForTimeout(100)
+    // First highlight: pink
+    await pickSwatch(page, '#FF69B4')
     await drawOnCanvas(page, [{ x: 100, y: 100 }, { x: 300, y: 105 }])
     await page.waitForTimeout(200)
     // Second highlight: blue
-    const blueSwatch = page.locator('button[title="#3B82F6"]')
-    if (await blueSwatch.isVisible()) await blueSwatch.click()
-    await page.waitForTimeout(100)
+    await pickSwatch(page, '#3B82F6')
     await drawOnCanvas(page, [{ x: 100, y: 250 }, { x: 300, y: 255 }])
     await page.waitForTimeout(200)
     await waitForSessionSave(page)
@@ -297,7 +292,7 @@ test.describe('Highlighter Tool — Colors and Widths', () => {
     const highlights = anns.filter(a => a.type === 'highlighter')
     expect(highlights.length).toBe(2)
     const colors = highlights.map(h => h.color)
-    expect(colors).toContain('#FF0000')
+    expect(colors).toContain('#FF69B4')
     expect(colors).toContain('#3B82F6')
   })
 })
@@ -554,12 +549,10 @@ test.describe('Highlighter Tool — Opacity and Stroke', () => {
     expect(highlight!.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
   })
 
-  test('highlight with orange color', async ({ page }) => {
+  test('highlight with teal color', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Highlight (H)')
-    const orangeSwatch = page.locator('button[title="#14B8A6"]')
-    if (await orangeSwatch.isVisible()) await orangeSwatch.click()
-    await page.waitForTimeout(100)
+    await pickSwatch(page, '#14B8A6')
     await drawOnCanvas(page, [{ x: 100, y: 150 }, { x: 300, y: 155 }])
     await page.waitForTimeout(200)
     await waitForSessionSave(page)
@@ -572,9 +565,8 @@ test.describe('Highlighter Tool — Opacity and Stroke', () => {
   test('highlight with purple color', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Highlight (H)')
-    const purpleSwatch = page.locator('button[title="#8B5CF6"]')
-    if (await purpleSwatch.isVisible()) await purpleSwatch.click()
-    await page.waitForTimeout(100)
+    // Purple is not a highlighter preset — enter it as a custom hex colour
+    await typeHexColor(page, '#8B5CF6')
     await drawOnCanvas(page, [{ x: 100, y: 150 }, { x: 300, y: 155 }])
     await page.waitForTimeout(200)
     await waitForSessionSave(page)
@@ -626,9 +618,8 @@ test.describe('Highlighter Tool — Opacity and Stroke', () => {
   test('highlight with white color', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Highlight (H)')
-    const whiteSwatch = page.locator('button[title="#FFFFFF"]')
-    if (await whiteSwatch.isVisible()) await whiteSwatch.click()
-    await page.waitForTimeout(100)
+    // White is not a highlighter preset — enter it as a custom hex colour
+    await typeHexColor(page, '#FFFFFF')
     await drawOnCanvas(page, [{ x: 100, y: 150 }, { x: 300, y: 155 }])
     await page.waitForTimeout(200)
     await waitForSessionSave(page)
