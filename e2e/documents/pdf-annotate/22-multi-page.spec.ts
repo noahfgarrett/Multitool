@@ -286,7 +286,8 @@ test.describe('Multi-Page — Rapid Navigation', () => {
     await page.waitForTimeout(500)
     // Draw on current page
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
-    expect(await getAnnotationCount(page)).toBeGreaterThanOrEqual(0)
+    await expect(page.locator('text=/^2 \\/ /')).toBeVisible()
+    expect(await getAnnotationCount(page)).toBe(1)
     // Canvas still renders
     await expect(page.locator('canvas').first()).toBeVisible()
   })

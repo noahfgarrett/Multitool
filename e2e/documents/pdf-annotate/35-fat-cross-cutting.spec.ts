@@ -1472,12 +1472,14 @@ test.describe('4F: Properties Bar & Status Bar Per Tool', () => {
 
   test('4F-12 measure tool — properties bar shows calibration info', async ({ page }) => {
     await selectTool(page, 'Measure (M)')
-    // When no calibration set, there may be a Calibrate button
-    const calibrateBtn = page.locator('button:has-text("Calibrate")')
-    // Either calibrate button or scale info should be present
-    const measureControls = calibrateBtn.or(page.locator('text=Scale'))
-    const count = await measureControls.count()
-    expect(count).toBeGreaterThanOrEqual(0) // measure controls are visible
+    // Uncalibrated: no scale readout and nothing to reset
+    await expect(page.locator('text=/^Scale: /')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Reset Scale', exact: true })).toHaveCount(0)
+    // Once a measurement exists the bar offers to clear the page's measurements
+    await clickCanvasAt(page, 100, 150)
+    await page.waitForTimeout(200)
+    await clickCanvasAt(page, 300, 150)
+    await expect(page.getByRole('button', { name: 'Clear All', exact: true })).toBeVisible()
   })
 
   test('4F-13 status bar shows "Click to select" for Select tool', async ({ page }) => {
@@ -1581,10 +1583,9 @@ test.describe('4F: Properties Bar & Status Bar Per Tool', () => {
     await selectAnnotationAt(page, 100, 100)
     await page.waitForTimeout(200)
     // Properties bar should now show controls (Width, Opacity) since an annotation is selected
-    const widthLabel = page.locator('span:has-text("Width")')
+    const widthLabel = page.locator('span', { hasText: /^Width$/ })
     // It should be visible when a shape annotation is selected in Select mode
-    const count = await widthLabel.count()
-    expect(count).toBeGreaterThanOrEqual(0) // At minimum, no crash
+    await expect(widthLabel).toBeVisible()
   })
 })
 

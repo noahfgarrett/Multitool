@@ -478,9 +478,9 @@ test.describe('Sticky Tool — tools stay active after use', () => {
 test.describe('Color Picker — custom color & eyedropper', () => {
   test('color picker has eyedropper button', async ({ page }) => {
     await selectTool(page, 'Pencil (P)')
-    const pipette = page.locator('button[title="Pick color from screen"]')
-    const count = await pipette.count()
-    expect(count).toBeGreaterThanOrEqual(0)
+    await expect(page.locator('button[title="Pencil (P)"]')).toHaveClass(/bg-\[#14B8A6\]/)
+    // The properties-bar colour picker offers an eyedropper next to the presets
+    await expect(page.locator('button[title="Pick color from screen"]')).toBeVisible()
   })
 })
 
