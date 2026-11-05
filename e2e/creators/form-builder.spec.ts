@@ -12,7 +12,7 @@ test.describe('Form Builder Tool', () => {
     await expect(page.getByText('Untitled Form')).toBeVisible({ timeout: 10000 })
 
     // The ElementPalette header "Elements" should be visible
-    await expect(page.getByText('Elements')).toBeVisible()
+    await expect(page.getByText('Elements', { exact: true })).toBeVisible()
 
     // Empty state message should be shown on the canvas
     await expect(page.getByText('Add elements from the left panel or choose a template')).toBeVisible()
@@ -22,7 +22,7 @@ test.describe('Form Builder Tool', () => {
   })
 
   test('element palette shows all element types', async ({ page }) => {
-    await expect(page.getByText('Elements')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Elements', { exact: true })).toBeVisible({ timeout: 10000 })
 
     // All element types from the ElementPalette should be listed
     const expectedElements = [
@@ -36,7 +36,7 @@ test.describe('Form Builder Tool', () => {
   })
 
   test('clicking an element in the palette adds it to the canvas', async ({ page }) => {
-    await expect(page.getByText('Elements')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Elements', { exact: true })).toBeVisible({ timeout: 10000 })
 
     // Click "Text Field" in the palette to add it
     const textFieldButton = page.locator('button').filter({ hasText: 'Text Field' }).first()
@@ -47,7 +47,7 @@ test.describe('Form Builder Tool', () => {
   })
 
   test('adding a checkbox element works', async ({ page }) => {
-    await expect(page.getByText('Elements')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Elements', { exact: true })).toBeVisible({ timeout: 10000 })
 
     // Click "Checkbox" in the palette
     const checkboxButton = page.locator('button').filter({ hasText: 'Checkbox' }).first()
@@ -58,7 +58,7 @@ test.describe('Form Builder Tool', () => {
   })
 
   test('adding a heading element works', async ({ page }) => {
-    await expect(page.getByText('Elements')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Elements', { exact: true })).toBeVisible({ timeout: 10000 })
 
     // Click "Heading" in the palette
     const headingButton = page.locator('button').filter({ hasText: 'Heading' }).first()
@@ -143,7 +143,7 @@ test.describe('Form Builder Tool', () => {
     await savedButton.click()
 
     // The Saved Forms modal should appear
-    await expect(page.getByText('Saved Forms')).toBeVisible({ timeout: 3000 })
+    await expect(page.getByRole('heading', { name: 'Saved Forms' })).toBeVisible({ timeout: 3000 })
 
     // If no saved forms, should show empty message
     await expect(page.getByText('No saved forms yet')).toBeVisible()
@@ -161,18 +161,18 @@ test.describe('Form Builder Tool', () => {
     await expect(page.getByText('Untitled Form')).toBeVisible({ timeout: 10000 })
 
     // Click the title to start editing
-    const titleButton = page.locator('button').filter({ hasText: 'Untitled Form' }).first()
+    const titleButton = page.locator('button[title="Rename form"]')
     await titleButton.click()
 
-    // An input should appear for editing
-    const titleInput = page.locator('input[type="text"]').first()
-    await expect(titleInput).toBeVisible()
+    // The button is replaced by a focused input holding the current title
+    const titleInput = page.locator('input:focus')
+    await expect(titleInput).toHaveValue('Untitled Form')
 
     // Type a new title
     await titleInput.fill('My Test Form')
     await titleInput.press('Enter')
 
     // The new title should be displayed
-    await expect(page.getByText('My Test Form')).toBeVisible()
+    await expect(page.locator('button[title="Rename form"]')).toHaveText('My Test Form')
   })
 })

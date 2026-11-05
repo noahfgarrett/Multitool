@@ -16,7 +16,7 @@ test.beforeEach(async ({ page }) => {
 test.describe('Dashboard Tool', () => {
   test('initial view shows empty state with no dashboards', async ({ page }) => {
     // The heading "Dashboards" should be visible
-    await expect(page.getByText('Dashboards')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByRole('heading', { name: 'Dashboards' })).toBeVisible({ timeout: 10000 })
 
     // Empty state message should appear
     await expect(page.getByText('No dashboards yet')).toBeVisible()
@@ -36,7 +36,7 @@ test.describe('Dashboard Tool', () => {
 
     // Since there is no data, the data import modal should appear
     // The DataImporter has a FileDropZone
-    await expect(page.getByText(/Drop.*file.*here|Import Data|\.csv|\.xlsx/i)).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('heading', { name: 'Import Data' })).toBeVisible({ timeout: 5000 })
   })
 
   test('Import Data button is visible in the empty state', async ({ page }) => {
@@ -48,7 +48,7 @@ test.describe('Dashboard Tool', () => {
   })
 
   test('Import JSON button exists in the dashboard list view', async ({ page }) => {
-    await expect(page.getByText('Dashboards')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByRole('heading', { name: 'Dashboards' })).toBeVisible({ timeout: 10000 })
 
     // "Import JSON" button should be available
     const importJsonButton = page.getByRole('button', { name: /Import JSON/i })

@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 test.describe('Sidebar navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1').filter({ hasText: 'Welcome back' })).toBeVisible({ timeout: 10000 })
   })
 
   test('sidebar is visible on load', async ({ page }) => {
@@ -12,7 +12,7 @@ test.describe('Sidebar navigation', () => {
     // Sidebar should be expanded by default (w-60 class)
     await expect(sidebar).toHaveClass(/w-60/)
     // The sidebar title should be visible when expanded
-    await expect(page.locator('aside').locator('text=Multitool')).toBeVisible()
+    await expect(page.locator('aside').getByText('Multitool', { exact: true })).toBeVisible()
   })
 
   test('all 5 categories are shown in sidebar', async ({ page }) => {
@@ -65,7 +65,7 @@ test.describe('Sidebar navigation', () => {
     await expect(page.locator('header h1')).toHaveText('Image Resizer')
 
     // The welcome screen should be gone
-    await expect(page.locator('h1').filter({ hasText: 'Multitool' }).first()).not.toBeVisible()
+    await expect(page.locator('h1').filter({ hasText: 'Welcome back' })).toHaveCount(0)
 
     // The tool's empty state should be visible
     await expect(page.locator('text=Drop an image here')).toBeVisible()
@@ -82,9 +82,8 @@ test.describe('Sidebar navigation', () => {
     await expect(page.locator('.animate-spin')).toBeHidden({ timeout: 10000 })
     await page.waitForTimeout(200)
 
-    // The active tool button should have orange highlight styling
-    // Active tool gets class 'bg-[#14B8A6]/15 text-[#14B8A6]'
-    await expect(qrButton).toHaveCSS('color', 'rgb(244, 123, 32)')
+    // Active tool gets class 'bg-[#14B8A6]/15 text-[#14B8A6]' (teal)
+    await expect(qrButton).toHaveCSS('color', 'rgb(20, 184, 166)')
 
     // The active indicator bar should be present (a div with bg-[#14B8A6])
     const indicatorBar = qrButton.locator('div.absolute')
@@ -109,7 +108,7 @@ test.describe('Sidebar navigation', () => {
     await homeButton.click()
 
     // Welcome screen should reappear
-    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('h1').filter({ hasText: 'Welcome back' })).toBeVisible({ timeout: 5000 })
 
     // Header should show "Welcome"
     await expect(page.locator('header h1')).toHaveText('Welcome')
@@ -130,7 +129,7 @@ test.describe('Sidebar navigation', () => {
     await expect(sidebar).toHaveClass(/w-14/)
 
     // The sidebar title text should be hidden
-    await expect(page.locator('aside').locator('text=Multitool')).toBeHidden()
+    await expect(page.locator('aside').getByText('Multitool', { exact: true })).toBeHidden()
 
     // Click expand button
     const expandButton = page.locator('button[title="Expand sidebar"]')

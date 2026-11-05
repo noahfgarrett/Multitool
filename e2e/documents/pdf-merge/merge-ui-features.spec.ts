@@ -194,7 +194,7 @@ test.describe('Merge Preview Mode', () => {
     await page.locator('button[title="Preview merge order"]').click()
 
     const activePreviewButton = page.locator('button[title="Back to file list"]')
-    await expect(activePreviewButton).toHaveCSS('color', 'rgb(244, 123, 32)')
+    await expect(activePreviewButton).toHaveCSS('color', 'rgb(20, 184, 166)')
   })
 
   test('preview with multiple files shows all pages in merge order', async ({ page }) => {

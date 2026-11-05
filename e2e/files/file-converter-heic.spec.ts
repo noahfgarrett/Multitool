@@ -2,10 +2,36 @@ import { test, expect } from '@playwright/test'
 import { waitForToolLoad } from '../helpers/navigation'
 import { uploadFile, uploadFiles } from '../helpers/file-upload'
 
+
+/**
+ * Small fixtures convert in a few milliseconds, so the progress UI can come and go
+ * between two polls. Record what the progress area showed with a MutationObserver
+ * that is installed before Convert All is clicked.
+ */
+async function watchBulkProgress(page: import('@playwright/test').Page) {
+  await page.evaluate(() => {
+    const w = window as unknown as { __bulk: { text: boolean; hiddenConvertAll: boolean } }
+    w.__bulk = { text: false, hiddenConvertAll: false }
+    const check = () => {
+      const body = document.body.innerText
+      if (/Converting \d+ of 2 files/.test(body)) {
+        w.__bulk.text = true
+        const btn = [...document.querySelectorAll('button')].find(b => /Convert All/.test(b.textContent ?? ''))
+        if (!btn) w.__bulk.hiddenConvertAll = true
+      }
+    }
+    new MutationObserver(check).observe(document.body, { subtree: true, childList: true, characterData: true })
+  })
+}
+
+async function readBulkProgress(page: import('@playwright/test').Page) {
+  return page.evaluate(() => (window as unknown as { __bulk: { text: boolean; hiddenConvertAll: boolean } }).__bulk)
+}
+
 test.describe('File Converter — HEIC/HEIF support', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1').filter({ hasText: 'Welcome back' })).toBeVisible({ timeout: 10000 })
 
     const sidebar = page.locator('aside nav')
     await sidebar.locator('button').filter({ hasText: 'File Converter' }).click()
@@ -130,7 +156,7 @@ test.describe('File Converter — HEIC/HEIF support', () => {
 test.describe('File Converter — Bulk conversion progress bar', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1').filter({ hasText: 'Welcome back' })).toBeVisible({ timeout: 10000 })
 
     const sidebar = page.locator('aside nav')
     await sidebar.locator('button').filter({ hasText: 'File Converter' }).click()
@@ -169,17 +195,14 @@ test.describe('File Converter — Bulk conversion progress bar', () => {
     await entries.filter({ hasText: 'sample.csv' }).locator('button').filter({ hasText: 'TSV' }).click()
 
     // Click Convert All
+    await watchBulkProgress(page)
     await page.locator('button').filter({ hasText: /Convert All/ }).click()
-
-    // Progress bar should appear with "Converting X of 2 files..." text
-    await expect(page.locator('text=/Converting \\d+ of 2 files/')).toBeVisible({ timeout: 5000 })
-
-    // The progress bar track should be visible
-    const progressTrack = page.locator('.h-2.rounded-full.overflow-hidden')
-    await expect(progressTrack).toBeVisible()
 
     // Wait for conversions to complete
     await expect(page.locator('text=/2 converted/')).toBeVisible({ timeout: 30000 })
+
+    // "Converting X of 2 files..." was shown while the batch ran
+    expect((await readBulkProgress(page)).text).toBe(true)
 
     // Progress bar text should be gone
     await expect(page.locator('text=/Converting \\d+ of \\d+ files/')).toBeHidden()
@@ -199,14 +222,16 @@ test.describe('File Converter — Bulk conversion progress bar', () => {
     await expect(convertAllBtn).toBeVisible()
 
     // Click it
+    await watchBulkProgress(page)
     await convertAllBtn.click()
-
-    // During conversion, Convert All should be hidden (progress bar replaces it)
-    await expect(page.locator('text=/Converting \\d+ of 2 files/')).toBeVisible({ timeout: 5000 })
-    await expect(convertAllBtn).toBeHidden()
 
     // After completion
     await expect(page.locator('text=/2 converted/')).toBeVisible({ timeout: 30000 })
+
+    // While the progress text was on screen, the Convert All button was gone
+    const seen = await readBulkProgress(page)
+    expect(seen.text).toBe(true)
+    expect(seen.hiddenConvertAll).toBe(true)
   })
 
   test('converted files show download options after bulk conversion', async ({ page }) => {

@@ -4,7 +4,7 @@ import { waitForToolLoad } from '../helpers/navigation'
 test.describe('QR Code tool', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1').filter({ hasText: 'Welcome back' })).toBeVisible({ timeout: 10000 })
 
     // Navigate to QR Code tool via sidebar
     const sidebar = page.locator('aside nav')
@@ -24,8 +24,8 @@ test.describe('QR Code tool', () => {
     }
 
     // Text tab should be active by default (has bg-[#14B8A6] styling)
-    const textTab = page.locator('button').filter({ hasText: 'Text' }).first()
-    await expect(textTab).toHaveCSS('background-color', 'rgb(244, 123, 32)')
+    const textTab = page.locator('main').getByRole('button', { name: 'Text', exact: true })
+    await expect(textTab).toHaveCSS('background-color', 'rgb(20, 184, 166)')
 
     // The empty state placeholder message should be shown (no text entered yet)
     await expect(page.locator('text=Enter content to generate a QR code')).toBeVisible()
@@ -126,11 +126,11 @@ test.describe('QR Code tool', () => {
 
     // M should be active by default
     const mButton = page.locator('button').filter({ hasText: 'M (15%)' })
-    await expect(mButton).toHaveCSS('background-color', 'rgb(244, 123, 32)')
+    await expect(mButton).toHaveCSS('background-color', 'rgb(20, 184, 166)')
 
     // Click H level
     const hButton = page.locator('button').filter({ hasText: 'H (30%)' })
     await hButton.click()
-    await expect(hButton).toHaveCSS('background-color', 'rgb(244, 123, 32)')
+    await expect(hButton).toHaveCSS('background-color', 'rgb(20, 184, 166)')
   })
 })

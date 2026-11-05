@@ -4,15 +4,15 @@ test.describe('Home / Welcome Screen', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     // Wait for the welcome screen to render
-    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
+    // playwright.config.ts seeds a "Test User" profile, so the hero greets by first name
+    await expect(page.locator('h1').filter({ hasText: 'Welcome back' })).toBeVisible({ timeout: 10000 })
   })
 
-  test('hero title "Multitool" renders', async ({ page }) => {
-    const hero = page.locator('h1').filter({ hasText: 'Multitool' }).first()
-    await expect(hero).toBeVisible()
+  test('hero greets the user by first name', async ({ page }) => {
+    const hero = page.locator('main h1').filter({ hasText: 'Welcome back' }).first()
+    await expect(hero).toHaveText('Welcome back, Test')
     await expect(hero).toHaveClass(/text-4xl/)
-    // Verify the subtitle also renders
-    await expect(page.locator('text=Your all-in-one productivity suite')).toBeVisible()
+    await expect(page.locator('main').getByText('Select a tool to get started.')).toBeVisible()
   })
 
   test('5 category sections visible', async ({ page }) => {
@@ -66,7 +66,7 @@ test.describe('Home / Welcome Screen', () => {
     await expect(header).toHaveText('QR Code')
 
     // The welcome screen hero should no longer be visible
-    await expect(page.locator('h1').filter({ hasText: 'Multitool' }).first()).not.toBeVisible()
+    await expect(page.locator('h1').filter({ hasText: 'Welcome back' })).toHaveCount(0)
 
     // The QR code tool should have its input tabs visible
     await expect(page.locator('button').filter({ hasText: 'Text' }).first()).toBeVisible()

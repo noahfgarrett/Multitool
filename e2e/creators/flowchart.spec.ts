@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
 test.describe('Flowchart Tool', () => {
   test('initial view shows toolbar, shape library, canvas, and empty state', async ({ page }) => {
     // The ShapeLibrary "Shapes" header should be visible
-    await expect(page.getByText('Shapes')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Shapes', { exact: true }).first()).toBeVisible({ timeout: 10000 })
 
     // The empty state overlay text should be visible
     await expect(page.getByText('Start by placing shapes from the left panel')).toBeVisible()
@@ -22,7 +22,7 @@ test.describe('Flowchart Tool', () => {
   })
 
   test('shape library shows categorized shape tiles', async ({ page }) => {
-    await expect(page.getByText('Shapes')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Shapes', { exact: true }).first()).toBeVisible({ timeout: 10000 })
 
     // The categories should be visible
     await expect(page.locator('button').filter({ hasText: 'Basic' })).toBeVisible()
@@ -96,10 +96,10 @@ test.describe('Flowchart Tool', () => {
     await page.getByRole('button', { name: /Import from Text/i }).click()
 
     // Syntax guide items should be visible
-    await expect(page.getByText('START')).toBeVisible()
+    await expect(page.getByText('START', { exact: true })).toBeVisible()
     await expect(page.getByText('Plain text')).toBeVisible()
-    await expect(page.getByText('IF')).toBeVisible()
-    await expect(page.getByText('END')).toBeVisible()
+    await expect(page.getByText('IF', { exact: true })).toBeVisible()
+    await expect(page.getByText('END', { exact: true })).toBeVisible()
   })
 
   test('template dropdown exists in the import modal', async ({ page }) => {
@@ -121,7 +121,7 @@ test.describe('Flowchart Tool', () => {
   })
 
   test('export button exists in the toolbar', async ({ page }) => {
-    await expect(page.getByText('Shapes')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Shapes', { exact: true }).first()).toBeVisible({ timeout: 10000 })
 
     // The toolbar should have an export button — search for the toolbar area
     // In the FlowchartTool, the Toolbar component has an onExport callback
@@ -155,7 +155,7 @@ test.describe('Flowchart Tool', () => {
   })
 
   test('shape category can be collapsed and expanded', async ({ page }) => {
-    await expect(page.getByText('Shapes')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('Shapes', { exact: true }).first()).toBeVisible({ timeout: 10000 })
 
     // Click the "Basic" category header to collapse it
     const basicButton = page.locator('button').filter({ hasText: 'Basic' })

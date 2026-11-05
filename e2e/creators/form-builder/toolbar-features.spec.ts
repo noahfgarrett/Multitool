@@ -180,7 +180,7 @@ test.describe('Tab Order Overlay', () => {
 
     // Orange tab-order badges should appear (circles with #14B8A6 background)
     // The badges are absolutely positioned divs with orange background
-    const badges = page.locator('div[style*="background-color: rgb(244, 123, 32)"]')
+    const badges = page.locator('div[style*="background-color: rgb(20, 184, 166)"]')
     await expect(badges.first()).toBeVisible({ timeout: 3000 })
 
     // Should have exactly 2 badges (one per interactive element)

@@ -42,15 +42,8 @@ export async function navigateToTool(page: Page, toolId: string) {
 
 /** Navigate home (deselect any tool) */
 export async function goHome(page: Page) {
-  // Click the home/logo button in the header or sidebar
-  const homeButton = page.locator('button').filter({ hasText: 'Multitool' }).first()
-  if (await homeButton.isVisible()) {
-    await homeButton.click()
-  } else {
-    // Try the sidebar home button
-    await page.locator('[data-testid="home-button"], button:has-text("Home")').first().click()
-  }
-  await expect(page.locator('h1:has-text("Multitool")')).toBeVisible({ timeout: 5000 })
+  await page.locator('aside nav button').filter({ hasText: 'Home Menu' }).click()
+  await expect(page.locator('header h1')).toHaveText('Welcome', { timeout: 5000 })
 }
 
 /** Wait for a tool to finish loading (Suspense fallback gone) */

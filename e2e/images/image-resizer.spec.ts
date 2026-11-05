@@ -5,7 +5,7 @@ import { uploadFile } from '../helpers/file-upload'
 test.describe('Image Resizer tool', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1').filter({ hasText: 'Welcome back' })).toBeVisible({ timeout: 10000 })
 
     // Navigate to Image Resizer tool via sidebar
     const sidebar = page.locator('aside nav')
@@ -100,14 +100,15 @@ test.describe('Image Resizer tool', () => {
     await expect(page.locator('text=Original')).toBeVisible({ timeout: 5000 })
 
     // Click the Resize button
-    const resizeBtn = page.locator('button').filter({ hasText: 'Resize' }).first()
+    // Scope to main so the sidebar's "Image Resizer" button is not matched
+    const resizeBtn = page.locator('main').getByRole('button', { name: 'Resize', exact: true })
     await resizeBtn.click()
 
     // Wait for processing to complete - the output info section should appear
-    await expect(page.locator('text=Output')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('main').getByText('Output', { exact: true })).toBeVisible({ timeout: 10000 })
 
     // Download button should now be enabled
-    const downloadBtn = page.locator('button').filter({ hasText: 'Download' }).first()
+    const downloadBtn = page.locator('main').getByRole('button', { name: 'Download', exact: true })
     await expect(downloadBtn).toBeEnabled()
 
     // A canvas element should be visible for the preview

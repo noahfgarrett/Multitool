@@ -5,7 +5,7 @@ import { uploadFile } from '../helpers/file-upload'
 test.describe('Data Viewer (JSON/CSV) tool', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('h1').filter({ hasText: 'Multitool' })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('h1').filter({ hasText: 'Welcome back' })).toBeVisible({ timeout: 10000 })
 
     // Navigate to Data Viewer tool via sidebar
     const sidebar = page.locator('aside nav')
@@ -39,8 +39,8 @@ test.describe('Data Viewer (JSON/CSV) tool', () => {
 
     // The JSON tree viewer should render. The sample.json has "employees" and "metadata" keys
     // The tree view shows key names like "employees" and "metadata"
-    await expect(page.locator('text="employees"')).toBeVisible({ timeout: 5000 })
-    await expect(page.locator('text="metadata"')).toBeVisible()
+    await expect(page.getByText('"employees":', { exact: true })).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('"metadata":', { exact: true })).toBeVisible()
 
     // Export buttons should be visible
     await expect(page.locator('button').filter({ hasText: 'JSON' }).first()).toBeVisible()
@@ -65,7 +65,8 @@ test.describe('Data Viewer (JSON/CSV) tool', () => {
 
     // Verify some actual data is rendered in the table cells
     await expect(page.locator('td').filter({ hasText: 'John Doe' })).toBeVisible()
-    await expect(page.locator('td').filter({ hasText: 'Engineering' })).toBeVisible()
+    // John Doe and Alice Brown are both in Engineering
+    await expect(page.locator('td').filter({ hasText: 'Engineering' })).toHaveCount(2)
     await expect(page.locator('td').filter({ hasText: '95000' })).toBeVisible()
 
     // Search should be functional
