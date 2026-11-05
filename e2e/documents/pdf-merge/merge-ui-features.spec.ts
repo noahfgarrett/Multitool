@@ -184,7 +184,9 @@ test.describe('Merge Preview Mode', () => {
 
     await page.locator('button[title="Back to file list"]').click()
 
-    await expect(page.locator('button[title="Expand pages"]')).toBeVisible()
+    // The file row (with its remove button) is back and the toggle offers Preview again
+    await expect(page.getByRole('button', { name: 'Remove sample.pdf' })).toBeVisible()
+    await expect(page.locator('button[title="Preview merge order"]')).toBeVisible()
   })
 
   test('preview button uses active style when toggled on', async ({ page }) => {

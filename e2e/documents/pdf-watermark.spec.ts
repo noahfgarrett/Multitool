@@ -30,7 +30,8 @@ test.describe('PDF Watermark Tool', () => {
     // The watermark type selector should be visible with "Text" and "Image" buttons
     await expect(page.getByText('Type')).toBeVisible()
     const textTypeButton = page.locator('button').filter({ hasText: 'Text' }).first()
-    const imageTypeButton = page.locator('button').filter({ hasText: 'Image' }).first()
+    // Scope to main so the sidebar's "Image Resizer" button is not matched
+    const imageTypeButton = page.locator('main').getByRole('button', { name: 'Image', exact: true })
     await expect(textTypeButton).toBeVisible()
     await expect(imageTypeButton).toBeVisible()
   })
@@ -122,7 +123,8 @@ test.describe('PDF Watermark Tool', () => {
     await expect(page.getByText('sample.pdf')).toBeVisible({ timeout: 15000 })
 
     // Switch to image watermark type
-    const imageTypeButton = page.locator('button').filter({ hasText: 'Image' }).first()
+    // Scope to main so the sidebar's "Image Resizer" button is not matched
+    const imageTypeButton = page.locator('main').getByRole('button', { name: 'Image', exact: true })
     await imageTypeButton.click()
 
     // Should show "Upload PNG or JPG" button

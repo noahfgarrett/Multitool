@@ -31,7 +31,7 @@ test.describe('PDF Split Tool', () => {
     await expect(page.getByText('Output Documents')).toBeVisible()
 
     // "Document 1" should be auto-created
-    await expect(page.getByText('Document 1')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Document 1', exact: true })).toBeVisible()
 
     // The active label should indicate painting mode
     await expect(page.getByText(/Active.*click pages to assign/i)).toBeVisible()
@@ -76,7 +76,7 @@ test.describe('PDF Split Tool', () => {
     await newDocButton.click()
 
     // Should now show "Document 2"
-    await expect(page.getByText('Document 2')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Document 2', exact: true })).toBeVisible()
 
     // The sidebar should show 2 documents
     await expect(page.locator('text=/^2$/')).toBeVisible() // The count badge

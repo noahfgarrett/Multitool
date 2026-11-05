@@ -26,48 +26,33 @@ test.describe('PDF Merge Tool', () => {
     await expect(page.getByText(/2 files/)).toBeVisible({ timeout: 15000 })
 
     // Each file name should be displayed in the file list
-    await expect(page.getByText('sample.pdf')).toBeVisible()
-    await expect(page.getByText('single-page.pdf')).toBeVisible()
+    await expect(page.getByText('sample.pdf', { exact: true })).toBeVisible()
+    await expect(page.getByText('single-page.pdf', { exact: true })).toBeVisible()
 
     // File info should show page count and size
     // The format is "{N} page(s) · {size}" per file row
     await expect(page.locator('text=/\\d+ pages?/')).toHaveCount(2, { timeout: 5000 })
   })
 
-  test('file rows have reorder buttons (up/down arrows)', async ({ page }) => {
+  test('dragging a file by its handle moves it in the merge order', async ({ page }) => {
     await uploadFiles(page, ['sample.pdf', 'single-page.pdf'])
     await expect(page.getByText(/2 files/)).toBeVisible({ timeout: 15000 })
 
-    // The first file should have a disabled "up" button and an enabled "down" button
-    const moveUpButtons = page.locator('button[aria-label*="Move"][aria-label*="up"]')
-    const moveDownButtons = page.locator('button[aria-label*="Move"][aria-label*="down"]')
+    const fileNames = page.locator('main p.text-sm.text-white.truncate')
+    await expect(fileNames).toHaveText(['sample.pdf', 'single-page.pdf'])
 
-    await expect(moveUpButtons).toHaveCount(2)
-    await expect(moveDownButtons).toHaveCount(2)
+    // Rows are reordered with dnd-kit; the pointer sensor needs 8px of movement to start a drag
+    const handles = page.locator('main .cursor-grab')
+    const from = await handles.nth(0).boundingBox()
+    const to = await handles.nth(1).boundingBox()
+    if (!from || !to) throw new Error('drag handles not rendered')
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2 + 12, { steps: 4 })
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2 + 20, { steps: 10 })
+    await page.mouse.up()
 
-    // First file's "up" button should be disabled
-    await expect(moveUpButtons.first()).toBeDisabled()
-    // Last file's "down" button should be disabled
-    await expect(moveDownButtons.last()).toBeDisabled()
-  })
-
-  test('reorder moves file position', async ({ page }) => {
-    await uploadFiles(page, ['sample.pdf', 'single-page.pdf'])
-    await expect(page.getByText(/2 files/)).toBeVisible({ timeout: 15000 })
-
-    // The order numbers (1, 2) should be visible
-    const orderBadges = page.locator('.bg-\\[\\#14B8A6\\]\\/15')
-    await expect(orderBadges).toHaveCount(2)
-
-    // Click "move down" on the first file (sample.pdf)
-    const moveDownFirst = page.locator('button[aria-label*="Move sample.pdf down"]')
-    await moveDownFirst.click()
-
-    // After reorder, single-page.pdf should now be first
-    // Verify the first file name in the list is single-page.pdf
-    const fileNames = page.locator('.text-sm.text-white.truncate')
-    await expect(fileNames.first()).toHaveText('single-page.pdf')
-    await expect(fileNames.last()).toHaveText('sample.pdf')
+    await expect(fileNames).toHaveText(['single-page.pdf', 'sample.pdf'])
   })
 
   test('remove button removes a file from the list', async ({ page }) => {
@@ -81,8 +66,8 @@ test.describe('PDF Merge Tool', () => {
     // Should now show 1 file
     await expect(page.getByText(/1 file\b/)).toBeVisible()
     // sample.pdf should be gone, single-page.pdf should remain
-    await expect(page.getByText('sample.pdf')).not.toBeVisible()
-    await expect(page.getByText('single-page.pdf')).toBeVisible()
+    await expect(page.getByText('sample.pdf', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('single-page.pdf', { exact: true })).toBeVisible()
   })
 
   test('removing all files returns to empty state', async ({ page }) => {

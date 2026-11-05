@@ -28,8 +28,8 @@ test.describe('Text Extract Tool', () => {
     await expect(page.locator('text=/\\d+p/')).toBeVisible()
 
     // Mode toggle buttons should be visible (Document and Table)
-    await expect(page.locator('button').filter({ hasText: 'Document' })).toBeVisible()
-    await expect(page.locator('button').filter({ hasText: 'Table' })).toBeVisible()
+    await expect(page.locator('main').getByRole('button', { name: 'Document', exact: true })).toBeVisible()
+    await expect(page.locator('main').getByRole('button', { name: 'Table', exact: true })).toBeVisible()
 
     // Extract button should be visible
     await expect(page.getByRole('button', { name: /^Extract$/i })).toBeVisible()
@@ -73,12 +73,12 @@ test.describe('Text Extract Tool', () => {
     await uploadFile(page, 'sample.pdf')
     await expect(page.getByText('sample.pdf')).toBeVisible({ timeout: 15000 })
 
-    // Document mode should be selected by default (orange bg)
-    const docButton = page.locator('button').filter({ hasText: 'Document' })
+    // Document mode should be selected by default (teal bg)
+    const docButton = page.locator('main').getByRole('button', { name: 'Document', exact: true })
     await expect(docButton).toHaveClass(/bg-\[#14B8A6\]/)
 
     // Click Table mode
-    const tableButton = page.locator('button').filter({ hasText: 'Table' })
+    const tableButton = page.locator('main').getByRole('button', { name: 'Table', exact: true })
     await tableButton.click()
 
     // Table mode should now be highlighted
