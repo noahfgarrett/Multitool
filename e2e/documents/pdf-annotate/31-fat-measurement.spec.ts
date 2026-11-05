@@ -270,7 +270,7 @@ test.describe('FAT — Linear Measurement & Grab Handles', () => {
   test('1.17 — cursor is crosshair in measure mode', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Measure (M)')
-    const canvas = page.locator('canvas').nth(1)
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => window.getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })

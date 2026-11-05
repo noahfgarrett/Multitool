@@ -11,6 +11,8 @@ import {
   createAnnotation,
   selectAnnotationAt,
   moveAnnotation,
+  waitForSessionSave,
+  getSessionData,
 } from '../../helpers/pdf-annotate'
 
 test.beforeEach(async ({ page }) => {
@@ -24,96 +26,96 @@ test.describe('Cursor — Tool-Based Cursor Styles', () => {
   test('select tool shows default cursor on canvas', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Select (S)')
-    const annCanvas = page.locator('canvas.ann-canvas').first()
-    const cursor = await annCanvas.evaluate(el => getComputedStyle(el).cursor)
+    const activeCanvas = page.locator('canvas.active-canvas').first()
+    const cursor = await activeCanvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('default')
   })
 
   test('pencil tool shows crosshair cursor', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Pencil (P)')
-    const annCanvas = page.locator('canvas.ann-canvas').first()
-    const cursor = await annCanvas.evaluate(el => el.style.cursor)
+    const activeCanvas = page.locator('canvas.active-canvas').first()
+    const cursor = await activeCanvas.evaluate(el => el.style.cursor)
     expect(cursor).toBe('crosshair')
   })
 
   test('line tool shows crosshair cursor', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Line (L)')
-    const annCanvas = page.locator('canvas.ann-canvas').first()
-    const cursor = await annCanvas.evaluate(el => el.style.cursor)
+    const activeCanvas = page.locator('canvas.active-canvas').first()
+    const cursor = await activeCanvas.evaluate(el => el.style.cursor)
     expect(cursor).toBe('crosshair')
   })
 
   test('arrow tool shows crosshair cursor', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Arrow (A)')
-    const annCanvas = page.locator('canvas.ann-canvas').first()
-    const cursor = await annCanvas.evaluate(el => el.style.cursor)
+    const activeCanvas = page.locator('canvas.active-canvas').first()
+    const cursor = await activeCanvas.evaluate(el => el.style.cursor)
     expect(cursor).toBe('crosshair')
   })
 
   test('rectangle tool shows crosshair cursor', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Rectangle (R)')
-    const annCanvas = page.locator('canvas.ann-canvas').first()
-    const cursor = await annCanvas.evaluate(el => el.style.cursor)
+    const activeCanvas = page.locator('canvas.active-canvas').first()
+    const cursor = await activeCanvas.evaluate(el => el.style.cursor)
     expect(cursor).toBe('crosshair')
   })
 
   test('circle tool shows crosshair cursor', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Circle (C)')
-    const annCanvas = page.locator('canvas.ann-canvas').first()
-    const cursor = await annCanvas.evaluate(el => el.style.cursor)
+    const activeCanvas = page.locator('canvas.active-canvas').first()
+    const cursor = await activeCanvas.evaluate(el => el.style.cursor)
     expect(cursor).toBe('crosshair')
   })
 
   test('cloud tool shows crosshair cursor', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Cloud (K)')
-    const annCanvas = page.locator('canvas.ann-canvas').first()
-    const cursor = await annCanvas.evaluate(el => el.style.cursor)
+    const activeCanvas = page.locator('canvas.active-canvas').first()
+    const cursor = await activeCanvas.evaluate(el => el.style.cursor)
     expect(cursor).toBe('crosshair')
   })
 
   test('text tool shows text cursor', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Text (T)')
-    const annCanvas = page.locator('canvas.ann-canvas').first()
-    const cursor = await annCanvas.evaluate(el => el.style.cursor)
+    const activeCanvas = page.locator('canvas.active-canvas').first()
+    const cursor = await activeCanvas.evaluate(el => el.style.cursor)
     expect(cursor).toBe('text')
   })
 
   test('eraser tool shows none cursor (custom eraser circle)', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Eraser (E)')
-    const annCanvas = page.locator('canvas.ann-canvas').first()
-    const cursor = await annCanvas.evaluate(el => el.style.cursor)
+    const activeCanvas = page.locator('canvas.active-canvas').first()
+    const cursor = await activeCanvas.evaluate(el => el.style.cursor)
     expect(cursor).toBe('none')
   })
 
   test('highlight tool shows crosshair cursor', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Highlight (H)')
-    const annCanvas = page.locator('canvas.ann-canvas').first()
-    const cursor = await annCanvas.evaluate(el => el.style.cursor)
+    const activeCanvas = page.locator('canvas.active-canvas').first()
+    const cursor = await activeCanvas.evaluate(el => el.style.cursor)
     expect(cursor).toBe('crosshair')
   })
 
   test('measure tool shows crosshair cursor', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Measure (M)')
-    const annCanvas = page.locator('canvas.ann-canvas').first()
-    const cursor = await annCanvas.evaluate(el => el.style.cursor)
+    const activeCanvas = page.locator('canvas.active-canvas').first()
+    const cursor = await activeCanvas.evaluate(el => el.style.cursor)
     expect(cursor).toBe('crosshair')
   })
 
   test('callout tool shows crosshair cursor', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Callout (O)')
-    const annCanvas = page.locator('canvas.ann-canvas').first()
-    const cursor = await annCanvas.evaluate(el => el.style.cursor)
+    const activeCanvas = page.locator('canvas.active-canvas').first()
+    const cursor = await activeCanvas.evaluate(el => el.style.cursor)
     expect(cursor).toBe('crosshair')
   })
 })
@@ -389,35 +391,46 @@ test.describe('Hit Testing — Pencil Selection', () => {
 })
 
 test.describe('Hit Testing — Tab Navigation', () => {
-  test.skip('tab key selects first annotation when none selected', async ({ page }) => {
+  // Tab cycles through the text and callout boxes on the page (shapes are skipped)
+  test('tab key selects first text box when none selected', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
+    await createAnnotation(page, 'rectangle', { x: 100, y: 250, w: 120, h: 80 })
+    await createAnnotation(page, 'text', { x: 100, y: 100, w: 200, h: 50 })
+    await selectTool(page, 'Select (S)')
     // Deselect
     await page.keyboard.press('Escape')
     await page.waitForTimeout(200)
-    await selectTool(page, 'Select (S)')
-    await expect(page.locator('text=/Click to select/').first()).toBeVisible()
-    // Tab to select first annotation
+    await expect(page.getByText('Click to select · Ctrl+A all')).toBeVisible()
+    // Tab to select the text box
     await page.keyboard.press('Tab')
     await page.waitForTimeout(200)
     await expect(page.locator('text=/Arrows nudge/')).toBeVisible()
+    // The selected annotation is the text box: deleting it leaves only the rectangle
+    await page.keyboard.press('Delete')
+    await waitForSessionSave(page)
+    const anns = (await getSessionData(page))?.annotations?.[1] ?? []
+    expect(anns.map((a: { type: string }) => a.type)).toEqual(['rectangle'])
   })
 
-  test.skip('tab cycles through multiple annotations', async ({ page }) => {
+  test('tab cycles through multiple text boxes', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
-    await createAnnotation(page, 'rectangle', { x: 50, y: 50, w: 80, h: 50 })
-    await createAnnotation(page, 'rectangle', { x: 200, y: 50, w: 80, h: 50 })
+    await createAnnotation(page, 'text', { x: 50, y: 50, w: 150, h: 50 })
+    await createAnnotation(page, 'callout', { x: 250, y: 150, w: 150, h: 60 })
+    await selectTool(page, 'Select (S)')
     // Deselect
     await page.keyboard.press('Escape')
     await page.waitForTimeout(200)
-    await selectTool(page, 'Select (S)')
-    // Tab twice to cycle
+    await expect(page.getByText('Click to select · Ctrl+A all')).toBeVisible()
+    // Tab twice: first the text box, then the callout
     await page.keyboard.press('Tab')
     await page.waitForTimeout(100)
     await page.keyboard.press('Tab')
     await page.waitForTimeout(100)
-    // Should have an annotation selected
     await expect(page.locator('text=/Arrows nudge/')).toBeVisible()
+    await page.keyboard.press('Delete')
+    await waitForSessionSave(page)
+    const anns = (await getSessionData(page))?.annotations?.[1] ?? []
+    expect(anns.map((a: { type: string }) => a.type)).toEqual(['text'])
   })
 })
 
@@ -433,16 +446,16 @@ test.describe('Hit Testing — Cursor During Drag', () => {
   test('cursor for text tool changes to text cursor', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Text (T)')
-    const annCanvas = page.locator('canvas.ann-canvas').first()
-    const cursor = await annCanvas.evaluate(el => el.style.cursor)
+    const activeCanvas = page.locator('canvas.active-canvas').first()
+    const cursor = await activeCanvas.evaluate(el => el.style.cursor)
     expect(cursor).toBe('text')
   })
 
   test('cursor for callout tool is crosshair', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Callout (O)')
-    const annCanvas = page.locator('canvas.ann-canvas').first()
-    const cursor = await annCanvas.evaluate(el => el.style.cursor)
+    const activeCanvas = page.locator('canvas.active-canvas').first()
+    const cursor = await activeCanvas.evaluate(el => el.style.cursor)
     expect(cursor).toBe('crosshair')
   })
 })
