@@ -15,6 +15,7 @@ import {
   getSessionData,
   clearSessionData,
   screenshotCanvas,
+  fontPickerButton, listFonts,
 } from '../../helpers/pdf-annotate'
 
 test.beforeEach(async ({ page }) => {
@@ -204,28 +205,28 @@ test.describe('Status Bar Messages', () => {
     await expect(page.locator('text=/Click two points/')).toBeVisible()
   })
 
-  test('Rectangle tool shows "Shift for perfect shapes"', async ({ page }) => {
+  test('Rectangle tool shows "Shift = constrain, Alt = from center"', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Rectangle (R)')
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible()
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible()
   })
 
-  test('Circle tool shows "Shift for perfect shapes"', async ({ page }) => {
+  test('Circle tool shows "Shift = constrain, Alt = from center"', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Circle (C)')
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible()
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible()
   })
 
-  test('Line tool shows "Shift for perfect shapes"', async ({ page }) => {
+  test('Line tool shows "Shift to snap angles"', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Line (L)')
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible()
+    await expect(page.locator('text=/Shift to snap angles/')).toBeVisible()
   })
 
-  test('Arrow tool shows "Shift for perfect shapes"', async ({ page }) => {
+  test('Arrow tool shows "Shift to snap angles"', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Arrow (A)')
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible()
+    await expect(page.locator('text=/Shift to snap angles/')).toBeVisible()
   })
 
   test('selected annotation shows "Arrows nudge" hint', async ({ page }) => {
@@ -351,8 +352,8 @@ test.describe('Properties Bar — Text Tools', () => {
   test('font family dropdown visible for Text tool', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Text (T)')
-    const fontSelect = page.locator('select').filter({ has: page.locator('option:has-text("Arial")') }).first()
-    await expect(fontSelect).toBeVisible()
+    await expect(fontPickerButton(page)).toBeVisible()
+    expect(await listFonts(page)).toContain('Arial')
   })
 
   test('font size dropdown visible for Text tool', async ({ page }) => {

@@ -44,7 +44,7 @@ test.describe('Tool Switching Shortcuts', () => {
     await uploadPDFAndWait(page)
     await page.keyboard.press('l')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible()
+    await expect(page.locator('text=/Shift to snap angles/')).toBeVisible()
     await expect(page.locator('button[title="Line (L)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 

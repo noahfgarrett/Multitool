@@ -38,10 +38,10 @@ test.describe('Basic Rectangle Creation', () => {
     await expect(page.locator('button[title="Rectangle (R)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
-  test('Rectangle shows "Shift for perfect shapes" status', async ({ page }) => {
+  test('Rectangle shows "Shift = constrain, Alt = from center" status', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Rectangle (R)')
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible()
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible()
   })
 
   test('multiple rectangles create multiple annotations', async ({ page }) => {
@@ -110,10 +110,10 @@ test.describe('Basic Circle Creation', () => {
     await expect(page.locator('button[title="Circle (C)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
-  test('Circle shows "Shift for perfect shapes" status', async ({ page }) => {
+  test('Circle shows "Shift = constrain, Alt = from center" status', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Circle (C)')
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible()
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible()
   })
 
   test('multiple circles create multiple annotations', async ({ page }) => {

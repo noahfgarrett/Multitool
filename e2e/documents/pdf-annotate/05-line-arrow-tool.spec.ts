@@ -38,10 +38,10 @@ test.describe('Basic Line Creation', () => {
     await expect(page.locator('button[title="Line (L)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
-  test('Line tool shows "Shift for perfect shapes" status', async ({ page }) => {
+  test('Line tool shows "Shift to snap angles" status', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Line (L)')
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible()
+    await expect(page.locator('text=/Shift to snap angles/')).toBeVisible()
   })
 
   test('multiple lines create multiple annotations', async ({ page }) => {
@@ -110,10 +110,10 @@ test.describe('Basic Arrow Creation', () => {
     await expect(page.locator('button[title="Arrow (A)"]')).toHaveClass(/bg-\[#14B8A6\]/)
   })
 
-  test('Arrow tool shows "Shift for perfect shapes" status', async ({ page }) => {
+  test('Arrow tool shows "Shift to snap angles" status', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Arrow (A)')
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible()
+    await expect(page.locator('text=/Shift to snap angles/')).toBeVisible()
   })
 
   test('multiple arrows create multiple annotations', async ({ page }) => {
