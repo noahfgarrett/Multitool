@@ -423,7 +423,7 @@ test.describe('QA Eraser — Cursor', () => {
   test('eraser shows "none" cursor on canvas (custom cursor)', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Eraser (E)')
-    const canvas = page.locator('canvas').nth(1)
+    const canvas = page.locator('canvas.active-canvas').first()
     await expect(canvas).toHaveCSS('cursor', 'none')
   })
 

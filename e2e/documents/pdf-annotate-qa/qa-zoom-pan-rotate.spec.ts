@@ -6,6 +6,17 @@ import {
 } from '../../helpers/pdf-annotate'
 import { navigateToTool } from '../../helpers/navigation'
 
+/** A preset entry inside the open zoom dropdown (the toolbar button itself also reads e.g. "100%") */
+function zoomPreset(page: import('@playwright/test').Page, label: string) {
+  return page.locator('button[title="Zoom presets"] + div').getByRole('button', { name: label, exact: true })
+}
+
+/** Zoom keeps the view centred, so page 1's top-left corner can sit under the toolbars; bring it back into view */
+async function scrollPageTopIntoView(page: import('@playwright/test').Page) {
+  await page.locator('[data-page="1"]').evaluate(el => el.scrollIntoView({ block: 'start', inline: 'start' }))
+  await page.waitForTimeout(200)
+}
+
 // ─── Setup ───────────────────────────────────────────────────────────────────
 
 test.beforeEach(async ({ page }) => {
@@ -68,7 +79,7 @@ test.describe('QA Zoom — Percentage Display', () => {
     const zoomBtn = page.locator('button[title="Zoom presets"]')
     await zoomBtn.click()
     await page.waitForTimeout(200)
-    await page.getByRole('button', { name: '100%', exact: true }).click()
+    await zoomPreset(page, '100%').click()
     await page.waitForTimeout(200)
     await page.locator('button[title="Zoom in"]').click()
     await page.waitForTimeout(300)
@@ -80,7 +91,7 @@ test.describe('QA Zoom — Percentage Display', () => {
     const zoomBtn = page.locator('button[title="Zoom presets"]')
     await zoomBtn.click()
     await page.waitForTimeout(200)
-    await page.getByRole('button', { name: '100%', exact: true }).click()
+    await zoomPreset(page, '100%').click()
     await page.waitForTimeout(200)
     await page.locator('button[title="Zoom out"]').click()
     await page.waitForTimeout(300)
@@ -111,7 +122,7 @@ test.describe('QA Zoom — Fit to Window', () => {
     const zoomBtn = page.locator('button[title="Zoom presets"]')
     await zoomBtn.click()
     await page.waitForTimeout(200)
-    await page.getByRole('button', { name: '200%', exact: true }).click()
+    await zoomPreset(page, '200%').click()
     await page.waitForTimeout(300)
     const zoomedText = await zoomBtn.textContent()
     await zoomBtn.click()
@@ -205,7 +216,7 @@ test.describe('QA Zoom — Annotations', () => {
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await page.getByRole('button', { name: '50%', exact: true }).click()
+    await zoomPreset(page, '50%').click()
     await page.waitForTimeout(300)
     expect(await getAnnotationCount(page)).toBe(1)
   })
@@ -215,7 +226,7 @@ test.describe('QA Zoom — Annotations', () => {
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await page.getByRole('button', { name: '150%', exact: true }).click()
+    await zoomPreset(page, '150%').click()
     await page.waitForTimeout(300)
     expect(await getAnnotationCount(page)).toBe(1)
   })
@@ -237,8 +248,9 @@ test.describe('QA Zoom — Annotations', () => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await page.getByRole('button', { name: '150%', exact: true }).click()
+    await zoomPreset(page, '150%').click()
     await page.waitForTimeout(300)
+    await scrollPageTopIntoView(page)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     expect(await getAnnotationCount(page)).toBe(1)
   })
@@ -249,16 +261,17 @@ test.describe('QA Zoom — Annotations', () => {
     const zoomBtn = page.locator('button[title="Zoom presets"]')
     await zoomBtn.click()
     await page.waitForTimeout(200)
-    await page.getByRole('button', { name: '100%', exact: true }).click()
+    await zoomPreset(page, '100%').click()
     await page.waitForTimeout(200)
     await page.locator('button[title="Zoom in"]').click()
     await page.waitForTimeout(300)
+    await scrollPageTopIntoView(page)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     expect(await getAnnotationCount(page)).toBe(1)
     // Switch back to 100%
     await zoomBtn.click()
     await page.waitForTimeout(200)
-    await page.getByRole('button', { name: '100%', exact: true }).click()
+    await zoomPreset(page, '100%').click()
     await page.waitForTimeout(300)
     expect(await getAnnotationCount(page)).toBe(1)
     await waitForSessionSave(page)
@@ -276,14 +289,14 @@ test.describe('QA Zoom — Presets', () => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await expect(page.getByRole('button', { name: '25%', exact: true })).toBeVisible({ timeout: 3000 })
+    await expect(zoomPreset(page, '25%')).toBeVisible({ timeout: 3000 })
   })
 
   test('selecting 50% preset sets zoom to 50%', async ({ page }) => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await page.getByRole('button', { name: '50%', exact: true }).click()
+    await zoomPreset(page, '50%').click()
     await page.waitForTimeout(300)
     await expect(page.locator('button[title="Zoom presets"]')).toHaveText('50%')
   })
@@ -292,7 +305,7 @@ test.describe('QA Zoom — Presets', () => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await page.getByRole('button', { name: '100%', exact: true }).click()
+    await zoomPreset(page, '100%').click()
     await page.waitForTimeout(300)
     await expect(page.locator('button[title="Zoom presets"]')).toHaveText('100%')
   })
@@ -301,7 +314,7 @@ test.describe('QA Zoom — Presets', () => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await page.getByRole('button', { name: '200%', exact: true }).click()
+    await zoomPreset(page, '200%').click()
     await page.waitForTimeout(300)
     await expect(page.locator('button[title="Zoom presets"]')).toHaveText('200%')
   })
@@ -311,7 +324,7 @@ test.describe('QA Zoom — Presets', () => {
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
     for (const pct of ['25%', '50%', '75%', '100%', '125%', '150%', '200%', '300%']) {
-      await expect(page.getByRole('button', { name: pct, exact: true })).toBeVisible()
+      await expect(zoomPreset(page, pct)).toBeVisible()
     }
   })
 
@@ -319,9 +332,9 @@ test.describe('QA Zoom — Presets', () => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await page.getByRole('button', { name: '100%', exact: true }).click()
+    await zoomPreset(page, '100%').click()
     await page.waitForTimeout(300)
-    await expect(page.getByRole('button', { name: '25%', exact: true })).toBeHidden()
+    await expect(zoomPreset(page, '25%')).toBeHidden()
   })
 })
 
@@ -332,7 +345,7 @@ test.describe('QA Zoom — Limits', () => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await page.getByRole('button', { name: '25%', exact: true }).click()
+    await zoomPreset(page, '25%').click()
     await page.waitForTimeout(300)
     await page.locator('button[title="Zoom out"]').click()
     await page.waitForTimeout(300)
@@ -361,7 +374,7 @@ test.describe('QA Zoom — Session', () => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await page.getByRole('button', { name: '150%', exact: true }).click()
+    await zoomPreset(page, '150%').click()
     await page.waitForTimeout(300)
     await waitForSessionSave(page)
     const session = await getSessionData(page)
@@ -457,7 +470,7 @@ test.describe('QA Zoom — Keyboard', () => {
     const zoomBtn = page.locator('button[title="Zoom presets"]')
     await zoomBtn.click()
     await page.waitForTimeout(200)
-    await page.getByRole('button', { name: '100%', exact: true }).click()
+    await zoomPreset(page, '100%').click()
     await page.waitForTimeout(200)
     await page.locator('button[title="Zoom in"]').click()
     await page.waitForTimeout(200)

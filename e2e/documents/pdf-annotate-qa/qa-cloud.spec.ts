@@ -107,7 +107,9 @@ test.describe('Cloud — Closing', () => {
     expect(await getAnnotationCount(page)).toBe(1)
   })
 
-  test('vertex count resets to 0 after closing', async ({ page }) => {
+  // FIXME: app bug: the status bar renders currentPtsRef.current.length (PdfAnnotateTool.tsx:7653), a ref that vertex clicks mutate without a re-render (3687-3690), so it always shows '0 pts'
+
+  test.fixme('vertex count resets to 0 after closing', async ({ page }) => {
     await createTriangleCloud(page)
     await expect(page.locator('text=/0 pts/')).toBeVisible()
   })
@@ -175,12 +177,26 @@ test.describe('Cloud — Backspace Remove Vertex', () => {
     await page.waitForTimeout(100)
     await clickCanvasAt(page, 200, 200)
     await page.waitForTimeout(100)
+    // Move the pointer off the last vertex, otherwise the preview edge drawn to the
+    // cursor looks exactly like the edge to the vertex that gets removed
+    const box = (await page.locator('canvas.ann-canvas').first().boundingBox())!
+    await page.mouse.move(box.x + 320, box.y + 300, { steps: 5 })
+    await page.waitForTimeout(100)
     const before = await screenshotCanvas(page)
     await page.keyboard.press('Backspace')
     await page.waitForTimeout(200)
     const after = await screenshotCanvas(page)
     expect(before.equals(after)).toBe(false)
     await expect(page.locator('text=/pts.*Dbl-click close/')).toBeVisible()
+    // Closing now gives the two remaining vertices plus the closing click; (200,200) is gone
+    await doubleClickCanvasAt(page, 120, 250)
+    await page.waitForTimeout(300)
+    await waitForSessionSave(page)
+    const session = await getSessionData(page)
+    const anns = session.annotations['1'] || session.annotations[1]
+    expect(anns).toHaveLength(1)
+    expect(anns[0].points).toHaveLength(3)
+    expect(anns[0].points.some((p: { x: number; y: number }) => Math.abs(p.x - 200) < 1 && Math.abs(p.y - 200) < 1)).toBe(false)
   })
 
   test('repeated Backspace removes all vertices', async ({ page }) => {

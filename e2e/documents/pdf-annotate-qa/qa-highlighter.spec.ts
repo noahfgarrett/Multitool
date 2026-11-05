@@ -34,7 +34,7 @@ test.describe('Highlighter — Activation', () => {
 
   test('highlight tool shows crosshair cursor', async ({ page }) => {
     await selectTool(page, 'Highlight (H)')
-    const canvas = page.locator('canvas').nth(1)
+    const canvas = page.locator('canvas.active-canvas').first()
     await expect(canvas).toHaveCSS('cursor', 'crosshair')
   })
 

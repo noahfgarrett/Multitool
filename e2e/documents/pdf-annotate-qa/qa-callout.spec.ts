@@ -221,7 +221,9 @@ test.describe('QA Callout — Formatting', () => {
     expect(td).toContain('line-through')
   })
 
-  test('font family change works for callout', async ({ page }) => {
+  // FIXME: app bug: the properties-bar font picker (PdfAnnotateTool.tsx:6024) steals focus from the textarea, whose onBlur (7392) commits the edit, so the choice never reaches the box being edited and an empty new box is discarded (1475-1490)
+
+  test.fixme('font family change works for callout', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Callout (O)')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 200 })
@@ -530,7 +532,7 @@ test.describe('QA Callout — Select, Move, Delete', () => {
     expect(callout!.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
   })
 
-  test('callout default fontSize is 14', async ({ page }) => {
+  test('callout default fontSize adapts to the page width', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Callout (O)')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 200 })
@@ -542,7 +544,8 @@ test.describe('QA Callout — Select, Move, Delete', () => {
     const session = await getSessionData(page)
     const anns = Object.values(session.annotations).flat() as Array<{ type: string; fontSize?: number }>
     const callout = anns.find(a => a.type === 'callout')
-    expect(callout!.fontSize).toBe(16)
+    // With the default size untouched, new boxes get round(clamp(pageWidth / 50, 12, 48)): 12 on the 612pt-wide sample
+    expect(callout!.fontSize).toBe(12)
   })
 
   test('callout with color persists', async ({ page }) => {

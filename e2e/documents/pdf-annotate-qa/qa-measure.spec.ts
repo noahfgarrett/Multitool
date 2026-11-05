@@ -415,9 +415,8 @@ test.describe('QA Measure — Status Bar Hints (P7)', () => {
   test('cursor is crosshair when measure tool is active', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Measure (M)')
-    const canvas = page.locator('canvas').nth(1)
-    const cursor = await canvas.evaluate(el => window.getComputedStyle(el).cursor)
-    expect(cursor).toBe('crosshair')
+    const canvas = page.locator('canvas.active-canvas').first()
+    await expect(canvas).toHaveCSS('cursor', 'crosshair')
   })
 })
 

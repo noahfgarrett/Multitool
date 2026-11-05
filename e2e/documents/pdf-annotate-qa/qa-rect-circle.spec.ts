@@ -38,7 +38,7 @@ test.describe('Rectangle — Creation', () => {
 
   test('Rectangle shows shift-constraint hint', async ({ page }) => {
     await selectTool(page, 'Rectangle (R)')
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible()
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible()
   })
 
   test('multiple rectangles create multiple annotations', async ({ page }) => {
@@ -101,7 +101,7 @@ test.describe('Circle — Creation', () => {
 
   test('Circle shows shift-constraint hint', async ({ page }) => {
     await selectTool(page, 'Circle (C)')
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible()
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible()
   })
 
   test('multiple circles create multiple annotations', async ({ page }) => {
