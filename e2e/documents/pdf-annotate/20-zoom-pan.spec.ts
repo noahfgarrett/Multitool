@@ -5,6 +5,7 @@ import {
   doubleClickCanvasAt, getAnnotationCount, createAnnotation, selectAnnotationAt,
   moveAnnotation, waitForSessionSave, getSessionData, clearSessionData, screenshotCanvas,
 } from '../../helpers/pdf-annotate'
+import { chooseZoomPreset, zoomOption, scrollViewerToOrigin } from '../../helpers/pdf-annotate-b'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -62,14 +63,7 @@ test.describe('Zoom Controls — Buttons', () => {
     await uploadPDFAndWait(page)
     // Set zoom to 100% first
     const zoomBtn = page.locator('button[title="Zoom presets"]')
-    await zoomBtn.click()
-    await page.waitForTimeout(200)
-    // Click 100% preset
-    const preset100 = page.locator('button:has-text("100%")').first()
-    if (await preset100.isVisible()) {
-      await preset100.click()
-      await page.waitForTimeout(200)
-    }
+    await chooseZoomPreset(page, '100%')
     await page.locator('button[title="Zoom in"]').click()
     await page.waitForTimeout(300)
     const afterText = await zoomBtn.textContent()
@@ -80,13 +74,7 @@ test.describe('Zoom Controls — Buttons', () => {
     await uploadPDFAndWait(page)
     // Set zoom to 100%
     const zoomBtn = page.locator('button[title="Zoom presets"]')
-    await zoomBtn.click()
-    await page.waitForTimeout(200)
-    const preset100 = page.locator('button:has-text("100%")').first()
-    if (await preset100.isVisible()) {
-      await preset100.click()
-      await page.waitForTimeout(200)
-    }
+    await chooseZoomPreset(page, '100%')
     await page.locator('button[title="Zoom out"]').click()
     await page.waitForTimeout(300)
     const afterText = await zoomBtn.textContent()
@@ -152,77 +140,75 @@ test.describe('Zoom Presets', () => {
     await zoomBtn.click()
     await page.waitForTimeout(200)
     // Should see preset options
-    await expect(page.locator('button:has-text("25%")')).toBeVisible({ timeout: 3000 })
+    await expect(zoomOption(page, '25%')).toBeVisible({ timeout: 3000 })
   })
 
   test('25% zoom preset is available', async ({ page }) => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await expect(page.locator('button:has-text("25%")')).toBeVisible()
+    await expect(zoomOption(page, '25%')).toBeVisible()
   })
 
   test('50% zoom preset is available', async ({ page }) => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await expect(page.locator('button:has-text("50%")')).toBeVisible()
+    await expect(zoomOption(page, '50%')).toBeVisible()
   })
 
   test('75% zoom preset is available', async ({ page }) => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await expect(page.locator('button:has-text("75%")')).toBeVisible()
+    await expect(zoomOption(page, '75%')).toBeVisible()
   })
 
   test('100% zoom preset is available', async ({ page }) => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await expect(page.locator('button:has-text("100%")')).toBeVisible()
+    await expect(zoomOption(page, '100%')).toBeVisible()
   })
 
   test('125% zoom preset is available', async ({ page }) => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await expect(page.locator('button:has-text("125%")')).toBeVisible()
+    await expect(zoomOption(page, '125%')).toBeVisible()
   })
 
   test('150% zoom preset is available', async ({ page }) => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await expect(page.locator('button:has-text("150%")')).toBeVisible()
+    await expect(zoomOption(page, '150%')).toBeVisible()
   })
 
   test('200% zoom preset is available', async ({ page }) => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await expect(page.locator('button:has-text("200%")')).toBeVisible()
+    await expect(zoomOption(page, '200%')).toBeVisible()
   })
 
   test('300% zoom preset is available', async ({ page }) => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await expect(page.locator('button:has-text("300%")')).toBeVisible()
+    await expect(zoomOption(page, '300%')).toBeVisible()
   })
 
   test('fit to window option is in zoom dropdown', async ({ page }) => {
     await uploadPDFAndWait(page)
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
-    await expect(page.locator('button:has-text("Fit")')).toBeVisible()
+    await expect(zoomOption(page, 'Fit Page')).toBeVisible()
   })
 
   test('selecting 50% preset sets zoom to 50%', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("50%")').click()
+    await chooseZoomPreset(page, '50%')
     await page.waitForTimeout(300)
     const zoomBtn = page.locator('button[title="Zoom presets"]')
     await expect(zoomBtn).toHaveText('50%')
@@ -230,9 +216,7 @@ test.describe('Zoom Presets', () => {
 
   test('selecting 200% preset sets zoom to 200%', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("200%")').click()
+    await chooseZoomPreset(page, '200%')
     await page.waitForTimeout(300)
     const zoomBtn = page.locator('button[title="Zoom presets"]')
     await expect(zoomBtn).toHaveText('200%')
@@ -240,12 +224,10 @@ test.describe('Zoom Presets', () => {
 
   test('zoom dropdown closes after selection', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("100%")').first().click()
+    await chooseZoomPreset(page, '100%')
     await page.waitForTimeout(300)
     // Dropdown items should not be visible
-    await expect(page.locator('button:has-text("25%")')).toBeHidden()
+    await expect(zoomOption(page, '25%')).toBeHidden()
   })
 })
 
@@ -257,9 +239,7 @@ test.describe('Zoom — Annotations', () => {
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     const at100 = await screenshotCanvas(page)
     // Zoom to 200%
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("200%")').click()
+    await chooseZoomPreset(page, '200%')
     await page.waitForTimeout(500)
     const at200 = await screenshotCanvas(page)
     expect(Buffer.compare(at100, at200)).not.toBe(0)
@@ -268,10 +248,10 @@ test.describe('Zoom — Annotations', () => {
   test('drawing at non-default zoom works', async ({ page }) => {
     await uploadPDFAndWait(page)
     // Zoom to 150%
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("150%")').click()
+    await chooseZoomPreset(page, '150%')
     await page.waitForTimeout(300)
+    // Zooming keeps the viewport centre; bring the page's top-left (where we draw) into view
+    await scrollViewerToOrigin(page)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     expect(await getAnnotationCount(page)).toBe(1)
   })
@@ -292,9 +272,7 @@ test.describe('Zoom — Annotations', () => {
 
   test('drawing at 50% zoom creates valid annotation', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("50%")').click()
+    await chooseZoomPreset(page, '50%')
     await page.waitForTimeout(300)
     await createAnnotation(page, 'line', { x: 50, y: 50, w: 100, h: 0 })
     expect(await getAnnotationCount(page)).toBe(1)
@@ -306,10 +284,10 @@ test.describe('Zoom — Annotations', () => {
 
   test('drawing at 300% zoom creates valid annotation', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("300%")').click()
+    await chooseZoomPreset(page, '300%')
     await page.waitForTimeout(500)
+    // Zooming keeps the viewport centre; bring the page's top-left (where we draw) into view
+    await scrollViewerToOrigin(page)
     await createAnnotation(page, 'rectangle', { x: 50, y: 50, w: 80, h: 60 })
     expect(await getAnnotationCount(page)).toBe(1)
   })
@@ -320,9 +298,7 @@ test.describe('Zoom — Annotations', () => {
 test.describe('Zoom — Session & Limits', () => {
   test('zoom level persists in session data', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("150%")').click()
+    await chooseZoomPreset(page, '150%')
     await page.waitForTimeout(300)
     await waitForSessionSave(page)
     const session = await getSessionData(page)
@@ -332,9 +308,7 @@ test.describe('Zoom — Session & Limits', () => {
   test('zoom does not go below 25%', async ({ page }) => {
     await uploadPDFAndWait(page)
     // Set to 25%
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("25%")').click()
+    await chooseZoomPreset(page, '25%')
     await page.waitForTimeout(300)
     // Try to zoom out further
     await page.locator('button[title="Zoom out"]').click()
@@ -362,9 +336,7 @@ test.describe('Zoom — Session & Limits', () => {
   test('canvas is scrollable at high zoom', async ({ page }) => {
     await uploadPDFAndWait(page)
     // Zoom to 300%
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("300%")').click()
+    await chooseZoomPreset(page, '300%')
     await page.waitForTimeout(500)
     // The scroll container should have scrollable overflow
     const scrollContainer = page.locator('[class*="overflow"]').first()
@@ -374,15 +346,11 @@ test.describe('Zoom — Session & Limits', () => {
   test('fit to window button works via zoom dropdown', async ({ page }) => {
     await uploadPDFAndWait(page)
     // Zoom to 200% first
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("200%")').click()
+    await chooseZoomPreset(page, '200%')
     await page.waitForTimeout(300)
     const zoomedText = await page.locator('button[title="Zoom presets"]').textContent()
     // Now fit to window
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("Fit")').click()
+    await chooseZoomPreset(page, 'Fit Page')
     await page.waitForTimeout(300)
     const fitText = await page.locator('button[title="Zoom presets"]').textContent()
     expect(fitText).not.toBe(zoomedText)
@@ -399,15 +367,13 @@ test.describe('Zoom — Session & Limits', () => {
 
   test('current zoom preset is highlighted in dropdown', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("100%")').first().click()
+    await chooseZoomPreset(page, '100%')
     await page.waitForTimeout(200)
     // Re-open dropdown
     await page.locator('button[title="Zoom presets"]').click()
     await page.waitForTimeout(200)
     // The 100% button should have the active/highlighted class
-    const btn100 = page.locator('button:has-text("100%")').first()
+    const btn100 = zoomOption(page, '100%')
     await expect(btn100).toHaveClass(/text-\[#14B8A6\]/)
   })
 
@@ -415,9 +381,7 @@ test.describe('Zoom — Session & Limits', () => {
     await uploadPDFAndWait(page)
     const zoomBtn = page.locator('button[title="Zoom presets"]')
     // Set to 100%
-    await zoomBtn.click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("100%")').first().click()
+    await chooseZoomPreset(page, '100%')
     await page.waitForTimeout(200)
     // Zoom in three times
     for (let i = 0; i < 3; i++) {
@@ -432,9 +396,7 @@ test.describe('Zoom — Session & Limits', () => {
     await uploadPDFAndWait(page)
     const zoomBtn = page.locator('button[title="Zoom presets"]')
     // Set to 200%
-    await zoomBtn.click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("200%")').click()
+    await chooseZoomPreset(page, '200%')
     await page.waitForTimeout(200)
     // Zoom out twice
     for (let i = 0; i < 2; i++) {
@@ -449,9 +411,7 @@ test.describe('Zoom — Session & Limits', () => {
     await uploadPDFAndWait(page)
     const zoomBtn = page.locator('button[title="Zoom presets"]')
     // Set to 100%
-    await zoomBtn.click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("100%")').first().click()
+    await chooseZoomPreset(page, '100%')
     await page.waitForTimeout(200)
     await page.locator('button[title="Zoom in"]').click()
     await page.waitForTimeout(200)
@@ -464,9 +424,7 @@ test.describe('Zoom — Session & Limits', () => {
   test('zoom level survives tool switch', async ({ page }) => {
     await uploadPDFAndWait(page)
     const zoomBtn = page.locator('button[title="Zoom presets"]')
-    await zoomBtn.click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("150%")').click()
+    await chooseZoomPreset(page, '150%')
     await page.waitForTimeout(200)
     // Switch tools
     await selectTool(page, 'Pencil (P)')
@@ -479,9 +437,7 @@ test.describe('Zoom — Session & Limits', () => {
   test('selecting annotation at zoomed-in level works', async ({ page }) => {
     await uploadPDFAndWait(page)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("150%")').click()
+    await chooseZoomPreset(page, '150%')
     await page.waitForTimeout(300)
     // Select at the zoomed position (coordinates are relative to canvas)
     await selectAnnotationAt(page, 100, 140)
@@ -502,9 +458,7 @@ test.describe('Zoom — Session & Limits', () => {
 
   test('zoom to 25% makes canvas very small', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("25%")').click()
+    await chooseZoomPreset(page, '25%')
     await page.waitForTimeout(300)
     // Canvas should still be visible
     await expect(page.locator('canvas').first()).toBeVisible()
@@ -514,9 +468,7 @@ test.describe('Zoom — Session & Limits', () => {
 
   test('zoom to 300% makes canvas very large', async ({ page }) => {
     await uploadPDFAndWait(page)
-    await page.locator('button[title="Zoom presets"]').click()
-    await page.waitForTimeout(200)
-    await page.locator('button:has-text("300%")').click()
+    await chooseZoomPreset(page, '300%')
     await page.waitForTimeout(500)
     await expect(page.locator('canvas').first()).toBeVisible()
     const text = await page.locator('button[title="Zoom presets"]').textContent()
