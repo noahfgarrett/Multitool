@@ -13,6 +13,7 @@ import {
   waitForSessionSave,
   getSessionData,
   clearSessionData,
+  chooseFont, fontPickerButton,
 } from '../../helpers/pdf-annotate'
 import { navigateToTool } from '../../helpers/navigation'
 
@@ -196,15 +197,14 @@ test.describe('Properties QA — Font Family', () => {
   test('font family dropdown is visible in text mode', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Text (T)')
-    const fontSelect = page.locator('select').filter({ has: page.locator('option:has-text("Arial")') }).first()
+    const fontSelect = fontPickerButton(page)
     await expect(fontSelect).toBeVisible()
   })
 
   test('font family can be changed to Courier New', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Text (T)')
-    const fontSelect = page.locator('select').filter({ has: page.locator('option:has-text("Arial")') }).first()
-    await fontSelect.selectOption('Courier New')
+    await chooseFont(page, 'Courier New')
     await waitForSessionSave(page)
     const session = await getSessionData(page)
     expect(session?.fontFamily).toBe('Courier New')

@@ -5,6 +5,7 @@ import {
   clickCanvasAt, doubleClickCanvasAt, getAnnotationCount, createAnnotation,
   selectAnnotationAt, moveAnnotation, exportPDF, goToPage,
   waitForSessionSave, getSessionData, clearSessionData,
+  chooseFont,
 } from '../../helpers/pdf-annotate'
 
 test.beforeEach(async ({ page }) => {
@@ -300,8 +301,7 @@ test.describe('Export Annotations', () => {
 
   test('export text Arial', async ({ page }) => {
     await selectTool(page, 'Text (T)')
-    const fontSelect = page.locator('select').filter({ hasText: /Arial/ }).first()
-    if (await fontSelect.isVisible()) await fontSelect.selectOption('Arial')
+    await chooseFont(page, 'Arial')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 180 })
     await page.waitForTimeout(300)
     await page.keyboard.type('Arial text')
@@ -313,8 +313,7 @@ test.describe('Export Annotations', () => {
 
   test('export text Times New Roman', async ({ page }) => {
     await selectTool(page, 'Text (T)')
-    const fontSelect = page.locator('select').filter({ hasText: /font/i }).first()
-    if (await fontSelect.isVisible()) await fontSelect.selectOption({ label: 'Times New Roman' })
+    await chooseFont(page, 'Times New Roman')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 180 })
     await page.waitForTimeout(300)
     await page.keyboard.type('Times text')
@@ -326,8 +325,7 @@ test.describe('Export Annotations', () => {
 
   test('export text Courier', async ({ page }) => {
     await selectTool(page, 'Text (T)')
-    const fontSelect = page.locator('select').filter({ hasText: /font/i }).first()
-    if (await fontSelect.isVisible()) await fontSelect.selectOption({ label: 'Courier New' })
+    await chooseFont(page, 'Courier New')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 180 })
     await page.waitForTimeout(300)
     await page.keyboard.type('Courier text')

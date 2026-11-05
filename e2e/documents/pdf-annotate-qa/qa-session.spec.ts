@@ -14,6 +14,7 @@ import {
   getSessionData,
   clearSessionData,
   goToPage,
+  chooseFont,
 } from '../../helpers/pdf-annotate'
 import { navigateToTool } from '../../helpers/navigation'
 
@@ -236,8 +237,7 @@ test.describe('Session QA — Tool Settings Persistence', () => {
   test('font family change persists to session', async ({ page }) => {
     await uploadPDFAndWait(page, 'sample.pdf')
     await selectTool(page, 'Text (T)')
-    const fontSelect = page.locator('select').filter({ has: page.locator('option:has-text("Arial")') }).first()
-    await fontSelect.selectOption('Courier New')
+    await chooseFont(page, 'Courier New')
     await waitForSessionSave(page)
     const data = await getSessionData(page)
     expect(data.fontFamily).toBe('Courier New')

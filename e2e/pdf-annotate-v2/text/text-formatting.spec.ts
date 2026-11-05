@@ -4,6 +4,7 @@ import {
   uploadPDFAndWait, selectTool, dragOnCanvas, clickCanvasAt,
   doubleClickCanvasAt, getAnnotationCount, createAnnotation, exportPDF,
   waitForSessionSave, getSessionData,
+  chooseFont, fontPickerButton,
 } from '../../helpers/pdf-annotate'
 
 test.beforeEach(async ({ page }) => {
@@ -213,9 +214,9 @@ test.describe('Text Formatting', () => {
     await selectTool(page, 'Text (T)')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 180 })
     await page.waitForTimeout(300)
-    const fontSelect = page.locator('select').filter({ has: page.locator('option[value="Arial"]') }).first()
+    const fontSelect = fontPickerButton(page)
     if (await fontSelect.count() > 0 && await fontSelect.isVisible()) {
-      await fontSelect.selectOption('Arial')
+      await chooseFont(page, 'Arial')
     }
     await page.keyboard.type('Arial font')
     await page.keyboard.press('Escape')
@@ -227,9 +228,9 @@ test.describe('Text Formatting', () => {
     await selectTool(page, 'Text (T)')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 180 })
     await page.waitForTimeout(300)
-    const fontSelect = page.locator('select').filter({ has: page.locator('option[value="Arial"]') }).first()
+    const fontSelect = fontPickerButton(page)
     if (await fontSelect.count() > 0 && await fontSelect.isVisible()) {
-      await fontSelect.selectOption('Times New Roman')
+      await chooseFont(page, 'Times New Roman')
     }
     await page.keyboard.type('Times font')
     await page.keyboard.press('Escape')
@@ -241,9 +242,9 @@ test.describe('Text Formatting', () => {
     await selectTool(page, 'Text (T)')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 180 })
     await page.waitForTimeout(300)
-    const fontSelect = page.locator('select').filter({ has: page.locator('option[value="Arial"]') }).first()
+    const fontSelect = fontPickerButton(page)
     if (await fontSelect.count() > 0 && await fontSelect.isVisible()) {
-      await fontSelect.selectOption('Courier New')
+      await chooseFont(page, 'Courier New')
     }
     await page.keyboard.type('Courier font')
     await page.keyboard.press('Escape')
@@ -255,9 +256,9 @@ test.describe('Text Formatting', () => {
     await selectTool(page, 'Text (T)')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 180 })
     await page.waitForTimeout(300)
-    const fontSelect = page.locator('select').filter({ has: page.locator('option[value="Arial"]') }).first()
+    const fontSelect = fontPickerButton(page)
     if (await fontSelect.count() > 0 && await fontSelect.isVisible()) {
-      await fontSelect.selectOption('Verdana')
+      await chooseFont(page, 'Verdana')
     }
     await page.keyboard.type('Verdana font')
     await page.keyboard.press('Escape')
@@ -269,9 +270,9 @@ test.describe('Text Formatting', () => {
     await selectTool(page, 'Text (T)')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 180 })
     await page.waitForTimeout(300)
-    const fontSelect = page.locator('select').filter({ has: page.locator('option[value="Arial"]') }).first()
+    const fontSelect = fontPickerButton(page)
     if (await fontSelect.count() > 0 && await fontSelect.isVisible()) {
-      await fontSelect.selectOption('Helvetica')
+      await chooseFont(page, 'Helvetica')
     }
     await page.keyboard.type('Helvetica font')
     await page.keyboard.press('Escape')
@@ -283,9 +284,9 @@ test.describe('Text Formatting', () => {
     await selectTool(page, 'Text (T)')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 180 })
     await page.waitForTimeout(300)
-    const fontSelect = page.locator('select').filter({ has: page.locator('option[value="Arial"]') }).first()
+    const fontSelect = fontPickerButton(page)
     if (await fontSelect.count() > 0 && await fontSelect.isVisible()) {
-      await fontSelect.selectOption('Georgia')
+      await chooseFont(page, 'Georgia')
     }
     await page.keyboard.type('Georgia font')
     await page.keyboard.press('Escape')
@@ -684,9 +685,9 @@ test.describe('Text Formatting', () => {
     await selectTool(page, 'Text (T)')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 180 })
     await page.waitForTimeout(300)
-    const fontSelect = page.locator('select').filter({ has: page.locator('option[value="Arial"]') }).first()
+    const fontSelect = fontPickerButton(page)
     if (await fontSelect.count() > 0 && await fontSelect.isVisible()) {
-      await fontSelect.selectOption('Courier New')
+      await chooseFont(page, 'Courier New')
     }
     await page.keyboard.type('Courier session')
     await page.keyboard.press('Escape')
@@ -709,9 +710,9 @@ test.describe('Text Formatting', () => {
     await selectTool(page, 'Text (T)')
     await dragOnCanvas(page, { x: 50, y: 150 }, { x: 200, y: 200 })
     await page.waitForTimeout(300)
-    const fontSelect = page.locator('select').filter({ has: page.locator('option[value="Arial"]') }).first()
+    const fontSelect = fontPickerButton(page)
     if (await fontSelect.count() > 0 && await fontSelect.isVisible()) {
-      await fontSelect.selectOption('Courier New')
+      await chooseFont(page, 'Courier New')
     }
     await page.keyboard.type('Courier text')
     await page.keyboard.press('Escape')
@@ -768,9 +769,9 @@ test.describe('Text Formatting', () => {
     await page.keyboard.press('Control+b')
     await page.keyboard.press('Control+i')
     await page.keyboard.press('Control+u')
-    const fontSelect = page.locator('select').filter({ has: page.locator('option[value="Arial"]') }).first()
+    const fontSelect = fontPickerButton(page)
     if (await fontSelect.count() > 0 && await fontSelect.isVisible()) {
-      await fontSelect.selectOption('Courier New')
+      await chooseFont(page, 'Courier New')
     }
     const sizeSelect = page.locator('select').filter({ has: page.locator('option[value="24"]') }).first()
     if (await sizeSelect.count() > 0 && await sizeSelect.isVisible()) {

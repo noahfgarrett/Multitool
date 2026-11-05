@@ -4,6 +4,7 @@ import {
   uploadPDFAndWait, selectTool, dragOnCanvas, clickCanvasAt,
   doubleClickCanvasAt, getAnnotationCount, createAnnotation, exportPDF,
   waitForSessionSave, getSessionData, goToPage,
+  chooseFont, fontPickerButton,
 } from '../../helpers/pdf-annotate'
 
 test.beforeEach(async ({ page }) => {
@@ -327,9 +328,9 @@ test.describe('Text Edge Cases', () => {
     await selectTool(page, 'Text (T)')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 180 })
     await page.waitForTimeout(300)
-    const fontSelect = page.locator('select').filter({ has: page.locator('option[value="Arial"]') }).first()
+    const fontSelect = fontPickerButton(page)
     if (await fontSelect.count() > 0 && await fontSelect.isVisible()) {
-      await fontSelect.selectOption('Courier New')
+      await chooseFont(page, 'Courier New')
     }
     await page.keyboard.type('Courier font')
     await page.keyboard.press('Escape')
@@ -358,9 +359,9 @@ test.describe('Text Edge Cases', () => {
       await selectTool(page, 'Text (T)')
       await dragOnCanvas(page, { x: 50, y: 50 }, { x: 250, y: 100 })
       await page.waitForTimeout(300)
-      const fontSelect = page.locator('select').filter({ has: page.locator('option[value="Arial"]') }).first()
+      const fontSelect = fontPickerButton(page)
       if (await fontSelect.count() > 0 && await fontSelect.isVisible()) {
-        await fontSelect.selectOption(font)
+        await chooseFont(page, font)
       }
       await page.keyboard.type(font)
       await page.keyboard.press('Escape')

@@ -4,6 +4,7 @@ import {
   uploadPDFAndWait, selectTool, drawOnCanvas, dragOnCanvas,
   clickCanvasAt, doubleClickCanvasAt, getAnnotationCount, createAnnotation,
   waitForSessionSave, getSessionData,
+  chooseFont, currentFont, fontPickerButton,
 } from '../../helpers/pdf-annotate'
 
 test.beforeEach(async ({ page }) => {
@@ -15,27 +16,27 @@ test.beforeEach(async ({ page }) => {
 test.describe('Text Properties — Font Family', () => {
   test('font family dropdown visible for text tool', async ({ page }) => {
     await selectTool(page, 'Text (T)')
-    const fontSelect = page.locator('select').filter({ has: page.locator('option:has-text("Arial")') }).first()
+    const fontSelect = fontPickerButton(page)
     const hasFontSelect = await fontSelect.isVisible().catch(() => false)
     expect(typeof hasFontSelect).toBe('boolean')
   })
 
   test('font family Arial (default)', async ({ page }) => {
     await selectTool(page, 'Text (T)')
-    const fontSelect = page.locator('select').filter({ has: page.locator('option:has-text("Arial")') }).first()
+    const fontSelect = fontPickerButton(page)
     const hasSelect = await fontSelect.isVisible().catch(() => false)
     if (hasSelect) {
-      const value = await fontSelect.inputValue()
+      const value = await currentFont(page)
       expect(value).toBeTruthy()
     }
   })
 
   test('font family Helvetica', async ({ page }) => {
     await selectTool(page, 'Text (T)')
-    const fontSelect = page.locator('select').filter({ has: page.locator('option:has-text("Helvetica")') }).first()
+    const fontSelect = fontPickerButton(page)
     const hasSelect = await fontSelect.isVisible().catch(() => false)
     if (hasSelect) {
-      await fontSelect.selectOption({ label: 'Helvetica' })
+      await chooseFont(page, 'Helvetica')
       await page.waitForTimeout(100)
     }
     expect(typeof hasSelect).toBe('boolean')
@@ -43,10 +44,10 @@ test.describe('Text Properties — Font Family', () => {
 
   test('font family Verdana', async ({ page }) => {
     await selectTool(page, 'Text (T)')
-    const fontSelect = page.locator('select').filter({ has: page.locator('option:has-text("Verdana")') }).first()
+    const fontSelect = fontPickerButton(page)
     const hasSelect = await fontSelect.isVisible().catch(() => false)
     if (hasSelect) {
-      await fontSelect.selectOption({ label: 'Verdana' })
+      await chooseFont(page, 'Verdana')
       await page.waitForTimeout(100)
     }
     expect(typeof hasSelect).toBe('boolean')
@@ -54,60 +55,60 @@ test.describe('Text Properties — Font Family', () => {
 
   test('font family Tahoma', async ({ page }) => {
     await selectTool(page, 'Text (T)')
-    const fontSelect = page.locator('select').filter({ has: page.locator('option:has-text("Tahoma")') }).first()
+    const fontSelect = fontPickerButton(page)
     const hasSelect = await fontSelect.isVisible().catch(() => false)
     if (hasSelect) {
-      await fontSelect.selectOption({ label: 'Tahoma' })
+      await chooseFont(page, 'Tahoma')
     }
     expect(typeof hasSelect).toBe('boolean')
   })
 
   test('font family Times New Roman', async ({ page }) => {
     await selectTool(page, 'Text (T)')
-    const fontSelect = page.locator('select').filter({ has: page.locator('option:has-text("Times New Roman")') }).first()
+    const fontSelect = fontPickerButton(page)
     const hasSelect = await fontSelect.isVisible().catch(() => false)
     if (hasSelect) {
-      await fontSelect.selectOption({ label: 'Times New Roman' })
+      await chooseFont(page, 'Times New Roman')
     }
     expect(typeof hasSelect).toBe('boolean')
   })
 
   test('font family Georgia', async ({ page }) => {
     await selectTool(page, 'Text (T)')
-    const fontSelect = page.locator('select').filter({ has: page.locator('option:has-text("Georgia")') }).first()
+    const fontSelect = fontPickerButton(page)
     const hasSelect = await fontSelect.isVisible().catch(() => false)
     if (hasSelect) {
-      await fontSelect.selectOption({ label: 'Georgia' })
+      await chooseFont(page, 'Georgia')
     }
     expect(typeof hasSelect).toBe('boolean')
   })
 
   test('font family Courier New', async ({ page }) => {
     await selectTool(page, 'Text (T)')
-    const fontSelect = page.locator('select').filter({ has: page.locator('option:has-text("Courier New")') }).first()
+    const fontSelect = fontPickerButton(page)
     const hasSelect = await fontSelect.isVisible().catch(() => false)
     if (hasSelect) {
-      await fontSelect.selectOption({ label: 'Courier New' })
+      await chooseFont(page, 'Courier New')
     }
     expect(typeof hasSelect).toBe('boolean')
   })
 
   test('font family Consolas', async ({ page }) => {
     await selectTool(page, 'Text (T)')
-    const fontSelect = page.locator('select').filter({ has: page.locator('option:has-text("Consolas")') }).first()
+    const fontSelect = fontPickerButton(page)
     const hasSelect = await fontSelect.isVisible().catch(() => false)
     if (hasSelect) {
-      await fontSelect.selectOption({ label: 'Consolas' })
+      await chooseFont(page, 'Consolas')
     }
     expect(typeof hasSelect).toBe('boolean')
   })
 
   test('font family Comic Sans MS', async ({ page }) => {
     await selectTool(page, 'Text (T)')
-    const fontSelect = page.locator('select').filter({ has: page.locator('option:has-text("Comic Sans")') }).first()
+    const fontSelect = fontPickerButton(page)
     const hasSelect = await fontSelect.isVisible().catch(() => false)
     if (hasSelect) {
-      await fontSelect.selectOption({ label: 'Comic Sans MS' })
+      await chooseFont(page, 'Comic Sans MS')
     }
     expect(typeof hasSelect).toBe('boolean')
   })

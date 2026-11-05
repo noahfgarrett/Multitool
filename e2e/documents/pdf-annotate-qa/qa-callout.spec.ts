@@ -3,6 +3,7 @@ import {
   uploadPDFAndWait, selectTool, drawOnCanvas, clickCanvasAt,
   doubleClickCanvasAt, dragOnCanvas, createAnnotation, getAnnotationCount,
   selectAnnotationAt, moveAnnotation, waitForSessionSave, getSessionData,
+  chooseFont,
 } from '../../helpers/pdf-annotate'
 import { navigateToTool } from '../../helpers/navigation'
 
@@ -225,8 +226,7 @@ test.describe('QA Callout — Formatting', () => {
     await selectTool(page, 'Callout (O)')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 200 })
     await page.waitForTimeout(300)
-    const fontSelect = page.locator('select').filter({ has: page.locator('option:has-text("Arial")') }).first()
-    await fontSelect.selectOption('Courier New')
+    await chooseFont(page, 'Courier New')
     await page.waitForTimeout(100)
     const textarea = page.locator('textarea')
     const ff = await textarea.evaluate(el => getComputedStyle(el).fontFamily)

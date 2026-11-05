@@ -4,6 +4,7 @@ import {
   uploadPDFAndWait, selectTool, dragOnCanvas, clickCanvasAt,
   doubleClickCanvasAt, getAnnotationCount, createAnnotation, exportPDF,
   waitForSessionSave, getSessionData, goToPage, drawOnCanvas,
+  chooseFont, fontPickerButton,
 } from '../../helpers/pdf-annotate'
 
 test.beforeEach(async ({ page }) => {
@@ -331,9 +332,9 @@ test.describe('Callout Edge Cases', () => {
     await selectTool(page, 'Callout (O)')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 200 })
     await page.waitForTimeout(300)
-    const fontSelect = page.locator('select').filter({ has: page.locator('option[value="Arial"]') }).first()
+    const fontSelect = fontPickerButton(page)
     if (await fontSelect.count() > 0 && await fontSelect.isVisible()) {
-      await fontSelect.selectOption('Courier New')
+      await chooseFont(page, 'Courier New')
     }
     await page.keyboard.type('Courier callout')
     await page.keyboard.press('Escape')

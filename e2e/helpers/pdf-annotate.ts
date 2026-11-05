@@ -328,3 +328,28 @@ export async function resetWithDismiss(page: Page): Promise<void> {
   await newBtn.click()
   await page.waitForTimeout(200)
 }
+
+/** The font family picker button in the text/callout properties bar */
+export function fontPickerButton(page: Page) {
+  return page.locator('button[title="Font family"]')
+}
+
+/** Open the font family picker and choose a font by name */
+export async function chooseFont(page: Page, fontName: string) {
+  await fontPickerButton(page).click()
+  await page.locator('div.absolute button').filter({ hasText: new RegExp(`^${fontName}$`) }).click()
+  await page.waitForTimeout(100)
+}
+
+/** The font family currently shown on the picker button */
+export async function currentFont(page: Page): Promise<string> {
+  return ((await fontPickerButton(page).textContent()) ?? '').trim()
+}
+
+/** All font names offered by the picker (opens it, reads the list, toggles it closed) */
+export async function listFonts(page: Page): Promise<string[]> {
+  await fontPickerButton(page).click()
+  const names = await page.locator('div.absolute button span.flex-1').allTextContents()
+  await fontPickerButton(page).click()
+  return names.map(n => n.trim())
+}
