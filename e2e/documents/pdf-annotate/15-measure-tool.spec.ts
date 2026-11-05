@@ -632,8 +632,8 @@ test.describe('Measure Tool — Interactions', () => {
   test('measurement cursor is crosshair', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Measure (M)')
-    // Cursor style set on the annotation canvas
-    const canvas = page.locator('canvas').nth(1)
+    // Cursor style is set on the interactive (active) canvas layer
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => window.getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })

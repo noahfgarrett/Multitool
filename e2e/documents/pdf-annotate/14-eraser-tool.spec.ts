@@ -7,6 +7,20 @@ import {
   getSessionData, screenshotCanvas,
 } from '../../helpers/pdf-annotate'
 
+/** Page-1 annotations from the saved session */
+async function savedAnnotations(page: import('@playwright/test').Page) {
+  await waitForSessionSave(page)
+  const session = await getSessionData(page)
+  return (session.annotations['1'] || session.annotations[1] || []) as Array<{ type: string }>
+}
+
+/** Rendered width of the annotation canvas, used to convert document offsets to screen offsets after zooming */
+async function canvasWidth(page: import('@playwright/test').Page) {
+  const box = await page.locator('canvas.ann-canvas').first().boundingBox()
+  if (!box) throw new Error('Canvas not found')
+  return box.width
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
   await navigateToTool(page, 'pdf-annotate')
@@ -34,7 +48,7 @@ test.describe('Eraser Tool — Activation', () => {
   test('eraser tool shows "none" cursor on canvas (custom cursor)', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Eraser (E)')
-    const canvas = page.locator('canvas').nth(1)
+    const canvas = page.locator('canvas.active-canvas').first()
     await expect(canvas).toHaveCSS('cursor', 'none')
   })
 
@@ -56,7 +70,7 @@ test.describe('Eraser Tool — Activation', () => {
   test('eraser shows size slider', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Eraser (E)')
-    await expect(page.locator('text=Size')).toBeVisible()
+    await expect(page.getByText('Size', { exact: true })).toBeVisible()
     await expect(page.locator('input[type="range"][min="5"][max="50"]')).toBeVisible()
   })
 })
@@ -382,14 +396,17 @@ test.describe('Eraser Tool — Zoom Levels', () => {
     await uploadPDFAndWait(page)
     await createAnnotation(page, 'pencil', { x: 100, y: 200, w: 200, h: 10 })
     expect(await getAnnotationCount(page)).toBe(1)
+    const baseWidth = await canvasWidth(page)
     await page.keyboard.press('Control+=')
-    await page.waitForTimeout(300)
+    await expect.poll(() => canvasWidth(page)).toBeGreaterThan(baseWidth)
+    const scale = (await canvasWidth(page)) / baseWidth
     await selectTool(page, 'Eraser (E)')
     await page.locator('button:has-text("Object")').click()
     await page.waitForTimeout(100)
+    // Same document positions as at 100%, converted to the zoomed canvas
     await drawOnCanvas(page, [
-      { x: 150, y: 195 },
-      { x: 200, y: 210 },
+      { x: 150 * scale, y: 195 * scale },
+      { x: 200 * scale, y: 210 * scale },
     ])
     await page.waitForTimeout(300)
     expect(await getAnnotationCount(page)).toBe(0)
@@ -399,14 +416,17 @@ test.describe('Eraser Tool — Zoom Levels', () => {
     await uploadPDFAndWait(page)
     await createAnnotation(page, 'pencil', { x: 100, y: 200, w: 200, h: 10 })
     expect(await getAnnotationCount(page)).toBe(1)
+    const baseWidth = await canvasWidth(page)
     await page.keyboard.press('Control+-')
-    await page.waitForTimeout(300)
+    await expect.poll(() => canvasWidth(page)).toBeLessThan(baseWidth)
+    const scale = (await canvasWidth(page)) / baseWidth
     await selectTool(page, 'Eraser (E)')
     await page.locator('button:has-text("Object")').click()
     await page.waitForTimeout(100)
+    // Same document positions as at 100%, converted to the zoomed canvas
     await drawOnCanvas(page, [
-      { x: 100, y: 180 },
-      { x: 200, y: 220 },
+      { x: 100 * scale, y: 180 * scale },
+      { x: 200 * scale, y: 220 * scale },
     ])
     await page.waitForTimeout(300)
     expect(await getAnnotationCount(page)).toBe(0)
@@ -563,7 +583,7 @@ test.describe('Eraser Tool — Extended', () => {
     expect(await getAnnotationCount(page)).toBe(0)
   })
 
-  test('eraser partial mode on rectangle removes via hit test', async ({ page }) => {
+  test('eraser partial mode on rectangle cuts it into fragments', async ({ page }) => {
     await uploadPDFAndWait(page)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 150, h: 100 })
     expect(await getAnnotationCount(page)).toBe(1)
@@ -574,11 +594,14 @@ test.describe('Eraser Tool — Extended', () => {
       { x: 110, y: 160 },
     ])
     await page.waitForTimeout(300)
-    // Rectangle hit in partial mode should be removed entirely
-    expect(await getAnnotationCount(page)).toBe(0)
+    // Partial mode cuts the hit shape: the shape itself is gone and only stroke fragments remain
+    const anns = await savedAnnotations(page)
+    expect(anns.some(a => a.type === 'rectangle')).toBe(false)
+    expect(anns.length).toBeGreaterThan(0)
+    expect(anns.every(a => a.type === 'pencil')).toBe(true)
   })
 
-  test('eraser partial mode on circle removes via hit test', async ({ page }) => {
+  test('eraser partial mode on circle cuts it into fragments', async ({ page }) => {
     await uploadPDFAndWait(page)
     await createAnnotation(page, 'circle', { x: 150, y: 150, w: 120, h: 100 })
     expect(await getAnnotationCount(page)).toBe(1)
@@ -588,7 +611,11 @@ test.describe('Eraser Tool — Extended', () => {
       { x: 155, y: 205 },
     ])
     await page.waitForTimeout(300)
-    expect(await getAnnotationCount(page)).toBe(0)
+    // Partial mode cuts the hit shape: the shape itself is gone and only stroke fragments remain
+    const anns = await savedAnnotations(page)
+    expect(anns.some(a => a.type === 'circle')).toBe(false)
+    expect(anns.length).toBeGreaterThan(0)
+    expect(anns.every(a => a.type === 'pencil')).toBe(true)
   })
 
   test('eraser with large radius removes more easily', async ({ page }) => {
@@ -777,7 +804,7 @@ test.describe('Eraser Tool — Extended', () => {
     expect(await getAnnotationCount(page)).toBe(0)
   })
 
-  test('erasing arrow in partial mode', async ({ page }) => {
+  test('erasing arrow in partial mode cuts it into fragments', async ({ page }) => {
     await uploadPDFAndWait(page)
     await createAnnotation(page, 'arrow', { x: 80, y: 200, w: 250, h: 5 })
     expect(await getAnnotationCount(page)).toBe(1)
@@ -788,10 +815,14 @@ test.describe('Eraser Tool — Extended', () => {
       { x: 210, y: 210 },
     ])
     await page.waitForTimeout(300)
-    expect(await getAnnotationCount(page)).toBe(0)
+    // Partial mode cuts the hit shape: the shape itself is gone and only stroke fragments remain
+    const anns = await savedAnnotations(page)
+    expect(anns.some(a => a.type === 'arrow')).toBe(false)
+    expect(anns.length).toBeGreaterThan(0)
+    expect(anns.every(a => a.type === 'pencil')).toBe(true)
   })
 
-  test('erasing line in partial mode', async ({ page }) => {
+  test('erasing line in partial mode cuts it into fragments', async ({ page }) => {
     await uploadPDFAndWait(page)
     await createAnnotation(page, 'line', { x: 80, y: 200, w: 250, h: 5 })
     expect(await getAnnotationCount(page)).toBe(1)
@@ -801,7 +832,11 @@ test.describe('Eraser Tool — Extended', () => {
       { x: 210, y: 210 },
     ])
     await page.waitForTimeout(300)
-    expect(await getAnnotationCount(page)).toBe(0)
+    // Partial mode cuts the hit shape: the shape itself is gone and only stroke fragments remain
+    const anns = await savedAnnotations(page)
+    expect(anns.some(a => a.type === 'line')).toBe(false)
+    expect(anns.length).toBeGreaterThan(0)
+    expect(anns.every(a => a.type === 'pencil')).toBe(true)
   })
 
   test('object mode eraser on text annotation removes it', async ({ page }) => {
