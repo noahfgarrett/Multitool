@@ -109,7 +109,7 @@ any resolution and any step is undoable.
   Samples are colors+tolerance, wand re-floods natively, brushes re-rasterize from vector
   paths → genuinely sharp output, never an upscaled blur.
 
-**Cheap live updates (CLAUDE.md: no O(N) per frame):**
+**Cheap live updates (no O(N) work per frame):**
 - Cache source `ImageData` once per resolution — never re-read pixels per update.
 - Coalesce slider recomputes to **one pass per animation frame** (rAF).
 - Brushing updates only the **manual layer** + re-composites; does not recompute the key mask.
@@ -118,7 +118,7 @@ any resolution and any step is undoable.
 chunks) with a progress bar. Main-thread — sidesteps Web-Worker inlining risk in the
 single-file build (YAGNI; move just the export pass to a worker later if profiling demands).
 
-**Hard caps (CLAUDE.md):** refuse/auto-downscale beyond ~64 MP with a clear message;
+**Hard caps:** refuse/auto-downscale beyond ~64 MP with a clear message;
 clean error if `getImageData` fails.
 
 ---

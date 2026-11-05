@@ -4,6 +4,7 @@ node_modules/
 # Build output
 dist/
 dist-tauri/
+dist-pages/
 src-tauri/target/
 
 # OS files
@@ -29,14 +30,17 @@ npm-debug.log*
 .cache/
 .parcel-cache/
 
-# Claude / internal docs
+# Local notes and tool working folders
 CLAUDE.md
 React-Audit.md
+.superpowers/
 
 # QA / Testing
 QA-Audit.md
 test-results/
 playwright-report/
+playwright-report-v2/
+blob-report/
 e2e/**/test-results/
 e2e/**/*-snapshots/
 
