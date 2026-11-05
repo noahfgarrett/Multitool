@@ -57,12 +57,13 @@ test.describe('Cloud — Vertex Placement', () => {
 
   test('clicking places vertex, cloud mode stays active', async ({ page }) => {
     await selectTool(page, 'Cloud (K)')
+    // Wait until the cloud tool UI has rendered before taking the baseline image
+    await expect(page.locator('text=/pts.*Dbl-click close/')).toBeVisible()
     const before = await screenshotCanvas(page)
     await clickCanvasAt(page, 100, 100)
-    await page.waitForTimeout(200)
+    // The vertex marker is drawn on the next frame; poll until it shows up
+    await expect.poll(async () => (await screenshotCanvas(page)).equals(before)).toBe(false)
     await expect(page.locator('text=/pts.*Dbl-click close/')).toBeVisible()
-    const after = await screenshotCanvas(page)
-    expect(before.equals(after)).toBe(false)
   })
 
   test('two clicks add two vertices', async ({ page }) => {
@@ -71,9 +72,7 @@ test.describe('Cloud — Vertex Placement', () => {
     await page.waitForTimeout(100)
     const before = await screenshotCanvas(page)
     await clickCanvasAt(page, 200, 100)
-    await page.waitForTimeout(200)
-    const after = await screenshotCanvas(page)
-    expect(before.equals(after)).toBe(false)
+    await expect.poll(async () => (await screenshotCanvas(page)).equals(before)).toBe(false)
     await expect(page.locator('text=/pts.*Dbl-click close/')).toBeVisible()
   })
 
