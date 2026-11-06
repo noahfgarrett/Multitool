@@ -4,6 +4,7 @@ import {
   uploadPDFAndWait, selectTool, dragOnCanvas, clickCanvasAt,
   createAnnotation, getAnnotationCount,
 } from '../../helpers/pdf-annotate'
+import { headerMoreButton, headerMoreItem, chooseHeaderMoreItem } from '../../helpers/pdf-annotate-d'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -11,11 +12,9 @@ test.beforeEach(async ({ page }) => {
   await uploadPDFAndWait(page)
 })
 
-/** Click the "Markups list" toolbar button to open/toggle the MarkupsList panel */
+/** Choose "Markups List" in the header More menu to open/toggle the MarkupsList panel */
 async function clickMarkupsListButton(page: import('@playwright/test').Page): Promise<void> {
-  const btn = page.locator('button[title="Markups list"]')
-  await expect(btn).toBeVisible()
-  await btn.click()
+  await chooseHeaderMoreItem(page, 'Markups List')
   await page.waitForTimeout(300)
 }
 
@@ -31,8 +30,9 @@ async function expandMarkupsPanel(page: import('@playwright/test').Page): Promis
 // ── Markups List Panel ──────────────────────────────────────────
 
 test.describe('Markups List Panel', () => {
-  test('markups list button exists with correct title', async ({ page }) => {
-    const btn = page.locator('button[title="Markups list"]')
+  test('markups list menu item exists with icon', async ({ page }) => {
+    await headerMoreButton(page).click()
+    const btn = headerMoreItem(page, 'Markups List')
     await expect(btn).toBeVisible()
     // The button contains a FileSpreadsheet icon (rendered as SVG)
     const svg = btn.locator('svg')
@@ -172,9 +172,10 @@ test.describe('Markups List Panel', () => {
 
 test.describe('Bookmarks Panel', () => {
   test('bookmarks button is hidden for PDF without bookmarks', async ({ page }) => {
-    // sample.pdf has no bookmarks, so the button should not render at all
-    const btn = page.locator('button[title="Bookmarks"]')
-    await expect(btn).toBeHidden()
+    // sample.pdf has no bookmarks, so the More menu has no Bookmarks entry
+    await headerMoreButton(page).click()
+    await expect(headerMoreItem(page, 'Markups List')).toBeVisible()
+    await expect(headerMoreItem(page, 'Bookmarks')).toHaveCount(0)
   })
 
   test('bookmarks button hidden for single-page PDF without bookmarks', async ({ page }) => {
@@ -182,18 +183,22 @@ test.describe('Bookmarks Panel', () => {
     await page.goto('/')
     await navigateToTool(page, 'pdf-annotate')
     await uploadPDFAndWait(page, 'single-page.pdf')
-    const btn = page.locator('button[title="Bookmarks"]')
-    await expect(btn).toBeHidden()
+    await headerMoreButton(page).click()
+    await expect(headerMoreItem(page, 'Markups List')).toBeVisible()
+    await expect(headerMoreItem(page, 'Bookmarks')).toHaveCount(0)
   })
 
   test('no crash when PDF has no bookmarks', async ({ page }) => {
-    // The app should render normally without the bookmarks button
-    const btn = page.locator('button[title="Bookmarks"]')
-    await expect(btn).toBeHidden()
+    // The app should render normally without the Bookmarks menu entry
+    await headerMoreButton(page).click()
+    await expect(headerMoreItem(page, 'Bookmarks')).toHaveCount(0)
 
-    // Verify the rest of the toolbar is functional
-    const markupsBtn = page.locator('button[title="Markups list"]')
+    // The rest of the menu is functional
+    const markupsBtn = headerMoreItem(page, 'Markups List')
     await expect(markupsBtn).toBeVisible()
+    // Toggle the menu closed again
+    await headerMoreButton(page).click()
+    await expect(markupsBtn).toBeHidden()
 
     // Verify canvas is still interactive
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 150, h: 100 })
@@ -204,7 +209,8 @@ test.describe('Bookmarks Panel', () => {
     await page.goto('/')
     await navigateToTool(page, 'pdf-annotate')
     await uploadPDFAndWait(page, 'multi-page.pdf')
-    const btn = page.locator('button[title="Bookmarks"]')
-    await expect(btn).toBeHidden()
+    await headerMoreButton(page).click()
+    await expect(headerMoreItem(page, 'Markups List')).toBeVisible()
+    await expect(headerMoreItem(page, 'Bookmarks')).toHaveCount(0)
   })
 })

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { navigateToTool } from '../../helpers/navigation'
 import { uploadPDFAndWait } from '../../helpers/pdf-annotate'
+import { headerMoreButton, headerMoreItem, chooseHeaderMoreItem } from '../../helpers/pdf-annotate-d'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -11,8 +12,10 @@ test.beforeEach(async ({ page }) => {
 // ── Compare Mode ──────────────────────────────────────────
 
 test.describe('Compare Mode', () => {
-  test('clicking Compare PDFs button opens full-screen overlay', async ({ page }) => {
-    const compareBtn = page.locator('button[title="Compare PDFs"]')
+  test('clicking Compare PDFs menu item opens full-screen overlay', async ({ page }) => {
+    // Compare PDFs lives in the header "More" menu
+    await headerMoreButton(page).click()
+    const compareBtn = headerMoreItem(page, 'Compare PDFs')
     await expect(compareBtn).toBeVisible()
     await compareBtn.click()
 
@@ -22,14 +25,14 @@ test.describe('Compare Mode', () => {
   })
 
   test('compare overlay shows "Compare PDFs" title', async ({ page }) => {
-    await page.locator('button[title="Compare PDFs"]').click()
+    await chooseHeaderMoreItem(page, 'Compare PDFs')
 
     const title = page.locator('h1').filter({ hasText: 'Compare PDFs' })
     await expect(title).toBeVisible({ timeout: 5000 })
   })
 
   test('compare overlay has close button that returns to annotation view', async ({ page }) => {
-    await page.locator('button[title="Compare PDFs"]').click()
+    await chooseHeaderMoreItem(page, 'Compare PDFs')
     await expect(page.locator('h1').filter({ hasText: 'Compare PDFs' })).toBeVisible({ timeout: 5000 })
 
     // Close button has title="Close"
@@ -43,7 +46,7 @@ test.describe('Compare Mode', () => {
   })
 
   test('compare overlay shows two upload zones for Original PDF and Revised PDF', async ({ page }) => {
-    await page.locator('button[title="Compare PDFs"]').click()
+    await chooseHeaderMoreItem(page, 'Compare PDFs')
     await expect(page.locator('h1').filter({ hasText: 'Compare PDFs' })).toBeVisible({ timeout: 5000 })
 
     // Upload zones display "Original PDF" and "Revised PDF" labels
@@ -54,7 +57,7 @@ test.describe('Compare Mode', () => {
   })
 
   test('compare overlay has mode selector with Side-by-side, Overlay, and Diff options', async ({ page }) => {
-    await page.locator('button[title="Compare PDFs"]').click()
+    await chooseHeaderMoreItem(page, 'Compare PDFs')
     await expect(page.locator('h1').filter({ hasText: 'Compare PDFs' })).toBeVisible({ timeout: 5000 })
 
     // Mode selector buttons are only visible after both PDFs are loaded.
@@ -70,7 +73,7 @@ test.describe('Compare Mode', () => {
   })
 
   test('compare overlay has zoom controls hidden until PDFs are loaded', async ({ page }) => {
-    await page.locator('button[title="Compare PDFs"]').click()
+    await chooseHeaderMoreItem(page, 'Compare PDFs')
     await expect(page.locator('h1').filter({ hasText: 'Compare PDFs' })).toBeVisible({ timeout: 5000 })
 
     // Zoom buttons (title="Zoom in" / "Zoom out") only render when bothLoaded is true.
@@ -85,8 +88,10 @@ test.describe('Compare Mode', () => {
 // ── Custom Stamp Library ──────────────────────────────────
 
 test.describe('Custom Stamp Library', () => {
-  test('clicking Custom stamp library button opens stamp library modal', async ({ page }) => {
-    const stampBtn = page.locator('button[title="Custom stamp library"]')
+  test('clicking Stamp Library menu item opens stamp library modal', async ({ page }) => {
+    // The custom stamp library lives in the header "More" menu
+    await headerMoreButton(page).click()
+    const stampBtn = headerMoreItem(page, 'Stamp Library')
     await expect(stampBtn).toBeVisible()
     await stampBtn.click()
 
@@ -96,7 +101,7 @@ test.describe('Custom Stamp Library', () => {
   })
 
   test('empty stamp library shows empty state message', async ({ page }) => {
-    await page.locator('button[title="Custom stamp library"]').click()
+    await chooseHeaderMoreItem(page, 'Stamp Library')
     await expect(page.locator('h2').filter({ hasText: 'Stamp Library' })).toBeVisible({ timeout: 5000 })
 
     // Empty state text: "No stamps yet"
@@ -105,7 +110,7 @@ test.describe('Custom Stamp Library', () => {
   })
 
   test('stamp library has Create New Stamp button', async ({ page }) => {
-    await page.locator('button[title="Custom stamp library"]').click()
+    await chooseHeaderMoreItem(page, 'Stamp Library')
     await expect(page.locator('h2').filter({ hasText: 'Stamp Library' })).toBeVisible({ timeout: 5000 })
 
     const createBtn = page.locator('text=Create New Stamp')
@@ -113,7 +118,7 @@ test.describe('Custom Stamp Library', () => {
   })
 
   test('stamp library has Import and Export buttons', async ({ page }) => {
-    await page.locator('button[title="Custom stamp library"]').click()
+    await chooseHeaderMoreItem(page, 'Stamp Library')
     await expect(page.locator('h2').filter({ hasText: 'Stamp Library' })).toBeVisible({ timeout: 5000 })
 
     const importBtn = page.locator('button[title="Import library"]')
@@ -123,7 +128,7 @@ test.describe('Custom Stamp Library', () => {
   })
 
   test('clicking close button dismisses the stamp library modal', async ({ page }) => {
-    await page.locator('button[title="Custom stamp library"]').click()
+    await chooseHeaderMoreItem(page, 'Stamp Library')
     const heading = page.locator('h2').filter({ hasText: 'Stamp Library' })
     await expect(heading).toBeVisible({ timeout: 5000 })
 
@@ -139,7 +144,7 @@ test.describe('Custom Stamp Library', () => {
   })
 
   test('stamp library modal has proper dark theme styling', async ({ page }) => {
-    await page.locator('button[title="Custom stamp library"]').click()
+    await chooseHeaderMoreItem(page, 'Stamp Library')
     await expect(page.locator('h2').filter({ hasText: 'Stamp Library' })).toBeVisible({ timeout: 5000 })
 
     // The panel has bg-[#00171F] and border styling
@@ -152,7 +157,7 @@ test.describe('Custom Stamp Library', () => {
   })
 
   test('Create New Stamp section shows image upload area when expanded', async ({ page }) => {
-    await page.locator('button[title="Custom stamp library"]').click()
+    await chooseHeaderMoreItem(page, 'Stamp Library')
     await expect(page.locator('h2').filter({ hasText: 'Stamp Library' })).toBeVisible({ timeout: 5000 })
 
     // Click "Create New Stamp" to expand the creation form
@@ -172,7 +177,7 @@ test.describe('Custom Stamp Library', () => {
   })
 
   test('Export button is disabled when stamp library is empty', async ({ page }) => {
-    await page.locator('button[title="Custom stamp library"]').click()
+    await chooseHeaderMoreItem(page, 'Stamp Library')
     await expect(page.locator('h2').filter({ hasText: 'Stamp Library' })).toBeVisible({ timeout: 5000 })
 
     // Export button should be disabled (has disabled:opacity-30 class) when no stamps exist

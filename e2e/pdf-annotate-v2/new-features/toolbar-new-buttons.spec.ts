@@ -4,6 +4,7 @@ import {
   uploadPDFAndWait, selectTool, dragOnCanvas,
   clickCanvasAt, createAnnotation,
 } from '../../helpers/pdf-annotate'
+import { headerMoreButton, headerMoreItem, chooseHeaderMoreItem } from '../../helpers/pdf-annotate-d'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -23,31 +24,32 @@ async function rightClickOnCanvas(page: import('@playwright/test').Page, x: numb
 // ── New Toolbar Buttons ──────────────────────────────────────────────────────
 
 test.describe('New Toolbar Buttons', () => {
-  test('markups list button exists and is clickable', async ({ page }) => {
-    const btn = page.locator('button[title="Markups list"]')
+  // These features now live in the header "More" menu instead of toolbar icon buttons
+  test('markups list menu item exists and is clickable', async ({ page }) => {
+    await headerMoreButton(page).click()
+    const btn = headerMoreItem(page, 'Markups List')
     await expect(btn).toBeVisible()
     await btn.click()
     await page.waitForTimeout(300)
-    // Clicking should open the markups panel (bottom panel with "Markups" text)
-    const panel = page.locator('text=/Markups/')
+    // Clicking should open the markups panel (bottom panel with "Markups (N)" header)
+    const panel = page.locator('text=/Markups \\(\\d+\\)/')
     await expect(panel.first()).toBeVisible({ timeout: 3000 })
   })
 
-  test('clicking markups list button opens panel with Markups text', async ({ page }) => {
-    const btn = page.locator('button[title="Markups list"]')
-    await btn.click()
+  test('clicking markups list menu item opens panel with Markups text', async ({ page }) => {
+    await chooseHeaderMoreItem(page, 'Markups List')
     await page.waitForTimeout(300)
     // The MarkupsList component renders a header with "Markups (N)"
     const header = page.locator('text=/Markups \\(\\d+\\)/')
     await expect(header.first()).toBeVisible({ timeout: 3000 })
   })
 
-  test('tool presets button exists', async ({ page }) => {
-    const btn = page.locator('button[title="Tool presets"]')
-    await expect(btn).toBeVisible()
+  test('tool presets menu item exists', async ({ page }) => {
+    await headerMoreButton(page).click()
+    await expect(headerMoreItem(page, 'Tool Presets')).toBeVisible()
   })
 
-  test('clicking presets button shows Tool Presets panel with empty message', async ({ page }) => {
+  test('clicking presets menu item shows Tool Presets panel with empty message', async ({ page }) => {
     // Clear any preexisting presets from localStorage
     await page.evaluate(() => localStorage.removeItem('mt-tool-presets'))
     // Reopen the page to pick up cleared storage
@@ -55,8 +57,7 @@ test.describe('New Toolbar Buttons', () => {
     await navigateToTool(page, 'pdf-annotate')
     await uploadPDFAndWait(page)
 
-    const btn = page.locator('button[title="Tool presets"]')
-    await btn.click()
+    await chooseHeaderMoreItem(page, 'Tool Presets')
     await page.waitForTimeout(300)
     const panelTitle = page.locator('text=Tool Presets')
     await expect(panelTitle.first()).toBeVisible({ timeout: 3000 })
@@ -64,39 +65,35 @@ test.describe('New Toolbar Buttons', () => {
     await expect(emptyMsg).toBeVisible({ timeout: 3000 })
   })
 
-  test('compare PDFs button exists', async ({ page }) => {
-    const btn = page.locator('button[title="Compare PDFs"]')
-    await expect(btn).toBeVisible()
+  test('compare PDFs menu item exists', async ({ page }) => {
+    await headerMoreButton(page).click()
+    await expect(headerMoreItem(page, 'Compare PDFs')).toBeVisible()
   })
 
-  test('custom stamps button exists', async ({ page }) => {
-    const btn = page.locator('button[title="Custom stamp library"]')
-    await expect(btn).toBeVisible()
+  test('custom stamp library menu item exists', async ({ page }) => {
+    await headerMoreButton(page).click()
+    await expect(headerMoreItem(page, 'Stamp Library')).toBeVisible()
   })
 
-  test('bookmarks button conditional on PDF bookmarks', async ({ page }) => {
-    // sample.pdf likely has no bookmarks, so the button should be absent
-    const btn = page.locator('button[title="Bookmarks"]')
-    const count = await btn.count()
-    // The button is conditionally rendered: it is only present when bookmarks.length > 0
-    // We assert the button count is either 0 (no bookmarks) or 1 (has bookmarks)
-    expect(count).toBeLessThanOrEqual(1)
+  test('bookmarks menu item conditional on PDF bookmarks', async ({ page }) => {
+    // sample.pdf has no bookmarks, so the Bookmarks entry is not rendered
+    await headerMoreButton(page).click()
+    await expect(headerMoreItem(page, 'Tool Presets')).toBeVisible()
+    await expect(headerMoreItem(page, 'Bookmarks')).toHaveCount(0)
   })
 
-  test('new buttons have proper toggle styling when active', async ({ page }) => {
-    // Toggle the markups list button and check for active ring styling
-    const markupsBtn = page.locator('button[title="Markups list"]')
-    await markupsBtn.click()
-    await page.waitForTimeout(300)
-    const markupsClasses = await markupsBtn.getAttribute('class')
-    expect(markupsClasses).toContain('ring')
+  test('markups and presets menu items toggle their panels', async ({ page }) => {
+    const markupsHeader = page.locator('text=/Markups \\(\\d+\\)/').first()
+    await chooseHeaderMoreItem(page, 'Markups List')
+    await expect(markupsHeader).toBeVisible({ timeout: 3000 })
+    await chooseHeaderMoreItem(page, 'Markups List')
+    await expect(markupsHeader).toBeHidden({ timeout: 3000 })
 
-    // Toggle the tool presets button
-    const presetsBtn = page.locator('button[title="Tool presets"]')
-    await presetsBtn.click()
-    await page.waitForTimeout(300)
-    const presetsClasses = await presetsBtn.getAttribute('class')
-    expect(presetsClasses).toContain('ring')
+    const emptyPresets = page.locator('text=No presets saved yet')
+    await chooseHeaderMoreItem(page, 'Tool Presets')
+    await expect(emptyPresets).toBeVisible({ timeout: 3000 })
+    await chooseHeaderMoreItem(page, 'Tool Presets')
+    await expect(emptyPresets).toBeHidden({ timeout: 3000 })
   })
 })
 
@@ -118,8 +115,7 @@ test.describe('Tool Presets', () => {
     await selectTool(page, 'Rectangle (R)')
     await page.waitForTimeout(100)
 
-    const presetsBtn = page.locator('button[title="Tool presets"]')
-    await presetsBtn.click()
+    await chooseHeaderMoreItem(page, 'Tool Presets')
     await page.waitForTimeout(300)
 
     // Click the save button
@@ -140,8 +136,7 @@ test.describe('Tool Presets', () => {
     await selectTool(page, 'Rectangle (R)')
     await page.waitForTimeout(100)
 
-    const presetsBtn = page.locator('button[title="Tool presets"]')
-    await presetsBtn.click()
+    await chooseHeaderMoreItem(page, 'Tool Presets')
     await page.waitForTimeout(300)
 
     const saveBtn = page.locator('text=+ Save Current as Preset')
@@ -165,8 +160,7 @@ test.describe('Tool Presets', () => {
     await selectTool(page, 'Circle (C)')
     await page.waitForTimeout(100)
 
-    const presetsBtn = page.locator('button[title="Tool presets"]')
-    await presetsBtn.click()
+    await chooseHeaderMoreItem(page, 'Tool Presets')
     await page.waitForTimeout(300)
 
     const saveBtn = page.locator('text=+ Save Current as Preset')
@@ -191,8 +185,7 @@ test.describe('Tool Presets', () => {
     await selectTool(page, 'Line (L)')
     await page.waitForTimeout(100)
 
-    const presetsBtn = page.locator('button[title="Tool presets"]')
-    await presetsBtn.click()
+    await chooseHeaderMoreItem(page, 'Tool Presets')
     await page.waitForTimeout(300)
 
     const saveBtn = page.locator('text=+ Save Current as Preset')
@@ -225,8 +218,7 @@ test.describe('Tool Presets', () => {
     await selectTool(page, 'Arrow (A)')
     await page.waitForTimeout(100)
 
-    const presetsBtn = page.locator('button[title="Tool presets"]')
-    await presetsBtn.click()
+    await chooseHeaderMoreItem(page, 'Tool Presets')
     await page.waitForTimeout(300)
 
     const saveBtn = page.locator('text=+ Save Current as Preset')
@@ -234,11 +226,11 @@ test.describe('Tool Presets', () => {
     await page.waitForTimeout(300)
 
     // Close the panel
-    await presetsBtn.click()
+    await chooseHeaderMoreItem(page, 'Tool Presets')
     await page.waitForTimeout(300)
 
     // Reopen the panel
-    await presetsBtn.click()
+    await chooseHeaderMoreItem(page, 'Tool Presets')
     await page.waitForTimeout(300)
 
     // The preset should still be there
@@ -254,19 +246,18 @@ test.describe('Tool Presets', () => {
       dialogCount++
     })
 
-    const presetsBtn = page.locator('button[title="Tool presets"]')
-    await presetsBtn.click()
+    await chooseHeaderMoreItem(page, 'Tool Presets')
     await page.waitForTimeout(300)
 
     // Save 3 presets with different tools
     const tools = ['Rectangle (R)', 'Circle (C)', 'Arrow (A)']
     for (let i = 0; i < 3; i++) {
       // Close panel, switch tool, reopen
-      await presetsBtn.click()
+      await chooseHeaderMoreItem(page, 'Tool Presets')
       await page.waitForTimeout(200)
       await selectTool(page, tools[i])
       await page.waitForTimeout(100)
-      await presetsBtn.click()
+      await chooseHeaderMoreItem(page, 'Tool Presets')
       await page.waitForTimeout(300)
 
       const saveBtn = page.locator('text=+ Save Current as Preset')
