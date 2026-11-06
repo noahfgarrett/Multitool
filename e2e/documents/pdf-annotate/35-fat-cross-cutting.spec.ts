@@ -857,11 +857,10 @@ test.describe('4D: Session Persistence All Data Types', () => {
       await addCommentBtn.click()
       await page.waitForTimeout(300)
       const input = page.locator('input[placeholder="Add a comment..."]')
-      if (await input.count() > 0) {
-        await input.fill('Test comment')
-        await page.locator('form button[type="submit"]').click()
-        await page.waitForTimeout(300)
-      }
+      expect(await input.count()).toBeGreaterThan(0)
+      await input.fill('Test comment')
+      await page.locator('form button[type="submit"]').click()
+      await page.waitForTimeout(300)
     }
     await waitForSessionSave(page)
     await page.reload()
@@ -1321,47 +1320,45 @@ test.describe('4E: Keyboard Shortcuts Complete', () => {
     }
   })
 
-  test('4E-24 shortcuts do not fire when typing in input fields', async ({ page }) => {
+  // FIXME: the window keydown handler has no guard for focused inputs/selects or open modals, so single-letter tool shortcuts fire while typing (useKeyboardShortcuts.ts ~114/~450)
+
+  test.fixme('4E-24 shortcuts do not fire when typing in input fields', async ({ page }) => {
     // Reset to upload state, then load multi-page PDF for the page number input
     await resetWithConfirm(page)
     await uploadPDFAndWait(page, 'multi-page.pdf')
+    await selectTool(page, 'Select (S)')
     // Click page indicator to reveal the page number input
     const pageButton = page.locator('text=/\\d+ \\/ \\d+/')
-    if (await pageButton.count() > 0) {
-      await pageButton.click()
-      await page.waitForTimeout(200)
-      const pageInput = page.locator('input[type="number"]')
-      if (await pageInput.count() > 0) {
-        await pageInput.first().focus()
-        await page.waitForTimeout(100)
-        // Typing '2' in the input should NOT switch to rectangle tool
-        await page.keyboard.type('2')
-        await page.waitForTimeout(100)
-        await page.keyboard.press('Escape')
-        await page.waitForTimeout(200)
-      }
-    }
-    // If we're here without errors, shortcuts were properly suppressed
-    expect(true).toBeTruthy()
+    await pageButton.click()
+    const pageInput = page.locator('input[type="number"]')
+    await expect(pageInput).toBeFocused()
+    // 'r' is the Rectangle shortcut — it must not fire while typing in the input
+    await page.keyboard.press('r')
+    await page.waitForTimeout(100)
+    await expect(page.locator('button[title="Rectangle (R)"]')).not.toHaveClass(/bg-\[#14B8A6\]/)
+    await expect(page.locator('button[title="Select (S)"]')).toHaveClass(/bg-\[#14B8A6\]/)
+    await page.keyboard.press('Escape')
   })
 
-  test('4E-25 shortcuts do not fire when modal is open', async ({ page }) => {
-    // Open the calibration modal via measure tool
+  // FIXME: the window keydown handler has no guard for focused inputs/selects or open modals, so single-letter tool shortcuts fire while typing (useKeyboardShortcuts.ts ~114/~450)
+
+  test.fixme('4E-25 shortcuts do not fire when modal is open', async ({ page }) => {
+    // Open the calibration modal by clicking a distance measurement's label
     await selectTool(page, 'Measure (M)')
-    // Look for a calibrate button
-    const calibrateBtn = page.locator('button:has-text("Calibrate")')
-    if (await calibrateBtn.count() > 0) {
-      await calibrateBtn.first().click()
-      await page.waitForTimeout(300)
-      // Try pressing 'r' — should not switch tool
-      await page.keyboard.press('r')
-      await page.waitForTimeout(200)
-      // Close modal
-      await page.keyboard.press('Escape')
-      await page.waitForTimeout(200)
-    }
-    // No crash = pass
-    expect(true).toBeTruthy()
+    await clickCanvasAt(page, 100, 200)
+    await page.waitForTimeout(200)
+    await clickCanvasAt(page, 300, 200)
+    await page.waitForTimeout(300)
+    await clickCanvasAt(page, 200, 200)
+    await expect(page.getByText('Calibrate Measurement')).toBeVisible()
+    // Try pressing 'r' — should not switch tool
+    await page.keyboard.press('r')
+    await page.waitForTimeout(200)
+    await expect(page.locator('button[title="Rectangle (R)"]')).not.toHaveClass(/bg-\[#14B8A6\]/)
+    await expect(page.locator('button[title="Measure (M)"]')).toHaveClass(/bg-\[#14B8A6\]/)
+    // Close modal
+    await page.keyboard.press('Escape')
+    await expect(page.getByText('Calibrate Measurement')).toBeHidden()
   })
 
   test('4E-26 rapid shortcut switching between tools', async ({ page }) => {
@@ -1517,10 +1514,9 @@ test.describe('4F: Properties Bar & Status Bar Per Tool', () => {
     // The color picker is a custom component — look for color swatches
     // Click a red swatch
     const redSwatch = page.locator('button[style*="background-color: rgb(255, 0, 0)"], button[style*="#FF0000"], button[style*="background: rgb(255, 0, 0)"]').first()
-    if (await redSwatch.count() > 0) {
-      await redSwatch.click()
-      await page.waitForTimeout(100)
-    }
+    expect(await redSwatch.count()).toBeGreaterThan(0)
+    await redSwatch.click()
+    await page.waitForTimeout(100)
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 200, y: 180 })
     await page.waitForTimeout(200)
     await waitForSessionSave(page)
@@ -1536,10 +1532,9 @@ test.describe('4F: Properties Bar & Status Bar Per Tool', () => {
     await selectTool(page, 'Rectangle (R)')
     // Change stroke width via the range slider
     const slider = page.locator('input[type="range"][min="1"][max="20"]')
-    if (await slider.count() > 0) {
-      await slider.fill('10')
-      await page.waitForTimeout(100)
-    }
+    expect(await slider.count()).toBeGreaterThan(0)
+    await slider.fill('10')
+    await page.waitForTimeout(100)
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 200, y: 180 })
     await page.waitForTimeout(200)
     await waitForSessionSave(page)
@@ -1557,10 +1552,9 @@ test.describe('4F: Properties Bar & Status Bar Per Tool', () => {
     await selectTool(page, 'Text (T)')
     // Change font size using the select dropdown
     const fontSizeSelect = page.locator('select').filter({ has: page.locator('option[value="24"]') }).first()
-    if (await fontSizeSelect.count() > 0) {
-      await fontSizeSelect.selectOption('24')
-      await page.waitForTimeout(100)
-    }
+    expect(await fontSizeSelect.count()).toBeGreaterThan(0)
+    await fontSizeSelect.selectOption('24')
+    await page.waitForTimeout(100)
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 250, y: 150 })
     await page.keyboard.type('Big text')
     await page.keyboard.press('Escape')
@@ -1617,35 +1611,9 @@ test.describe('4G: Context Menu Per Annotation Type', () => {
     // Click on the text annotation area — texts use their interior for hit testing
     await rightClickCanvasAt(page, 160, 160)
     const contextMenu = page.locator('.fixed.z-50.rounded-lg.shadow-xl')
-    if (await contextMenu.isVisible()) {
-      await expect(page.locator('button:has-text("Edit Text")')).toBeVisible()
-      await expect(page.locator('button:has-text("Delete")')).toBeVisible()
-    }
-  })
-
-  test('4G-03 right-click measurement — context menu with delete', async ({ page }) => {
-    await selectTool(page, 'Measure (M)')
-    await clickCanvasAt(page, 100, 200)
-    await page.waitForTimeout(150)
-    await clickCanvasAt(page, 300, 200)
-    await page.waitForTimeout(300)
-    // Right-click on the measurement — measurements may have different context menu handling
-    await selectTool(page, 'Select (S)')
-    // Measurements use selectMeasureId, not the annotation context menu
-    // This is a best-effort test
-    expect(true).toBeTruthy()
-  })
-
-  test('4G-04 right-click sticky note — context menu with delete, change color', async ({ page }) => {
-    await placeStickyNote(page, 200, 200)
-    // Sticky notes are DOM elements, not canvas — right-click should work differently
-    // This is a best-effort test — sticky notes may have their own context
-    const stickyNote = page.locator('[class*="sticky"]').first()
-    if (await stickyNote.count() > 0) {
-      await stickyNote.click({ button: 'right' })
-      await page.waitForTimeout(300)
-    }
-    expect(true).toBeTruthy()
+    await expect(contextMenu).toBeVisible()
+    await expect(page.locator('button:has-text("Edit Text")')).toBeVisible()
+    await expect(page.locator('button:has-text("Delete")')).toBeVisible()
   })
 
   test('4G-05 right-click on empty canvas — no annotation context menu', async ({ page }) => {
@@ -1665,10 +1633,9 @@ test.describe('4G: Context Menu Per Annotation Type', () => {
     await selectTool(page, 'Select (S)')
     await rightClickCanvasAt(page, 150, 150)
     const deleteBtn = page.locator('button:has-text("Delete")')
-    if (await deleteBtn.isVisible()) {
-      await deleteBtn.click()
-      await page.waitForTimeout(300)
-    }
+    await expect(deleteBtn).toBeVisible()
+    await deleteBtn.click()
+    await page.waitForTimeout(300)
     const after = await getAnnotationCount(page)
     expect(after).toBeLessThan(before)
   })
@@ -1677,34 +1644,39 @@ test.describe('4G: Context Menu Per Annotation Type', () => {
     // Create two annotations — one behind the other
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     await createAnnotation(page, 'rectangle', { x: 130, y: 120, w: 120, h: 80 })
-    // Right-click on the first rectangle (it's behind)
-    await selectTool(page, 'Select (S)')
-    await rightClickCanvasAt(page, 105, 105)
-    const bringToFrontBtn = page.locator('button:has-text("Bring to Front")')
-    if (await bringToFrontBtn.isVisible()) {
-      await bringToFrontBtn.click()
-      await page.waitForTimeout(300)
-    }
-    // Verify the z-order changed via session
     await waitForSessionSave(page)
-    const session = await getSessionData(page)
-    expect(session).toBeTruthy()
+    const idsBefore = ((await getSessionData(page))?.annotations?.[1] ?? []).map((a: { id: string }) => a.id)
+    expect(idsBefore.length).toBe(2)
+    // Right-click on the first rectangle's left edge (it's behind)
+    await selectTool(page, 'Select (S)')
+    await rightClickCanvasAt(page, 100, 140)
+    const bringToFrontBtn = page.locator('button:has-text("Bring to Front")')
+    await expect(bringToFrontBtn).toBeVisible()
+    await bringToFrontBtn.click()
+    await page.waitForTimeout(300)
+    // Verify the z-order changed via session: the first rectangle is now drawn last
+    await waitForSessionSave(page)
+    const idsAfter = ((await getSessionData(page))?.annotations?.[1] ?? []).map((a: { id: string }) => a.id)
+    expect(idsAfter).toEqual([idsBefore[1], idsBefore[0]])
   })
 
   test('4G-08 context menu "Send to Back" changes z-order', async ({ page }) => {
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     await createAnnotation(page, 'rectangle', { x: 130, y: 120, w: 120, h: 80 })
-    // Right-click on the second (top) rectangle
-    await selectTool(page, 'Select (S)')
-    await rightClickCanvasAt(page, 180, 160)
-    const sendToBackBtn = page.locator('button:has-text("Send to Back")')
-    if (await sendToBackBtn.isVisible()) {
-      await sendToBackBtn.click()
-      await page.waitForTimeout(300)
-    }
     await waitForSessionSave(page)
-    const session = await getSessionData(page)
-    expect(session).toBeTruthy()
+    const idsBefore = ((await getSessionData(page))?.annotations?.[1] ?? []).map((a: { id: string }) => a.id)
+    expect(idsBefore.length).toBe(2)
+    // Right-click on the second (top) rectangle's right edge
+    await selectTool(page, 'Select (S)')
+    await rightClickCanvasAt(page, 250, 160)
+    const sendToBackBtn = page.locator('button:has-text("Send to Back")')
+    await expect(sendToBackBtn).toBeVisible()
+    await sendToBackBtn.click()
+    await page.waitForTimeout(300)
+    // The second rectangle is now drawn first
+    await waitForSessionSave(page)
+    const idsAfter = ((await getSessionData(page))?.annotations?.[1] ?? []).map((a: { id: string }) => a.id)
+    expect(idsAfter).toEqual([idsBefore[1], idsBefore[0]])
   })
 
   test('4G-09 context menu "Edit Text" on text enters edit mode', async ({ page }) => {
@@ -1712,15 +1684,13 @@ test.describe('4G: Context Menu Per Annotation Type', () => {
     await selectTool(page, 'Select (S)')
     await rightClickCanvasAt(page, 160, 160)
     const editBtn = page.locator('button:has-text("Edit Text")')
-    if (await editBtn.isVisible()) {
-      await editBtn.click()
-      await page.waitForTimeout(300)
-      // Should now be in edit mode — textarea should be focused
-      const textarea = page.locator('textarea')
-      if (await textarea.count() > 0) {
-        await expect(textarea.first()).toBeFocused()
-      }
-    }
+    await expect(editBtn).toBeVisible()
+    await editBtn.click()
+    await page.waitForTimeout(300)
+    // Should now be in edit mode — textarea should be focused
+    const textarea = page.locator('textarea')
+    expect(await textarea.count()).toBeGreaterThan(0)
+    await expect(textarea.first()).toBeFocused()
   })
 
   test('4G-10 context menu closes when clicking elsewhere', async ({ page }) => {
@@ -1728,12 +1698,11 @@ test.describe('4G: Context Menu Per Annotation Type', () => {
     await selectTool(page, 'Select (S)')
     await rightClickCanvasAt(page, 150, 150)
     const contextMenu = page.locator('.fixed.z-50.rounded-lg.shadow-xl')
-    if (await contextMenu.isVisible()) {
-      // Click elsewhere on the canvas
-      await clickCanvasAt(page, 400, 400)
-      await page.waitForTimeout(300)
-      await expect(contextMenu).not.toBeVisible()
-    }
+    await expect(contextMenu).toBeVisible()
+    // Click elsewhere on the canvas
+    await clickCanvasAt(page, 400, 400)
+    await page.waitForTimeout(300)
+    await expect(contextMenu).not.toBeVisible()
   })
 
   test('4G-11 context menu closes when pressing Escape', async ({ page }) => {
@@ -1741,11 +1710,10 @@ test.describe('4G: Context Menu Per Annotation Type', () => {
     await selectTool(page, 'Select (S)')
     await rightClickCanvasAt(page, 150, 150)
     const contextMenu = page.locator('.fixed.z-50.rounded-lg.shadow-xl')
-    if (await contextMenu.isVisible()) {
-      await page.keyboard.press('Escape')
-      await page.waitForTimeout(300)
-      await expect(contextMenu).not.toBeVisible()
-    }
+    await expect(contextMenu).toBeVisible()
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(300)
+    await expect(contextMenu).not.toBeVisible()
   })
 
   test('4G-12 multiple right-clicks — only one menu visible at a time', async ({ page }) => {

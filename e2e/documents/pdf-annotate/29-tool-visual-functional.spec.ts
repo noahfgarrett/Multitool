@@ -416,10 +416,9 @@ test.describe('Eraser Tool — functional', () => {
     await selectTool(page, 'Eraser (E)')
     // Ensure object erase mode
     const objEraseBtn = page.locator('button[title="Object erase"]')
-    if (await objEraseBtn.isVisible()) {
-      await objEraseBtn.click()
-      await page.waitForTimeout(100)
-    }
+    await expect(objEraseBtn).toBeVisible()
+    await objEraseBtn.click()
+    await page.waitForTimeout(100)
     // Drag across the pencil stroke to erase it
     await drawOnCanvas(page, [
       { x: 150, y: 145 },

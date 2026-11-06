@@ -71,9 +71,8 @@ test.describe('Color Picker — Preset Colors', () => {
     await waitForSessionSave(page)
     const session = await getSessionData(page)
     const anns = session?.annotations?.[1] || session?.annotations?.['1'] || []
-    if (anns.length > 0) {
-      expect(anns[anns.length - 1]?.color).toBe('#000000')
-    }
+    expect(anns.length).toBe(1)
+    expect(anns[0].color).toBe('#000000')
   })
 
   test('red preset color works', async ({ page }) => {
@@ -98,28 +97,30 @@ test.describe('Color Picker — Preset Colors', () => {
   test('green preset color creates green annotation', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Rectangle (R)')
-    // Click color picker area, then select green if available
-    const greenSwatch = page.locator('button[style*="#22C55E"], button[style*="rgb(34, 197, 94)"]').first()
-    if (await greenSwatch.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await greenSwatch.click()
-      await page.waitForTimeout(100)
-    }
+    // Pick the green preset swatch
+    const greenSwatch = page.locator('button[title="#22C55E"]')
+    await greenSwatch.click()
+    await page.waitForTimeout(100)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
-    const screenshot = await screenshotCanvas(page)
-    expect(screenshot.byteLength).toBeGreaterThan(0)
+    await waitForSessionSave(page)
+    const session = await getSessionData(page)
+    const anns = session?.annotations?.[1] || session?.annotations?.['1'] || []
+    expect(anns.length).toBe(1)
+    expect(anns[0].color).toBe('#22C55E')
   })
 
   test('blue preset color creates blue annotation', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Rectangle (R)')
-    const blueSwatch = page.locator('button[style*="#3B82F6"], button[style*="rgb(59, 130, 246)"]').first()
-    if (await blueSwatch.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await blueSwatch.click()
-      await page.waitForTimeout(100)
-    }
+    const blueSwatch = page.locator('button[title="#3B82F6"]')
+    await blueSwatch.click()
+    await page.waitForTimeout(100)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
-    const screenshot = await screenshotCanvas(page)
-    expect(screenshot.byteLength).toBeGreaterThan(0)
+    await waitForSessionSave(page)
+    const session = await getSessionData(page)
+    const anns = session?.annotations?.[1] || session?.annotations?.['1'] || []
+    expect(anns.length).toBe(1)
+    expect(anns[0].color).toBe('#3B82F6')
   })
 
   test('color persists across multiple strokes', async ({ page }) => {
@@ -151,31 +152,29 @@ test.describe('Color Picker — Preset Colors', () => {
   test('white preset color creates white annotation', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Rectangle (R)')
-    const whiteSwatch = page.locator('button[style*="#FFFFFF"], button[style*="rgb(255, 255, 255)"]').first()
-    if (await whiteSwatch.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await whiteSwatch.click()
-      await page.waitForTimeout(100)
-    }
+    const whiteSwatch = page.locator('button[title="#FFFFFF"]')
+    await whiteSwatch.click()
+    await page.waitForTimeout(100)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
-    const screenshot = await screenshotCanvas(page)
-    expect(screenshot.byteLength).toBeGreaterThan(0)
+    await waitForSessionSave(page)
+    const session = await getSessionData(page)
+    const anns = session?.annotations?.[1] || session?.annotations?.['1'] || []
+    expect(anns.length).toBe(1)
+    expect(anns[0].color).toBe('#FFFFFF')
   })
 
   test('yellow preset color works', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Rectangle (R)')
-    const yellowSwatch = page.locator('button[style*="#FFFF00"], button[style*="rgb(255, 255, 0)"]').first()
-    if (await yellowSwatch.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await yellowSwatch.click()
-      await page.waitForTimeout(100)
-    }
+    const yellowSwatch = page.locator('button[title="#FFFF00"]')
+    await yellowSwatch.click()
+    await page.waitForTimeout(100)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     await waitForSessionSave(page)
     const session = await getSessionData(page)
     const anns = session?.annotations?.[1] || session?.annotations?.['1'] || []
-    if (anns.length > 0 && anns[anns.length - 1]?.color === '#FFFF00') {
-      expect(anns[anns.length - 1].color).toBe('#FFFF00')
-    }
+    expect(anns.length).toBe(1)
+    expect(anns[0].color).toBe('#FFFF00')
   })
 
   test('color persists in session data', async ({ page }) => {

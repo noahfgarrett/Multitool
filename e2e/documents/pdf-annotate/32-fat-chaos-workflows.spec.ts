@@ -407,10 +407,9 @@ test.describe('Chaos — Undo/Redo Chaos', () => {
     await selectTool(page, 'Circle (C)')
     const swatches = page.locator('button[style*="background-color"]')
     const blueSwatch = swatches.nth(3) // Pick a swatch that isn't the default
-    if (await blueSwatch.isVisible()) {
-      await blueSwatch.click()
-      await page.waitForTimeout(100)
-    }
+    await expect(blueSwatch).toBeVisible()
+    await blueSwatch.click()
+    await page.waitForTimeout(100)
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 200, y: 180 })
     await page.waitForTimeout(200)
     // Select circle and copy (Ctrl+C)
@@ -421,10 +420,9 @@ test.describe('Chaos — Undo/Redo Chaos', () => {
     await selectTool(page, 'Rectangle (R)')
     // Reset to default orange for the rectangle
     const orangeSwatch = swatches.first()
-    if (await orangeSwatch.isVisible()) {
-      await orangeSwatch.click()
-      await page.waitForTimeout(100)
-    }
+    await expect(orangeSwatch).toBeVisible()
+    await orangeSwatch.click()
+    await page.waitForTimeout(100)
     await dragOnCanvas(page, { x: 250, y: 100 }, { x: 400, y: 180 })
     await page.waitForTimeout(200)
     // Both annotations should exist
@@ -781,12 +779,11 @@ test.describe('Chaos — Context Menu & UI', () => {
       await doubleClickCanvasAt(page, midX, midY)
       await page.waitForTimeout(300)
       const textarea = page.locator('textarea')
-      if (await textarea.isVisible()) {
-        await page.locator('button[title="Italic (Ctrl+I)"]').click()
-        await page.waitForTimeout(100)
-        await page.keyboard.press('Escape')
-        await page.waitForTimeout(200)
-      }
+      await expect(textarea).toBeVisible()
+      await page.locator('button[title="Italic (Ctrl+I)"]').click()
+      await page.waitForTimeout(100)
+      await page.keyboard.press('Escape')
+      await page.waitForTimeout(200)
     }
     // Verify original is still bold without italic
     await waitForSessionSave(page)
@@ -829,18 +826,11 @@ test.describe('Chaos — Context Menu & UI', () => {
     // Right-click
     await rightClickCanvasAt(page, 100, 150)
     // Check for standard context menu items
-    const duplicateItem = page.locator('text=/Duplicate/')
-    const deleteItem = page.locator('text=/Delete/')
-    const hasDuplicate = await duplicateItem.count() > 0
-    const hasDelete = await deleteItem.count() > 0
-    expect(hasDuplicate || hasDelete).toBe(true)
+    await expect(page.getByRole('button', { name: 'Duplicate Ctrl+D', exact: true })).toBeVisible()
+    await expect(page.locator('button:has-text("Delete")')).toBeVisible()
     // Check for z-order options
-    const bringToFront = page.locator('text=/Bring to Front/')
-    const sendToBack = page.locator('text=/Send to Back/')
-    const hasBringToFront = await bringToFront.count() > 0
-    const hasSendToBack = await sendToBack.count() > 0
-    // At least the core items should be present
-    expect(hasDuplicate && hasDelete).toBe(true)
+    await expect(page.locator('button:has-text("Bring to Front")')).toBeVisible()
+    await expect(page.locator('button:has-text("Send to Back")')).toBeVisible()
   })
 
   test('30 — create sticky note → place text near it → select text → move it → sticky note unaffected', async ({ page }) => {

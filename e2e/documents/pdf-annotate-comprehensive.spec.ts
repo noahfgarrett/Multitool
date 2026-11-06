@@ -318,32 +318,29 @@ test.describe('Move Tests — All Annotation Types', () => {
     await uploadPDFAndWait(page)
     await createAnnotation(page, 'rectangle', { x: 200, y: 200, w: 100, h: 80 })
     expect(await getAnnotationCount(page)).toBe(1)
+    const pointsOf = async () => {
+      await waitForSessionSave(page)
+      const session = await getSessionData(page)
+      return (session?.annotations?.[1] || session?.annotations?.['1'] || [])[0]?.points
+    }
+    const original = await pointsOf()
 
+    // Select by the left edge (unfilled rectangles are hit on their outline)
     await selectTool(page, 'Select (S)')
-    await clickCanvasAt(page, 250, 240)
+    await clickCanvasAt(page, 200, 240)
     await page.waitForTimeout(200)
 
-    const before = await screenshotCanvas(page)
-
     // Move annotation
-    await dragOnCanvas(page, { x: 250, y: 240 }, { x: 350, y: 340 })
+    await dragOnCanvas(page, { x: 200, y: 240 }, { x: 300, y: 340 })
     await page.waitForTimeout(300)
+    const moved = await pointsOf()
+    expect(moved).not.toEqual(original)
 
-    const moved = await screenshotCanvas(page)
-
-    // Undo — should restore to pre-move state
+    // Undo — should restore the pre-move position (and not remove the annotation)
     await page.keyboard.press('Control+z')
     await page.waitForTimeout(300)
-
-    const afterUndo = await screenshotCanvas(page)
-    // Annotation should still exist (undo reverts the move, not the creation)
-    // If undo went too far, redo to get back to at least 1 annotation
-    const count = await getAnnotationCount(page)
-    if (count === 0) {
-      await page.keyboard.press('Control+Shift+z')
-      await page.waitForTimeout(200)
-    }
-    expect(await getAnnotationCount(page)).toBeGreaterThanOrEqual(1)
+    expect(await getAnnotationCount(page)).toBe(1)
+    expect(await pointsOf()).toEqual(original)
   })
 })
 
@@ -1056,9 +1053,8 @@ test.describe('Keyboard Shortcuts', () => {
       await page.waitForTimeout(100)
       // Verify the tool activated by checking button has the active class
       const btn = page.locator(`button[title*="${title}"]`).first()
-      if (await btn.isVisible()) {
-        await expect(btn).toHaveClass(/14B8A6/)
-      }
+      await expect(btn).toBeVisible()
+      await expect(btn).toHaveClass(/14B8A6/)
     }
   })
 

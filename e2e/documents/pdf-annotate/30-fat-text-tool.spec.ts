@@ -218,30 +218,30 @@ test.describe('1A — Multiple Text Boxes & Re-Edit', () => {
     await uploadPDFAndWait(page)
     await createCommittedText(page, 'Edit me', { x: 100, y: 100, w: 200, h: 60 })
     await selectTool(page, 'Select (S)')
-    await doubleClickCanvasAt(page, 200, 130)
+    // Double-click inside the box, clear of the sample PDF's own text line (y≈130)
+    await doubleClickCanvasAt(page, 200, 150)
     await page.waitForTimeout(300)
     const textarea = page.locator('textarea')
-    if (await textarea.isVisible()) {
-      await expect(textarea).toHaveValue('Edit me')
-    }
+    await expect(textarea).toBeVisible()
+    await expect(textarea).toHaveValue('Edit me')
   })
 
   test('editing existing text updates its content', async ({ page }) => {
     await uploadPDFAndWait(page)
     await createCommittedText(page, 'Original', { x: 100, y: 100, w: 200, h: 60 })
     await selectTool(page, 'Select (S)')
-    await doubleClickCanvasAt(page, 200, 130)
+    // Double-click inside the box, clear of the sample PDF's own text line (y≈130)
+    await doubleClickCanvasAt(page, 200, 150)
     await page.waitForTimeout(300)
     const textarea = page.locator('textarea')
-    if (await textarea.isVisible()) {
-      // Select all and replace
-      await page.keyboard.press('Control+a')
-      await page.keyboard.type('Updated')
-      await page.keyboard.press('Escape')
-      await page.waitForTimeout(200)
-      const anns = await getTextAnnotations(page)
-      expect(anns[0].text).toBe('Updated')
-    }
+    await expect(textarea).toBeVisible()
+    // Select all and replace
+    await page.keyboard.press('ControlOrMeta+a')
+    await page.keyboard.type('Updated')
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(200)
+    const anns = await getTextAnnotations(page)
+    expect(anns[0].text).toBe('Updated')
   })
 
   test('text annotation renders on canvas (screenshot changes)', async ({ page }) => {
@@ -502,11 +502,10 @@ test.describe('1B — Superscript & Subscript', () => {
     await createTextInEditMode(page)
     // Use .first() to target the properties bar button (floating toolbar also has one)
     const superBtn = page.locator('button[title*="Superscript"]').first()
-    if (await superBtn.isVisible()) {
-      await superBtn.click()
-      await page.waitForTimeout(100)
-      await expect(superBtn).toHaveClass(/text-\[#14B8A6\]/)
-    }
+    await expect(superBtn).toBeVisible()
+    await superBtn.click()
+    await page.waitForTimeout(100)
+    await expect(superBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('subscript button toggles subscript styling', async ({ page }) => {
@@ -514,11 +513,10 @@ test.describe('1B — Superscript & Subscript', () => {
     await createTextInEditMode(page)
     // Use .first() to target the properties bar button (floating toolbar also has one)
     const subBtn = page.locator('button[title*="Subscript"]').first()
-    if (await subBtn.isVisible()) {
-      await subBtn.click()
-      await page.waitForTimeout(100)
-      await expect(subBtn).toHaveClass(/text-\[#14B8A6\]/)
-    }
+    await expect(subBtn).toBeVisible()
+    await subBtn.click()
+    await page.waitForTimeout(100)
+    await expect(subBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 
   test('superscript and subscript are mutually exclusive', async ({ page }) => {
@@ -527,16 +525,16 @@ test.describe('1B — Superscript & Subscript', () => {
     // Use .first() to target the properties bar buttons (floating toolbar also has them)
     const superBtn = page.locator('button[title*="Superscript"]').first()
     const subBtn = page.locator('button[title*="Subscript"]').first()
-    if (await superBtn.isVisible() && await subBtn.isVisible()) {
-      await superBtn.click()
-      await page.waitForTimeout(100)
-      await expect(superBtn).toHaveClass(/text-\[#14B8A6\]/)
-      await subBtn.click()
-      await page.waitForTimeout(100)
-      // Superscript should be deactivated
-      await expect(superBtn).not.toHaveClass(/text-\[#14B8A6\]/)
-      await expect(subBtn).toHaveClass(/text-\[#14B8A6\]/)
-    }
+    await expect(superBtn).toBeVisible()
+    await expect(subBtn).toBeVisible()
+    await superBtn.click()
+    await page.waitForTimeout(100)
+    await expect(superBtn).toHaveClass(/text-\[#14B8A6\]/)
+    await subBtn.click()
+    await page.waitForTimeout(100)
+    // Superscript should be deactivated
+    await expect(superBtn).not.toHaveClass(/text-\[#14B8A6\]/)
+    await expect(subBtn).toHaveClass(/text-\[#14B8A6\]/)
   })
 })
 
@@ -562,12 +560,12 @@ test.describe('1B — Alignment', () => {
   test('Align Justify sets text-align to justify', async ({ page }) => {
     await uploadPDFAndWait(page)
     const textarea = await createTextInEditMode(page)
-    const justifyBtn = page.locator('button[title="Align Justify"]')
-    if (await justifyBtn.isVisible()) {
-      await justifyBtn.click()
-      await page.waitForTimeout(100)
-      await expect(textarea).toHaveCSS('text-align', 'justify')
-    }
+    // .first() targets the properties bar button (the floating toolbar has one too)
+    const justifyBtn = page.locator('button[title="Justify"]').first()
+    await expect(justifyBtn).toBeVisible()
+    await justifyBtn.click()
+    await page.waitForTimeout(100)
+    await expect(textarea).toHaveCSS('text-align', 'justify')
   })
 
   test('alignment persists in session data', async ({ page }) => {
@@ -595,9 +593,8 @@ test.describe('1B — Alignment', () => {
     await doubleClickCanvasAt(page, 225, 140)
     await page.waitForTimeout(300)
     const textarea = page.locator('textarea')
-    if (await textarea.isVisible()) {
-      await expect(textarea).toHaveCSS('text-align', 'right')
-    }
+    await expect(textarea).toBeVisible()
+    await expect(textarea).toHaveCSS('text-align', 'right')
   })
 })
 
@@ -631,17 +628,16 @@ test.describe('1B — Line Spacing', () => {
     await doubleClickCanvasAt(page, 200, 140)
     await page.waitForTimeout(300)
     const spacingSelect = page.locator('select[title="Line spacing"]')
-    if (await spacingSelect.isVisible()) {
-      await spacingSelect.selectOption('2')
-      await page.waitForTimeout(100)
-      await page.keyboard.press('Escape')
-      await page.waitForTimeout(200)
-      await selectTool(page, 'Select (S)')
-      await clickCanvasAt(page, 450, 450)
-      await page.waitForTimeout(200)
-      const after = await screenshotCanvas(page)
-      expect(Buffer.compare(before, after)).not.toBe(0)
-    }
+    await expect(spacingSelect).toBeVisible()
+    await spacingSelect.selectOption('2')
+    await page.waitForTimeout(100)
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(200)
+    await selectTool(page, 'Select (S)')
+    await clickCanvasAt(page, 450, 450)
+    await page.waitForTimeout(200)
+    const after = await screenshotCanvas(page)
+    expect(Buffer.compare(before, after)).not.toBe(0)
   })
 
   test('line spacing 1.0 option is available', async ({ page }) => {
@@ -663,10 +659,9 @@ test.describe('1B — Font Size', () => {
     await createTextInEditMode(page)
     // Font size is a <select> with class w-14 in the properties bar
     const fontSizeSelect = page.locator('select.w-14')
-    if (await fontSizeSelect.isVisible()) {
-      await fontSizeSelect.selectOption('24')
-      await page.waitForTimeout(100)
-    }
+    await expect(fontSizeSelect).toBeVisible()
+    await fontSizeSelect.selectOption('24')
+    await page.waitForTimeout(100)
     await page.keyboard.type('Big text')
     await page.keyboard.press('Escape')
     await page.waitForTimeout(200)
@@ -684,12 +679,9 @@ test.describe('1B — Font Size', () => {
     const before = await screenshotCanvas(page)
     // Create text at size 32
     await selectTool(page, 'Text (T)')
-    const fontSizeInput = page.locator('input[type="number"]').first()
-    if (await fontSizeInput.isVisible()) {
-      await fontSizeInput.fill('32')
-      await fontSizeInput.press('Enter')
-      await page.waitForTimeout(100)
-    }
+    // Font size is the preset <select> in the properties bar
+    await page.locator('select.w-14').selectOption('32')
+    await page.waitForTimeout(100)
     await dragOnCanvas(page, { x: 100, y: 250 }, { x: 350, y: 320 })
     await page.waitForTimeout(300)
     await page.keyboard.type('Big text')
@@ -700,6 +692,11 @@ test.describe('1B — Font Size', () => {
     await page.waitForTimeout(200)
     const after = await screenshotCanvas(page)
     expect(Buffer.compare(before, after)).not.toBe(0)
+    // The second box really uses the larger size
+    const anns = await getTextAnnotations(page)
+    expect(anns.map((a: { fontSize?: number }) => a.fontSize)).toContain(32)
+    expect(anns.find((a: { text?: string }) => a.text === 'Big text')?.fontSize).toBe(32)
+    expect(anns.find((a: { text?: string }) => a.text === 'Small text')?.fontSize).not.toBe(32)
   })
 })
 
@@ -744,18 +741,14 @@ test.describe('1B — Lists', () => {
     await uploadPDFAndWait(page)
     await createTextInEditMode(page)
     const bulletBtn = page.locator('button[title*="Bullet"]')
-    if (await bulletBtn.count() > 0) {
-      await expect(bulletBtn.first()).toBeVisible()
-    }
+    await expect(bulletBtn.first()).toBeVisible()
   })
 
   test('numbered list button is visible during editing', async ({ page }) => {
     await uploadPDFAndWait(page)
     await createTextInEditMode(page)
     const numBtn = page.locator('button[title*="Numbered"]')
-    if (await numBtn.count() > 0) {
-      await expect(numBtn.first()).toBeVisible()
-    }
+    await expect(numBtn.first()).toBeVisible()
   })
 
   test('toggling bullet list changes canvas rendering', async ({ page }) => {
@@ -763,14 +756,13 @@ test.describe('1B — Lists', () => {
     const textarea = await createTextInEditMode(page, { x: 100, y: 100, w: 250, h: 100 })
     await page.keyboard.type('Item one\nItem two\nItem three')
     const bulletBtn = page.locator('button[title*="Bullet"]')
-    if (await bulletBtn.count() > 0 && await bulletBtn.first().isVisible()) {
-      await bulletBtn.first().click()
-      await page.waitForTimeout(100)
-      await page.keyboard.press('Escape')
-      await page.waitForTimeout(200)
-      const anns = await getTextAnnotations(page)
-      expect(anns[0].listType === 'bullet' || anns[0].bulletList === true).toBeTruthy()
-    }
+    await expect(bulletBtn.first()).toBeVisible()
+    await bulletBtn.first().click()
+    await page.waitForTimeout(100)
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(200)
+    const anns = await getTextAnnotations(page)
+    expect(anns[0].listType === 'bullet' || anns[0].bulletList === true).toBeTruthy()
   })
 })
 
@@ -781,9 +773,7 @@ test.describe('1B — Text Background Highlight', () => {
     await uploadPDFAndWait(page)
     await createTextInEditMode(page)
     const highlightBtn = page.locator('button[title*="Background"], button[title*="Highlight"]').first()
-    if (await highlightBtn.isVisible()) {
-      expect(true).toBe(true) // button found
-    }
+    await expect(highlightBtn).toBeVisible()
   })
 
   test('toggling text background changes canvas rendering', async ({ page }) => {
@@ -797,17 +787,16 @@ test.describe('1B — Text Background Highlight', () => {
     await doubleClickCanvasAt(page, 200, 130)
     await page.waitForTimeout(300)
     const highlightBtn = page.locator('button[title*="Background"], button[title*="Highlight"]').first()
-    if (await highlightBtn.isVisible()) {
-      await highlightBtn.click()
-      await page.waitForTimeout(100)
-      await page.keyboard.press('Escape')
-      await page.waitForTimeout(200)
-      await selectTool(page, 'Select (S)')
-      await clickCanvasAt(page, 450, 450)
-      await page.waitForTimeout(200)
-      const after = await screenshotCanvas(page)
-      expect(Buffer.compare(before, after)).not.toBe(0)
-    }
+    await expect(highlightBtn).toBeVisible()
+    await highlightBtn.click()
+    await page.waitForTimeout(100)
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(200)
+    await selectTool(page, 'Select (S)')
+    await clickCanvasAt(page, 450, 450)
+    await page.waitForTimeout(200)
+    const after = await screenshotCanvas(page)
+    expect(Buffer.compare(before, after)).not.toBe(0)
   })
 })
 
@@ -1196,16 +1185,12 @@ test.describe('1C — Context Menu', () => {
     // Right-click
     const canvas = page.locator('canvas').nth(1)
     const box = await canvas.boundingBox()
-    if (box) {
-      await page.mouse.click(box.x + 200, box.y + 130, { button: 'right' })
-      await page.waitForTimeout(300)
-      // Should show context menu with Duplicate, Delete options
-      const duplicateItem = page.locator('text=/Duplicate/')
-      const deleteItem = page.locator('text=/Delete/')
-      const hasDuplicate = await duplicateItem.count() > 0
-      const hasDelete = await deleteItem.count() > 0
-      expect(hasDuplicate || hasDelete).toBe(true)
-    }
+    if (!box) throw new Error('Canvas not found')
+    await page.mouse.click(box.x + 200, box.y + 130, { button: 'right' })
+    await page.waitForTimeout(300)
+    // Should show context menu with Duplicate, Delete options
+    await expect(page.getByRole('button', { name: 'Duplicate Ctrl+D', exact: true })).toBeVisible()
+    await expect(page.locator('button:has-text("Delete")')).toBeVisible()
   })
 
   test('context menu Delete removes the text box', async ({ page }) => {
@@ -1219,11 +1204,10 @@ test.describe('1C — Context Menu', () => {
       await page.mouse.click(box.x + 200, box.y + 130, { button: 'right' })
       await page.waitForTimeout(300)
       const deleteItem = page.locator('text=/Delete/').first()
-      if (await deleteItem.isVisible()) {
-        await deleteItem.click()
-        await page.waitForTimeout(300)
-        expect(await getAnnotationCount(page)).toBe(0)
-      }
+      await expect(deleteItem).toBeVisible()
+      await deleteItem.click()
+      await page.waitForTimeout(300)
+      expect(await getAnnotationCount(page)).toBe(0)
     }
   })
 
@@ -1238,11 +1222,10 @@ test.describe('1C — Context Menu', () => {
       await page.mouse.click(box.x + 200, box.y + 130, { button: 'right' })
       await page.waitForTimeout(300)
       const duplicateItem = page.locator('text=/Duplicate/').first()
-      if (await duplicateItem.isVisible()) {
-        await duplicateItem.click()
-        await page.waitForTimeout(300)
-        expect(await getAnnotationCount(page)).toBe(2)
-      }
+      await expect(duplicateItem).toBeVisible()
+      await duplicateItem.click()
+      await page.waitForTimeout(300)
+      expect(await getAnnotationCount(page)).toBe(2)
     }
   })
 })
@@ -1271,10 +1254,9 @@ test.describe('1C — Zoom Interaction', () => {
     await uploadPDFAndWait(page)
     // Zoom in once (to 125%)
     const zoomInBtn = page.locator('button[title*="Zoom in"], button[title*="Zoom In"]').first()
-    if (await zoomInBtn.isVisible()) {
-      await zoomInBtn.click()
-      await page.waitForTimeout(300)
-    }
+    await expect(zoomInBtn).toBeVisible()
+    await zoomInBtn.click()
+    await page.waitForTimeout(300)
     await createCommittedText(page, 'Zoomed text', { x: 100, y: 100, w: 200, h: 60 })
     const anns = await getTextAnnotations(page)
     expect(anns.length).toBe(1)
@@ -1284,10 +1266,9 @@ test.describe('1C — Zoom Interaction', () => {
   test('text box can be selected and moved at 125% zoom', async ({ page }) => {
     await uploadPDFAndWait(page)
     const zoomInBtn = page.locator('button[title*="Zoom in"], button[title*="Zoom In"]').first()
-    if (await zoomInBtn.isVisible()) {
-      await zoomInBtn.click()
-      await page.waitForTimeout(300)
-    }
+    await expect(zoomInBtn).toBeVisible()
+    await zoomInBtn.click()
+    await page.waitForTimeout(300)
     await createAnnotation(page, 'text', { x: 100, y: 100, w: 200, h: 50 })
     const before = await screenshotCanvas(page)
     await moveAnnotation(page, { x: 200, y: 125 }, { x: 350, y: 300 })
