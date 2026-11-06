@@ -35,7 +35,7 @@ The same source produces three builds. `src/utils/viteBuildMode.ts` decides whic
 
 ## Network use
 
-Files are processed in the browser and never uploaded. The standalone HTML file asks the GitHub Releases API for a newer version at startup and can download and save the update. The installed PWA and the desktop app skip that check. Tesseract, which only runs when PaddleOCR fails, downloads its worker and language data from a CDN.
+Files are processed in the browser and never uploaded. The standalone HTML file asks the GitHub Releases API for a newer version at startup and can download and save the update. The hosted build and the desktop app skip that check. Tesseract, which only runs when PaddleOCR fails, downloads its worker and language data from a CDN.
 
 ## Stack
 
