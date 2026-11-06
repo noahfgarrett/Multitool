@@ -210,7 +210,7 @@ test.describe('Find Bar — Chaos', () => {
     }
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible({ timeout: 3000 })
   })
 
   test('spam Enter 20 times does not crash', async ({ page }) => {
