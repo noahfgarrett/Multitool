@@ -394,9 +394,7 @@ test.describe('QA Text — Font Family', () => {
     await expect(fontSelect).toBeVisible()
   })
 
-  // FIXME: app bug: the properties-bar font picker (PdfAnnotateTool.tsx:6024) steals focus from the textarea, whose onBlur (7392) commits the edit, so the choice never reaches the box being edited and an empty new box is discarded (1475-1490)
-
-  test.fixme('changing font family applies to textarea', async ({ page }) => {
+  test('changing font family applies to textarea', async ({ page }) => {
     await uploadPDFAndWait(page)
     const textarea = await createTextInEditMode(page)
     await chooseFont(page, 'Courier New')
@@ -405,9 +403,7 @@ test.describe('QA Text — Font Family', () => {
     expect(ff).toContain('Courier New')
   })
 
-  // FIXME: app bug: the properties-bar font picker (PdfAnnotateTool.tsx:6024) steals focus from the textarea, whose onBlur (7392) commits the edit, so the choice never reaches the box being edited and an empty new box is discarded (1475-1490)
-
-  test.fixme('font family persists in session data', async ({ page }) => {
+  test('font family persists in session data', async ({ page }) => {
     await uploadPDFAndWait(page)
     await createTextInEditMode(page)
     await chooseFont(page, 'Georgia')

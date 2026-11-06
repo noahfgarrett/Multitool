@@ -533,8 +533,7 @@ test.describe('Keyboard Edge Cases — Miscellaneous', () => {
     expect(cursor).toBe('crosshair')
   })
 
-  // FIXME: App bug: letter shortcuts fire while typing in a modal input, e.g. 'r' in the Calibrate Measurement field switches to Rectangle (useKeyboardShortcuts.ts:450-460 has no check for focus in input/textarea/select)
-  test.fixme('keyboard shortcuts do not trigger during modal dialogs', async ({ page }) => {
+  test('keyboard shortcuts do not trigger during modal dialogs', async ({ page }) => {
     // The calibration modal opens when clicking a distance measurement's label (its midpoint)
     await selectTool(page, 'Measure (M)')
     await clickCanvasAt(page, 100, 200)

@@ -703,8 +703,7 @@ test.describe('1B — Font Size', () => {
 // ─── Font Family ────────────────────────────────────────────────────────────
 
 test.describe('1B — Font Family', () => {
-  // FIXME: font picker ends text editing — its button/options lack the onMouseDown preventDefault the other format buttons use, so the textarea blurs and commits (PdfAnnotateTool.tsx ~6024-6058)
-  test.fixme('changing font family updates session data', async ({ page }) => {
+  test('changing font family updates session data', async ({ page }) => {
     await uploadPDFAndWait(page)
     const textarea = await createTextInEditMode(page)
     // Select a non-default font
@@ -712,7 +711,8 @@ test.describe('1B — Font Family', () => {
     const nonArial = fonts.find(f => f !== 'Arial' && f.length > 0)
     expect(nonArial).toBeTruthy()
     await chooseFont(page, nonArial!)
-    await textarea.click()
+    // Picking a font must not take focus away from the box being edited
+    await expect(textarea).toBeFocused()
     await page.keyboard.type('Different font')
     await page.keyboard.press('Escape')
     await page.waitForTimeout(200)
@@ -720,9 +720,7 @@ test.describe('1B — Font Family', () => {
     expect(anns[0].fontFamily).toBe(nonArial)
   })
 
-  // FIXME: font picker ends text editing — its button/options lack the onMouseDown preventDefault the other format buttons use, so the textarea blurs and commits (PdfAnnotateTool.tsx ~6024-6058)
-
-  test.fixme('font family change updates textarea CSS', async ({ page }) => {
+  test('font family change updates textarea CSS', async ({ page }) => {
     await uploadPDFAndWait(page)
     const textarea = await createTextInEditMode(page)
     const fonts = await listFonts(page)

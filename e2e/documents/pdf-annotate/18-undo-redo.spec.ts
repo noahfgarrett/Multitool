@@ -51,9 +51,7 @@ test.describe('Undo — Basics', () => {
     expect(await getAnnotationCount(page)).toBe(0)
   })
 
-  // FIXME: undo/redo schedule requestAnimationFrame(() => redrawAll()) with a stale closure, repainting the pre-undo annotations over the correct redraw (PdfAnnotateTool.tsx ~1440/1452)
-
-  test.fixme('undo restores canvas to previous state', async ({ page }) => {
+  test('undo restores canvas to previous state', async ({ page }) => {
     await uploadPDFAndWait(page)
     const before = await annotationLayerHash(page)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
@@ -141,11 +139,12 @@ test.describe('Redo — Basics', () => {
     await expect(redoBtn).toBeDisabled()
   })
 
-  // FIXME: undo/redo schedule requestAnimationFrame(() => redrawAll()) with a stale closure, repainting the pre-undo annotations over the correct redraw (PdfAnnotateTool.tsx ~1440/1452)
-
-  test.fixme('redo restores canvas visually', async ({ page }) => {
+  test('redo restores canvas visually', async ({ page }) => {
     await uploadPDFAndWait(page)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
+    // Undo/redo clear the selection, so compare against the unselected rectangle
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(200)
     const withAnn = await annotationLayerHash(page)
     await page.keyboard.press('Control+z')
     await page.waitForTimeout(200)

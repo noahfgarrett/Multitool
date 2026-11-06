@@ -297,8 +297,7 @@ test.describe('Text Formatting — Font Family', () => {
     expect(await listFonts(page)).toContain('Arial')
   })
 
-  // FIXME: the font family picker steals focus from the text editor (no onMouseDown preventDefault, unlike the other format buttons), so a new empty box is discarded on blur before the font applies (PdfAnnotateTool.tsx:6024, 1489-1491)
-  test.fixme('changing font family applies to textarea', async ({ page }) => {
+  test('changing font family applies to textarea', async ({ page }) => {
     await uploadPDFAndWait(page)
     const textarea = await createTextInEditMode(page)
     await chooseFont(page, 'Courier New')
@@ -307,8 +306,7 @@ test.describe('Text Formatting — Font Family', () => {
     expect(ff).toContain('Courier New')
   })
 
-  // FIXME: the font family picker steals focus from the text editor (no onMouseDown preventDefault, unlike the other format buttons), so a new empty box is discarded on blur before the font applies (PdfAnnotateTool.tsx:6024, 1489-1491)
-  test.fixme('font family change persists in session data', async ({ page }) => {
+  test('font family change persists in session data', async ({ page }) => {
     await uploadPDFAndWait(page)
     await createTextInEditMode(page)
     await chooseFont(page, 'Georgia')

@@ -193,6 +193,12 @@ export function useKeyboardShortcuts(params: KeyboardShortcutsParams): void {
 
       if (findOpen) return
 
+      // Let inputs, selects and open dialogs keep their own keys (typing "r" in the
+      // page number box must not switch to the rectangle tool)
+      const target = e.target as HTMLElement | null
+      if (target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return
+      if (document.querySelector('[aria-modal="true"]')) return
+
       // ── Undo/Redo ──
       if (mod && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return }
       if (mod && e.key === 'z' && e.shiftKey) { e.preventDefault(); redo(); return }

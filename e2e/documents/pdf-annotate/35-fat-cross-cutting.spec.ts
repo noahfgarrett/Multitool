@@ -1320,9 +1320,7 @@ test.describe('4E: Keyboard Shortcuts Complete', () => {
     }
   })
 
-  // FIXME: the window keydown handler has no guard for focused inputs/selects or open modals, so single-letter tool shortcuts fire while typing (useKeyboardShortcuts.ts ~114/~450)
-
-  test.fixme('4E-24 shortcuts do not fire when typing in input fields', async ({ page }) => {
+  test('4E-24 shortcuts do not fire when typing in input fields', async ({ page }) => {
     // Reset to upload state, then load multi-page PDF for the page number input
     await resetWithConfirm(page)
     await uploadPDFAndWait(page, 'multi-page.pdf')
@@ -1335,14 +1333,13 @@ test.describe('4E: Keyboard Shortcuts Complete', () => {
     // 'r' is the Rectangle shortcut — it must not fire while typing in the input
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    await expect(page.locator('button[title="Rectangle (R)"]')).not.toHaveClass(/bg-\[#14B8A6\]/)
+    // The rectangle button only appears in the toolbar once rectangle is the active shape
+    await expect(page.locator('button[title="Rectangle (R)"]')).toHaveCount(0)
     await expect(page.locator('button[title="Select (S)"]')).toHaveClass(/bg-\[#14B8A6\]/)
     await page.keyboard.press('Escape')
   })
 
-  // FIXME: the window keydown handler has no guard for focused inputs/selects or open modals, so single-letter tool shortcuts fire while typing (useKeyboardShortcuts.ts ~114/~450)
-
-  test.fixme('4E-25 shortcuts do not fire when modal is open', async ({ page }) => {
+  test('4E-25 shortcuts do not fire when modal is open', async ({ page }) => {
     // Open the calibration modal by clicking a distance measurement's label
     await selectTool(page, 'Measure (M)')
     await clickCanvasAt(page, 100, 200)
@@ -1354,7 +1351,7 @@ test.describe('4E: Keyboard Shortcuts Complete', () => {
     // Try pressing 'r' — should not switch tool
     await page.keyboard.press('r')
     await page.waitForTimeout(200)
-    await expect(page.locator('button[title="Rectangle (R)"]')).not.toHaveClass(/bg-\[#14B8A6\]/)
+    await expect(page.locator('button[title="Rectangle (R)"]')).toHaveCount(0)
     await expect(page.locator('button[title="Measure (M)"]')).toHaveClass(/bg-\[#14B8A6\]/)
     // Close modal
     await page.keyboard.press('Escape')

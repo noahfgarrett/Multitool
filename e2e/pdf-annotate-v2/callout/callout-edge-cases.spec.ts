@@ -328,8 +328,7 @@ test.describe('Callout Edge Cases', () => {
     }
   })
 
-  // FIXME: App bug: opening the font picker blurs the text box, whose onBlur commits after 100ms and discards the empty box (PdfAnnotateTool.tsx:6024 font button lacks onMouseDown preventDefault; onBlur at 7392)
-  test.fixme('callout with font change', async ({ page }) => {
+  test('callout with font change', async ({ page }) => {
     await selectTool(page, 'Callout (O)')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 200 })
     await page.waitForTimeout(300)

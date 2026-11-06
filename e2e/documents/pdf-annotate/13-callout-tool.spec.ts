@@ -376,8 +376,7 @@ test.describe('Callout Tool — Formatting', () => {
     await expect(textarea).toHaveCSS('font-style', 'italic')
   })
 
-  // FIXME: the font family picker steals focus from the text editor (no onMouseDown preventDefault, unlike the other format buttons), so a new empty box is discarded on blur before the font applies (PdfAnnotateTool.tsx:6024, 1489-1491)
-  test.fixme('font family change works for callout', async ({ page }) => {
+  test('font family change works for callout', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Callout (O)')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 200 })

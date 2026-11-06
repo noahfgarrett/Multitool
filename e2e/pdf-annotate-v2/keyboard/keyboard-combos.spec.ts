@@ -252,8 +252,7 @@ test.describe('Keyboard Combos — Space/Pan', () => {
     expect(await getAnnotationCount(page)).toBe(0)
   })
 
-  // FIXME: App bug: a keyboard tool switch keeps the select tool's hover cursor ('move') until the mouse moves (PdfAnnotateTool.tsx:6527 uses stale canvasCursor; not reset on activeTool change)
-  test.fixme('shortcut while annotation selected', async ({ page }) => {
+  test('shortcut while annotation selected', async ({ page }) => {
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     await selectTool(page, 'Select (S)')
     await clickCanvasAt(page, 100, 140)

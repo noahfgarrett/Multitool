@@ -452,8 +452,7 @@ test.describe('Cross-Tool: Select with All Types', () => {
     expect(await getAnnotationCount(page)).toBe(2)
   })
 
-  // FIXME: App bug: a keyboard tool switch keeps the select tool's hover cursor ('move') until the mouse moves (PdfAnnotateTool.tsx:6527 uses stale canvasCursor; not reset on activeTool change)
-  test.fixme('select then switch to pencil', async ({ page }) => {
+  test('select then switch to pencil', async ({ page }) => {
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 150, h: 100 })
     await selectTool(page, 'Select (S)')
     await clickCanvasAt(page, 100, 150)

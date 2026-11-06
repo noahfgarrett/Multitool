@@ -536,9 +536,7 @@ test.describe('Text Tool — Formatting', () => {
     expect(textDecoration).toContain('line-through')
   })
 
-  // FIXME: font picker ends text editing — its button/options lack the onMouseDown preventDefault the other format buttons use, so the textarea blurs and commits (PdfAnnotateTool.tsx ~6024-6058)
-
-  test.fixme('font family dropdown changes font', async ({ page }) => {
+  test('font family dropdown changes font', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Text (T)')
     await drawOnCanvas(page, [{ x: 50, y: 50 }, { x: 250, y: 100 }])

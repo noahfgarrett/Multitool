@@ -813,6 +813,11 @@ export default function PdfAnnotateTool() {
       redrawPage(pageNum)
     }
   }, [redrawPage])
+  // Latest redrawAll for deferred callbacks. A requestAnimationFrame scheduled by
+  // undo/redo would otherwise run the closure from before the state change and
+  // repaint the annotations that were just undone.
+  const redrawAllRef = useRef(redrawAll)
+  redrawAllRef.current = redrawAll
 
   const rememberReadablePage = useCallback((pageNum: number) => {
     const pageCount = pdfFileRef.current?.pageCount ?? pageNum
@@ -1437,9 +1442,9 @@ export default function PdfAnnotateTool() {
     setSelectedAnnId(null)
     setSelectedAnnIds(new Set())
     setEditingTextId(null)
-    requestAnimationFrame(() => redrawAll())
+    requestAnimationFrame(() => redrawAllRef.current())
     addToast({ type: 'info', message: 'Undone', duration: 1000 })
-  }, [redrawAll, addToast])
+  }, [addToast])
 
   const redo = useCallback(() => {
     if (historyIdxRef.current >= historyRef.current.length - 1) return
@@ -1449,9 +1454,9 @@ export default function PdfAnnotateTool() {
     setSelectedAnnId(null)
     setSelectedAnnIds(new Set())
     setEditingTextId(null)
-    requestAnimationFrame(() => redrawAll())
+    requestAnimationFrame(() => redrawAllRef.current())
     addToast({ type: 'info', message: 'Redone', duration: 1000 })
-  }, [redrawAll, addToast])
+  }, [addToast])
 
   // ── Alignment & distribution ────────────────────────
 
@@ -2777,6 +2782,8 @@ export default function PdfAnnotateTool() {
     setSelectedAnnIds(new Set())
     setSelectedArrowIdx(null)
     setSelectedMeasureId(null)
+    // Drop any hover cursor left by the previous tool (e.g. 'move' from select)
+    setCanvasCursor(null)
     textHighlightStartRef.current = null
     textHighlightPreviewRectsRef.current = []
     selectTextStartRef.current = null
@@ -6022,6 +6029,7 @@ export default function PdfAnnotateTool() {
               return (
                 <div className="relative" ref={fontPickerRef}>
                   <button
+                    onMouseDown={e => e.preventDefault()}
                     onClick={() => setFontPickerOpen(o => !o)}
                     className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] bg-dark-surface border border-white/[0.1] rounded text-white max-w-[120px] hover:border-white/20 transition-colors"
                     title="Font family"
@@ -6038,6 +6046,7 @@ export default function PdfAnnotateTool() {
                           {group.fonts.map(ff => (
                             <button
                               key={ff}
+                              onMouseDown={e => e.preventDefault()}
                               className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-left text-[11px] transition-colors ${
                                 fontFamily === ff
                                   ? 'bg-white/[0.08] text-white'

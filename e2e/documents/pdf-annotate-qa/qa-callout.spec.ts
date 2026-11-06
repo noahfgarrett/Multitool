@@ -221,9 +221,7 @@ test.describe('QA Callout — Formatting', () => {
     expect(td).toContain('line-through')
   })
 
-  // FIXME: app bug: the properties-bar font picker (PdfAnnotateTool.tsx:6024) steals focus from the textarea, whose onBlur (7392) commits the edit, so the choice never reaches the box being edited and an empty new box is discarded (1475-1490)
-
-  test.fixme('font family change works for callout', async ({ page }) => {
+  test('font family change works for callout', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Callout (O)')
     await dragOnCanvas(page, { x: 100, y: 100 }, { x: 300, y: 200 })
