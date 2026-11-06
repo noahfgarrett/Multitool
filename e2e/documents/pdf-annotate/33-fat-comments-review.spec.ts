@@ -659,6 +659,8 @@ test.describe('2B: Comment Threads', () => {
     await addCommentViaContextMenu(page, 100, 100)
     await typeAndSendComment(page, 'Thread A')
     await page.keyboard.press('Escape')
+    // Leave the comment box; tool shortcuts are ignored while a text field has focus
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
     await page.waitForTimeout(300)
     // Create second annotation and comment
     await createAnnotation(page, 'rectangle', { x: 350, y: 350, w: 80, h: 60 })
