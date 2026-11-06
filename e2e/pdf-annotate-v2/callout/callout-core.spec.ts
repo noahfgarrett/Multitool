@@ -28,7 +28,7 @@ test.describe('Callout Tool Core', () => {
   test('callout shortcut O activates tool', async ({ page }) => {
     await page.keyboard.press('o')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })

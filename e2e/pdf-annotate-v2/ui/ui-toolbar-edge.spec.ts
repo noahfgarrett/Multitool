@@ -5,6 +5,7 @@ import {
   clickCanvasAt, getAnnotationCount, createAnnotation, exportPDF,
   goToPage,
 } from '../../helpers/pdf-annotate'
+import { openSecondaryTools, clickSecondaryTool } from '../../helpers/pdf-annotate-d'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -50,10 +51,13 @@ test.describe('UI Toolbar Edge — Visibility', () => {
   })
 
   test('toolbar has stamp button', async ({ page }) => {
+    // Stamp is a secondary tool behind the toolbar's "More tools" expander
+    await openSecondaryTools(page)
     await expect(page.locator('button[title="Stamp"]')).toBeVisible()
   })
 
   test('toolbar has crop button', async ({ page }) => {
+    await openSecondaryTools(page)
     await expect(page.locator('button[title="Crop page"]')).toBeVisible()
   })
 
@@ -83,29 +87,29 @@ test.describe('UI Toolbar Edge — Visibility', () => {
 test.describe('UI Toolbar Edge — Shapes Dropdown', () => {
   test('pencil tool accessible', async ({ page }) => {
     await selectTool(page, 'Pencil (P)')
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })
 
   test('line tool accessible', async ({ page }) => {
     await selectTool(page, 'Line (L)')
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift to snap angles/')).toBeVisible({ timeout: 3000 })
   })
 
   test('arrow tool accessible', async ({ page }) => {
     await selectTool(page, 'Arrow (A)')
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift to snap angles/')).toBeVisible({ timeout: 3000 })
   })
 
   test('rectangle tool accessible', async ({ page }) => {
     await selectTool(page, 'Rectangle (R)')
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible({ timeout: 3000 })
   })
 
   test('circle tool accessible', async ({ page }) => {
     await selectTool(page, 'Circle (C)')
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible({ timeout: 3000 })
   })
 
   test('cloud tool accessible', async ({ page }) => {
@@ -237,7 +241,7 @@ test.describe('UI Toolbar Edge — Toolbar Behavior', () => {
   test('status bar hint updates on tool switch', async ({ page }) => {
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible({ timeout: 3000 })
     await page.keyboard.press('s')
     await page.waitForTimeout(100)
     await expect(page.locator('text=/Click to select/').first()).toBeVisible({ timeout: 3000 })
@@ -295,6 +299,8 @@ test.describe('UI Toolbar Edge — Toolbar Behavior', () => {
       'Stamp',
       'Crop page',
     ]
+    // Stamp and Crop live behind the "More tools" expander
+    await openSecondaryTools(page)
     for (const title of buttonsWithTitles) {
       const btn = page.locator(`button[title="${title}"]`)
       await expect(btn).toBeVisible()
@@ -348,11 +354,11 @@ test.describe('UI Toolbar Edge — Toolbar Behavior', () => {
   })
 
   test('stamp tool shows presets', async ({ page }) => {
-    await selectTool(page, 'Stamp')
+    await clickSecondaryTool(page, 'Stamp')
     await page.waitForTimeout(200)
     // Stamp tool should show preset stamps
-    const canvas = page.locator('canvas.ann-canvas').first()
-    await expect(canvas).toBeVisible()
+    await expect(page.locator('button').filter({ hasText: 'APPROVED' }).first()).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/click to place/')).toBeVisible()
   })
 
   test('toolbar responsive — all buttons present at default viewport', async ({ page }) => {

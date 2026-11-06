@@ -868,7 +868,7 @@ test.describe('Eraser Partial Mode', () => {
     await selectTool(page, 'Eraser (E)')
     const partialBtn = page.locator('button[title="Partial erase"]')
     if (await partialBtn.isVisible()) await partialBtn.click()
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('none')
   })

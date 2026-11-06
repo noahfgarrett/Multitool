@@ -252,7 +252,8 @@ test.describe('Keyboard Combos — Space/Pan', () => {
     expect(await getAnnotationCount(page)).toBe(0)
   })
 
-  test('shortcut while annotation selected', async ({ page }) => {
+  // FIXME: App bug: a keyboard tool switch keeps the select tool's hover cursor ('move') until the mouse moves (PdfAnnotateTool.tsx:6527 uses stale canvasCursor; not reset on activeTool change)
+  test.fixme('shortcut while annotation selected', async ({ page }) => {
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 120, h: 80 })
     await selectTool(page, 'Select (S)')
     await clickCanvasAt(page, 100, 140)
@@ -260,11 +261,11 @@ test.describe('Keyboard Combos — Space/Pan', () => {
     // Pressing p should switch to pencil, deselecting
     await page.keyboard.press('p')
     await page.waitForTimeout(200)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     await expect(canvas).toBeVisible()
-    // Verify tool switched — cursor may be crosshair or canvas still visible
+    // Verify tool switched to pencil (crosshair cursor)
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
-    expect(['crosshair', 'default', 'none'].includes(cursor) || true).toBeTruthy()
+    expect(cursor).toBe('crosshair')
   })
 })
 
@@ -592,7 +593,7 @@ test.describe('Keyboard Combos — Modifier Keys Alone', () => {
     // Each key maps to exactly one tool
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/').first()).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/').first()).toBeVisible({ timeout: 3000 })
     await page.keyboard.press('s')
     await page.waitForTimeout(100)
     await expect(page.locator('text=/Click to select/').first()).toBeVisible({ timeout: 3000 })

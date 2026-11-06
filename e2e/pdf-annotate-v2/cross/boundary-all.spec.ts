@@ -5,6 +5,7 @@ import {
   clickCanvasAt, doubleClickCanvasAt, getAnnotationCount, createAnnotation,
   selectAnnotationAt, exportPDF, goToPage, waitForSessionSave, getSessionData,
 } from '../../helpers/pdf-annotate'
+import { rightClickCanvasAt, contextMenu, contextMenuItem } from '../../helpers/pdf-annotate-d'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -453,12 +454,17 @@ test.describe('Boundary Tests', () => {
     await selectTool(page, 'Select (S)')
     await clickCanvasAt(page, 5, 30)
     await page.waitForTimeout(200)
-    await page.locator('canvas.ann-canvas').first().click({ position: { x: 5, y: 30 }, button: 'right' })
-    await page.waitForTimeout(300)
-    const menu = page.locator('text=/Delete|Duplicate/')
-    const visible = await menu.first().isVisible().catch(() => false)
-    // Context menu may not appear if annotation not selected
-    expect(typeof visible).toBe('boolean')
+    await rightClickCanvasAt(page, 5, 30)
+    const menu = contextMenu(page)
+    await expect(menu).toBeVisible({ timeout: 3000 })
+    await expect(contextMenuItem(page, 'Delete')).toBeVisible()
+    // Menu is positioned inside the viewport even at the page edge
+    const box = await menu.boundingBox()
+    const vp = page.viewportSize()!
+    expect(box!.x).toBeGreaterThanOrEqual(0)
+    expect(box!.y).toBeGreaterThanOrEqual(0)
+    expect(box!.x + box!.width).toBeLessThanOrEqual(vp.width)
+    expect(box!.y + box!.height).toBeLessThanOrEqual(vp.height)
   })
 
   test('multi-page boundary — annotation near page junction stays on page', async ({ page }) => {

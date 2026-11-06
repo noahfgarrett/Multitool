@@ -5,6 +5,7 @@ import {
   clickCanvasAt, doubleClickCanvasAt, getAnnotationCount, createAnnotation,
   selectAnnotationAt, exportPDF, goToPage, waitForSessionSave, getSessionData,
 } from '../../helpers/pdf-annotate'
+import { rightClickCanvasAt, contextMenu, jumpToPage, pageIndicator, drawPencilStrokes } from '../../helpers/pdf-annotate-d'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -131,10 +132,10 @@ test.describe('Chaos & Stress Tests', () => {
     await navigateToTool(page, 'pdf-annotate')
     await uploadPDFAndWait(page, 'multi-page.pdf')
     for (let i = 0; i < 20; i++) {
-      await goToPage(page, (i % 2) + 1)
-      await page.waitForTimeout(100)
+      // Waits for the page indicator to reach the target page (no fixed sleeps)
+      await jumpToPage(page, (i % 2) + 1)
     }
-    await page.waitForTimeout(300)
+    await expect(pageIndicator(page)).toHaveText(/^\s*2 \/ \d+\s*$/)
     const canvas = page.locator('canvas.ann-canvas').first()
     await expect(canvas).toBeVisible()
   })
@@ -391,14 +392,18 @@ test.describe('Chaos & Stress Tests', () => {
 
   test('rapid color switching', async ({ page }) => {
     await selectTool(page, 'Pencil (P)')
+    // Preset swatches are square (rounded-md); the "Recent" row repeats colors as round swatches
+    const redPreset = page.locator('button.rounded-md[title="#FF0000"]')
+    const blackPreset = page.locator('button.rounded-md[title="#000000"]')
     for (let i = 0; i < 10; i++) {
-      const redPreset = page.locator('button[title="#FF0000"]')
-      if (await redPreset.isVisible()) await redPreset.click()
+      await redPreset.click()
       await page.waitForTimeout(20)
-      const blackPreset = page.locator('button[title="#000000"]')
-      if (await blackPreset.isVisible()) await blackPreset.click()
+      await blackPreset.click()
       await page.waitForTimeout(20)
     }
+    // Last pick wins
+    await expect(blackPreset).toHaveClass(/scale-110/)
+    await expect(redPreset).not.toHaveClass(/scale-110/)
     await createAnnotation(page, 'pencil', { x: 100, y: 100, w: 100, h: 20 })
     expect(await getAnnotationCount(page)).toBe(1)
   })
@@ -508,11 +513,8 @@ test.describe('Chaos & Stress Tests', () => {
 
   test('session with 50 annotations save+restore', async ({ page }) => {
     test.setTimeout(60000)
-    for (let i = 0; i < 50; i++) {
-      const row = Math.floor(i / 10)
-      const col = i % 10
-      await createAnnotation(page, 'pencil', { x: 20 + col * 40, y: 20 + row * 35, w: 25, h: 10 })
-    }
+    const regions = Array.from({ length: 50 }, (_, i) => ({ x: 20 + (i % 10) * 40, y: 20 + Math.floor(i / 10) * 35, w: 25, h: 10 }))
+    await drawPencilStrokes(page, regions)
     await waitForSessionSave(page)
     const session = await getSessionData(page)
     expect(session).toBeTruthy()
@@ -520,33 +522,18 @@ test.describe('Chaos & Stress Tests', () => {
 
   test('export with 50 annotations', async ({ page }) => {
     test.setTimeout(60000)
-    for (let i = 0; i < 50; i++) {
-      const row = Math.floor(i / 10)
-      const col = i % 10
-      await createAnnotation(page, 'pencil', { x: 20 + col * 40, y: 20 + row * 35, w: 25, h: 10 })
-    }
+    const regions = Array.from({ length: 50 }, (_, i) => ({ x: 20 + (i % 10) * 40, y: 20 + Math.floor(i / 10) * 35, w: 25, h: 10 }))
+    await drawPencilStrokes(page, regions)
     const download = await exportPDF(page)
     expect(download).toBeTruthy()
   })
 
   test('performance: 100 pencil strokes with sticky tool', async ({ page }) => {
     test.setTimeout(60000)
-    await selectTool(page, 'Pencil (P)')
-    const pinBtn = page.locator('button[title*="Lock tool"]')
-    if (await pinBtn.isVisible()) await pinBtn.click()
-    await selectTool(page, 'Pencil (P)')
-    for (let i = 0; i < 100; i++) {
-      const row = Math.floor(i / 20)
-      const col = i % 20
-      await drawOnCanvas(page, [
-        { x: 10 + col * 20, y: 10 + row * 25 },
-        { x: 25 + col * 20, y: 20 + row * 25 },
-      ])
-      await page.waitForTimeout(20)
-    }
-    await page.waitForTimeout(500)
-    const count = await getAnnotationCount(page)
-    expect(count).toBeGreaterThanOrEqual(1)
+    // The pencil stays active between strokes (no separate lock toggle any more)
+    const regions = Array.from({ length: 100 }, (_, i) => ({ x: 10 + (i % 20) * 20, y: 10 + Math.floor(i / 20) * 25, w: 15, h: 10 }))
+    await drawPencilStrokes(page, regions)
+    expect(await getAnnotationCount(page)).toBe(100)
   })
 
   test('performance: draw time for annotation 1 vs 50', async ({ page }) => {
@@ -554,11 +541,8 @@ test.describe('Chaos & Stress Tests', () => {
     const start1 = Date.now()
     await createAnnotation(page, 'pencil', { x: 100, y: 100, w: 80, h: 15 })
     const time1 = Date.now() - start1
-    for (let i = 1; i < 49; i++) {
-      const row = Math.floor(i / 10)
-      const col = i % 10
-      await createAnnotation(page, 'pencil', { x: 20 + col * 40, y: 20 + row * 35, w: 25, h: 10 })
-    }
+    const regions = Array.from({ length: 48 }, (_, k) => { const i = k + 1; return { x: 20 + (i % 10) * 40, y: 20 + Math.floor(i / 10) * 35, w: 25, h: 10 } })
+    await drawPencilStrokes(page, regions)
     const start50 = Date.now()
     await createAnnotation(page, 'pencil', { x: 100, y: 300, w: 80, h: 15 })
     const time50 = Date.now() - start50
@@ -610,16 +594,19 @@ test.describe('Chaos & Stress Tests', () => {
     await clickCanvasAt(page, 100, 150)
     await page.waitForTimeout(200)
     for (let i = 0; i < 5; i++) {
-      await page.locator('canvas.ann-canvas').first().click({ position: { x: 100, y: 150 }, button: 'right' })
-      await page.waitForTimeout(100)
+      await rightClickCanvasAt(page, 100, 150)
+      await expect(contextMenu(page)).toBeVisible()
       await page.keyboard.press('Escape')
-      await page.waitForTimeout(100)
+      await expect(contextMenu(page)).toBeHidden()
     }
     const canvas = page.locator('canvas.ann-canvas').first()
     await expect(canvas).toBeVisible()
+    expect(await getAnnotationCount(page)).toBe(1)
   })
 
   test('stress test: session save 10 times', async ({ page }) => {
+    // Ten full debounce cycles (2s each) are inherent to this test
+    test.setTimeout(60000)
     await createAnnotation(page, 'pencil', { x: 100, y: 100, w: 100, h: 20 })
     for (let i = 0; i < 10; i++) {
       await waitForSessionSave(page)

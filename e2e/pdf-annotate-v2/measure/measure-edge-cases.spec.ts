@@ -319,7 +319,7 @@ test.describe('Measure Edge Cases', () => {
   test('measure cursor crosshair', async ({ page }) => {
     await selectTool(page, 'Measure (M)')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })

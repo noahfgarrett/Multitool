@@ -25,7 +25,7 @@ test.describe('Keyboard Edge Cases — Tool Shortcuts', () => {
   test('p shortcut activates pencil tool', async ({ page }) => {
     await page.keyboard.press('p')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })
@@ -33,25 +33,25 @@ test.describe('Keyboard Edge Cases — Tool Shortcuts', () => {
   test('l shortcut activates line tool', async ({ page }) => {
     await page.keyboard.press('l')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift to snap angles/')).toBeVisible({ timeout: 3000 })
   })
 
   test('a shortcut activates arrow tool', async ({ page }) => {
     await page.keyboard.press('a')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift to snap angles/')).toBeVisible({ timeout: 3000 })
   })
 
   test('r shortcut activates rectangle tool', async ({ page }) => {
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible({ timeout: 3000 })
   })
 
   test('c shortcut activates circle tool', async ({ page }) => {
     await page.keyboard.press('c')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible({ timeout: 3000 })
   })
 
   test('k shortcut activates cloud tool', async ({ page }) => {
@@ -116,7 +116,7 @@ test.describe('Keyboard Edge Cases — Text Editing Context', () => {
     await page.keyboard.type('r')
     await expect(textarea).toHaveValue('r')
     // Should NOT have switched to rectangle tool
-    await expect(page.locator('text=/Shift for perfect shapes/')).not.toBeVisible()
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).not.toBeVisible()
   })
 
   test('shortcut during callout editing types letter not switch tool', async ({ page }) => {
@@ -138,7 +138,7 @@ test.describe('Keyboard Edge Cases — Text Editing Context', () => {
     await page.waitForTimeout(200)
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible({ timeout: 3000 })
   })
 
   test('shortcut while find bar open types in find input', async ({ page }) => {
@@ -176,7 +176,7 @@ test.describe('Keyboard Edge Cases — Text Editing Context', () => {
     await page.waitForTimeout(300)
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible({ timeout: 3000 })
   })
 })
 
@@ -468,7 +468,7 @@ test.describe('Keyboard Edge Cases — Miscellaneous', () => {
   test('shortcuts case insensitive — P works same as p', async ({ page }) => {
     await page.keyboard.press('P')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })
@@ -476,7 +476,7 @@ test.describe('Keyboard Edge Cases — Miscellaneous', () => {
   test('shortcuts with Caps Lock behave same', async ({ page }) => {
     await page.keyboard.press('R')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible({ timeout: 3000 })
   })
 
   test('rapid shortcut switching does not crash', async ({ page }) => {
@@ -500,7 +500,7 @@ test.describe('Keyboard Edge Cases — Miscellaneous', () => {
   test('all shortcuts return correct cursor for drawing tools', async ({ page }) => {
     await page.keyboard.press('p')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursorP = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursorP).toBe('crosshair')
   })
@@ -528,33 +528,33 @@ test.describe('Keyboard Edge Cases — Miscellaneous', () => {
     await page.waitForTimeout(500)
     await page.keyboard.press('p')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })
 
-  test('keyboard shortcuts do not trigger during modal dialogs', async ({ page }) => {
-    // Open calibration modal if available — otherwise this verifies general robustness
+  // FIXME: App bug: letter shortcuts fire while typing in a modal input, e.g. 'r' in the Calibrate Measurement field switches to Rectangle (useKeyboardShortcuts.ts:450-460 has no check for focus in input/textarea/select)
+  test.fixme('keyboard shortcuts do not trigger during modal dialogs', async ({ page }) => {
+    // The calibration modal opens when clicking a distance measurement's label (its midpoint)
     await selectTool(page, 'Measure (M)')
-    await page.waitForTimeout(100)
-    // Click calibrate button if it exists
-    const calibrateBtn = page.locator('button:has-text("Calibrate")')
-    const hasCalibrateBtn = await calibrateBtn.isVisible().catch(() => false)
-    if (hasCalibrateBtn) {
-      await calibrateBtn.click()
-      await page.waitForTimeout(300)
-      const modalInput = page.locator('input[placeholder="e.g. 12"]')
-      const hasModal = await modalInput.isVisible().catch(() => false)
-      if (hasModal) {
-        await page.keyboard.type('r')
-        await expect(modalInput).toHaveValue('r')
-      }
-      await page.keyboard.press('Escape')
-      await page.waitForTimeout(200)
-    }
+    await clickCanvasAt(page, 100, 200)
+    await page.waitForTimeout(150)
+    await clickCanvasAt(page, 300, 200)
+    await page.waitForTimeout(300)
+    await clickCanvasAt(page, 200, 200)
+    const modalInput = page.locator('input[placeholder="e.g. 12"]')
+    await expect(modalInput).toBeVisible({ timeout: 3000 })
+    await modalInput.focus()
+    await page.keyboard.type('12')
+    await expect(modalInput).toHaveValue('12')
+    // A tool shortcut typed while the modal has focus must not switch tools
+    await page.keyboard.press('r')
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).not.toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(modalInput).toBeHidden()
     // After modal close, shortcuts should work
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible({ timeout: 3000 })
   })
 })

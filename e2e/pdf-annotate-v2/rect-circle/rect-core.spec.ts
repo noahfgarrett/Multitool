@@ -69,7 +69,7 @@ test.describe('Rectangle & Circle Core', () => {
   test('rectangle shortcut R activates tool', async ({ page }) => {
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })
@@ -192,7 +192,7 @@ test.describe('Rectangle & Circle Core', () => {
   test('circle shortcut C activates tool', async ({ page }) => {
     await page.keyboard.press('c')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })

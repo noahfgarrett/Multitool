@@ -382,7 +382,7 @@ test.describe('Eraser Edge Cases', () => {
 
   test('eraser custom cursor visible on canvas', async ({ page }) => {
     await selectTool(page, 'Eraser (E)')
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('none')
   })
@@ -581,7 +581,7 @@ test.describe('Eraser Edge Cases', () => {
   test('eraser shortcut E activates', async ({ page }) => {
     await page.keyboard.press('e')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('none')
   })

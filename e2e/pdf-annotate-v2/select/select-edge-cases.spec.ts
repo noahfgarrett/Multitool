@@ -5,6 +5,7 @@ import {
   clickCanvasAt, doubleClickCanvasAt, getAnnotationCount, createAnnotation,
   moveAnnotation, exportPDF,
 } from '../../helpers/pdf-annotate'
+import { rightClickCanvasAt, contextMenu, contextMenuItem } from '../../helpers/pdf-annotate-d'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -539,64 +540,39 @@ test.describe('Select Edge Cases', () => {
   test('context menu has duplicate option', async ({ page }) => {
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 150, h: 100 })
     await selectTool(page, 'Select (S)')
-    const canvas = page.locator('canvas.ann-canvas').first()
-    const box = await canvas.boundingBox()
-    if (box) {
-      await page.mouse.click(box.x + 100, box.y + 150, { button: 'right' })
-      await page.waitForTimeout(300)
-      const dupOption = page.locator('text=/Duplicate/i')
-      if (await dupOption.isVisible()) {
-        expect(true).toBeTruthy()
-      }
-    }
+    await rightClickCanvasAt(page, 100, 150)
+    await expect(contextMenu(page)).toBeVisible({ timeout: 3000 })
+    await expect(contextMenuItem(page, 'Duplicate')).toBeVisible()
+    await expect(contextMenuItem(page, 'Duplicate to Pages...')).toBeVisible()
     expect(await getAnnotationCount(page)).toBe(1)
   })
 
   test('context menu has copy option', async ({ page }) => {
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 150, h: 100 })
     await selectTool(page, 'Select (S)')
-    const canvas = page.locator('canvas.ann-canvas').first()
-    const box = await canvas.boundingBox()
-    if (box) {
-      await page.mouse.click(box.x + 100, box.y + 150, { button: 'right' })
-      await page.waitForTimeout(300)
-      const copyOption = page.locator('text=/Copy/i')
-      if (await copyOption.isVisible()) {
-        expect(true).toBeTruthy()
-      }
-    }
+    await rightClickCanvasAt(page, 100, 150)
+    await expect(contextMenu(page)).toBeVisible({ timeout: 3000 })
+    // The menu offers style copy/paste (object copy is Ctrl+C)
+    await expect(contextMenuItem(page, 'Copy Style')).toBeVisible()
+    await expect(contextMenuItem(page, 'Paste Style')).toBeVisible()
     expect(await getAnnotationCount(page)).toBe(1)
   })
 
   test('context menu has bring to front', async ({ page }) => {
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 150, h: 100 })
     await selectTool(page, 'Select (S)')
-    const canvas = page.locator('canvas.ann-canvas').first()
-    const box = await canvas.boundingBox()
-    if (box) {
-      await page.mouse.click(box.x + 100, box.y + 150, { button: 'right' })
-      await page.waitForTimeout(300)
-      const frontOption = page.locator('text=/Bring to Front/i')
-      if (await frontOption.isVisible()) {
-        expect(true).toBeTruthy()
-      }
-    }
+    await rightClickCanvasAt(page, 100, 150)
+    await expect(contextMenu(page)).toBeVisible({ timeout: 3000 })
+    await expect(contextMenuItem(page, 'Bring to Front')).toBeVisible()
     expect(await getAnnotationCount(page)).toBe(1)
   })
 
   test('context menu has send to back', async ({ page }) => {
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 150, h: 100 })
     await selectTool(page, 'Select (S)')
-    const canvas = page.locator('canvas.ann-canvas').first()
-    const box = await canvas.boundingBox()
-    if (box) {
-      await page.mouse.click(box.x + 100, box.y + 150, { button: 'right' })
-      await page.waitForTimeout(300)
-      const backOption = page.locator('text=/Send to Back/i')
-      if (await backOption.isVisible()) {
-        expect(true).toBeTruthy()
-      }
-    }
+    await rightClickCanvasAt(page, 100, 150)
+    await expect(contextMenu(page)).toBeVisible({ timeout: 3000 })
+    await expect(contextMenuItem(page, 'Send to Back')).toBeVisible()
     expect(await getAnnotationCount(page)).toBe(1)
   })
 

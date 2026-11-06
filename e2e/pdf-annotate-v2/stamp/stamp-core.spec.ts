@@ -4,6 +4,7 @@ import {
   uploadPDFAndWait, selectTool, clickCanvasAt, dragOnCanvas,
   getAnnotationCount, exportPDF, waitForSessionSave, getSessionData,
 } from '../../helpers/pdf-annotate'
+import { openSecondaryTools } from '../../helpers/pdf-annotate-d'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -23,6 +24,7 @@ async function placeStamp(page: import('@playwright/test').Page, x = 200, y = 20
 
 test.describe('Stamp Tool Core', () => {
   test('stamp button visible in toolbar', async ({ page }) => {
+    await openSecondaryTools(page)
     const stampBtn = page.locator('button[title="Stamp"]')
     await expect(stampBtn).toBeVisible({ timeout: 3000 })
   })
@@ -35,6 +37,7 @@ test.describe('Stamp Tool Core', () => {
   })
 
   test('stamp dropdown shows preset stamps', async ({ page }) => {
+    await openSecondaryTools(page)
     const stampBtn = page.locator('button[title="Stamp"]')
     await stampBtn.click()
     await page.waitForTimeout(300)

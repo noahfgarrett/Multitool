@@ -706,7 +706,7 @@ test.describe('Eraser Object Mode', () => {
     await selectTool(page, 'Eraser (E)')
     const objBtn = page.locator('button[title="Object erase"]')
     if (await objBtn.isVisible()) await objBtn.click()
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('none')
   })

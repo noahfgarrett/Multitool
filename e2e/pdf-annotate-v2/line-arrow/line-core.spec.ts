@@ -69,7 +69,7 @@ test.describe('Line & Arrow Core', () => {
   test('line shortcut key L activates tool', async ({ page }) => {
     await page.keyboard.press('l')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })
@@ -192,7 +192,7 @@ test.describe('Line & Arrow Core', () => {
   test('arrow shortcut key A activates tool', async ({ page }) => {
     await page.keyboard.press('a')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })

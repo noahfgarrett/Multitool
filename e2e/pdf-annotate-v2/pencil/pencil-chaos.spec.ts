@@ -4,6 +4,7 @@ import {
   uploadPDFAndWait, selectTool, drawOnCanvas, clickCanvasAt,
   getAnnotationCount, createAnnotation, exportPDF,
 } from '../../helpers/pdf-annotate'
+import { annCountLabel } from '../../helpers/pdf-annotate-d'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -23,10 +24,13 @@ test.describe('Pencil Chaos', () => {
   })
 
   test('draw and undo 25 times alternating', async ({ page }) => {
+    const counter = annCountLabel(page)
     for (let i = 0; i < 25; i++) {
-      await createAnnotation(page, 'pencil', { x: 50, y: 50, w: 80, h: 30 })
+      await page.keyboard.press('p')
+      await drawOnCanvas(page, [{ x: 50, y: 50 }, { x: 74, y: 71 }, { x: 98, y: 56 }, { x: 130, y: 80 }])
+      await expect(counter).toHaveText('1 ann')
       await page.keyboard.press('Control+z')
-      await page.waitForTimeout(50)
+      await expect(counter).toHaveText('0 ann')
     }
     expect(await getAnnotationCount(page)).toBe(0)
   })
@@ -97,13 +101,17 @@ test.describe('Pencil Chaos', () => {
   })
 
   test('draw stroke, select it, delete it — repeat 20 times', async ({ page }) => {
+    const counter = annCountLabel(page)
+    const selectedHint = page.locator('text=/Arrows nudge · Del delete/')
     for (let i = 0; i < 20; i++) {
-      await createAnnotation(page, 'pencil', { x: 100, y: 100, w: 100, h: 30 })
-      await selectTool(page, 'Select (S)')
-      await clickCanvasAt(page, 150, 115)
-      await page.waitForTimeout(100)
+      await page.keyboard.press('p')
+      await drawOnCanvas(page, [{ x: 100, y: 100 }, { x: 130, y: 121 }, { x: 160, y: 106 }, { x: 200, y: 130 }])
+      await expect(counter).toHaveText('1 ann')
+      await page.keyboard.press('s')
+      await clickCanvasAt(page, 150, 111)
+      await expect(selectedHint).toBeVisible()
       await page.keyboard.press('Delete')
-      await page.waitForTimeout(100)
+      await expect(counter).toHaveText('0 ann')
     }
     expect(await getAnnotationCount(page)).toBe(0)
   })

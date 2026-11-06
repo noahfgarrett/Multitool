@@ -577,7 +577,7 @@ test.describe('Cloud UI Status', () => {
   test('cloud cursor shows crosshair', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Cloud (K)')
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate((el) => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })

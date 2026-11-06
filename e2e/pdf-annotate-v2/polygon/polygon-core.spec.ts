@@ -63,7 +63,7 @@ test.describe('Polygon Tool — Drawing', () => {
   test('polygon tool cursor is crosshair', async ({ page }) => {
     await page.keyboard.press('Shift+k')
     await page.waitForTimeout(200)
-    const canvas = page.locator('canvas').nth(1)
+    const canvas = page.locator('canvas.active-canvas').first()
     await expect(canvas).toHaveCSS('cursor', 'crosshair')
   })
 

@@ -5,6 +5,7 @@ import {
   clickCanvasAt, doubleClickCanvasAt, getAnnotationCount, createAnnotation,
   selectAnnotationAt, exportPDF, goToPage, waitForSessionSave, getSessionData,
 } from '../../helpers/pdf-annotate'
+import { rightClickCanvasAt, contextMenu } from '../../helpers/pdf-annotate-d'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -163,10 +164,10 @@ test.describe('Regression Tests', () => {
     await page.waitForTimeout(200)
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
-    // Cursor should be crosshair or at least not default
-    expect(['crosshair', 'none'].includes(cursor) || cursor !== 'default').toBe(true)
+    // Rectangle tool uses a crosshair cursor
+    expect(cursor).toBe('crosshair')
   })
 
   test('zoom then fit then draw', async ({ page }) => {
@@ -258,12 +259,12 @@ test.describe('Regression Tests', () => {
     await selectTool(page, 'Select (S)')
     await clickCanvasAt(page, 100, 150)
     await page.waitForTimeout(200)
-    await page.locator('canvas.ann-canvas').first().click({ position: { x: 100, y: 150 }, button: 'right' })
-    await page.waitForTimeout(200)
+    await rightClickCanvasAt(page, 100, 150)
+    await expect(contextMenu(page)).toBeVisible({ timeout: 3000 })
     await clickCanvasAt(page, 350, 350)
-    await page.waitForTimeout(200)
-    // Menu should be dismissed — just verify no crash
-    expect(typeof await getAnnotationCount(page)).toBe('number')
+    // Menu should be dismissed by the outside click, annotation untouched
+    await expect(contextMenu(page)).toBeHidden()
+    expect(await getAnnotationCount(page)).toBe(1)
   })
 
   test('double-click text then Escape then draw', async ({ page }) => {
@@ -495,10 +496,10 @@ test.describe('Regression Tests', () => {
     await selectTool(page, 'Pencil (P)')
     await page.keyboard.press('e')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     // Eraser cursor is 'none' (custom cursor drawn on canvas)
-    expect(['none', 'crosshair'].includes(cursor)).toBe(true)
+    expect(cursor).toBe('none')
   })
 
   test('measure alongside annotations', async ({ page }) => {

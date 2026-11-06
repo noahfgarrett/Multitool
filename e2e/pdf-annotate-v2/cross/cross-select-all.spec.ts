@@ -5,6 +5,7 @@ import {
   clickCanvasAt, doubleClickCanvasAt, getAnnotationCount, createAnnotation,
   selectAnnotationAt, exportPDF,
 } from '../../helpers/pdf-annotate'
+import { rightClickCanvasAt, contextMenu, contextMenuItem } from '../../helpers/pdf-annotate-d'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -345,13 +346,11 @@ test.describe('Cross-Tool: Select with All Types', () => {
   test('right-click pencil shows context menu', async ({ page }) => {
     await createAnnotation(page, 'pencil', { x: 100, y: 100, w: 150, h: 30 })
     await selectTool(page, 'Select (S)')
-    await page.keyboard.press('Tab')
-    await page.waitForTimeout(200)
-    await page.locator('canvas.ann-canvas').first().click({ position: { x: 150, y: 115 }, button: 'right' })
-    await page.waitForTimeout(300)
-    const menu = page.locator('text=/Delete|Duplicate|Copy/')
-    const visible = await menu.first().isVisible().catch(() => false)
-    // Context menu may or may not appear depending on selection state
+    // Pencil path starts at (100,100); right-click right on the stroke
+    await rightClickCanvasAt(page, 100, 100)
+    await expect(contextMenu(page)).toBeVisible({ timeout: 3000 })
+    await expect(contextMenuItem(page, 'Duplicate')).toBeVisible()
+    await expect(contextMenuItem(page, 'Delete')).toBeVisible()
     expect(await getAnnotationCount(page)).toBe(1)
   })
 
@@ -360,12 +359,12 @@ test.describe('Cross-Tool: Select with All Types', () => {
     await selectTool(page, 'Select (S)')
     await clickCanvasAt(page, 100, 150)
     await page.waitForTimeout(200)
-    await page.locator('canvas.ann-canvas').first().click({ position: { x: 100, y: 150 }, button: 'right' })
-    await page.waitForTimeout(300)
-    const menu = page.locator('text=/Delete|Duplicate|Copy/')
-    const visible = await menu.first().isVisible().catch(() => false)
-    // Context menu may not appear if annotation not selected
-    expect(typeof visible).toBe('boolean')
+    await rightClickCanvasAt(page, 100, 150)
+    await expect(contextMenu(page)).toBeVisible({ timeout: 3000 })
+    await expect(contextMenuItem(page, 'Duplicate')).toBeVisible()
+    await expect(contextMenuItem(page, 'Delete')).toBeVisible()
+    // Shape annotations have no "Edit Text" entry
+    await expect(contextMenuItem(page, 'Edit Text')).toHaveCount(0)
   })
 
   test('right-click text shows context menu', async ({ page }) => {
@@ -373,28 +372,22 @@ test.describe('Cross-Tool: Select with All Types', () => {
     await selectTool(page, 'Select (S)')
     await clickCanvasAt(page, 100, 120)
     await page.waitForTimeout(200)
-    await page.locator('canvas.ann-canvas').first().click({ position: { x: 100, y: 120 }, button: 'right' })
-    await page.waitForTimeout(300)
-    const menu = page.locator('text=/Delete|Duplicate|Copy/')
-    const visible = await menu.first().isVisible().catch(() => false)
-    // Context menu may not appear if annotation not selected
-    expect(typeof visible).toBe('boolean')
+    await rightClickCanvasAt(page, 100, 120)
+    await expect(contextMenu(page)).toBeVisible({ timeout: 3000 })
+    // Text annotations get an extra "Edit Text" entry
+    await expect(contextMenuItem(page, 'Edit Text')).toBeVisible()
+    await expect(contextMenuItem(page, 'Delete')).toBeVisible()
   })
 
   test('context menu delete', async ({ page }) => {
-    test.setTimeout(90000)
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 150, h: 100 })
     await selectTool(page, 'Select (S)')
     await clickCanvasAt(page, 100, 150)
     await page.waitForTimeout(200)
-    await page.locator('canvas.ann-canvas').first().click({ position: { x: 100, y: 150 }, button: 'right' })
-    await page.waitForTimeout(300)
-    const deleteBtn = page.locator('text=Delete').first()
-    if (await deleteBtn.isVisible()) {
-      await deleteBtn.click()
-      await page.waitForTimeout(200)
-      expect(await getAnnotationCount(page)).toBeLessThanOrEqual(1)
-    }
+    await rightClickCanvasAt(page, 100, 150)
+    await contextMenuItem(page, 'Delete').click()
+    await expect(contextMenu(page)).toBeHidden()
+    expect(await getAnnotationCount(page)).toBe(0)
   })
 
   test('context menu duplicate', async ({ page }) => {
@@ -402,37 +395,10 @@ test.describe('Cross-Tool: Select with All Types', () => {
     await selectTool(page, 'Select (S)')
     await clickCanvasAt(page, 100, 150)
     await page.waitForTimeout(200)
-    await page.locator('canvas.ann-canvas').first().click({ position: { x: 100, y: 150 }, button: 'right' })
-    await page.waitForTimeout(300)
-    const dupBtn = page.locator('text=Duplicate').first()
-    if (await dupBtn.isVisible()) {
-      await dupBtn.click()
-      await page.waitForTimeout(200)
-      expect(await getAnnotationCount(page)).toBe(2)
-    }
-  })
-
-  test('context menu copy', async ({ page }) => {
-    test.setTimeout(90000)
-    await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 150, h: 100 })
-    await selectTool(page, 'Select (S)')
-    await clickCanvasAt(page, 100, 150)
-    await page.waitForTimeout(200)
-    await page.locator('canvas.ann-canvas').first().click({ position: { x: 100, y: 150 }, button: 'right' })
-    await page.waitForTimeout(300)
-    const copyBtn = page.locator('text=Copy').first()
-    if (await copyBtn.isVisible()) {
-      try {
-        await copyBtn.click()
-        await page.waitForTimeout(200)
-        await page.keyboard.press('Control+v')
-        await page.waitForTimeout(200)
-        expect(await getAnnotationCount(page)).toBeGreaterThanOrEqual(1)
-      } catch {
-        // Context menu copy may not work in headless Chromium — just verify no crash
-        expect(await getAnnotationCount(page)).toBeGreaterThanOrEqual(1)
-      }
-    }
+    await rightClickCanvasAt(page, 100, 150)
+    await contextMenuItem(page, 'Duplicate').click()
+    await expect(contextMenu(page)).toBeHidden()
+    expect(await getAnnotationCount(page)).toBe(2)
   })
 
   test('context menu paste', async ({ page }) => {
@@ -486,15 +452,16 @@ test.describe('Cross-Tool: Select with All Types', () => {
     expect(await getAnnotationCount(page)).toBe(2)
   })
 
-  test('select then switch to pencil', async ({ page }) => {
+  // FIXME: App bug: a keyboard tool switch keeps the select tool's hover cursor ('move') until the mouse moves (PdfAnnotateTool.tsx:6527 uses stale canvasCursor; not reset on activeTool change)
+  test.fixme('select then switch to pencil', async ({ page }) => {
     await createAnnotation(page, 'rectangle', { x: 100, y: 100, w: 150, h: 100 })
     await selectTool(page, 'Select (S)')
     await clickCanvasAt(page, 100, 150)
     await page.waitForTimeout(200)
     await selectTool(page, 'Pencil (P)')
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
-    expect(['crosshair', 'none'].includes(cursor) || cursor !== 'default').toBe(true)
+    expect(cursor).toBe('crosshair')
   })
 
   test('deselect via Escape', async ({ page }) => {

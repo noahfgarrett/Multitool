@@ -5,6 +5,7 @@ import {
   getAnnotationCount, exportPDF,
   waitForSessionSave, getSessionData,
 } from '../../helpers/pdf-annotate'
+import { openSecondaryTools } from '../../helpers/pdf-annotate-d'
 
 /** Activate stamp tool via G shortcut */
 async function activateStamp(page: import('@playwright/test').Page) {
@@ -433,6 +434,7 @@ test.describe('Stamp Presets', () => {
   })
 
   test('stamp preset visible in dropdown', async ({ page }) => {
+    await openSecondaryTools(page)
     const stampBtn = page.locator('button[title="Stamp"]')
     await stampBtn.click()
     await page.waitForTimeout(300)

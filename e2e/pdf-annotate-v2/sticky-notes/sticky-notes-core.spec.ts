@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { navigateToTool } from '../../helpers/navigation'
 import { uploadPDFAndWait, clickCanvasAt, getAnnotationCount } from '../../helpers/pdf-annotate'
+import { openSecondaryTools } from '../../helpers/pdf-annotate-d'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -10,6 +11,7 @@ test.beforeEach(async ({ page }) => {
 
 test.describe('Sticky Note Tool — Toolbar', () => {
   test('Sticky Note button visible in right toolbar', async ({ page }) => {
+    await openSecondaryTools(page)
     const btn = page.locator('button[title*="Sticky Note"]')
     await expect(btn).toBeVisible({ timeout: 3000 })
   })
@@ -20,7 +22,8 @@ test.describe('Sticky Note Tool — Toolbar', () => {
     await expect(page.locator('text=/Click to place/')).toBeVisible({ timeout: 3000 })
   })
 
-  test('active state shows orange ring', async ({ page }) => {
+  test('active state shows teal ring', async ({ page }) => {
+    await openSecondaryTools(page)
     const btn = page.locator('button[title*="Sticky Note"]')
     await btn.click()
     await page.waitForTimeout(100)

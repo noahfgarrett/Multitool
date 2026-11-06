@@ -38,28 +38,28 @@ test.describe('Status Bar — Visibility', () => {
     await expect(canvas).toBeVisible()
   })
 
-  test('line tool hint contains Shift for perfect shapes', async ({ page }) => {
+  test('line tool hint mentions Shift to snap angles', async ({ page }) => {
     await page.keyboard.press('l')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift to snap angles/')).toBeVisible({ timeout: 3000 })
   })
 
-  test('arrow tool hint contains Shift for perfect shapes', async ({ page }) => {
+  test('arrow tool hint mentions Shift to snap angles', async ({ page }) => {
     await page.keyboard.press('a')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift to snap angles/')).toBeVisible({ timeout: 3000 })
   })
 
-  test('rectangle tool hint contains Shift for perfect shapes', async ({ page }) => {
+  test('rectangle tool hint mentions Shift to constrain', async ({ page }) => {
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible({ timeout: 3000 })
   })
 
-  test('circle tool hint contains Shift for perfect shapes', async ({ page }) => {
+  test('circle tool hint mentions Shift to constrain', async ({ page }) => {
     await page.keyboard.press('c')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible({ timeout: 3000 })
   })
 
   test('cloud tool hint contains Dbl-click close', async ({ page }) => {
@@ -204,7 +204,7 @@ test.describe('Status Bar — Hint Updates', () => {
   test('status bar updates on tool switch', async ({ page }) => {
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible({ timeout: 3000 })
     await page.keyboard.press('t')
     await page.waitForTimeout(100)
     await expect(page.locator('text=/Drag to create text/')).toBeVisible({ timeout: 3000 })
@@ -243,25 +243,25 @@ test.describe('Status Bar — Hint Updates', () => {
   test('shortcut l shows line hint', async ({ page }) => {
     await page.keyboard.press('l')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift to snap angles/')).toBeVisible({ timeout: 3000 })
   })
 
   test('shortcut a shows arrow hint', async ({ page }) => {
     await page.keyboard.press('a')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift to snap angles/')).toBeVisible({ timeout: 3000 })
   })
 
   test('shortcut r shows rectangle hint', async ({ page }) => {
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible({ timeout: 3000 })
   })
 
   test('shortcut c shows circle hint', async ({ page }) => {
     await page.keyboard.press('c')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible({ timeout: 3000 })
   })
 
   test('shortcut k shows cloud hint', async ({ page }) => {
@@ -323,7 +323,7 @@ test.describe('Status Bar — Format and Visibility', () => {
   test('hint updates immediately on switch', async ({ page }) => {
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible({ timeout: 3000 })
     await page.keyboard.press('k')
     await page.waitForTimeout(100)
     await expect(page.locator('text=/Dbl-click close/')).toBeVisible({ timeout: 3000 })

@@ -23,7 +23,7 @@ test.describe('Crop Edge Cases', () => {
   test('crop cursor crosshair', async ({ page }) => {
     await page.keyboard.press('x')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })

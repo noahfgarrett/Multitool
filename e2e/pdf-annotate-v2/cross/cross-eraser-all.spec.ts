@@ -265,9 +265,9 @@ test.describe('Cross-Tool: Eraser with All Types', () => {
     await drawOnCanvas(page, [{ x: 120, y: 110 }, { x: 160, y: 110 }])
     await page.waitForTimeout(300)
     await selectTool(page, 'Pencil (P)')
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
-    expect(['crosshair', 'none'].includes(cursor) || cursor !== 'default').toBe(true)
+    expect(cursor).toBe('crosshair')
   })
 
   test('erase object mode pencil + text mixed', async ({ page }) => {
@@ -623,9 +623,9 @@ test.describe('Cross-Tool: Eraser with All Types', () => {
 
   test('erase cursor visible — cursor is none (custom)', async ({ page }) => {
     await selectTool(page, 'Eraser (E)')
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
-    expect(['none', 'crosshair'].includes(cursor)).toBe(true)
+    expect(cursor).toBe('none')
   })
 
   test('erase cursor radius changes with slider', async ({ page }) => {

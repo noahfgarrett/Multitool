@@ -22,7 +22,7 @@ test.describe('Keyboard Shortcuts Core', () => {
   test('P → pencil tool', async ({ page }) => {
     await page.keyboard.press('p')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })
@@ -30,28 +30,28 @@ test.describe('Keyboard Shortcuts Core', () => {
   test('L → line tool', async ({ page }) => {
     await page.keyboard.press('l')
     await page.waitForTimeout(100)
-    const hint = page.locator('text=/Shift for perfect shapes/')
+    const hint = page.locator('text=/Shift to snap angles/')
     await expect(hint).toBeVisible({ timeout: 3000 })
   })
 
   test('A → arrow tool', async ({ page }) => {
     await page.keyboard.press('a')
     await page.waitForTimeout(100)
-    const hint = page.locator('text=/Shift for perfect shapes/')
+    const hint = page.locator('text=/Shift to snap angles/')
     await expect(hint).toBeVisible({ timeout: 3000 })
   })
 
   test('R → rectangle tool', async ({ page }) => {
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    const hint = page.locator('text=/Shift for perfect shapes/')
+    const hint = page.locator('text=/Shift = constrain, Alt = from center/')
     await expect(hint).toBeVisible({ timeout: 3000 })
   })
 
   test('C → circle tool', async ({ page }) => {
     await page.keyboard.press('c')
     await page.waitForTimeout(100)
-    const hint = page.locator('text=/Shift for perfect shapes/')
+    const hint = page.locator('text=/Shift = constrain, Alt = from center/')
     await expect(hint).toBeVisible({ timeout: 3000 })
   })
 
@@ -79,7 +79,7 @@ test.describe('Keyboard Shortcuts Core', () => {
   test('E → eraser tool', async ({ page }) => {
     await page.keyboard.press('e')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('none')
   })
@@ -87,7 +87,7 @@ test.describe('Keyboard Shortcuts Core', () => {
   test('H → highlighter tool', async ({ page }) => {
     await page.keyboard.press('h')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })

@@ -5,6 +5,7 @@ import {
   getAnnotationCount, createAnnotation, exportPDF,
   waitForSessionSave, getSessionData, goToPage,
 } from '../../helpers/pdf-annotate'
+import { openSecondaryTools } from '../../helpers/pdf-annotate-d'
 
 /** Activate stamp tool and place a stamp on the canvas */
 async function placeStamp(page: import('@playwright/test').Page, x = 200, y = 200) {
@@ -350,6 +351,7 @@ test.describe('Stamp Edge Cases', () => {
   })
 
   test('stamp dropdown visibility', async ({ page }) => {
+    await openSecondaryTools(page)
     const stampBtn = page.locator('button[title="Stamp"]')
     await stampBtn.click()
     await page.waitForTimeout(300)
@@ -475,9 +477,9 @@ test.describe('Stamp Edge Cases', () => {
     await page.keyboard.press('g')
     await page.waitForTimeout(200)
     // Stamp tool should change the cursor
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
-    expect(cursor).toBeTruthy()
+    expect(cursor).toBe('crosshair')
   })
 
   test('stamp hint text', async ({ page }) => {

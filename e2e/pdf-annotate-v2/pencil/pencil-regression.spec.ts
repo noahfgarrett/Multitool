@@ -494,7 +494,7 @@ test.describe('Cursor During Drawing', () => {
   test('pencil tool shows crosshair cursor class on canvas', async ({ page }) => {
     await uploadPDFAndWait(page)
     await selectTool(page, 'Pencil (P)')
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate((el) => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })

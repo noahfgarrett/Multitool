@@ -201,7 +201,7 @@ test.describe('Pencil Core', () => {
 
   test('verify pencil cursor is crosshair', async ({ page }) => {
     await selectTool(page, 'Pencil (P)')
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })

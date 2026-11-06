@@ -561,7 +561,7 @@ test.describe('Highlight Edge Cases', () => {
 
   test('highlight cursor crosshair', async ({ page }) => {
     await selectTool(page, 'Highlight (H)')
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })
@@ -569,7 +569,7 @@ test.describe('Highlight Edge Cases', () => {
   test('H shortcut activates highlight', async ({ page }) => {
     await page.keyboard.press('h')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })

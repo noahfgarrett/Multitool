@@ -28,28 +28,28 @@ test.describe('UI Core', () => {
   test('line tool activates via keyboard shortcut', async ({ page }) => {
     await page.keyboard.press('l')
     await page.waitForTimeout(100)
-    const hint = page.locator('text=/Shift for perfect shapes/')
+    const hint = page.locator('text=/Shift to snap angles/')
     await expect(hint).toBeVisible({ timeout: 3000 })
   })
 
   test('arrow tool activates via keyboard shortcut', async ({ page }) => {
     await page.keyboard.press('a')
     await page.waitForTimeout(100)
-    const hint = page.locator('text=/Shift for perfect shapes/')
+    const hint = page.locator('text=/Shift to snap angles/')
     await expect(hint).toBeVisible({ timeout: 3000 })
   })
 
   test('rectangle tool activates via keyboard shortcut', async ({ page }) => {
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    const hint = page.locator('text=/Shift for perfect shapes/')
+    const hint = page.locator('text=/Shift = constrain, Alt = from center/')
     await expect(hint).toBeVisible({ timeout: 3000 })
   })
 
   test('circle tool activates via keyboard shortcut', async ({ page }) => {
     await page.keyboard.press('c')
     await page.waitForTimeout(100)
-    const hint = page.locator('text=/Shift for perfect shapes/')
+    const hint = page.locator('text=/Shift = constrain, Alt = from center/')
     await expect(hint).toBeVisible({ timeout: 3000 })
   })
 
@@ -170,7 +170,7 @@ test.describe('UI Core', () => {
     // Use keyboard shortcuts and verify status bar hint changes
     await page.keyboard.press('r')
     await page.waitForTimeout(100)
-    await expect(page.locator('text=/Shift for perfect shapes/')).toBeVisible({ timeout: 3000 })
+    await expect(page.locator('text=/Shift = constrain, Alt = from center/')).toBeVisible({ timeout: 3000 })
 
     await page.keyboard.press('s')
     await page.waitForTimeout(100)

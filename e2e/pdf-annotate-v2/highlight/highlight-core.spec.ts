@@ -15,7 +15,7 @@ test.describe('Highlight Core', () => {
   test('H shortcut activates highlight tool — cursor is crosshair', async ({ page }) => {
     await page.keyboard.press('h')
     await page.waitForTimeout(100)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('crosshair')
   })

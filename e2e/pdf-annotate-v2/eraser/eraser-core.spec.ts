@@ -29,7 +29,7 @@ test.describe('Eraser Tool Core', () => {
     await page.keyboard.press('e')
     await page.waitForTimeout(100)
     // Eraser has cursor: none (custom cursor)
-    const canvas = page.locator('canvas.ann-canvas').first()
+    const canvas = page.locator('canvas.active-canvas').first()
     const cursor = await canvas.evaluate(el => getComputedStyle(el).cursor)
     expect(cursor).toBe('none')
   })
