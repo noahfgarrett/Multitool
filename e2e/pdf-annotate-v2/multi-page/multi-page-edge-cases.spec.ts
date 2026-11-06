@@ -1,11 +1,16 @@
 import { test, expect } from '@playwright/test'
 import { navigateToTool } from '../../helpers/navigation'
 import {
-  uploadPDFAndWait, selectTool, drawOnCanvas, dragOnCanvas,
-  clickCanvasAt, doubleClickCanvasAt, getAnnotationCount, createAnnotation,
+  uploadPDFAndWait, selectTool, getAnnotationCount,
   selectAnnotationAt, moveAnnotation, exportPDF, goToPage,
   waitForSessionSave, getSessionData, clearSessionData,
 } from '../../helpers/pdf-annotate'
+// Page-aware drawing: the shared helpers assume 2 canvases per page and draw on the
+// wrong page from page 3 on (each page now has pdf/ann/active canvases)
+import {
+  drawOnCanvas, dragOnCanvas, clickCanvasAt, doubleClickCanvasAt, createAnnotation,
+  jumpToPage, pageIndicator,
+} from '../../helpers/pdf-annotate-d'
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/')
@@ -141,11 +146,12 @@ test.describe('Multi-Page Edge Cases', () => {
   test('rapid navigation (click next 20 times on 5-page)', async ({ page }) => {
     for (let i = 0; i < 20; i++) {
       const nextPage = (i % 5) + 1
-      await goToPage(page, nextPage)
-      await page.waitForTimeout(100)
+      // Waits for the page indicator to reach the target page (no fixed sleeps)
+      await jumpToPage(page, nextPage)
     }
-    await page.waitForTimeout(300)
-    expect(typeof await getAnnotationCount(page)).toBe('number')
+    // Last jump was to page 5 and the viewer is still usable there
+    await expect(pageIndicator(page)).toHaveText(/^\s*5 \/ 5\s*$/)
+    expect(await getAnnotationCount(page)).toBe(0)
   })
 
   test('undo on wrong page (no effect)', async ({ page }) => {

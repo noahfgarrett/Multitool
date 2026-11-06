@@ -1,11 +1,15 @@
 import { test, expect } from '@playwright/test'
 import { navigateToTool } from '../../helpers/navigation'
 import {
-  uploadPDFAndWait, selectTool, drawOnCanvas, dragOnCanvas,
-  clickCanvasAt, doubleClickCanvasAt, getAnnotationCount, createAnnotation,
+  uploadPDFAndWait, selectTool, getAnnotationCount,
   selectAnnotationAt, moveAnnotation, exportPDF, goToPage,
   waitForSessionSave, getSessionData, clearSessionData,
 } from '../../helpers/pdf-annotate'
+// Page-aware drawing: the shared helpers assume 2 canvases per page and draw on the
+// wrong page from page 3 on (each page now has pdf/ann/active canvases)
+import {
+  drawOnCanvas, dragOnCanvas, clickCanvasAt, doubleClickCanvasAt, createAnnotation,
+} from '../../helpers/pdf-annotate-d'
 
 async function saveAndReload(page: import('@playwright/test').Page, pdf = 'multi-page.pdf') {
   await waitForSessionSave(page)
