@@ -183,9 +183,7 @@ test.describe('Cloud — Backspace Remove Vertex', () => {
     await page.waitForTimeout(100)
     const before = await screenshotCanvas(page)
     await page.keyboard.press('Backspace')
-    await page.waitForTimeout(200)
-    const after = await screenshotCanvas(page)
-    expect(before.equals(after)).toBe(false)
+    await expect.poll(async () => (await screenshotCanvas(page)).equals(before)).toBe(false)
     await expect(page.locator('text=/pts.*Dbl-click close/')).toBeVisible()
     // Closing now gives the two remaining vertices plus the closing click; (200,200) is gone
     await doubleClickCanvasAt(page, 120, 250)
